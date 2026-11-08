@@ -109,6 +109,12 @@ enum StoreStatus {
   REJECTED
 }
 
+enum StoreOrigin {
+  SELLER_SUBMITTED
+  ADMIN_CREATED
+  LEGACY_UNKNOWN
+}
+
 enum SellerType {
   INDIVIDUAL_ENTREPRENEUR
   REGISTERED_COMPANY
@@ -165,6 +171,8 @@ model User {
   auditLogs             AuditLog[]
   adminManagedStores    Store[]                @relation("AdminManagedStores")
   subscriptionGrants    StoreSubscription[]    @relation("SubscriptionGrantAdmin")
+  complimentaryGrants       StoreComplimentaryEntitlement[] @relation("StoreComplimentaryEntitlementGrantedBy")
+  complimentaryRevocations StoreComplimentaryEntitlement[] @relation("StoreComplimentaryEntitlementRevokedBy")
   catalogImportJobs     ImportJob[]            @relation("CatalogImportJobCreator")
 
   @@index([role, isActive])
@@ -314,6 +322,7 @@ model Store {
   bannerUrl      String?
   theme          String             @default("forest")
   status         StoreStatus        @default(DRAFT)
+  origin         StoreOrigin        @default(LEGACY_UNKNOWN)
   isActive       Boolean            @default(false)
   address        String?
   latitude       Float?
@@ -340,13 +349,34 @@ model Store {
   commissions    Commission[]
   notifications  Notification[]
   subscription   StoreSubscription?
+  complimentaryEntitlements StoreComplimentaryEntitlement[]
   returnRequests ReturnRequest[]
   catalogImportJobs ImportJob[]
 
   @@index([vendorId, cityId])
   @@index([cityId, isActive])
   @@index([status])
+  @@index([origin])
   @@index([adminManaged, managedByAdminId])
+}
+
+model StoreComplimentaryEntitlement {
+  id              String    @id @default(cuid())
+  storeId          String
+  grantedByAdminId String
+  grantedAt        DateTime  @default(now())
+  grantReason      String    @db.VarChar(500)
+  revokedAt        DateTime?
+  revokedByAdminId String?
+  revokeReason     String?   @db.VarChar(500)
+  store            Store     @relation(fields: [storeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  grantedByAdmin   User      @relation("StoreComplimentaryEntitlementGrantedBy", fields: [grantedByAdminId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  revokedByAdmin   User?     @relation("StoreComplimentaryEntitlementRevokedBy", fields: [revokedByAdminId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([storeId, grantedAt])
+  @@index([storeId, revokedAt])
+  @@index([grantedByAdminId, grantedAt])
+  @@index([revokedByAdminId, revokedAt])
 }
 
 model Address {

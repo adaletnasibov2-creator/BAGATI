@@ -1,0 +1,3 @@
+export function EmptyState({ title, detail }: { title: string; detail: string }) { return <div className="rounded-2xl border border-dashed border-[#d8d4ca] bg-white px-6 py-12 text-center"><p className="font-medium">{title}</p><p className="mt-2 text-sm text-slate-500">{detail}</p></div>; }
+export function LoadingState({ label = "Yüklənir" }: { label?: string }) { return <div role="status" className="animate-pulse rounded-2xl bg-[#efeee9] px-6 py-10 text-center text-sm text-slate-500">{label}…</div>; }
+export function ErrorState({ message }: { message: string }) { return <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-6 py-5 text-sm text-red-900">{message}</div>; }

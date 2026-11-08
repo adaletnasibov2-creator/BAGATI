@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+
+  --bagati-navy: #173a3a;
+  --bagati-teal: #2f6f68;
+  --bagati-gold: #c79a52;
+  --bagati-ivory: #f6f7f4;
+  --bagati-soft: #e5e9e5;
+  --bagati-text: #233432;
+  --bagati-muted: #697875;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes hero-fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: clip;
+  margin: 0;
+  background: #f8f9f7;
+  color: var(--bagati-text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.container {
+  width: min(1440px, calc(100% - 56px));
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
+:focus-visible {
+  outline: 3px solid var(--bagati-gold);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #e8e3d4;
+  color: var(--bagati-navy);
+}
+
+img {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: min(1280px, calc(100% - 28px));
+  }
+}
+
+.bagati-display {
+  font-family: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.bagati-kicker {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #5d736c;
+}
+
+.bagati-panel {
+  border: 1px solid #e4e8e4;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 10px 28px rgba(23, 58, 58, 0.05);
+}
+
+.bagati-service-link {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  border: 1px solid #e4e8e4;
+  background: #fff;
+  padding: 12px 14px;
+  color: #173a3a;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.bagati-service-link:hover {
+  border-color: #c9d8d1;
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; transition: none !important; }
+}

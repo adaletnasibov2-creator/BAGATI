@@ -1,0 +1,5 @@
+import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
+export default function AboutPage() {
+  return <div className="container py-10 sm:py-14"><section className="max-w-3xl rounded-[26px] border border-[#E8E7E2] bg-white p-6 sm:p-10"><BrandLogo variant="full"/><p className="mt-8 text-xs font-semibold uppercase tracking-[.18em] text-[#85621d]">Platforma haqqında</p><h1 className="mt-2 text-3xl font-semibold text-[#0B1726]">Yerli mağazalar üçün bir marketplace</h1><p className="mt-4 leading-7 text-[#667085]">BAGATI müştərilərə platformada qeydiyyatdan keçmiş aktiv mağazaların məhsullarına baxmaq, seçimləri müqayisə etmək və sifarişlərini idarə etmək üçün vahid rəqəmsal məkan təqdim edir.</p><div className="mt-7 flex flex-wrap gap-3"><Link href="/stores" className="rounded-xl bg-[#0B1726] px-5 py-3 text-sm font-semibold text-white">Mağazalara bax</Link><Link href="/contact" className="rounded-xl border border-[#E8E7E2] px-5 py-3 text-sm font-semibold text-[#0B1726]">Əlaqə</Link></div></section></div>;
+}

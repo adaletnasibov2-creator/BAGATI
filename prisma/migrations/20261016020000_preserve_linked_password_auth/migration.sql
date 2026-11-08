@@ -1,0 +1,1 @@
+-- Intentionally no data backfill: GoogleAccount does not record how a legacy user was created.

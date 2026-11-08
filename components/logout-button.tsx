@@ -1,0 +1,4 @@
+"use client";
+import { useRef, useState } from "react";
+import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
+export function LogoutButton(){const[busy,setBusy]=useState(false),[error,setError]=useState("");const submitting=useRef(false);async function logout(){if(submitting.current)return;submitting.current=true;setBusy(true);setError("");const result=await postLogout();if(!result.ok){setError(result.error);submitting.current=false;setBusy(false);return}finishAuthNavigation("/")}return <div><button disabled={busy} onClick={()=>void logout()} className="rounded-full border border-line px-5 py-2.5 text-sm font-medium hover:bg-paper disabled:opacity-60">{busy?"Çıxış edilir…":"Hesabdan çıx"}</button>{error&&<p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}</div>}

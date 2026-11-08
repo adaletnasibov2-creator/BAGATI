@@ -1,0 +1,2 @@
+ALTER TABLE "User"
+ADD COLUMN "passwordAuthEnabled" BOOLEAN NOT NULL DEFAULT true;

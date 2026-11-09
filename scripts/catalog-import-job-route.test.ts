@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   createImportJobPostHandler,
   MAX_IMPORT_JOB_CREATE_REQUEST_BYTES,
-} from "../app/api/vendor/[storeId]/imports/jobs/route";
+} from "../lib/catalog-import-job-route";
 
 const params = { params: Promise.resolve({ storeId: "store-a" }) };
 const validPayload = JSON.stringify({

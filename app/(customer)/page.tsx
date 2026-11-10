@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { ChevronRight, CircleHelp, MapPin, Store } from "lucide-react";
+import { ChevronRight, MapPin, Store } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
 import { HeroCarousel } from "@/components/home/hero-carousel";
+import { ProductShelf } from "@/components/home/product-shelf";
 import { StoreCard } from "@/components/store-card";
+import StorefrontImage from "@/components/storefront-image";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { publicProductVisibilityWhere, publicStoreVisibilityWhere } from "@/lib/store-visibility";
@@ -256,14 +258,6 @@ export default async function HomePage({ searchParams }: Props) {
         !promotedIds.has(product.id),
     )
     .slice(0, 10);
-  const heroProducts = availableNewest.slice(0, 2).map((product) => ({
-    id: product.id,
-    name: product.name,
-    price: String(product.price),
-    discountPrice: product.discountPrice === null ? null : String(product.discountPrice),
-    image: product.images[0] ?? null,
-    store: product.store.name,
-  }));
   const hasHomepageContent = homepageStores.length > 0
     || featuredProducts.length > 0
     || popular.length > 0
@@ -273,119 +267,130 @@ export default async function HomePage({ searchParams }: Props) {
     || eligibleCampaigns.length > 0;
 
   return (
-    <div className="overflow-hidden bg-[#F7F8F6] text-[#173A3A]">
-      <section className="container pb-5 pt-4 sm:pb-7 sm:pt-6">
-        <HeroCarousel products={heroProducts} banners={banners} />
-      </section>
-      <section className="container pb-6 sm:pb-8" aria-label="Alış-veriş məlumatları">
-        <ul className="grid gap-2 sm:grid-cols-3 sm:gap-3">
-          <li>
-            <Link href="/stores" className="bagati-service-link group">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#EFF4F1] text-[#2F6F68] transition group-hover:bg-[#E4EEE8]"><Store aria-hidden="true" size={19} /></span>
-              <span><span className="block text-sm font-semibold">Mağazaları kəşf et</span><span className="mt-0.5 block text-xs text-[#5d736c]">Mağaza profillərinə bax</span></span>
-            </Link>
-          </li>
-          <li>
-            <Link href="/delivery-returns" className="bagati-service-link group">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#EFF4F1] text-[#2F6F68] transition group-hover:bg-[#E4EEE8]"><MapPin aria-hidden="true" size={19} /></span>
-              <span><span className="block text-sm font-semibold">Çatdırılma və qaytarılma</span><span className="mt-0.5 block text-xs text-[#5d736c]">Mövcud məlumatlarla tanış ol</span></span>
-            </Link>
-          </li>
-          <li>
-            <Link href="/help" className="bagati-service-link group">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#EFF4F1] text-[#2F6F68] transition group-hover:bg-[#E4EEE8]"><CircleHelp aria-hidden="true" size={19} /></span>
-              <span><span className="block text-sm font-semibold">Kömək və dəstək</span><span className="mt-0.5 block text-xs text-[#5d736c]">Suallar və dəstək bölməsi</span></span>
-            </Link>
-          </li>
-        </ul>
+    <div className="overflow-hidden bg-bagati-page text-bagati-deep">
+      <section className="container pb-6 pt-3 sm:pb-8 sm:pt-5">
+        <HeroCarousel banners={banners} />
       </section>
 
-      {categories.length > 0 && <section className="container pb-7 sm:pb-9" aria-labelledby="categories-title">
+      {categories.length > 0 && <section className="container pb-4 pt-2 sm:pb-6" aria-labelledby="categories-title">
         <div className="mb-4 flex items-end justify-between gap-3">
-          <div><p className="text-[.68rem] font-semibold uppercase tracking-[.16em] text-[#638078]">BAGATI kataloqu</p><h2 id="categories-title" className="mt-1 text-xl font-semibold tracking-tight text-[#233432] sm:text-2xl">İstədiyini asanlıqla tap</h2></div>
-          <Link href="/categories" className="inline-flex min-h-10 shrink-0 items-center gap-1 text-xs font-semibold text-[#46645D] transition hover:text-[#2F6F68] sm:text-sm">Kateqoriyalara keç <ChevronRight size={15}/></Link>
+          <div>
+            <p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-bagati-muted">BAGATI kataloqu</p>
+            <h2 id="categories-title" className="mt-1 text-xl font-semibold tracking-tight text-bagati-text sm:text-2xl">Nə axtarırsan?</h2>
+          </div>
+          <Link href="/categories" className="inline-flex min-h-10 shrink-0 items-center gap-1 text-xs font-semibold text-bagati-text transition hover:text-bagati-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold sm:text-sm">
+            Hamısına bax<ChevronRight aria-hidden="true" size={15} />
+          </Link>
         </div>
-        <nav aria-label="Məhsul kateqoriyaları" className="-mx-3 flex gap-2.5 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-3 sm:px-0 lg:grid-cols-10">
+        <nav aria-label="Məhsul kateqoriyaları" className="-mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-3 sm:px-0 lg:grid-cols-10">
           {orderedCategories.map((category) => (
-            <Link key={category.id} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group flex min-h-[126px] min-w-[108px] shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-[#E5EAE6] bg-white px-2 py-3 text-center shadow-[0_6px_18px_rgba(23,58,58,.035)] outline-none transition hover:-translate-y-0.5 hover:border-[#C9D8D1] hover:shadow-card focus-visible:ring-2 focus-visible:ring-[#4F8175] focus-visible:ring-offset-2 sm:min-w-0">
-              <CategoryIcon category={category} size="large" className="rounded-[20px] border border-[#E5EAE6] bg-[#FBFCFA] shadow-[0_5px_16px_rgba(23,58,58,.045)] transition group-hover:border-[#A8C4B7]" />
-              <span className="line-clamp-2 min-h-8 max-w-[104px] text-[.74rem] font-semibold leading-4 text-[#405451] sm:text-[.78rem]">{category.name}</span>
+            <Link key={category.id} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group flex min-h-[142px] min-w-[108px] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-[20px] border border-bagati-border bg-white px-2 py-3 text-center shadow-[0_6px_18px_rgba(23,58,58,.035)] outline-none transition duration-200 hover:-translate-y-0.5 hover:border-[#C9D8D1] hover:shadow-card focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2 motion-reduce:transition-none sm:min-w-0">
+              <CategoryIcon category={category} size="large" />
+              <span className="line-clamp-2 min-h-8 max-w-[104px] text-[.74rem] font-semibold leading-4 text-bagati-text sm:text-[.78rem]">{category.name}</span>
             </Link>
           ))}
         </nav>
       </section>}
 
-      {featuredProducts.length > 0 ? (
-        <section className="container pb-8 sm:pb-10" aria-labelledby="featured-products-title">
-          <SectionHeading eyebrow="BAGATI tərəfindən seçilib" title="Seçilmiş məhsullar" href="/products" actionLabel="Seçilənlərə bax" id="featured-products-title" />
-          <ProductGrid products={featuredProducts} />
-        </section>
-      ) : null}
+      {featuredProducts.length > 0 && (
+        <ProductShelf id="featured-products" eyebrow="BAGATI seçimi" title="Seçilmiş məhsullar" href="/products" actionLabel="Hamısına bax">
+          <HomeProductCards products={featuredProducts} />
+        </ProductShelf>
+      )}
       {popular.length > 0 && (
-        <section className="container pb-8 sm:pb-10" aria-labelledby="popular-title">
-          <SectionHeading eyebrow="Çatdırılmış sifarişlər əsasında" title="Populyar məhsullar" href="/products" actionLabel="Kataloqu gəz" id="popular-title" />
-          <ProductGrid products={popular.slice(0, 10)} />
+        <ProductShelf id="popular-products" eyebrow="Çatdırılmış sifarişlər əsasında" title="Populyar məhsullar" href="/products" actionLabel="Hamısına bax">
+          <HomeProductCards products={popular.slice(0, 10)} />
+        </ProductShelf>
+      )}
+      {newestVisible.length > 0 && (
+        <ProductShelf id="new-products" eyebrow="Mağazaların son əlavələri" title="Yeni məhsullar" href="/new-products" actionLabel="Hamısına bax">
+          <HomeProductCards products={newestVisible.slice(0, 10)} />
+        </ProductShelf>
+      )}
+      {promotionalById.size > 0 && (
+        <div className="border-y border-bagati-border bg-bagati-section">
+          <ProductShelf id="campaign-products" eyebrow="Mağazaların aktiv təklifləri" title="Kampaniyada" href="/deals" actionLabel="Hamısına bax">
+            {[...promotionalById.values()].slice(0, 10).map(({ product, campaign, price, basePrice, discountLabel }) => (
+              <div key={product.id} className="min-w-0 snap-start">
+                <ProductCard
+                  id={product.id}
+                  name={product.name}
+                  price={price}
+                  originalPrice={basePrice}
+                  store={product.store.name}
+                  storeHref={`/stores/${product.store.id}`}
+                  campaignName={campaign.name}
+                  discountLabel={discountLabel}
+                  image={product.images[0]}
+                  secondaryImage={product.images[1]}
+                  stock={availableStock(product.inventory, product.variants)}
+                  lowStockThreshold={Math.max(0, ...(product.variants.length ? product.variants.flatMap((variant: any) => variant.inventory) : product.inventory).map((row: any) => row.lowStockThreshold))}
+                  variantCount={product.variants.filter((variant: any) => variant.inventory.some((row: any) => row.quantity > row.reserved)).length || undefined}
+                />
+              </div>
+            ))}
+          </ProductShelf>
+        </div>
+      )}
+      {discounted.length > 0 && (
+        <ProductShelf id="discounted-products" eyebrow="Real qiymət fərqi ilə" title="Endirimli məhsullar" href="/deals" actionLabel="Hamısına bax">
+          <HomeProductCards products={discounted} />
+        </ProductShelf>
+      )}
+
+      {eligibleCampaigns.length > 0 && (
+        <section className="border-y border-bagati-border bg-white py-8 sm:py-10" aria-labelledby="campaigns-title">
+          <div className="container">
+            <SectionHeading eyebrow="Mağazaların aktiv təklifləri" title="Kampaniyalar" href="/deals" actionLabel="Hamısına bax" id="campaigns-title" />
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {eligibleCampaigns.map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} />)}
+            </div>
+          </div>
         </section>
       )}
 
       {homepageStores.length > 0 && (
-        <section className="border-y border-[#E5EAE6] bg-white py-7 sm:py-9" aria-labelledby="stores-title">
+        <section className="border-y border-bagati-border bg-bagati-section py-8 sm:py-10" aria-labelledby="stores-title">
           <div className="container">
-            <SectionHeading eyebrow={featuredStores.length ? "BAGATI tərəfindən seçilib" : "Şəhərinə uyğun satıcılar"} title={featuredStores.length ? "Seçilmiş mağazalar" : city?.name ? `${city.name} mağazaları` : "Aktiv mağazalar"} href="/stores" actionLabel="Mağazaları kəşf et" id="stores-title" />
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <SectionHeading eyebrow={featuredStores.length ? "BAGATI seçimi" : "Şəhərinə uyğun"} title={featuredStores.length ? "Seçilmiş mağazalar" : city?.slug === "qazax" ? "Qazax mağazaları" : city?.name ? `${city.name} mağazaları` : "Mağazalar"} href="/stores" actionLabel="Hamısına bax" id="stores-title" />
+              <Link href="/stores/map" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-bagati-border bg-white px-4 text-xs font-semibold text-bagati-text transition hover:border-bagati-accent hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold sm:text-sm">
+                <MapPin aria-hidden="true" size={15} />Xəritəyə bax
+              </Link>
+            </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               {homepageStores.slice(0, 4).map((store) => <StoreCard key={store.id} id={store.id} name={store.name} city={store.city.name} description={store.description} logoUrl={store.logoUrl} hasLocation={store.latitude !== null && store.longitude !== null} />)}
             </div>
           </div>
         </section>
       )}
-      {newestVisible.length > 0 && (
-        <section className="container py-8 sm:py-10" aria-labelledby="new-products-title">
-          <SectionHeading eyebrow="Mağazaların son əlavələri" title="Yeni məhsullar" href="/new-products" actionLabel="Son əlavələr" id="new-products-title" />
-          <ProductGrid products={newestVisible.slice(0, 10)} />
-        </section>
-      )}
 
-      {promotionalById.size > 0 && <section className="border-y border-[#E5EAE6] bg-[#EDF3F0] py-7 sm:py-9" aria-labelledby="promotions-title">
-          <div className="container">
-            <SectionHeading eyebrow="Mağazaların aktiv təklifləri" title="Kampaniyada" href="/deals" actionLabel="Kampaniyaları gör" id="promotions-title" />
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-              {[...promotionalById.values()].slice(0, 10).map(({ product, campaign, price, basePrice, discountLabel }) => <ProductCard key={product.id} id={product.id} name={product.name} price={price} originalPrice={basePrice} store={product.store.name} storeHref={`/stores/${product.store.id}`} campaignName={campaign.name} discountLabel={discountLabel} image={product.images[0]} stock={availableStock(product.inventory, product.variants)} lowStockThreshold={Math.max(0, ...(product.variants.length ? product.variants.flatMap((variant: any) => variant.inventory) : product.inventory).map((row: any) => row.lowStockThreshold))} variantCount={product.variants.filter((variant: any)=>variant.inventory.some((row: any)=>row.quantity>row.reserved)).length||undefined}/>)}
-            </div>
+      <section className="container py-8 sm:py-10">
+        <div className="relative isolate overflow-hidden rounded-[24px] bg-bagati-primary px-5 py-6 text-white shadow-[0_18px_46px_rgba(23,58,58,.13)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:rounded-[30px] sm:px-9 sm:py-8">
+          <div aria-hidden="true" className="absolute -right-16 -top-32 -z-10 h-72 w-72 rounded-full border border-[#C9D9CC]/25 sm:right-[8%] sm:h-[23rem] sm:w-[23rem]" />
+          <div className="max-w-2xl">
+            <p className="text-[.65rem] font-semibold uppercase tracking-[.18em] text-bagati-cream-dark">BAGATI-də satıcı ol</p>
+            <h2 className="mt-2 text-xl font-semibold leading-tight sm:text-2xl">Mağazanı BAGATI-də aç</h2>
+            <p className="mt-2 text-sm leading-6 text-white/80">Müraciətə başla və mağazan üçün hesab yarat.</p>
           </div>
-      </section>}
-
-      {discounted.length > 0 && <section className="border-b border-[#E5EAE6] bg-[#F7F8F6] py-7 sm:py-9" aria-labelledby="deals-title">
-          <div className="container">
-            <SectionHeading eyebrow="Məhsul qiymətlərində" title="Endirimli məhsullar" href="/deals" actionLabel="Endirimlərə bax" id="deals-title" />
-            <ProductGrid products={discounted} />
-          </div>
-      </section>}
-
-      {eligibleCampaigns.length > 0 && (
-        <section className="container py-8 sm:py-10" aria-labelledby="campaigns-title">
-          <SectionHeading eyebrow="Mağazaların təqdim etdiyi" title="Aktiv kampaniyalar" href="/deals" actionLabel="Kampaniya təfərrüatları" id="campaigns-title" />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {eligibleCampaigns.map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} />)}
-          </div>
-        </section>
-      )}
-
-      {!hasHomepageContent && <section className="container pb-9 pt-2 sm:pb-12">
-        <div className="relative overflow-hidden rounded-[24px] bg-[#174746] px-5 py-7 text-white shadow-[0_18px_46px_rgba(23,58,58,.13)] sm:rounded-[28px] sm:px-9 sm:py-9">
-          <div aria-hidden="true" className="absolute -right-16 -top-40 h-80 w-80 rounded-full border border-[#C9D9CC]/25 sm:right-[8%] sm:h-[26rem] sm:w-[26rem]" />
-          <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-[.65rem] font-semibold uppercase tracking-[.2em] text-[#E2D3B5]">{settings.siteName}</p>
-              <h2 className="mt-2 text-xl font-semibold leading-tight sm:text-2xl">{settings.homeIntroTitle}</h2>
-              <p className="mt-2 text-sm leading-6 text-white/65">{settings.homeIntroDescription}</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href={settings.homeIntroLinkUrl} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#F3E9D5] px-5 text-sm font-semibold text-[#24413D] transition hover:bg-white">{settings.homeIntroLinkLabel} <ChevronRight size={16} /></Link>
-              <Link href="/vendor/apply" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-white/35 px-5 text-sm font-semibold text-white transition hover:bg-white/10">Mağazanı BAGATI-yə qoş</Link>
-            </div>
-          </div>
+          <Link href="/vendor/apply" className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-bagati-cream px-5 text-sm font-semibold text-bagati-deep transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold sm:mt-0">
+            Satıcı ol<ChevronRight aria-hidden="true" size={16} />
+          </Link>
         </div>
-      </section>}
+      </section>
+
+      {!hasHomepageContent && (
+        <section className="container pb-9 pt-1 sm:pb-12">
+          <div className="rounded-2xl border border-bagati-border bg-white p-5 sm:p-7">
+            <p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-bagati-muted">{settings.siteName}</p>
+            <h2 className="mt-2 text-xl font-semibold text-bagati-deep">{settings.homeIntroTitle}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-bagati-secondary">{settings.homeIntroDescription}</p>
+            <Link href={settings.homeIntroLinkUrl} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-bagati-primary px-5 text-sm font-semibold text-white transition hover:bg-bagati-hover">
+              {settings.homeIntroLinkLabel}<ChevronRight aria-hidden="true" size={16} />
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -395,44 +400,145 @@ function availableStock(inventory: HomeProduct["inventory"], variants: { invento
   return rows.reduce((total, row) => total + Math.max(0, row.quantity - row.reserved), 0);
 }
 
-function ProductGrid({ products }: { products: HomeProduct[] }) {
-  return (
-    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-      {products.map((product) => {
-        const effective = calculateEffectivePrice(product.price, product.discountPrice, productPromotions(product.promotionProducts, product.store.id));
-        const hasDiscount = effective.unitPrice.lt(effective.basePrice);
-        return <ProductCard key={product.id} id={product.id} name={product.name} price={effective.unitPrice.toFixed(2)} originalPrice={hasDiscount ? effective.basePrice.toFixed(2) : null} store={product.store.name} storeHref={`/stores/${product.store.id}`} campaignName={effective.promotion?.name} image={product.images[0]} stock={availableStock(product.inventory, product.variants)} lowStockThreshold={Math.max(0, ...(product.variants.length ? product.variants.flatMap((variant) => variant.inventory) : product.inventory).map((row) => row.lowStockThreshold))} variantCount={product.variants.filter((variant: any)=>variant.inventory.some((row: any)=>row.quantity>row.reserved)).length||undefined} />;
-      })}
-    </div>
-  );
+function HomeProductCards({ products }: { products: HomeProduct[] }) {
+  return products.map((product) => {
+    const effective = calculateEffectivePrice(product.price, product.discountPrice, productPromotions(product.promotionProducts, product.store.id));
+    const hasDiscount = effective.unitPrice.lt(effective.basePrice);
+    return (
+      <div key={product.id} className="min-w-0 snap-start">
+        <ProductCard
+          id={product.id}
+          name={product.name}
+          price={effective.unitPrice.toFixed(2)}
+          originalPrice={hasDiscount ? effective.basePrice.toFixed(2) : null}
+          store={product.store.name}
+          storeHref={`/stores/${product.store.id}`}
+          campaignName={effective.promotion?.name}
+          image={product.images[0]}
+          secondaryImage={product.images[1]}
+          stock={availableStock(product.inventory, product.variants)}
+          lowStockThreshold={Math.max(0, ...(product.variants.length ? product.variants.flatMap((variant) => variant.inventory) : product.inventory).map((row) => row.lowStockThreshold))}
+          variantCount={product.variants.filter((variant: any) => variant.inventory.some((row: any) => row.quantity > row.reserved)).length || undefined}
+        />
+      </div>
+    );
+  });
 }
 
 function SectionHeading({ eyebrow, title, href, actionLabel, id }: { eyebrow: string; title: string; href: string; actionLabel: string; id: string }) {
   return (
     <div className="flex items-end justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-[.63rem] font-semibold uppercase tracking-[.16em] text-[#638078] sm:text-[.68rem]">{eyebrow}</p>
-        <h2 id={id} className="mt-1 text-xl font-semibold tracking-tight text-[#233432] sm:text-2xl">{title}</h2>
+        <p className="text-[.63rem] font-semibold uppercase tracking-[.16em] text-bagati-muted sm:text-[.68rem]">{eyebrow}</p>
+        <h2 id={id} className="mt-1 text-xl font-semibold tracking-tight text-bagati-text sm:text-2xl">{title}</h2>
       </div>
-      <Link href={href} className="inline-flex min-h-10 shrink-0 items-center gap-1 text-[.68rem] font-semibold text-[#46645D] transition hover:text-[#2F6F68] sm:text-sm">{actionLabel}<ChevronRight size={15} /></Link>
+      <Link href={href} className="inline-flex min-h-10 shrink-0 items-center gap-1 text-[.68rem] font-semibold text-bagati-text transition hover:text-bagati-accent sm:text-sm">{actionLabel}<ChevronRight size={15} /></Link>
     </div>
   );
 }
 
 function CampaignCard({ campaign }: { campaign: HomepageCampaign }) {
-  const value = Number(campaign.discountValue);
-  const discount = campaign.discountType === "PERCENT" && value > 0
-    ? `${value}% endirim`
-    : campaign.discountType === "FIXED" && value > 0
-      ? `${value.toFixed(2)} ₼ endirim`
-      : null;
-
   return (
-    <Link href="/deals" className="group rounded-[18px] border border-[#E8E2D5] bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#D9A441]/60 hover:shadow-card">
-      <p className="text-[.62rem] font-semibold uppercase tracking-[.14em] text-[#85621d]">{campaign.store?.name ?? "BAGATI marketplace"}</p>
-      <h3 className="mt-2 line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-[#0B1726] group-hover:text-[#85621d]">{campaign.name}</h3>
-      {discount && <p className="mt-2 text-sm font-semibold text-[#28766f]">{discount}</p>}
-      <p className="mt-3 text-[.68rem] text-[#667085]">{campaign.startsAt.toLocaleDateString("az-AZ")} – {campaign.endsAt.toLocaleDateString("az-AZ")}</p>
+    <Link href="/deals" className="group rounded-[20px] border border-bagati-border bg-white p-4 transition hover:-translate-y-0.5 hover:border-bagati-gold hover:shadow-card motion-reduce:transition-none">
+      <p className="text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-gold-dark">{campaign.store?.name ?? "BAGATI kampaniyası"}</p>
+      <h3 className="mt-2 line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-bagati-text group-hover:text-bagati-accent">{campaign.name}</h3>
+      {campaignDiscount(campaign) && <p className="mt-2 text-sm font-semibold text-bagati-accent">{campaignDiscount(campaign)}</p>}
+      <p className="mt-3 text-[.68rem] text-bagati-muted">{campaign.startsAt.toLocaleDateString("az-AZ")} – {campaign.endsAt.toLocaleDateString("az-AZ")}</p>
     </Link>
   );
+}
+
+function CampaignSpotlight({ campaign }: { campaign: HomepageCampaign }) {
+  return (
+    <Link href="/deals" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] border border-[#E6D8BD] bg-gradient-to-br from-bagati-cream to-[#FBF8F0] p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
+      <span aria-hidden="true" className="absolute -right-9 -top-12 -z-10 h-40 w-40 rounded-full border-[18px] border-white/35" />
+      <div>
+        <p className="text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-gold-dark">İndi aktiv</p>
+        <h2 className="mt-2 line-clamp-2 text-base font-semibold leading-5 text-bagati-deep sm:text-lg">{campaign.name}</h2>
+        {campaign.store?.name && <p className="mt-1 truncate text-xs text-bagati-text-secondary">{campaign.store.name}</p>}
+      </div>
+      <span className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-semibold text-bagati-primary">
+        {campaignDiscount(campaign) ?? "Kampaniyaya bax"}<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </Link>
+  );
+}
+
+function ProductSpotlight({ product }: { product: HomeProduct }) {
+  const effective = calculateEffectivePrice(product.price, product.discountPrice, productPromotions(product.promotionProducts, product.store.id));
+  const discountedPrice = effective.unitPrice.lt(effective.basePrice);
+  return (
+    <Link href={`/products/${product.id}`} className="group relative isolate flex min-h-[148px] items-center gap-3 overflow-hidden rounded-[22px] border border-bagati-border bg-white p-3.5 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-4 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
+      <span aria-hidden="true" className="absolute -bottom-16 -right-10 -z-10 h-44 w-44 rounded-full bg-bagati-section" />
+      <div className="relative aspect-square w-[90px] shrink-0 overflow-hidden rounded-[17px] bg-bagati-page sm:w-[104px]">
+        <StorefrontImage
+          src={product.images[0] ?? null}
+          alt={product.images[0] ? product.name : ""}
+          fill
+          sizes="104px"
+          className="object-contain p-2"
+          fallback={<span className="grid h-full w-full place-items-center text-bagati-muted"><Store aria-hidden="true" size={26} /></span>}
+        />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[.62rem] font-semibold uppercase tracking-[.12em] text-bagati-muted">Yeni məhsul</p>
+        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-bagati-text group-hover:text-bagati-accent">{product.name}</p>
+        <p className="mt-1 truncate text-xs text-bagati-muted">{product.store.name}</p>
+        <p className="mt-2 text-sm font-semibold text-bagati-deep">
+          {effective.unitPrice.toFixed(2)} ₼
+          {discountedPrice && <del className="ml-2 text-xs font-normal text-bagati-muted">{effective.basePrice.toFixed(2)} ₼</del>}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function SellerSpotlight() {
+  return (
+    <Link href="/vendor/apply" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] bg-bagati-primary p-4 text-white transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
+      <span aria-hidden="true" className="absolute -right-8 -top-12 -z-10 h-36 w-36 rounded-full border-[18px] border-white/10" />
+      <span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-bagati-cream"><Store aria-hidden="true" size={19} /></span>
+      <span>
+        <span className="block text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-cream-dark">Satıcı ol</span>
+        <span className="mt-1 block text-base font-semibold">Mağazanı BAGATI-də aç</span>
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-white/85">Müraciətə başla<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" /></span>
+      </span>
+    </Link>
+  );
+}
+
+function CitySpotlight({ city }: { city: string }) {
+  return (
+    <Link href="/stores/map" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] border border-bagati-border bg-bagati-section p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
+      <span aria-hidden="true" className="absolute -right-7 -top-9 -z-10 h-36 w-36 rounded-full border-[18px] border-white/55" />
+      <MapPin aria-hidden="true" size={20} className="text-bagati-accent" />
+      <span>
+        <span className="block text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-muted">Şəhərindən kəşf et</span>
+        <span className="mt-1 block text-base font-semibold text-bagati-deep">{city} mağazaları</span>
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-bagati-primary">Xəritəyə bax<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" /></span>
+      </span>
+    </Link>
+  );
+}
+
+function CategorySpotlight() {
+  return (
+    <Link href="/categories" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] border border-bagati-border bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
+      <span aria-hidden="true" className="absolute -right-7 -top-9 -z-10 h-36 w-36 rounded-full bg-bagati-section" />
+      <Store aria-hidden="true" size={20} className="text-bagati-accent" />
+      <span>
+        <span className="block text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-muted">Kəşfə başla</span>
+        <span className="mt-1 block text-base font-semibold text-bagati-deep">Kateqoriyalara göz at</span>
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-bagati-primary">Bölmələri gör<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" /></span>
+      </span>
+    </Link>
+  );
+}
+
+function campaignDiscount(campaign: HomepageCampaign) {
+  const value = Number(campaign.discountValue);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (campaign.discountType === "PERCENT") return `${value}% endirim`;
+  if (campaign.discountType === "FIXED") return `${value.toFixed(2)} ₼ endirim`;
+  return null;
 }

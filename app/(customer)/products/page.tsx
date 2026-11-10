@@ -107,6 +107,7 @@ export default async function ProductsPage({ searchParams }: Props) {
         storeHref={`/stores/${product.store.id}`}
         campaignName={effective.promotion?.name}
         image={product.images[0]}
+        secondaryImage={product.images[1]}
         stock={stock}
         variantCount={variantCount}
       />;

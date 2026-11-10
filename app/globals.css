@@ -5,13 +5,26 @@
 :root {
   color-scheme: light;
 
-  --bagati-navy: #173a3a;
-  --bagati-teal: #2f6f68;
+  --bagati-deep-teal: #173a3a;
+  --bagati-primary: #174746;
+  --bagati-hover: #23635d;
+  --bagati-accent: #2f6f68;
+  --bagati-muted-green: #638078;
+  --bagati-text: #405451;
+  --bagati-text-secondary: #566b65;
+  --bagati-page: #f7f8f6;
+  --bagati-section: #eef3f0;
+  --bagati-border: #e5eae6;
+  --bagati-cream: #f3e9d5;
   --bagati-gold: #c79a52;
-  --bagati-ivory: #f6f7f4;
-  --bagati-soft: #e5e9e5;
-  --bagati-text: #233432;
-  --bagati-muted: #697875;
+  --bagati-gold-dark: #8a6a37;
+  --bagati-cream-dark: #e6d8bd;
+  --bagati-white: #fff;
+  --bagati-navy: var(--bagati-deep-teal);
+  --bagati-teal: var(--bagati-accent);
+  --bagati-ivory: var(--bagati-page);
+  --bagati-soft: var(--bagati-border);
+  --bagati-muted: var(--bagati-muted-green);
 }
 
 * {
@@ -27,11 +40,21 @@ html {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes bagati-shimmer {
+  to { background-position: -200% 0; }
+}
+
+.bagati-skeleton {
+  background: linear-gradient(90deg, #eef3f0 20%, #e5eae6 38%, #eef3f0 62%);
+  background-size: 200% 100%;
+  animation: bagati-shimmer 1.4s ease-in-out infinite;
+}
+
 body {
   min-height: 100vh;
   overflow-x: clip;
   margin: 0;
-  background: #f8f9f7;
+  background: var(--bagati-page);
   color: var(--bagati-text);
   font-family:
     Inter,
@@ -42,6 +65,31 @@ body {
     "Segoe UI",
     sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.bagati-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: box-shadow 220ms ease, background-color 220ms ease;
+}
+
+.bagati-sticky-header[data-scrolled="true"] {
+  box-shadow: 0 12px 30px rgba(23, 58, 58, 0.1);
+}
+
+.storefront-header-main {
+  min-height: 78px;
+}
+
+@media (min-width: 768px) {
+  .storefront-header-main {
+    min-height: 88px;
+  }
+}
+
+.bagati-sticky-header[data-scrolled="true"] .storefront-header-main {
+  min-height: 64px;
 }
 
 a {
@@ -129,5 +177,7 @@ img {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .bagati-sticky-header { transition: none; }
+  .bagati-skeleton { animation: none; }
   *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; transition: none !important; }
 }

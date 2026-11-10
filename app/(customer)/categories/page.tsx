@@ -28,13 +28,15 @@ export default async function CategoriesPage({ searchParams }: { searchParams: P
       <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink md:text-4xl">Kateqoriyalar</h1>
       <p className="mt-3 text-sm leading-6 text-muted sm:text-base">Mağazalarda təqdim olunan kateqoriyalar arasından axtardığınızı seçin.</p>
     </header>
-    {categories.length ? <div className="mt-7 grid gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">{categories.map((item) => {
+    {categories.length ? <div className="mt-7 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">{categories.map((item) => {
       const selectedCategory = slug === item.slug;
-      return <section key={item.id} className={`group rounded-2xl border p-4 transition-colors sm:p-5 ${selectedCategory ? "border-[#c7ad76] bg-[#fbf8f0]" : "border-line bg-white hover:border-[#d8c89e] hover:bg-[#fffdfa]"}`}>
-        <Link href={`/categories?category=${item.slug}${city ? `&city=${city}` : ""}`} aria-current={selectedCategory ? "page" : undefined} className="flex min-h-12 items-center gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-offset-2">
-          <CategoryIcon category={item} size="medium" />
-          <span className="min-w-0 flex-1 font-semibold text-ink">{item.name}</span>
-          <span aria-hidden="true" className="text-lg text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-emerald">›</span>
+      return <section key={item.id} className={`group rounded-[22px] border p-3 transition duration-200 sm:p-5 motion-reduce:transition-none ${selectedCategory ? "border-[#c7ad76] bg-[#fbf8f0] shadow-[0_8px_24px_rgba(23,58,58,.07)]" : "border-line bg-white hover:-translate-y-0.5 hover:border-[#c5d3cb] hover:shadow-[0_12px_28px_rgba(23,58,58,.09)]"}`}>
+        <Link href={`/categories?category=${item.slug}${city ? `&city=${city}` : ""}`} aria-current={selectedCategory ? "page" : undefined} className="flex min-h-[136px] flex-col items-start justify-between gap-3 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-offset-2 sm:min-h-[148px]">
+          <CategoryIcon category={item} size="large" />
+          <span className="flex w-full min-w-0 items-center gap-2">
+            <span className="min-w-0 flex-1 font-semibold leading-5 text-ink">{item.name}</span>
+            <span aria-hidden="true" className="text-lg text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-emerald">›</span>
+          </span>
         </Link>
         {item.children.length > 0 && <div className="mt-4 flex flex-wrap gap-2 border-t border-line/70 pt-3">{item.children.map((child) => <Link key={child.id} href={`/categories?category=${child.slug}${city ? `&city=${city}` : ""}`} className="inline-flex min-h-9 items-center rounded-full bg-paper px-3 text-xs font-medium text-muted transition-colors hover:bg-[#edf1ed] hover:text-emerald focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald">{child.name}</Link>)}</div>}
       </section>;

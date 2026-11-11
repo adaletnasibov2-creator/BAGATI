@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homeBannerSchema, homepageFeaturedSchema, isHomeBannerVisible, isSafeHomepageHref, siteSettingsSchema } from "../lib/site-content";
@@ -97,6 +97,7 @@ test("saved site branding is rendered in the public header, footer, and metadata
   const brand = source("components/brand-logo.tsx");
   const header = source("components/header.tsx");
   const layout = source("app/(customer)/layout.tsx");
+  const footer = source("components/customer-footer.tsx");
   const rootLayout = source("app/layout.tsx");
 
   assert.match(brand, /src=\{logoUrl\}/);
@@ -105,8 +106,8 @@ test("saved site branding is rendered in the public header, footer, and metadata
   assert.match(header, /<BrandLogo variant="icon"[^>]*priority \{\.\.\.branding\}/);
   assert.match(header, /<BrandLogo variant="full"[^>]*priority \{\.\.\.branding\}/);
   assert.match(brand, /priority=\{priority\}/);
-  assert.match(layout, /<Header branding=\{\{ siteName: settings\.siteName, logoUrl: settings\.logoUrl \}\}/);
-  assert.match(layout, /<BrandLogo variant="full"[^>]*siteName=\{settings\.siteName\} logoUrl=\{settings\.logoUrl\}/);
+  assert.match(layout, /<Header\s+branding=\{\{ siteName: settings\.siteName, logoUrl: settings\.logoUrl \}\}/);
+  assert.match(footer, /<BrandLogo variant="full"[^>]*siteName=\{settings\.siteName\} logoUrl=\{settings\.logoUrl\}/);
   assert.match(rootLayout, /icon: settings\.logoUrl \?\? "\/icon\.svg"/);
 });
 
@@ -125,14 +126,17 @@ test("homepage reads only active scheduled banners and retains existing seller p
   assert.match(source("components/home/hero-carousel.tsx"), /banners\.length/);
 });
 
-test("storefront layout uses data-aware sections and keeps the approved brand presentation", () => {
+test("storefront layout uses data-backed sections and preserves the BAGATI brand", () => {
   const page = source("app/(customer)/page.tsx");
   const header = source("components/header.tsx");
   const brand = source("components/brand-logo.tsx");
   const hero = source("components/home/hero-carousel.tsx");
   const layout = source("app/(customer)/layout.tsx");
+  const footer = source("components/customer-footer.tsx");
 
-  assert.match(header, /Azərbaycanda sevdiyin mağazalar və məhsullar bir məkanda\./);
+  assert.match(header, /Sevdiyin mağazalar və məhsullar bir məkanda\./);
+  assert.match(header, /<CategoryMegaMenu categories=\{categories\}/);
+  assert.match(header, /<SearchForm categories=\{categories\}/);
   assert.doesNotMatch(header, /idarəçi girişləri/);
   assert.match(brand, /BAGATI/);
   assert.match(brand, /h-14 w-auto/);
@@ -140,15 +144,62 @@ test("storefront layout uses data-aware sections and keeps the approved brand pr
   assert.match(page, /homepageStores\.length > 0/);
   assert.match(page, /promotionalById\.size > 0/);
   assert.match(page, /discounted\.length > 0/);
+  assert.match(page, /<ProductShelf/);
+  assert.match(page, /city\?\.slug === "qazax"/);
   assert.doesNotMatch(page, /CompactEmpty/);
   assert.match(hero, /object-cover/);
-  assert.match(hero, /style=\{\{ objectPosition: slide\.imagePosition \}\}/);
-  assert.match(hero, /imagePosition: "center 50%"/);
-  assert.match(hero, /hero-tech\.webp/);
-  assert.match(hero, /hero-fashion\.webp/);
+  assert.match(hero, /<picture/);
+  assert.match(hero, /hero-electronics-devices-desktop\.webp/);
+  assert.match(hero, /hero-electronics-devices-tablet\.webp/);
+  assert.match(hero, /hero-electronics-devices-mobile\.webp/);
+  assert.match(hero, /hero-beauty-skincare\.webp/);
+  assert.doesNotMatch(hero, /images\.pexels\.com/);
+  assert.doesNotMatch(hero, /hero-tech-campaign\.svg/);
+  assert.doesNotMatch(hero, /hero-tech\.webp/);
+  assert.match(hero, /hero-fashion-collection\.webp/);
   assert.match(hero, /hero-home\.webp/);
-  assert.match(layout, /\/privacy/);
-  assert.match(layout, /\/terms/);
+  const heroAssets = hero.match(/\/images\/home\/[\w-]+\.webp/g) ?? [];
+  assert.ok(heroAssets.length >= 6);
+  for (const asset of heroAssets) assert.ok(existsSync(resolve(root, "public", `.${asset}`)), `${asset} exists`);
+  assert.match(hero, /id: "beauty"/);
+  assert.match(hero, /onTouchStart/);
+  assert.match(hero, /prefers-reduced-motion/);
+  assert.match(source("components/mobile-menu.tsx"), /aria-modal="true"/);
+  assert.match(source("components/mobile-menu.tsx"), /event\.key === "Escape"/);
+  assert.match(source("components/mobile-bottom-nav.tsx"), /env\(safe-area-inset-bottom\)/);
+  assert.match(layout, /<MobileBottomNav/);
+  assert.match(footer, /\/privacy/);
+  assert.match(footer, /\/terms/);
+});
+
+test("storefront palette is tokenized and product imagery remains catalog-backed", () => {
+  const styles = source("app/globals.css");
+  const theme = source("tailwind.config.ts");
+  const card = source("components/product-card.tsx");
+  const image = source("components/product-card-image.tsx");
+
+  for (const [token, value] of [
+    ["--bagati-deep-teal", "#173a3a"],
+    ["--bagati-primary", "#174746"],
+    ["--bagati-hover", "#23635d"],
+    ["--bagati-accent", "#2f6f68"],
+    ["--bagati-muted-green", "#638078"],
+    ["--bagati-text", "#405451"],
+    ["--bagati-text-secondary", "#566b65"],
+    ["--bagati-page", "#f7f8f6"],
+    ["--bagati-section", "#eef3f0"],
+    ["--bagati-border", "#e5eae6"],
+    ["--bagati-cream", "#f3e9d5"],
+    ["--bagati-gold", "#c79a52"],
+  ]) {
+    assert.match(styles, new RegExp(`${token}:\\s*${value}`, "i"), token);
+  }
+  assert.match(theme, /"gold-dark": "var\(--bagati-gold-dark\)"/);
+  assert.match(card, /secondaryImage/);
+  assert.match(card, /getProductDiscount\(price, originalPrice\)/);
+  assert.match(image, /placeholder="blur"/);
+  assert.match(image, /onError=\{\(\) => setFailedSources/);
+  assert.doesNotMatch(card, /rating|reviews|people viewing/i);
 });
 
 test("Prisma migration adds settings, banners, and referentially safe featured selections", () => {

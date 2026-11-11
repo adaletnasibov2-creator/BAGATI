@@ -52,6 +52,6 @@ export default function AdminProductImport() {
       </select>
     </label>}
     {stores.length === 0 && !busy && !error && <p className="mt-3 text-xs text-slate-500">Mağaza tapmaq üçün axtarış edin. Maksimum 25 nəticə göstərilir.</p>}
-    {selected && <VendorImport key={selected.id} storeId={selected.id} endpointUrl={`/api/admin/stores/${encodeURIComponent(selected.id)}/imports`} />}
+    {selected && <VendorImport key={selected.id} storeId={selected.id} endpointUrl={`/api/admin/stores/${encodeURIComponent(selected.id)}/imports`} assetEndpointUrl={`/api/admin/stores/${encodeURIComponent(selected.id)}/assets`} />}
   </section>;
 }

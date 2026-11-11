@@ -1,45 +1,81 @@
-﻿"use client";
+"use client";
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { InteractiveMap, type MapPoint } from "@/components/interactive-map";
 
 type City = { id: string; name: string };
-type Plan = { id: string; name: string; description: string | null; monthlyPrice: string | number };
 const input = "mt-1 w-full rounded-xl border border-[#ded9cf] bg-white px-3.5 py-3 text-sm outline-none focus:border-[#b89758]";
 
-export default function VendorStoreCreateForm({ cities, plans }: { cities: City[]; plans: Plan[] }) {
+function suggestedAddress(value: string) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+}
+
+export default function VendorStoreCreateForm({ cities }: { cities: City[] }) {
   const router = useRouter();
+  const [name, setName] = useState("");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [addressEdited, setAddressEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [location, setLocation] = useState<MapPoint | null>(null);
-  const [mapUrl, setMapUrl] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError("");
+    event.preventDefault();
+    setBusy(true);
+    setError("");
     const values = Object.fromEntries(new FormData(event.currentTarget).entries());
     try {
-      const response = await fetch("/api/vendor/stores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...values, latitude: location?.latitude ?? null, longitude: location?.longitude ?? null, mapUrl: mapUrl.trim() || null }) });
+      const response = await fetch("/api/vendor/stores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, slug: storeAddress }),
+      });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Mağaza yaratmaq mümkün olmadı.");
-      router.replace(`/vendor/${result.store.id}/profile`); router.refresh();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Mağaza yaratmaq mümkün olmadı."); }
-    finally { setBusy(false); }
+      if (!response.ok) throw new Error(result.error || "Mağazanı yaratmaq mümkün olmadı.");
+      router.replace(`/vendor/${result.store.id}/profile`);
+      router.refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Mağazanı yaratmaq mümkün olmadı.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <form onSubmit={submit} className="mt-6 grid gap-5">
-    <section className="rounded-2xl border border-[#e8e4db] bg-white p-5 sm:p-7"><h2 className="font-semibold text-[#0b1726]">Mağaza məlumatları</h2><div className="mt-4 grid gap-4 sm:grid-cols-2">
-      <label className="text-sm">Mağaza adı<input name="name" required minLength={2} maxLength={120} className={input}/></label>
-      <label className="text-sm">Slug (istəyə görə)<input name="slug" maxLength={120} placeholder="magaza-adi" className={input}/><span className="text-xs text-slate-500">Boş saxlanarsa mağaza adından yaradılacaq.</span></label>
-      <label className="text-sm">Şəhər<select name="cityId" required defaultValue="" className={input}><option value="" disabled>Şəhər seçin</option>{cities.map(city=><option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
-      <label className="text-sm sm:col-span-2">Təsvir<textarea name="description" maxLength={3000} rows={3} className={input}/></label>
-      <label className="text-sm">Əlaqə telefonu<input name="contactPhone" required type="tel" minLength={5} maxLength={40} className={input}/></label>
-      <label className="text-sm">Əlaqə e-poçtu<input name="contactEmail" required type="email" maxLength={254} className={input}/></label>
-      <label className="text-sm sm:col-span-2">Ünvan<input name="address" required minLength={3} maxLength={300} className={input}/></label>
-    </div></section>
-    <section className="rounded-2xl border border-[#e8e4db] bg-white p-5 sm:p-7"><h2 className="font-semibold text-[#0b1726]">Xəritə mövqeyi</h2><p className="mt-1 text-sm text-slate-500">Xəritəyə toxunaraq mağazanızın dəqiq yerini seçin. Seçim edilməsə koordinat saxlanılmayacaq.</p><div className="mt-4"><InteractiveMap selected={location} onSelect={setLocation} className="h-72 sm:h-80"/><p className="mt-2 text-xs text-slate-500">{location ? `Seçilmiş nöqtə: ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}` : "Azərbaycan xəritənin ilkin görünüşüdür; xəritəni sürüşdürərək istənilən ölkəni seçə bilərsiniz."}</p>{location&&<button type="button" onClick={()=>setLocation(null)} className="mt-2 text-sm text-[#85621d]">Mövqeyi sil</button>}</div><label className="mt-4 block text-sm">Xarici xəritə linki (istəyə görə)<input type="url" value={mapUrl} onChange={e=>setMapUrl(e.target.value)} placeholder="https://…" className={input}/></label></section>
-    <section className="rounded-2xl border border-[#e8e4db] bg-white p-5 sm:p-7"><h2 className="font-semibold text-[#0b1726]">Abunəlik planı</h2><p className="mt-1 text-sm text-slate-500">Plan seçimi ödəniş deyil. Ödəniş provayderi qoşulmadığı üçün abunəlik Gözləyir statusunda qalacaq.</p>{plans.length?<div className="mt-4 grid gap-3 md:grid-cols-2">{plans.map((plan,index)=><label key={plan.id} className="flex cursor-pointer gap-3 rounded-xl border border-[#e8e4db] p-4 has-[:checked]:border-[#b89758] has-[:checked]:bg-[#fbf8f0]"><input type="radio" name="planId" value={plan.id} required defaultChecked={index===0} className="mt-1 accent-[#173c40]"/><span><b>{plan.name}</b><span className="ml-2 text-sm text-slate-600">{Number(plan.monthlyPrice).toFixed(2)} ₼ / ay</span>{plan.description&&<span className="mt-1 block text-sm text-slate-500">{plan.description}</span>}</span></label>)}</div>:<p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Hazırda aktiv plan yoxdur.</p>}</section>
-    {error&&<p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-    <button type="submit" disabled={busy||plans.length===0||cities.length===0} className="rounded-xl bg-[#173c40] px-5 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{busy?"Yaradılır…":"Qaralama mağazanı yarat"}</button>
+    <div className="rounded-2xl border border-[#e8e4db] bg-white p-5 sm:p-7">
+      <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">1-ci addım · Mağazanın tanıdılması</p>
+      <h2 className="mt-1 text-xl font-semibold text-[#0b1726]">Əvvəlcə mağazanızı yaradaq</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">Bu məlumatlarla qeyri-aktiv qaralama yaradılacaq. Əlaqə, şəkil, ünvan və hüquqi məlumatları sonrakı addımda əlavə edib istənilən vaxt davam edə bilərsiniz.</p>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm sm:col-span-2">Mağazanın adı
+          <input name="name" required minLength={2} maxLength={120} value={name} onChange={event => {
+            const nextName = event.target.value;
+            setName(nextName);
+            if (!addressEdited) setStoreAddress(suggestedAddress(nextName));
+          }} className={input} autoComplete="organization" placeholder="Məsələn, Bakı Moda" />
+        </label>
+        <label className="text-sm sm:col-span-2">Mağazanın BAGATI-dakı internet ünvanı
+          <div className="mt-1 flex items-center rounded-xl border border-[#ded9cf] bg-white focus-within:border-[#b89758]">
+            <span className="pl-3 text-sm text-slate-500">/stores/</span>
+            <input name="storeAddress" required minLength={2} maxLength={120} value={storeAddress} onChange={event => { setAddressEdited(true); setStoreAddress(suggestedAddress(event.target.value)); }} className="min-w-0 flex-1 rounded-r-xl px-2 py-3 text-sm outline-none" placeholder="baki-moda" />
+          </div>
+          <span className="mt-1 block text-xs leading-5 text-slate-500">Adınızdan təklif hazırlanır. Ünvanı dəyişə bilərsiniz; boşluq və xüsusi işarələr avtomatik uyğunlaşdırılır.</span>
+        </label>
+        <label className="text-sm sm:col-span-2">Şəhər
+          <select name="cityId" required defaultValue="" className={input}>
+            <option value="" disabled>Şəhər seçin</option>
+            {cities.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}
+          </select>
+        </label>
+        <label className="text-sm sm:col-span-2">Qısa təsvir <span className="text-slate-500">(istəyə bağlı)</span>
+          <textarea name="description" maxLength={3000} rows={3} className={input} placeholder="Mağazanızda nə satıldığını qısaca yazın." />
+        </label>
+      </div>
+    </div>
+    {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+    <button type="submit" disabled={busy || cities.length === 0 || storeAddress.length < 2} className="min-h-11 rounded-xl bg-[#173c40] px-5 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+      {busy ? "Yaradılır…" : "Qaralama yarat və qurulumu davam et"}
+    </button>
+    {cities.length === 0 && <p className="text-sm text-amber-800">Şəhər siyahısı hazırda boşdur. Bir qədər sonra yenidən yoxlayın.</p>}
   </form>;
 }

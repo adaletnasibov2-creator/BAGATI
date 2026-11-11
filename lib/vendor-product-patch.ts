@@ -9,6 +9,7 @@ import {
 import { checkVendorProductActivation, isVendorProductActivation } from "@/lib/vendor-product-publication";
 import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/stock-quantity";
 import { findExistingProductSkuMatches, findExistingVariantSkuKeys } from "@/lib/catalog-import-persistence";
+import { productCodeFor } from "@/lib/product-code";
 import { hasDuplicateNormalizedSkus, nullableSkuSchema } from "@/lib/sku-normalization";
 
 const variantSchema = z.object({
@@ -97,7 +98,10 @@ export async function updateVendorProduct(
     },
   });
   if (!product) throw new VendorProductPatchError("NOT_FOUND");
-  if (values.sku && (await findExistingProductSkuMatches(tx, storeId, [values.sku], product.id)).length) {
+  // A blank code keeps the product's existing code; a code is only generated when the product has none,
+  // so a seller clearing the field never silently changes a code already printed on labels or orders.
+  const productSku = values.sku || product.sku || productCodeFor(product.id);
+  if (productSku !== product.sku && (await findExistingProductSkuMatches(tx, storeId, [productSku], product.id)).length) {
     throw new VendorProductPatchError("SKU_CONFLICT");
   }
   if (values.images.some((url) => !input.isOwnedImage(storeId, url) && !product.images.includes(url))) {
@@ -242,7 +246,7 @@ export async function updateVendorProduct(
   const productValues = {
     name: values.name,
     description: values.description,
-    sku: values.sku,
+    sku: productSku,
     category: values.categoryId ? { connect: { id: values.categoryId } } : { disconnect: true },
     brand: values.brandId ? { connect: { id: values.brandId } } : { disconnect: true },
     status: values.status,

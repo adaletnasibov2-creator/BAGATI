@@ -7,6 +7,7 @@ import { resolveStoreEntitlements } from "@/lib/subscription-entitlements";
 import { missingSellerLegalFields } from "@/lib/seller-legal-policy";
 import { getStoreReviewUpdate, type StoreReviewStatus } from "@/lib/store-review";
 import { enqueueEmail } from "@/lib/email-outbox";
+import { storeReviewNotification } from "@/lib/vendor-notifications";
 
 const schema = z.object({
   action: z.enum(["approve", "reject", "suspend", "reactivate"]),
@@ -43,7 +44,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
           vendor: {
             select: {
               sellerType: true, legalName: true, voen: true, legalAddress: true,
-              user: { select: { email: true, isActive: true } },
+              user: { select: { id: true, email: true, isActive: true } },
             },
           },
         },
@@ -112,6 +113,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
         template: "STORE_REVIEW",
         payload: { storeName: store.name, status: update.status, reason: update.reviewNote ?? "" },
       });
+      // Seller in-app notification (additive; same transaction as the decision, so it cannot be duplicated or orphaned).
+      const sellerNotice = storeReviewNotification(decision.auditAction, store.name, update.reviewNote, update.isActive);
+      if (sellerNotice) await tx.notification.create({ data: { userId: store.vendor.user.id, storeId: store.id, ...sellerNotice } });
 
       const products = activating
         ? await publishEligibleDraftProducts(tx, {

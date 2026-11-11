@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import type { ImportRowCheck } from "@/lib/product-import";
 import { normalizeSku } from "@/lib/sku-normalization";
+import { generateProductCode } from "@/lib/product-code";
 
 type ImportSkuTransaction = Pick<Prisma.TransactionClient, "$queryRaw">;
 
@@ -131,7 +132,7 @@ export async function persistCatalogImportChunk(input: {
       description: row.product.description,
       price: new Prisma.Decimal(row.product.price),
       discountPrice: row.product.discountPrice === null ? null : new Prisma.Decimal(row.product.discountPrice),
-      sku: row.product.sku,
+      sku: row.product.sku || generateProductCode(id),
       categoryId: row.product.categoryId,
       brandId: row.product.brandId,
       images: row.product.images,

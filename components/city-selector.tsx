@@ -4,11 +4,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, MapPin } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { resolveActiveCity } from "@/lib/city-resolution";
 
 type City = { id: string; name: string; slug: string };
 type MenuPosition = { top: number; left: number; width: number; maxHeight: number };
 
-export function CitySelector({ cities, selected }: { cities: City[]; selected?: string }) {
+export function CitySelector({ cities, selected, compact = false }: { cities: City[]; selected?: string; compact?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -16,7 +17,7 @@ export function CitySelector({ cities, selected }: { cities: City[]; selected?: 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const selectedFromQuery = params.get("city");
-  const defaultCity = cities.find((city) => city.slug === "qazax")?.slug ?? cities[0]?.slug ?? "";
+  const defaultCity = resolveActiveCity(cities)?.slug ?? "";
   const queryCity = cities.find((city) => city.slug === selectedFromQuery)?.slug;
   const propCity = cities.find((city) => city.slug === selected)?.slug;
   const [preferredCity, setPreferredCity] = useState<string | null>(null);
@@ -122,7 +123,7 @@ export function CitySelector({ cities, selected }: { cities: City[]; selected?: 
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-11 w-[160px] min-w-0 items-center gap-2 rounded-full border border-[#E3EAE5] bg-white px-3 text-left text-sm font-semibold text-[#36534D] shadow-[0_2px_8px_rgba(23,58,58,.04)] transition hover:border-[#B8CDC1] hover:bg-[#FBFCFA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F8175] disabled:cursor-not-allowed disabled:text-[#697875] sm:w-[176px] sm:px-3.5"
+        className={`${compact ? "w-[118px] px-2.5 text-xs" : "w-[160px]"} inline-flex h-11 min-w-0 items-center gap-2 rounded-full border border-[#E3EAE5] bg-white px-3 text-left text-sm font-semibold text-[#36534D] shadow-[0_2px_8px_rgba(23,58,58,.04)] transition hover:border-[#B8CDC1] hover:bg-[#FBFCFA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F8175] disabled:cursor-not-allowed disabled:text-[#697875] sm:w-[176px] sm:px-3.5`}
       >
         <MapPin aria-hidden="true" size={16} className="shrink-0 text-[#638078]" />
         <span className="min-w-0 flex-1 truncate">

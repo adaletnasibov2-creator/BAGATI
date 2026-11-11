@@ -1,24 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Pause,
-  Play,
-  ShoppingBag,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-
-type HeroProduct = {
-  id: string;
-  name: string;
-  price: string;
-  discountPrice: string | null;
-  image: string | null;
-  store: string;
-};
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 type HeroBanner = {
   id: string;
@@ -29,67 +13,125 @@ type HeroBanner = {
   href: string;
 };
 
-const defaultSlides = [
+type Slide = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  highlight: string;
+  description: string;
+  button: string;
+  href: string;
+  secondary: string;
+  secondaryHref: string;
+  image: string | null;
+  imageAlt: string;
+  // Focal point used when the photo is cropped to the wide strip shown below the xl breakpoint.
+  imagePosition?: string;
+  // Art-directed versions of the same scene for narrower viewports.
+  sources?: { media: string; srcSet: string }[];
+  visualLabel: string;
+};
+
+// All default slide photographs are local files in public/images/home (see the README there for
+// sources and licences), so the hero never depends on a third-party image host.
+const defaultSlides: Slide[] = [
   {
     id: "technology",
-    eyebrow: "TEXNOLOGİYA VƏ GÜNDƏLİK SEÇİMLƏR",
+    eyebrow: "Elektronika",
     title: "Texnologiya ilə",
-    highlight: "gününə yenilik qat.",
-    description: "Smartfon və audio seçimlərini yerli mağazaların məhsulları arasından araşdır.",
-    button: "Məhsulları kəşf et",
-    href: "/products",
-    image: "/images/home/hero-tech.webp",
-    imageAlt: "İsti neytral fonda smartfon, ağıllı saat, simsiz qulaqlıqlar və ağ qulaqüstü qulaqlıq",
-    visualLabel: "Texnologiya və elektronika",
-    imagePosition: "left center",
+    highlight: "gününün rahatlığını seç.",
+    description: "Smartfonlar, qulaqlıq və ev texnikası üçün BAGATI seçimləri bir məkanda.",
+    button: "Məhsullara bax",
+    href: "/products?category=elektronika",
+    secondary: "Kateqoriyalar",
+    secondaryHref: "/categories",
+    image: "/images/home/hero-electronics-devices-desktop.webp",
+    imageAlt: "Noutbuk, baş qulaqlığı, ağıllı saat, planşet, smartfon və qutusu ilə simsiz qulaqcıqlardan ibarət elektronika kompozisiyası",
+    sources: [
+      { media: "(max-width: 639px)", srcSet: "/images/home/hero-electronics-devices-mobile.webp" },
+      { media: "(max-width: 1279px)", srcSet: "/images/home/hero-electronics-devices-tablet.webp" },
+    ],
+    visualLabel: "Texnologiya",
   },
   {
     id: "fashion",
-    eyebrow: "ÜSLUBUNA UYĞUN SEÇİMLƏR",
-    title: "Gündəlik üslubuna",
-    highlight: "öz toxunuşunu əlavə et.",
-    description: "Çanta və aksesuarları müxtəlif mağazalarda kəşf et, sənə uyğun olanı seç.",
-    button: "Mağazalara bax",
-    href: "/stores",
-    image: "/images/home/hero-fashion.webp",
-    imageAlt: "Boz, karamel və bej tonlarında bir arada düzülmüş üç dəri çanta",
-    visualLabel: "Çantalar və aksesuarlar",
-    imagePosition: "center 50%",
+    eyebrow: "Aksesuarlar",
+    title: "Üslubuna",
+    highlight: "öz toxunuşunu qat.",
+    description: "Dəri çantalar, saatlar və aksesuarlar ilə gündəlik və xüsusi anlara uyğun seçimlər.",
+    button: "Aksesuarları gör",
+    href: "/products?category=aksesuarlar",
+    secondary: "Mağazalar",
+    secondaryHref: "/stores",
+    image: "/images/home/hero-fashion-collection.webp",
+    imageAlt: "Ağ fonda müxtəlif rəngli dəri əl çantaları kolleksiyası",
+    imagePosition: "50% 55%",
+    visualLabel: "Aksesuarlar",
   },
   {
     id: "home",
-    eyebrow: "EV ÜÇÜN ZÖVQLÜ DETALLAR",
-    title: "Məkanına yeni",
-    highlight: "nəfəs gətir.",
-    description: "Dekor və gündəlik ev əşyalarını bir yerdə araşdır, sevdiyin detalları tap.",
-    button: "Kateqoriyaları kəşf et",
-    href: "/categories",
+    eyebrow: "Ev və məişət",
+    title: "Evin üçün",
+    highlight: "rahat detal seç.",
+    description: "Mebel, dekor və ev texnikası ilə daha keyfiyyətli, rahat bir yaşam sahəsi yarat.",
+    button: "Ev məhsullarını kəşf et",
+    href: "/products?category=ev-ve-meiset",
+    secondary: "Bütün kateqoriyalar",
+    secondaryHref: "/categories",
     image: "/images/home/hero-home.webp",
-    imageAlt: "Təbii tonlarda işıqlı qonaq otağı və ev dekoru",
-    visualLabel: "Ev və dekor",
-    imagePosition: "center 55%",
+    imageAlt: "Divan, jurnal masası və puflar olan işıqlı qonaq otağı",
+    imagePosition: "50% 68%",
+    visualLabel: "Ev üçün",
+  },
+  {
+    id: "beauty",
+    eyebrow: "Gözəllik",
+    title: "Özünə ayırdığın",
+    highlight: "vaxtı gözəlləşdir.",
+    description: "Parfüm, dəri qayğı və gündəlik güzəllik məhsullarını BAGATI-də tap.",
+    button: "Gözəllik seçimi",
+    href: "/products?category=gozellik-ve-saglamliq",
+    secondary: "Yeni məhsullar",
+    secondaryHref: "/new-products",
+    image: "/images/home/hero-beauty-skincare.webp",
+    imageAlt: "Damcılı serum şüşələri, krem qabları və sabundan ibarət dəriyə qulluq dəsti",
+    imagePosition: "50% 78%",
+    visualLabel: "Gözəllik",
   },
 ];
 
-export function HeroCarousel({ products, banners = [] }: { products: HeroProduct[]; banners?: HeroBanner[] }) {
+const controlButton =
+  "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold";
+
+export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const slides = banners.length
-    ? banners.map((banner) => ({
-        id: banner.id,
-        eyebrow: "BAGATI KAMPANİYASI",
-        title: banner.title,
-        highlight: "",
-        description: banner.description,
-        button: banner.buttonLabel,
-        href: banner.href,
-        image: banner.imageUrl,
-        imageAlt: banner.title,
-        visualLabel: "Xüsusi təklif",
-        imagePosition: "center",
-      }))
+  const touchStartX = useRef<number | null>(null);
+
+  const slides: Slide[] = banners.length
+    ? banners.map((banner, index) => {
+        const visual = defaultSlides[index % defaultSlides.length];
+        return {
+          ...visual,
+          id: banner.id,
+          eyebrow: "BAGATI seçimi",
+          title: banner.title,
+          highlight: "",
+          description: banner.description,
+          button: banner.buttonLabel,
+          href: banner.href,
+          secondary: "Kateqoriyalar",
+          secondaryHref: "/categories",
+          image: banner.imageUrl || visual.image,
+          imageAlt: banner.imageUrl ? banner.title || visual.imageAlt : visual.imageAlt,
+          // An uploaded banner image is a single file: drop the default slide's art direction.
+          imagePosition: banner.imageUrl ? undefined : visual.imagePosition,
+          sources: banner.imageUrl ? undefined : visual.sources,
+          visualLabel: visual.visualLabel,
+        };
+      })
     : defaultSlides;
 
   useEffect(() => {
@@ -107,100 +149,140 @@ export function HeroCarousel({ products, banners = [] }: { products: HeroProduct
   useEffect(() => {
     if (paused || interacting || reducedMotion) return;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") setActive((value) => (value + 1) % slides.length);
+      if (document.visibilityState === "visible") {
+        setActive((value) => (value + 1) % slides.length);
+      }
     }, 7000);
     return () => window.clearInterval(timer);
   }, [paused, interacting, reducedMotion, slides.length]);
 
-  const slide = slides[active];
+  const slide = slides[active] ?? slides[0];
   const step = (delta: number) => setActive((value) => (value + delta + slides.length) % slides.length);
 
   return (
     <section
       role="region"
+      tabIndex={0}
       aria-roledescription="karusel"
       aria-label="BAGATI alış-veriş təqdimatı"
+      data-active-slide={slide.id}
       onMouseEnter={() => setInteracting(true)}
       onMouseLeave={() => setInteracting(false)}
       onFocusCapture={() => setInteracting(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInteracting(false);
       }}
-      className="relative isolate overflow-hidden rounded-[24px] bg-[#F0F2EB] shadow-[0_24px_64px_rgba(23,58,58,.12)] sm:rounded-[32px]"
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          step(-1);
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault();
+          step(1);
+        }
+      }}
+      onTouchStart={(event) => {
+        touchStartX.current = event.touches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(event) => {
+        const startX = touchStartX.current;
+        const endX = event.changedTouches[0]?.clientX;
+        touchStartX.current = null;
+        if (startX === null || endX === undefined || Math.abs(endX - startX) < 48) return;
+        step(endX < startX ? 1 : -1);
+      }}
+      className="relative isolate overflow-hidden rounded-[28px] border border-bagati-border bg-[#102726] shadow-[0_20px_44px_rgba(23,58,58,.10)] outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2"
+      style={{ touchAction: "pan-y" }}
     >
-      <div className="grid xl:min-h-[470px] xl:grid-cols-[.96fr_1.04fr]">
-        <div className="relative order-last flex min-h-[350px] flex-col justify-center px-5 pb-[4.25rem] pt-6 sm:min-h-[390px] sm:px-9 sm:py-9 xl:order-first xl:min-h-[470px] xl:px-10 lg:px-12">
-          <div key={active} className="relative z-10 max-w-[560px] animate-[hero-fade-in_.35s_ease-out]">
-            <p className="flex items-center gap-2 text-[.68rem] font-bold tracking-[.16em] text-[#58786D] sm:text-xs">
-              <span className="h-px w-7 bg-[#C79A52]" />{slide.eyebrow}
-            </p>
-            <h1 className="mt-4 text-[2.15rem] font-semibold leading-[1.05] tracking-[-.05em] text-[#173A3A] sm:mt-5 sm:text-5xl xl:text-[3.6rem]">
-              {slide.title}{slide.highlight && <><br /><span className="font-serif font-normal italic tracking-[-.035em] text-[#638078]">{" "}{slide.highlight}</span></>}
-            </h1>
-            <p className="mt-4 max-w-[430px] text-[.93rem] leading-7 text-[#566B65] sm:mt-5 sm:text-base sm:leading-7">{slide.description}</p>
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 sm:mt-6">
-              <Link href={slide.href} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#174746] px-6 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(23,58,58,.18)] transition hover:bg-[#23635D] sm:min-h-[52px] sm:px-7">
-                {slide.button}<ChevronRight aria-hidden="true" size={16} />
-              </Link>
-              <Link href="/deals" className="inline-flex min-h-11 items-center text-sm font-semibold text-[#46645D] transition hover:text-[#2F6F68]">Endirimlərə bax <ChevronRight aria-hidden="true" size={16} /></Link>
-            </div>
+      {/* The photograph is not used as a text backdrop: below xl it has its own strip above the
+          copy, from xl it fills the right-hand panel. No overlay or control covers the products. */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#e1ded7] sm:aspect-[5/2] lg:aspect-[3/1] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[58%]">
+        {slide.image ? (
+          <picture key={slide.id}>
+            {slide.sources?.map((item) => <source key={item.media} media={item.media} srcSet={item.srcSet} />)}
+            {/* Plain <img> inside <picture>: the sources are art-directed, pre-optimised WebP files. */}
+            <img
+              src={slide.image}
+              alt={slide.imageAlt}
+              decoding="async"
+              draggable={false}
+              className="absolute inset-0 h-full w-full object-cover"
+              style={slide.imagePosition ? { objectPosition: slide.imagePosition } : undefined}
+            />
+          </picture>
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(243,233,213,0.7),_rgba(23,58,58,0.18)_45%,_rgba(23,58,58,0.75)_100%)]" />
+        )}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 hidden w-[13%] bg-[linear-gradient(90deg,#102726_0%,rgba(16,39,38,0.62)_38%,rgba(16,39,38,0)_100%)] xl:block"
+        />
+      </div>
+
+      {/* Fixed minimum heights keep the carousel from changing height between slides. */}
+      <div className="relative z-10 flex min-h-[416px] flex-col justify-between gap-5 p-5 sm:min-h-[404px] sm:gap-6 sm:p-7 xl:min-h-[520px] xl:w-[45%] xl:p-9">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[.62rem] font-semibold uppercase tracking-[.18em] text-white/90">
+            {slide.eyebrow}
+          </span>
+          <button
+            type="button"
+            aria-label={paused ? "Karuseli davam et" : "Karuseli dayandır"}
+            onClick={() => setPaused((value) => !value)}
+            className={controlButton}
+          >
+            {paused ? <Play aria-hidden="true" size={15} className="fill-current" /> : <Pause aria-hidden="true" size={15} className="fill-current" />}
+          </button>
+        </div>
+
+        <div className="max-w-[560px]">
+          <h1 className="font-serif text-[2.1rem] leading-[0.98] tracking-[-.055em] text-white sm:text-[2.75rem] xl:text-[3.25rem]">
+            {slide.title}
+            {slide.highlight && (
+              <>
+                <br />
+                <span className="font-normal italic text-[#F2E8C8]">{slide.highlight}</span>
+              </>
+            )}
+          </h1>
+          <p className="mt-4 max-w-[32rem] text-sm leading-6 text-white/85 sm:text-base">{slide.description}</p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link href={slide.href} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#F3E9D5] px-5 text-sm font-semibold text-[#173A3A] transition hover:bg-[#E8D7B7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3E9D5]">
+              {slide.button}
+            </Link>
+            <Link href={slide.secondaryHref} className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/35 bg-white/8 px-4 text-sm font-semibold text-white transition hover:bg-white/12 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3E9D5]">
+              {slide.secondary}
+            </Link>
           </div>
+        </div>
 
-          {active === 0 && products.length > 0 && (
-            <div className="relative z-10 mt-5 hidden grid-cols-2 gap-2.5 sm:mt-6 sm:grid sm:gap-3">
-              {products.slice(0, 2).map((product) => <HeroProductTile key={product.id} product={product} />)}
-            </div>
-          )}
-
-          <div className="absolute bottom-3 left-4 z-20 flex items-center gap-1 rounded-full border border-[#E1EAE5] bg-white/95 px-1.5 py-1 shadow-sm backdrop-blur sm:bottom-4 sm:left-8 md:left-9 lg:left-12">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
             {slides.map((item, index) => (
-              <button key={item.id} type="button" onClick={() => setActive(index)} aria-label={`${index + 1}-ci bannerə keç`} aria-current={index === active ? "true" : undefined} className="grid min-h-11 min-w-11 place-items-center rounded-full">
-                <span aria-hidden="true" className={index === active ? "h-1.5 w-5 rounded-full bg-[#638078] transition-all" : "h-1.5 w-1.5 rounded-full bg-[#A3AEAA] transition-all"} />
-              </button>
+              <button
+                key={item.id}
+                type="button"
+                aria-label={`${index + 1}. slayd`}
+                aria-pressed={index === active}
+                onClick={() => setActive(index)}
+                className={`h-2.5 rounded-full transition-all duration-200 ${index === active ? "w-8 bg-[#F0E3BE]" : "w-2.5 bg-white/70 hover:bg-white"}`}
+              />
             ))}
-            <button type="button" onClick={() => setPaused((value) => !value)} aria-label={paused || reducedMotion ? "Banner keçidini başladın" : "Banner keçidini dayandırın"} aria-pressed={paused || reducedMotion} disabled={reducedMotion} className="grid h-11 w-11 place-items-center rounded-full text-[#24413D] hover:bg-[#F1F5F2] disabled:cursor-not-allowed disabled:opacity-60">
-              {paused || reducedMotion ? <Play size={13} fill="currentColor" /> : <Pause size={13} />}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="mr-1 hidden rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[.62rem] font-medium uppercase tracking-[.18em] text-white/80 sm:inline-flex">
+              {slide.visualLabel}
+            </span>
+            <button type="button" aria-label="Əvvəlki slayd" onClick={() => step(-1)} className={controlButton}>
+              <ChevronLeft aria-hidden="true" size={18} />
+            </button>
+            <button type="button" aria-label="Növbəti slayd" onClick={() => step(1)} className={controlButton}>
+              <ChevronRight aria-hidden="true" size={18} />
             </button>
           </div>
         </div>
-
-        <div className="relative order-first h-[250px] overflow-hidden bg-[#F6F1E8] sm:h-[310px] md:h-[min(60vw,520px)] xl:order-last xl:h-auto xl:min-h-[470px]">
-          <div aria-hidden="true" className="absolute inset-0 bg-[#F6F1E8]" />
-          <div className="absolute inset-0 z-[1]">
-            <Image key={slide.image} src={slide.image} alt={slide.imageAlt} fill priority loading="eager" sizes="(max-width: 768px) 100vw, 54vw" unoptimized={/^https?:\/\//i.test(slide.image)} style={{ objectPosition: slide.imagePosition }} className="object-cover" />
-          </div>
-          <div className="absolute left-4 top-4 z-10 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/60 bg-white/90 px-4 text-xs font-bold text-[#24413D] shadow-sm backdrop-blur sm:left-6 sm:top-6">
-            <ShoppingBag aria-hidden="true" size={15} className="text-[#8A6A37]" />{slide.visualLabel}
-          </div>
-          <div className="absolute right-4 top-4 z-10 flex gap-2 sm:right-6 sm:top-6">
-            <button type="button" onClick={() => step(-1)} aria-label="Əvvəlki banner" className="grid h-11 w-11 place-items-center rounded-full border border-white/70 bg-white/90 text-[#24413D] shadow-sm backdrop-blur transition hover:bg-white"><ChevronLeft size={18} /></button>
-            <button type="button" onClick={() => step(1)} aria-label="Növbəti banner" className="grid h-11 w-11 place-items-center rounded-full border border-white/70 bg-white/90 text-[#24413D] shadow-sm backdrop-blur transition hover:bg-white"><ChevronRight size={18} /></button>
-          </div>
-          <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-white/25 bg-[#173A3A]/65 px-3.5 py-2.5 text-xs font-medium tracking-wide text-white backdrop-blur-md sm:bottom-6 sm:left-6 sm:px-4 sm:text-sm">
-            BAGATI <span className="mx-1 text-[#E6D8BD]">/</span> {slide.visualLabel}
-          </div>
-        </div>
       </div>
-      <span className="sr-only" aria-live="polite">{slide.eyebrow}: {slide.title} {slide.highlight}</span>
     </section>
-  );
-}
-
-function HeroProductTile({ product }: { product: HeroProduct }) {
-  const hasDiscount = product.discountPrice !== null && Number(product.discountPrice) > 0 && Number(product.discountPrice) < Number(product.price);
-  return (
-    <Link href={`/products/${product.id}`} className="group grid min-w-0 grid-cols-[54px_minmax(0,1fr)] items-center gap-2 overflow-hidden rounded-[15px] border border-white/80 bg-white/95 p-1.5 shadow-[0_10px_25px_rgba(11,23,38,.12)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(11,23,38,.17)] sm:grid-cols-[62px_minmax(0,1fr)] sm:gap-2.5 sm:p-2">
-      <div className="relative aspect-square overflow-hidden rounded-[10px] bg-[#F1F4F5]">
-        {product.image ? <Image src={product.image} alt={product.name} fill unoptimized={/^https?:\/\//i.test(product.image)} sizes="(max-width: 640px) 42vw, 220px" className="object-contain p-1.5 transition duration-300 group-hover:scale-[1.025]" /> : <div className="flex h-full flex-col items-center justify-center gap-2 text-[#8A8E91]"><ShoppingBag size={21} strokeWidth={1.4} /><span className="text-[.62rem]">Şəkil yoxdur</span></div>}
-      </div>
-      <div className="min-w-0 py-1 pr-1">
-        <p className="truncate text-[.57rem] text-[#667085] sm:text-[.62rem]">{product.store}</p>
-        <p className="mt-0.5 line-clamp-2 text-[.64rem] font-semibold leading-4 text-[#16202C] sm:text-[.7rem]">{product.name}</p>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
-          <span className="text-[.68rem] font-bold text-[#173A3A] sm:text-xs">{hasDiscount ? product.discountPrice : product.price} ₼</span>
-          {hasDiscount && <span className="text-[.58rem] text-[#667085] line-through">{product.price} ₼</span>}
-        </div>
-      </div>
-    </Link>
   );
 }

@@ -43,10 +43,10 @@ test("update mode rejects unknown SKUs and create mode rejects existing SKUs", (
     existing: [{ id: "product-1", sku: "SKU-1" }],
   };
 
-  assert.match(checkImportRows({ ...common, mode: "create" })[0].errors.join(" "), /SKU artıq mövcuddur/);
+  assert.match(checkImportRows({ ...common, mode: "create" })[0].errors.join(" "), /Məhsul kodu artıq mövcuddur/);
   assert.match(
     checkImportRows({ ...common, rows: [{ ...common.rows[0], sku: "UNKNOWN" }], mode: "update" })[0].errors.join(" "),
-    /Yeniləmə üçün SKU tapılmadı/,
+    /Yeniləmək üçün məhsul kodu tapılmadı/,
   );
 });
 

@@ -57,6 +57,11 @@ function isPrivateIpv4(name: string) {
   return false;
 }
 
+/** Exported for cookie policy (lib/cookie-security.ts) so both rules always agree. */
+export function allowsInsecureHttpHost(host: string, production: boolean) {
+  return allowsInsecureHttp(host, production);
+}
+
 /** Public dotted hosts stay HTTPS-only in production. Local machine names and private addresses may use HTTP. */
 function allowsInsecureHttp(host: string, production: boolean) {
   if (!production) return true;

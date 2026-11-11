@@ -33,11 +33,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const parsed = vendorProductPatchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Məhsul məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   const values = parsed.data;
-  if (values.variantsEnabled === false && values.variants === undefined) return NextResponse.json({ error: "Variant kombinasiyalarını göndərin" }, { status: 422 });
-  if (values.variantsEnabled === false && (values.variants?.length ?? 0) > 0) return NextResponse.json({ error: "Variantlar söndürüldükdə kombinasiyaları göndərmək olmaz" }, { status: 422 });
-  if (values.variantsEnabled && !values.variants?.length) return NextResponse.json({ error: "Variant xüsusiyyətləri və kombinasiyaları tələb olunur" }, { status: 422 });
+  if (values.variantsEnabled === false && values.variants === undefined) return NextResponse.json({ error: "Məhsul seçimlərini əlavə edin" }, { status: 422 });
+  if (values.variantsEnabled === false && (values.variants?.length ?? 0) > 0) return NextResponse.json({ error: "Seçimlər söndürüldükdə seçim siyahısı göndərilə bilməz" }, { status: 422 });
+  if (values.variantsEnabled && !values.variants?.length) return NextResponse.json({ error: "Məhsul seçimlərinin xüsusiyyətlərini və variantlarını daxil edin" }, { status: 422 });
   if ((values.variants || []).some((variant) => variant.discountPrice != null && variant.discountPrice >= (variant.price ?? values.price))) {
-    return NextResponse.json({ error: "Variant endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
+    return NextResponse.json({ error: "Seçimin endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
   }
   if (values.discountPrice !== null && values.discountPrice >= values.price) return NextResponse.json({ error: "Endirimli qiymət əsas qiymətdən aşağı olmalıdır" }, { status: 422 });
   if (values.categoryId && !await db.category.findFirst({ where: { id: values.categoryId, isActive: true }, select: { id: true } })) {
@@ -61,13 +61,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (error instanceof VendorProductPatchError) {
       if (error.code === "NOT_FOUND") return NextResponse.json({ error: "Məhsul tapılmadı" }, { status: 404 });
       if (error.code === "IMAGE_NOT_OWNED") return NextResponse.json({ error: "Yeni şəkilləri bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });
-      if (error.code === "VARIANT_NOT_OWNED") return NextResponse.json({ error: "Variant bu məhsula aid deyil" }, { status: 422 });
-      if (error.code === "VARIANT_IMAGE_NOT_OWNED") return NextResponse.json({ error: "Variant şəkillərini bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });
+      if (error.code === "VARIANT_NOT_OWNED") return NextResponse.json({ error: "Seçim bu məhsula aid deyil" }, { status: 422 });
+      if (error.code === "VARIANT_IMAGE_NOT_OWNED") return NextResponse.json({ error: "Seçim şəkillərini bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });
       if (error.code === "STOCK_BELOW_RESERVED") return NextResponse.json({ error: "Stok rezerv edilmiş miqdardan az ola bilməz" }, { status: 422 });
-      if (error.code === "SKU_CONFLICT") return NextResponse.json({ error: "Məhsul və ya variant SKU-su artıq istifadə olunur" }, { status: 409 });
-      if (error.code === "INVALID_VARIANT_OPTIONS") return NextResponse.json({ error: "Variant xüsusiyyətlərinin formatı yanlışdır" }, { status: 422 });
-      if (error.code === "DUPLICATE_VARIANTS") return NextResponse.json({ error: "Variant kombinasiyaları təkrarlana bilməz" }, { status: 422 });
-      if (error.code === "INVALID_VARIANT_DISCOUNT") return NextResponse.json({ error: "Variant endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
+      if (error.code === "SKU_CONFLICT") return NextResponse.json({ error: "Məhsul və ya seçim kodu artıq istifadə olunur" }, { status: 409 });
+      if (error.code === "INVALID_VARIANT_OPTIONS") return NextResponse.json({ error: "Məhsul seçimi məlumatları düzgün deyil" }, { status: 422 });
+      if (error.code === "DUPLICATE_VARIANTS") return NextResponse.json({ error: "Eyni məhsul seçimi iki dəfə əlavə edilib" }, { status: 422 });
+      if (error.code === "INVALID_VARIANT_DISCOUNT") return NextResponse.json({ error: "Seçimin endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
       if (error.code === "INVALID_DISCOUNT") return NextResponse.json({ error: "Endirimli qiymət əsas qiymətdən aşağı olmalıdır" }, { status: 422 });
       if (error.code === "PRODUCT_NOT_READY" && typeof error.details === "object" && error.details !== null && "blockers" in error.details) {
         return NextResponse.json({ error: "Məhsul yayımlanmağa hazır deyil", blockers: error.details.blockers }, { status: 422 });
@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Məlumatlar paralel olaraq dəyişdirildi. Yenidən cəhd edin." }, { status: 409 });
     }
     if (isSkuUniqueViolation(error)) {
-      return NextResponse.json({ error: "Bu SKU artıq istifadədədir. Başqa məhsul və ya variant kodu seçin." }, { status: 409 });
+      return NextResponse.json({ error: "Bu məhsul kodu artıq istifadə olunur. Başqa kod seçin." }, { status: 409 });
     }
     console.error("Vendor product update failed", {
       name: error instanceof Error ? error.name : "UnknownError",

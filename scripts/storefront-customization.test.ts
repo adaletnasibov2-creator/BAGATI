@@ -60,20 +60,28 @@ test("seller profile only exposes branding edits when the database supports them
 
 test("public storefront is dynamic, uses shared eligibility, and keeps draft products private", () => {
   assert.match(storefrontPage, /export const dynamic = "force-dynamic"/);
-  assert.match(storefrontPage, /publicStoreVisibilityWhere/);
+  assert.match(storefrontPage, /publicStoreEligibilityBaseWhere/);
+  assert.match(storefrontPage, /isPublicStoreEligible\(store\)/);
   assert.match(storefrontPage, /publicProductVisibilityWhere/);
-  assert.match(storefrontPage, /prisma\.product\.count\(\{ where: productWhere \}\)/);
+  assert.match(storefrontPage, /prisma\.product\.count\(\{ where: catalogWhere \}\)/);
   assert.match(storefrontPage, /Uyğun məhsul tapılmadı/);
   assert.match(storefrontPage, /Hazırda yayımlanmış məhsul yoxdur/);
   assert.match(storefrontPage, /isOwnedStoreAssetUrl\(store\.id,\s*store\.logoUrl\)/);
   assert.match(storefrontPage, /isOwnedStoreAssetUrl\(store\.id,\s*branding\.bannerUrl\)/);
   assert.match(storefrontPage, /category: \{ isActive: true \}/);
+  assert.match(storefrontPage, /productCatalogOrderBy\(sort\)/);
+  assert.match(storefrontPage, /skip,\s*take: STOREFRONT_PAGE_SIZE/);
+  assert.match(storefrontPage, /storefrontPageHref\(store\.id,\s*currentPage \+ 1,\s*filterParams\)/);
+  assert.match(storefrontPage, /AND: \[catalogWhere,\s*inStockProductWhere\]/);
+  assert.match(storefrontPage, /products\.map\(\(product\) => \{\s*const campaign = promoted\.get\(product\.id\)/);
+  assert.match(storefrontPage, /generateMetadata/);
   assert.match(storefrontCompatibilityPolicy(), /to_jsonb\(store_record\)/);
   assert.match(storefrontHeader, /Mağaza bölmələri/);
   assert.match(storefrontHeader, /tel:\$\{store\.contactPhone\}/);
   assert.match(storefrontHeader, /mailto:\$\{store\.contactEmail\}/);
-  assert.match(storefrontImage, /onError=\{\(\) => setFailed\(true\)\}/);
-  assert.match(productImage, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(storefrontImage, /failedSrc === src/);
+  assert.match(storefrontImage, /onError=\{\(\) => setFailedSrc\(src\)\}/);
+  assert.match(productImage, /onError=\{\(\) => setFailedSources\(\(current\) => \[\.\.\.current, primarySrc\]\)\}/);
 });
 
 test("public store pages remain compatible before additive branding columns are migrated", () => {
@@ -82,7 +90,9 @@ test("public store pages remain compatible before additive branding columns are 
   assert.match(discovery, /id: true,\s*name: true,\s*slug: true,\s*description: true,\s*logoUrl: true,\s*latitude: true,\s*longitude: true/);
   assert.doesNotMatch(storesDirectory, /voen|legalAddress|contactEmail/);
   assert.doesNotMatch(storesDirectory, /include:\s*\{\s*city:/);
-  assert.match(storefrontPage, /select:\s*\{\s*id:\s*true,\s*name:\s*true,\s*description:\s*true,\s*logoUrl:\s*true,\s*address:\s*true,\s*mapUrl:\s*true,\s*latitude:\s*true,\s*longitude:\s*true,\s*contactPhone:\s*true,\s*contactEmail:\s*true/);
+  assert.match(storefrontPage, /const storeSelect = \{[\s\S]*?description: true,[\s\S]*?logoUrl: true,[\s\S]*?contactPhone: true,[\s\S]*?contactEmail: true/);
+  assert.match(storefrontPage, /select: storeSelect/);
+  assert.doesNotMatch(storefrontPage, /vendor:\s*\{\s*include:/);
   assert.match(storefrontPage, /getStorefrontBrandingCompatibility\(store\.id\)/);
   assert.match(brandingCompatibility, /to_jsonb\(store_record\)->>'bannerUrl'/);
   assert.match(brandingCompatibility, /to_jsonb\(store_record\)->>'theme'/);

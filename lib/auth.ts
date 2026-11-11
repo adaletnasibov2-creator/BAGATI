@@ -3,15 +3,16 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { emailVerificationRequired } from "@/lib/email-verification";
+import { requestCookieSecure } from "@/lib/cookie-security";
 import type { Role } from "@prisma/client";
 
 export const AUTH_SESSION_COOKIE = "bagati_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 function secret() { const value = process.env.SESSION_SECRET; if (!value || value.length < 32) throw new Error("SESSION_SECRET must contain at least 32 characters"); return new TextEncoder().encode(value); }
-function cookieOptions(maxAge = SESSION_TTL_SECONDS) {
+function cookieOptions(maxAge = SESSION_TTL_SECONDS, secure = process.env.NODE_ENV === "production") {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax" as const,
     path: "/",
     maxAge,
@@ -36,8 +37,8 @@ async function revokeCookieSession(token?: string) {
   if (claims) await prisma.authSession.updateMany({ where: { id: claims.sessionId, userId: claims.userId, revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
-function sessionCookie(value: string, maxAge = SESSION_TTL_SECONDS) {
-  return { name: AUTH_SESSION_COOKIE, value, ...cookieOptions(maxAge) };
+function sessionCookie(value: string, maxAge = SESSION_TTL_SECONDS, secure?: boolean) {
+  return { name: AUTH_SESSION_COOKIE, value, ...cookieOptions(maxAge, secure) };
 }
 
 /**
@@ -59,7 +60,7 @@ export async function createSession(userId: string) {
     .sign(secret());
   await prisma.authSession.create({ data: { id: sessionId, userId, expiresAt } });
   await revokeCookieSession(cookieStore.get(AUTH_SESSION_COOKIE)?.value);
-  return sessionCookie(token);
+  return sessionCookie(token, SESSION_TTL_SECONDS, await requestCookieSecure());
 }
 
 export async function currentUser() {
@@ -83,8 +84,9 @@ export async function currentUser() {
 }
 export async function requireRole(...roles: Role[]) { const user = await currentUser(); if (!user || !roles.includes(user.role)) return null; return user; }
 export async function requireStoreAccess(storeId: string) { const user = await currentUser(); if (!user || user.role !== "VENDOR") return null; const owned = await prisma.store.findFirst({ where: { id: storeId, vendor: { userId: user.id } }, select: { id: true } }); return owned ? { user, storeId: owned.id } : null; }
-export function expiredSessionCookie() {
-  return sessionCookie("", 0);
+/** `secure` must match how the cookie was set, or browsers on plain-HTTP LAN pages refuse the deletion. */
+export function expiredSessionCookie(secure?: boolean) {
+  return sessionCookie("", 0, secure);
 }
 
 /** Revokes the database session only. The route expires bagati_session on its Response. */

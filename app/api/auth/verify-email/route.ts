@@ -96,6 +96,6 @@ export async function POST(request: NextRequest) {
 
   if (!verified) return NextResponse.json({ error: safeError }, { status: 400 });
   const response = NextResponse.json({ verified: true, message: "Email ünvanı təsdiqləndi. İndi hesabınıza daxil ola bilərsiniz." });
-  clearEmailVerificationContext(response);
+  await clearEmailVerificationContext(response);
   return response;
 }

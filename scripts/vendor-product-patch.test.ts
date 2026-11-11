@@ -85,8 +85,9 @@ function fakeDatabase(options: {
   let transactionTail: Promise<void> = Promise.resolve();
   const transactionOptions: unknown[] = [];
   const tx = {
-    $queryRaw: async (parts: TemplateStringsArray) => {
-      queryLog.push(parts.join("?"));
+    // Accepts both tagged-template calls and Prisma.sql objects (used by the product-code duplicate check).
+    $queryRaw: async (parts: TemplateStringsArray | { strings: readonly string[] }) => {
+      queryLog.push((Array.isArray(parts) ? parts : (parts as { strings: readonly string[] }).strings).join("?"));
       return [];
     },
     store: {

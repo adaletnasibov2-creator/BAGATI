@@ -69,6 +69,17 @@ For a one-time batch, `npm.cmd run email:worker` processes up to 25 currently re
 
 To process one already-approved message without sending other pending messages, use `npm.cmd run email:worker -- --id <outbox-id>`. This one-shot mode selects and claims only that row, and any stale-lock cleanup is restricted to the same row. It does not support `--watch`. Confirm the row is the intended message before running it; the worker still validates the current template and reset/verification token before sending.
 
+### Linux hosts (Cloudways and similar)
+
+`next start` only queues messages. If no worker runs beside it, every verification code, password reset and order email stays `PENDING`, while the API still answers "sent" generically. This is the most likely reason emails "do not arrive" on a freshly deployed server.
+
+Run exactly one long-lived worker per environment, from the application directory and with the same environment variables as the web process:
+
+- **Process manager (preferred):** a Supervisor/PM2/systemd program running `npm run email:worker:watch`, restarted automatically on exit.
+- **Cron (fallback):** a once-a-minute job running `npm run email:worker`. Each run sends at most 25 ready messages and exits; each message is claimed with a compare-and-set (`PENDING` → `PROCESSING`), so an overlapping run skips rows another run already claimed.
+
+Then confirm with `npm run email:worker:health` and by checking that new `EmailOutbox` rows move from `PENDING` to `SENT`. `SENT` means the SMTP provider **accepted** the message; actual inbox delivery still depends on SPF, DKIM and DMARC for the sender domain (see `docs/production-launch.md`).
+
 ## Real-message verification
 
 The following command sends **one real diagnostic email** to the supplied address without reading or changing the outbox:

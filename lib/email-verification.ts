@@ -1,3 +1,4 @@
+import { requestCookieSecure } from "@/lib/cookie-security";
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { Role } from "@prisma/client";
 import { SignJWT, jwtVerify } from "jose";
@@ -64,10 +65,11 @@ export async function createEmailVerificationContext(userId: string, role: Role)
     .sign(secretBytes());
 }
 
-export function attachEmailVerificationContext(response: NextResponse, token: string) {
+export async function attachEmailVerificationContext(response: NextResponse, token: string) {
+  const secure = await requestCookieSecure();
   response.cookies.set(EMAIL_VERIFICATION_CONTEXT_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "strict",
     path: "/",
     maxAge: contextLifetimeSeconds,
@@ -96,11 +98,12 @@ export async function readEmailVerificationContext() {
   return verifyEmailVerificationContextToken(token);
 }
 
-export function clearEmailVerificationContext(response: NextResponse) {
+export async function clearEmailVerificationContext(response: NextResponse) {
+  const secure = await requestCookieSecure();
   response.cookies.delete({
     name: EMAIL_VERIFICATION_CONTEXT_COOKIE,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "strict",
     path: "/",
   });

@@ -1,61 +1,148 @@
-import {
-  Baby,
-  BookOpen,
-  Car,
-  Dumbbell,
-  Gamepad2,
-  Gem,
-  Grid2X2,
-  House,
-  PawPrint,
-  Shirt,
-  ShoppingBasket,
-  Smartphone,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import Image from "next/image";
 
-type CategoryKind = "accessories" | "electronics" | "home" | "entertainment" | "clothing" | "beauty" | "sports" | "market" | "children" | "automotive" | "books" | "pets" | "other";
-type CategoryInfo = { name: string; slug?: string | null };
+export type CategoryKind =
+  | "accessories"
+  | "electronics"
+  | "home"
+  | "entertainment"
+  | "clothing"
+  | "beauty"
+  | "sports"
+  | "market"
+  | "children"
+  | "automotive"
+  | "books"
+  | "pets"
+  | "other";
 
-const visuals: Record<CategoryKind, { Icon: LucideIcon; surface: string; color: string }> = {
-  accessories: { Icon: Gem, surface: "bg-[#f7f0df]", color: "text-[#765719]" },
-  electronics: { Icon: Smartphone, surface: "bg-[#e9f0f2]", color: "text-[#315568]" },
-  home: { Icon: House, surface: "bg-[#edf1ed]", color: "text-[#41685e]" },
-  entertainment: { Icon: Gamepad2, surface: "bg-[#f0ecf4]", color: "text-[#65547b]" },
-  clothing: { Icon: Shirt, surface: "bg-[#f4ece8]", color: "text-[#825d4d]" },
-  beauty: { Icon: Sparkles, surface: "bg-[#f4edf0]", color: "text-[#835b70]" },
-  sports: { Icon: Dumbbell, surface: "bg-[#eaf1ed]", color: "text-[#356b5b]" },
-  market: { Icon: ShoppingBasket, surface: "bg-[#f3efe5]", color: "text-[#796336]" },
-  children: { Icon: Baby, surface: "bg-[#edf0f5]", color: "text-[#586b8a]" },
-  automotive: { Icon: Car, surface: "bg-[#edf0f2]", color: "text-[#4b6071]" },
-  books: { Icon: BookOpen, surface: "bg-[#f2eee7]", color: "text-[#796344]" },
-  pets: { Icon: PawPrint, surface: "bg-[#edf1e9]", color: "text-[#587047]" },
-  other: { Icon: Grid2X2, surface: "bg-[#eeefed]", color: "text-[#526273]" },
+export type CategoryInfo = { name: string; slug?: string | null };
+
+// Tint shown only while the photograph is decoding.
+const categoryStyles: Record<CategoryKind, string> = {
+  accessories: "from-[#f3e9d8] to-[#f9f5ee]",
+  electronics: "from-[#e6efe9] to-[#f5f7f3]",
+  home: "from-[#ece3d6] to-[#f8f2e8]",
+  entertainment: "from-[#e9e6f3] to-[#f8f5fb]",
+  clothing: "from-[#f0e5dd] to-[#faf3ef]",
+  beauty: "from-[#f3e7ea] to-[#faf3f0]",
+  sports: "from-[#e6f0ed] to-[#f2f7f1]",
+  market: "from-[#efe8d8] to-[#faf6ed]",
+  children: "from-[#e8edf4] to-[#f3f7f4]",
+  automotive: "from-[#e5ecec] to-[#f4f6f3]",
+  books: "from-[#efe7db] to-[#f9f3ea]",
+  pets: "from-[#e6efe1] to-[#f4f7ef]",
+  other: "from-[#edf1ee] to-[#f6f3ec]",
+};
+
+// Every kind has its own local photograph in public/images/categories (sources and licences are
+// listed in public/images/categories/README.md). The files are served by this app, so a category
+// tile never depends on a third-party image host being reachable. `content` describes what the
+// photograph actually shows.
+export const categoryPhotoMap: Record<CategoryKind, { src: string; content: string }> = {
+  accessories: {
+    src: "/images/categories/accessories.webp",
+    content: "Dəri pul kisəsi, qol saatı, muncuq bilərzik və gün eynəyi",
+  },
+  electronics: {
+    src: "/images/categories/electronics.webp",
+    content: "Noutbuk, qulaqlıq, planşet, smartfon, ağıllı saat və simsiz qulaqcıqlar",
+  },
+  home: {
+    src: "/images/categories/home.webp",
+    content: "Divan, jurnal masası və puflar olan qonaq otağı",
+  },
+  entertainment: {
+    src: "/images/categories/entertainment.webp",
+    content: "Rəngli fiqurları olan stolüstü oyun",
+  },
+  clothing: {
+    src: "/images/categories/clothing.webp",
+    content: "Taxta asılqanlarda geyimlər",
+  },
+  beauty: {
+    src: "/images/categories/beauty.webp",
+    content: "Göz kölgəsi palitrası, kompakt pudra, makiyaj fırçası və ətir şüşəsi",
+  },
+  sports: {
+    src: "/images/categories/sports.webp",
+    content: "Qantellər, məşq lentləri və masaj topu",
+  },
+  market: {
+    src: "/images/categories/market.webp",
+    content: "Konservlər, su, düyü, yerkökü və portağal olan ərzaq qutusu",
+  },
+  children: {
+    src: "/images/categories/children.webp",
+    content: "Yumşaq meymun və ayı oyuncaqları, taxta maşın",
+  },
+  automotive: {
+    src: "/images/categories/automotive.webp",
+    content: "Boz idman avtomobili",
+  },
+  books: {
+    src: "/images/categories/books.webp",
+    content: "Üst-üstə yığılmış kitablar",
+  },
+  pets: {
+    src: "/images/categories/pets.webp",
+    content: "Fransız buldoqu balası",
+  },
+  other: {
+    src: "/images/categories/other.webp",
+    content: "Ayaqqabı, qulaqlıq, telefon, kosmetika, eynək və zərgərlik — müxtəlif məhsullar",
+  },
 };
 
 export function categoryKind({ name, slug }: CategoryInfo): CategoryKind {
   const key = `${slug ?? ""} ${name}`.toLocaleLowerCase("az-AZ");
   if (/aksesuar|accessor/.test(key)) return "accessories";
-  if (/elektron|electronic|telefon|texnika/.test(key)) return "electronics";
-  if (/(^|\s)ev(\s|$)|məişət|mesiet|home|bağ|bag/.test(key)) return "home";
-  if (/əyləncə|eylence|entertain|oyun|game|media/.test(key)) return "entertainment";
-  if (/geyim|clothing|fashion|ayaqqabı|ayaqqabi/.test(key)) return "clothing";
-  if (/gözəllik|gozellik|beauty|kosmetik|sağlamlıq|saglamliq/.test(key)) return "beauty";
-  if (/idman|sport|fitness/.test(key)) return "sports";
-  if (/supermarket|market|ərzaq|erzaq/.test(key)) return "market";
-  if (/uşaq|usaq|child|baby|körpə|korpe/.test(key)) return "children";
-  if (/avtomobil|auto|car/.test(key)) return "automotive";
-  if (/kitab|book|ofis|office/.test(key)) return "books";
+  if (/elektron|electronic|telefon|texnika|kompüter|komputer|gadget|audio/.test(key)) return "electronics";
   if (/heyvan|pet/.test(key)) return "pets";
+  if (/uşaq|usaq|child|baby|körpə|korpe|oyuncaq|toy/.test(key)) return "children";
+  if (/(^|\s)ev(\s|$)|məişət|mesiet|home|bağ|bag|mebel|mətbəx|metbex/.test(key)) return "home";
+  if (/əyləncə|eylence|entertain|oyun|game|media/.test(key)) return "entertainment";
+  if (/geyim|clothing|fashion|moda|ayaqqabı|ayaqqabi/.test(key)) return "clothing";
+  if (/gözəllik|gozellik|beauty|kosmetik|sağlamlıq|saglamliq|parfüm|parfum/.test(key)) return "beauty";
+  if (/idman|sport|fitness|hobbi|velosiped/.test(key)) return "sports";
+  if (/supermarket|market|ərzaq|erzaq/.test(key)) return "market";
+  if (/avtomobil|avto|auto|car/.test(key)) return "automotive";
+  if (/kitab|book|ofis|office/.test(key)) return "books";
   return "other";
 }
 
-export function CategoryIcon({ category, size = "medium", className = "" }: { category: CategoryInfo; size?: "small" | "medium" | "large"; className?: string }) {
-  const visual = visuals[categoryKind(category)];
-  const dimensions = size === "small" ? "h-10 w-10 rounded-xl" : size === "large" ? "h-[68px] w-[68px] rounded-2xl" : "h-14 w-14 rounded-2xl";
-  const iconSize = size === "small" ? 18 : size === "large" ? 26 : 22;
-  return <span aria-hidden="true" className={`grid shrink-0 place-items-center ${dimensions} ${visual.surface} ${visual.color} transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm ${className}`}>
-    <visual.Icon aria-hidden="true" size={iconSize} strokeWidth={1.7} />
-  </span>;
+export function CategoryIcon({
+  category,
+  size = "medium",
+  className = "",
+}: {
+  category: CategoryInfo;
+  size?: "small" | "medium" | "large";
+  className?: string;
+}) {
+  const kind = categoryKind(category);
+  const dimensions =
+    size === "small" ? "h-11 w-11 rounded-[15px]" : size === "large" ? "h-[76px] w-[76px] rounded-[22px]" : "h-16 w-16 rounded-[19px]";
+
+  // Decorative: the category name is always rendered next to the tile, so the tile is hidden
+  // from assistive technology and the image carries an empty alt.
+  return (
+    <span
+      aria-hidden="true"
+      data-category-kind={kind}
+      className={`group relative block shrink-0 overflow-hidden border border-white/80 bg-gradient-to-br ${categoryStyles[kind]} ${dimensions} shadow-[0_5px_13px_rgba(23,58,58,.09)] transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_9px_20px_rgba(23,58,58,.14)] motion-reduce:transition-none ${className}`}
+    >
+      <Image
+        src={categoryPhotoMap[kind].src}
+        alt=""
+        width={320}
+        height={320}
+        unoptimized
+        loading="eager"
+        decoding="async"
+        draggable={false}
+        className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none"
+      />
+      <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#173A3A]/10 via-transparent to-transparent" />
+    </span>
+  );
 }

@@ -35,9 +35,7 @@ export function CategoryMegaMenu({ categories }: { categories: CategoryOption[] 
             ))}
           </div>
         ) : (
-          <Link href="/categories" className="inline-flex min-h-11 items-center text-sm font-medium text-bagati-primary">
-            Kateqoriyalara keç<ChevronRight aria-hidden="true" size={15} />
-          </Link>
+          <p className="px-1 py-3 text-sm text-bagati-muted">Kateqoriyalar hələ əlavə edilməyib.</p>
         )}
       </div>
     </details>

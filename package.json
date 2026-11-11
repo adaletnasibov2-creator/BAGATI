@@ -68,7 +68,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "reference-data": "tsx scripts/reference-data.ts",
+    "test:production-parity": "tsx --test scripts/production-parity.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1148.0",

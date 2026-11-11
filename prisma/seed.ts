@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { citySlug, INITIAL_CATEGORIES, INITIAL_CITY_NAMES } from "../lib/reference-data";
 
 const prisma = new PrismaClient();
 
@@ -20,73 +21,7 @@ async function main() {
 
   // Initial Azerbaijan locations. Existing city rows are left untouched so
   // their IDs, relations, and admin-managed active state remain intact.
-  const initialCities = [
-    "Bakı",
-    "Gəncə",
-    "Sumqayıt",
-    "Mingəçevir",
-    "Naxçıvan",
-    "Şəki",
-    "Şirvan",
-    "Naftalan",
-    "Yevlax",
-    "Tovuz",
-    "Ağstafa",
-    "Şəmkir",
-    "Gədəbəy",
-    "Göyçay",
-    "Ağdaş",
-    "Bərdə",
-    "Ağcabədi",
-    "Lənkəran",
-    "Masallı",
-    "Astara",
-    "Quba",
-    "Qusar",
-    "Xaçmaz",
-    "Şamaxı",
-    "İsmayıllı",
-    "Ağsu",
-    "Salyan",
-    "Sabirabad",
-    "Saatlı",
-    "Biləsuvar",
-    "Cəlilabad",
-    "Hacıqabul",
-    "Neftçala",
-    "Kürdəmir",
-    "Zaqatala",
-    "Balakən",
-    "Qax",
-    "Oğuz",
-    "Qəbələ",
-    "Füzuli",
-    "Ağdam",
-    "Beyləqan",
-    "İmişli",
-    "Şuşa",
-    "Xankəndi",
-    "Laçın",
-    "Kəlbəcər",
-    "Qubadlı",
-    "Zəngilan",
-    "Cəbrayıl",
-    "Xocavənd",
-    "Xocalı",
-    "Tərtər",
-  ];
-
-  // Match the admin slug convention (lowercase ASCII words separated by
-  // hyphens), with Azerbaijani-specific letters transliterated explicitly.
-  const citySlug = (name: string) =>
-    name
-      .toLowerCase()
-      .replace(/ə/g, "e")
-      .replace(/ı/g, "i")
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+  const initialCities = INITIAL_CITY_NAMES;
 
   for (const name of initialCities) {
     const slug = citySlug(name);
@@ -104,18 +39,7 @@ async function main() {
 
   // Initial BAGATI marketplace taxonomy. Existing categories remain admin-managed:
   // rerunning the seed does not overwrite names, visibility, or parent assignments.
-  const initialCategories = [
-    { name: "Elektronika", slug: "elektronika" },
-    { name: "Geyim", slug: "geyim" },
-    { name: "Ev və məişət", slug: "ev-ve-mesiet" },
-    { name: "Əyləncə", slug: "eylence" },
-    { name: "İdman", slug: "idman" },
-    { name: "Uşaq", slug: "usaq" },
-    { name: "Gözəllik", slug: "gozellik" },
-    { name: "Aksesuarlar", slug: "aksesuarlar" },
-    { name: "Supermarket", slug: "supermarket" },
-    { name: "Digər", slug: "diger" },
-  ];
+  const initialCategories = INITIAL_CATEGORIES;
 
   for (const category of initialCategories) {
     await prisma.category.upsert({

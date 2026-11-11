@@ -106,6 +106,53 @@ export function oauthResponseOrigin(requestUrl: string, hostHeader?: string | nu
   try { return new URL(requestUrl).origin; } catch { return "http://127.0.0.1:3000"; }
 }
 
+export type GoogleOAuthConfigIssue =
+  | "GOOGLE_CLIENT_ID_MISSING"
+  | "GOOGLE_CLIENT_SECRET_MISSING"
+  | "SESSION_SECRET_MISSING_OR_SHORT"
+  | "APP_BASE_URL_MISSING"
+  | "APP_BASE_URL_INVALID"
+  | "APP_BASE_URL_NOT_HTTPS"
+  | "APP_BASE_URL_NOT_CANONICAL";
+
+/**
+ * Names what prevents Google sign-in on the server, without ever returning a value.
+ * In production the callback is always `${APP_BASE_URL}/api/auth/google/callback`, so APP_BASE_URL
+ * must be exactly the canonical HTTPS origin; local development uses the browser's local origin instead.
+ */
+export function googleOAuthConfigIssues(env: Record<string, string | undefined> = process.env): GoogleOAuthConfigIssue[] {
+  const issues: GoogleOAuthConfigIssue[] = [];
+  if (!env.GOOGLE_CLIENT_ID?.trim()) issues.push("GOOGLE_CLIENT_ID_MISSING");
+  if (!env.GOOGLE_CLIENT_SECRET?.trim()) issues.push("GOOGLE_CLIENT_SECRET_MISSING");
+  if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) issues.push("SESSION_SECRET_MISSING_OR_SHORT");
+  if (env.NODE_ENV === "production") {
+    const raw = env.APP_BASE_URL?.trim();
+    if (!raw) issues.push("APP_BASE_URL_MISSING");
+    else {
+      try {
+        const url = new URL(raw);
+        if (url.protocol !== "https:") issues.push("APP_BASE_URL_NOT_HTTPS");
+        if (url.hostname !== "shopbagati.com" || url.pathname !== "/" || url.search || url.hash || url.username || url.password || url.port) issues.push("APP_BASE_URL_NOT_CANONICAL");
+      } catch {
+        issues.push("APP_BASE_URL_INVALID");
+      }
+    }
+  }
+  return issues;
+}
+
+let reportedConfigIssues = "";
+/** Logs configuration problems once per distinct set, by name only, so PM2 logs show why Google sign-in is unavailable. */
+export function reportGoogleOAuthConfigIssues(stage: string) {
+  const issues = googleOAuthConfigIssues();
+  const key = issues.join(",");
+  if (issues.length && key !== reportedConfigIssues) {
+    reportedConfigIssues = key;
+    console.error("Google sign-in is unavailable: server configuration incomplete.", { stage, issues });
+  }
+  return issues;
+}
+
 export function googleOAuthConfig(requestUrl?: string, hostHeader?: string | null) {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();

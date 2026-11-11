@@ -9,6 +9,7 @@ import {
   googleOAuthConfig,
   oauthResponseOrigin,
   googleOAuthCookieOptions,
+  reportGoogleOAuthConfigIssues,
   safeOAuthNextPath,
   type GoogleOAuthIntent,
   type GoogleOAuthMode,
@@ -69,7 +70,9 @@ export async function GET(request: NextRequest) {
     response.cookies.set(GOOGLE_OAUTH_COOKIE, authorization.signedState, googleOAuthCookieOptions());
     response.headers.set("Cache-Control", "no-store");
     return response;
-  } catch {
+  } catch (error) {
+    // Name the missing/invalid settings (never their values) so the server log explains "unavailable".
+    if (!reportGoogleOAuthConfigIssues("google_oauth_start").length) logAuthFailure("google_oauth_start", error);
     return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=unavailable`, origin));
   }
 }

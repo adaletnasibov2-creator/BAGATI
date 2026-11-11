@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const session = await createSession(user.id);
     const response = NextResponse.json({ user: { id: user.id, email: user.email, role: user.role } }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(session);
-    clearEmailVerificationContext(response);
+    await clearEmailVerificationContext(response);
     return response;
   } catch (error) {
     logAuthFailure("admin_login_session_create", error);

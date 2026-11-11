@@ -230,7 +230,7 @@ export async function PATCH(
     }
   });
   if (result.error === "NOT_FOUND") return NextResponse.json({ error: "İdxal işi tapılmadı" }, { status: 404 });
-  if (result.error === "DUPLICATE_REPLACEMENT_SKU") return NextResponse.json({ error: "Düzəldilmiş sətirlərdə SKU təkrarlanır" }, { status: 409 });
+  if (result.error === "DUPLICATE_REPLACEMENT_SKU") return NextResponse.json({ error: "Düzəldilmiş sətirlərdə məhsul kodu təkrarlanır" }, { status: 409 });
   if (result.error) return NextResponse.json({ error: "Bu statusda əməliyyatı yerinə yetirmək mümkün deyil", code: result.error }, { status: 409 });
   return NextResponse.json({ job: result.job });
 }

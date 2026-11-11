@@ -7,6 +7,6 @@ import { attachEmailVerificationContext, createEmailVerificationContext } from "
 export async function registrationAcknowledgement(userId: string | null, role: Role, verificationPath: string) {
   const context = await createEmailVerificationContext(userId ?? randomUUID(), role);
   const response = NextResponse.json({ requestAccepted: true, verificationPath }, { status: 202, headers: { "Cache-Control": "no-store" } });
-  attachEmailVerificationContext(response, context);
+  await attachEmailVerificationContext(response, context);
   return response;
 }

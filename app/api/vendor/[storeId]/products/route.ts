@@ -12,6 +12,7 @@ import { collectStockFilteredPage, type StockPageCursor } from "@/lib/vendor-pro
 import { findExistingProductSkuMatches, findExistingVariantSkuKeys, CatalogSkuConflictError, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
 import { hasDuplicateNormalizedSkus } from "@/lib/sku-normalization";
 import { vendorProductCreateSchema } from "@/lib/vendor-product-schemas";
+import { generateProductCode } from "@/lib/product-code";
 
 const db: any = prisma;
 class StoreNotEligibleError extends Error {}
@@ -144,16 +145,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!parsed.success) return NextResponse.json({ error: "Məhsul məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   const value = parsed.data;
   if (hasDuplicateNormalizedSkus(value.variants.map((variant) => variant.sku))) {
-    return NextResponse.json({ error: "Variant SKU-ləri təkrarlana bilməz" }, { status: 409 });
+    return NextResponse.json({ error: "Seçimlərin məhsul kodları təkrarlana bilməz" }, { status: 409 });
   }
-  if (value.variantsEnabled && !value.variants.length) return NextResponse.json({ error: "Variant xüsusiyyətləri və kombinasiyaları tələb olunur" }, { status: 422 });
-  if (value.variantsEnabled === false && value.variants.length) return NextResponse.json({ error: "Variantlar söndürüldükdə kombinasiyaları göndərmək olmaz" }, { status: 422 });
+  if (value.variantsEnabled && !value.variants.length) return NextResponse.json({ error: "Məhsul seçimlərinin xüsusiyyətlərini və variantlarını daxil edin" }, { status: 422 });
+  if (value.variantsEnabled === false && value.variants.length) return NextResponse.json({ error: "Seçimlər söndürüldükdə seçim siyahısı göndərilə bilməz" }, { status: 422 });
   try { assertUniqueVariantCombinations(value.variants); }
-  catch (error) { return NextResponse.json({ error: error instanceof Error && error.message === "INVALID_VARIANT_OPTIONS" ? "Variant xüsusiyyətlərinin formatı yanlışdır" : "Variant kombinasiyaları təkrarlana bilməz" }, { status: 422 }); }
+  catch (error) { return NextResponse.json({ error: error instanceof Error && error.message === "INVALID_VARIANT_OPTIONS" ? "Məhsul seçimi məlumatları düzgün deyil" : "Eyni məhsul seçimi iki dəfə əlavə edilib" }, { status: 422 }); }
   if (value.discountPrice != null && value.discountPrice >= value.price) return NextResponse.json({ error: "Endirimli qiymət əsas qiymətdən aşağı olmalıdır" }, { status: 422 });
   if (value.images.some(url => !isOwnedStoreAssetUrl(access.storeId, url))) return NextResponse.json({ error: "Yalnız bu mağazaya yüklənmiş şəkillərdən istifadə edin" }, { status: 422 });
-  if (value.variants.some(variant => variant.images.some(url => !isOwnedStoreAssetUrl(access.storeId, url)))) return NextResponse.json({ error: "Variant şəkillərini bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });
-  if (value.variants.some(variant => variant.discountPrice != null && variant.discountPrice >= (variant.price ?? value.price))) return NextResponse.json({ error: "Variant endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
+  if (value.variants.some(variant => variant.images.some(url => !isOwnedStoreAssetUrl(access.storeId, url)))) return NextResponse.json({ error: "Seçim şəkillərini bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });
+  if (value.variants.some(variant => variant.discountPrice != null && variant.discountPrice >= (variant.price ?? value.price))) return NextResponse.json({ error: "Seçimin endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
   if (value.categoryId && !await db.category.findFirst({ where: { id: value.categoryId, isActive: true }, select: { id: true } })) return NextResponse.json({ error: "Aktiv kateqoriya tapılmadı" }, { status: 422 });
   if (value.brandId && !await db.brand.findUnique({ where: { id: value.brandId }, select: { id: true } })) return NextResponse.json({ error: "Brend tapılmadı" }, { status: 422 });
   if (value.status === "ACTIVE") {
@@ -180,7 +181,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (value.status === "ACTIVE") await assertProductLimit(tx, access.storeId, entitlement.plan);
         if (activeVariants) await assertVariantLimit(tx, access.storeId, entitlement.plan, "", activeVariants);
       }
-      const item = await tx.product.create({ data: { storeId: access.storeId, name: value.name, slug: `${slugify(value.name)}-${crypto.randomUUID().slice(0, 8)}`, description: value.description || null, sku: value.sku || null, price: new Prisma.Decimal(value.price), discountPrice: value.discountPrice == null ? null : new Prisma.Decimal(value.discountPrice), categoryId: value.categoryId || null, brandId: value.brandId || null, images: value.images, status: value.status } });
+      const productId = crypto.randomUUID();
+      const item = await tx.product.create({ data: { id: productId, storeId: access.storeId, name: value.name, slug: `${slugify(value.name)}-${productId.slice(0, 8)}`, description: value.description || null, sku: value.sku || generateProductCode(productId), price: new Prisma.Decimal(value.price), discountPrice: value.discountPrice == null ? null : new Prisma.Decimal(value.discountPrice), categoryId: value.categoryId || null, brandId: value.brandId || null, images: value.images, status: value.status } });
       if (value.variants.length) {
         for (const variant of value.variants) {
           const created = await tx.productVariant.create({ data: { productId: item.id, name: variant.name, options: variant.options, sku: variant.sku || null, isActive: variant.isActive, price: variant.price == null ? null : new Prisma.Decimal(variant.price), discountPrice: variant.discountPrice == null ? null : new Prisma.Decimal(variant.discountPrice), images: variant.images } });
@@ -199,11 +201,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (error instanceof EntitlementError) return entitlementErrorResponse(error);
     if (error instanceof CatalogSkuConflictError) {
       const errorMessage = error.scope === "PRODUCT"
-        ? "Bu mağazada həmin məhsul SKU-su artıq mövcuddur"
-        : "Bu variant SKU-su artıq başqa variantda istifadə olunur";
+        ? "Bu məhsul kodu mağazanızda artıq istifadə olunur"
+        : "Bu seçim məhsul kodu başqa seçimdə istifadə olunur";
       return NextResponse.json({ error: errorMessage }, { status: 409 });
     }
-    if (isSkuUniqueViolation(error)) return NextResponse.json({ error: "Bu SKU artıq istifadədədir. Başqa məhsul və ya variant kodu seçin." }, { status: 409 });
+    if (isSkuUniqueViolation(error)) return NextResponse.json({ error: "Bu məhsul kodu artıq istifadədədir. Başqa kod seçin." }, { status: 409 });
     return NextResponse.json({ error: "Məhsul yaradıla bilmədi" }, { status: 500 });
   }
 }

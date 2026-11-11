@@ -106,14 +106,14 @@ test("logout revokes the server session and expires the same scoped cookie", asy
   assert.doesNotMatch(destroySession, /cookieStore\.set/);
   assert.match(createSession, /revokeCookieSession\(cookieStore\.get\(AUTH_SESSION_COOKIE\)\?\.value\)/);
   assert.doesNotMatch(createSession, /cookieStore\.set/);
-  assert.match(auth, /export function expiredSessionCookie\(\)[\s\S]*?sessionCookie\("", 0\)/);
+  assert.match(auth, /export function expiredSessionCookie\((secure\?: boolean)?\)[\s\S]*?sessionCookie\("", 0(, secure)?\)/);
   assert.match(auth, /maxAge <= 0 \? \{ expires: new Date\(0\) \} : \{\}/);
   assert.match(auth, /httpOnly: true/);
   assert.match(auth, /path: "\/"/);
   assert.doesNotMatch(auth, /domain:/);
   assert.match(route, /await destroySession\(\)/);
   const success = route.slice(0, route.indexOf("} catch {"));
-  assert.match(success, /response\.cookies\.set\(expiredSessionCookie\(\)\)/);
+  assert.match(success, /response\.cookies\.set\(expiredSessionCookie\((secure)?\)\)/);
   assert.match(customerLogin, /response\.cookies\.set\(session\)/);
 });
 

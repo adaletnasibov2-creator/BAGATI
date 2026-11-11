@@ -118,8 +118,8 @@ test("variant SKU collisions against existing catalog and within the source beco
     existingVariantSkuKeys: new Set(["existing-v"]),
   });
   assert.equal(checked[0].status, "VALID");
-  assert.match(checked[1].errors.join(" "), /Variant 1: SKU artıq mövcuddur/);
-  assert.match(checked[2].errors.join(" "), /SKU artıq mövcuddur/);
+  assert.match(checked[1].errors.join(" "), /Variant 1: məhsul kodu artıq mövcuddur/);
+  assert.match(checked[2].errors.join(" "), /[Mm]əhsul kodu artıq mövcuddur/);
 });
 
 test("staging replay comparison ignores object-key order but rejects changed values", () => {

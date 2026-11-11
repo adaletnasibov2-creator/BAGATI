@@ -15,6 +15,7 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { categoriesWithOtherLast } from "@/lib/category-order";
 import { selectHomepageCampaignProducts, type HomepageCampaign } from "@/lib/homepage-campaign-products";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
+import { resolveActiveCity } from "@/lib/city-resolution";
 
 export const dynamic = "force-dynamic";
 
@@ -46,11 +47,13 @@ type PopularOrderRow = { productId: string; _sum: { quantity: number | null } };
 
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
-  const citySlug = params.city || "qazax";
-  const city = await prisma.city.findFirst({
-    where: { slug: citySlug, isActive: true },
+  // Falls back to the default/first active city instead of an empty page when the slug is missing or inactive.
+  const activeCities = await prisma.city.findMany({
+    where: { isActive: true },
     select: { id: true, name: true, slug: true },
+    orderBy: { name: "asc" },
   });
+  const city = resolveActiveCity(activeCities, params.city);
   const now = new Date();
   const cityStoreFilter = city ? { cityId: city.id } : { cityId: "__no_active_city__" };
   const storeFilter = { ...publicStoreVisibilityWhere(), ...cityStoreFilter };

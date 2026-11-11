@@ -146,6 +146,7 @@ export function MobileMenu({
                 <>
                   <Link onClick={closeMenu} href="/login" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-bagati-section px-3 text-sm text-bagati-deep"><UserRound aria-hidden="true" size={17} />Daxil ol</Link>
                   <Link onClick={closeMenu} href="/register" className="inline-flex min-h-11 items-center rounded-xl border border-bagati-border px-3 text-sm text-bagati-deep">Qeydiyyat</Link>
+                  <Link onClick={closeMenu} href="/vendor/login" className="inline-flex min-h-11 items-center rounded-xl border border-bagati-border px-3 text-sm text-bagati-deep">Satıcı girişi</Link>
                 </>
               )}
               {user?.role === "CUSTOMER" && <Link onClick={closeMenu} href="/favorites" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-bagati-section px-3 text-sm text-bagati-deep"><Heart aria-hidden="true" size={17} />Sevimlilər</Link>}

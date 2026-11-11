@@ -144,7 +144,7 @@ export async function POST(
           return {
             ...row,
             status: "INVALID" as const,
-            errors: [...row.errors, "Fayl daxilində bu SKU daha əvvəl göstərilib"],
+            errors: [...row.errors, "Fayl daxilində bu məhsul kodu daha əvvəl göstərilib"],
           };
         }
         if (shouldSkipExistingImportProduct(job.mode as CatalogImportMode, row.action)) {
@@ -152,7 +152,7 @@ export async function POST(
             ...row,
             status: "SKIPPED" as const,
             errors: [],
-            warnings: [...row.warnings, "Mövcud SKU skip rejiminə görə dəyişdirilmədi"],
+            warnings: [...row.warnings, "Bu məhsul kodu artıq mövcuddur; seçilmiş rejimə görə dəyişdirilmədi"],
           };
         }
         return row;

@@ -41,6 +41,11 @@ export default function VendorOrderActions(props: Props) {
       body.shipmentStatus = String(form.get("shipmentStatus") || "");
     } else {
       body.status = String(form.get("status") || "");
+      const confirmations: Record<string, string> = {
+        CANCELLED: "Sifarişi ləğv etmək istədiyinizə əminsiniz? Alıcıya bildiriş göndəriləcək və məhsullar anbara geri qaytarılacaq. Bu addımı geri almaq olmur.",
+        RETURNED: "Sifarişi qaytarılmış kimi qeyd etmək istədiyinizə əminsiniz? Bu addımı geri almaq olmur.",
+      };
+      if (confirmations[body.status] && !window.confirm(confirmations[body.status])) { setBusy(false); return; }
     }
     try {
       const response = await fetch(`/api/vendor/${encodeURIComponent(props.storeId)}/orders`, {

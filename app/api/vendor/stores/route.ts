@@ -11,13 +11,13 @@ const schema = z.object({
   slug: z.string().trim().max(120).optional().or(z.literal("")),
   description: z.string().trim().max(3000).optional().nullable(),
   cityId: z.string().min(1),
-  planId: z.string().min(1),
-  address: z.string().trim().min(3).max(300),
+  planId: z.string().min(1).optional().or(z.literal("")),
+  address: z.string().trim().max(300).optional().or(z.literal("")),
   latitude: z.number().finite().min(-90).max(90).optional().nullable(),
   longitude: z.number().finite().min(-180).max(180).optional().nullable(),
   mapUrl: z.string().url().max(1000).optional().nullable(),
-  contactPhone: z.string().trim().min(5).max(40),
-  contactEmail: z.string().trim().email().max(254),
+  contactPhone: z.string().trim().min(5).max(40).optional().or(z.literal("")),
+  contactEmail: z.string().trim().email().max(254).optional().or(z.literal("")),
 });
 
 function slugify(value: string) {
@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
   const [profile, city, plan] = await Promise.all([
     prisma.vendorProfile.findUnique({ where: { userId: user.id }, select: { id: true } }),
     prisma.city.findFirst({ where: { id: data.cityId, isActive: true }, select: { id: true } }),
-    db.subscriptionPlan.findFirst({ where: { id: data.planId, isActive: true }, select: { id: true } }),
+    data.planId ? db.subscriptionPlan.findFirst({ where: { id: data.planId, isActive: true }, select: { id: true } }) : Promise.resolve(null),
   ]);
   if (!profile) return NextResponse.json({ error: "Satıcı profili tapılmadı" }, { status: 403 });
-  if (!city || !plan) return NextResponse.json({ error: "Seçilmiş şəhər və ya tarif artıq aktiv deyil" }, { status: 422 });
+  if (!city || (data.planId && !plan)) return NextResponse.json({ error: "Seçilmiş şəhər və ya tarif artıq aktiv deyil" }, { status: 422 });
 
   const baseSlug = slugify(data.slug || data.name).slice(0, 60);
   try {
@@ -69,20 +69,20 @@ export async function POST(request: NextRequest) {
           name: data.name,
           slug,
           description: data.description || null,
-          address: data.address,
+          address: data.address || null,
           latitude: data.latitude ?? null,
           longitude: data.longitude ?? null,
           mapUrl: data.mapUrl || null,
-          contactPhone: data.contactPhone,
-          contactEmail: data.contactEmail.toLowerCase(),
+          contactPhone: data.contactPhone || null,
+          contactEmail: data.contactEmail ? data.contactEmail.toLowerCase() : null,
           status: "DRAFT",
           isActive: false,
-          subscription: { create: { planId: plan.id, status: "PENDING" } },
+          ...(plan ? { subscription: { create: { planId: plan.id, status: "PENDING" } } } : {}),
         },
-        select: { id: true, name: true, status: true, isActive: true },
+        select: { id: true, name: true, slug: true, status: true, isActive: true },
       });
     });
-    return NextResponse.json({ store, message: "Mağaza qaralama kimi yaradıldı. Ödəniş inteqrasiyası olmadığı üçün abunəlik Gözləyir statusundadır." }, { status: 201 });
+    return NextResponse.json({ store, message: plan ? "Mağaza qaralama kimi yaradıldı. Seçilmiş abunəlik ödəniş olmadığı üçün gözləyir." : "Mağaza qaralama kimi yaradıldı. Əlaqə və plan məlumatlarını qurulumda sonra əlavə edə bilərsiniz." }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "P2002") return NextResponse.json({ error: "Bu mağaza adı üçün unikal ünvan yaradıla bilmədi. Başqa ad sınayın." }, { status: 409 });
     return NextResponse.json({ error: "Mağaza yaradıla bilmədi" }, { status: 500 });

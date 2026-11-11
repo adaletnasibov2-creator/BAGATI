@@ -77,8 +77,10 @@ export function Header({
           <Link href="/new-products" className="inline-flex min-h-9 items-center rounded-sm text-xs font-semibold text-[#405451] transition-colors hover:text-[#2F6F68] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F8175]">Yeni məhsullar</Link>
         </nav>
 
-        <div className="pb-3 md:hidden">
-          <SearchForm mobile categories={categories} />
+        {/* Mobile: search plus the city selector (the city was only reachable inside the menu before). */}
+        <div className="flex items-center gap-2 pb-3 md:hidden">
+          <div className="min-w-0 flex-1"><SearchForm mobile categories={categories} /></div>
+          {cities.length > 0 && <div className="shrink-0"><CitySelector cities={cities} compact /></div>}
         </div>
       </div>
     </StickyHeader>

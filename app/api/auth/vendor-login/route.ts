@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       { error: "Email ünvanınızı təsdiqləyin.", requiresEmailVerification: true, verificationPath: "/vendor/verify-email" },
       { status: 403 },
     );
-    attachEmailVerificationContext(response, context);
+    await attachEmailVerificationContext(response, context);
     return response;
   }
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ user: { id: user.id, email: user.email, role: user.role }, ...(googleLink ? { googleLink } : {}) }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(session);
     if (clearGoogleLink) response.cookies.set(expiredGoogleLinkCookie());
-    clearEmailVerificationContext(response);
+    await clearEmailVerificationContext(response);
     return response;
   } catch (error) {
     logAuthFailure("vendor_login_session_create", error);

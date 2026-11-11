@@ -18,7 +18,7 @@ export function SearchForm({ mobile = false, categories = [] }: { mobile?: boole
     >
       {city && <input type="hidden" name="city" value={city} />}
       {categories.length > 0 && (
-        <label className={`shrink-0 border-r border-bagati-border pr-2 ${mobile ? "max-w-[108px]" : "max-w-[158px] px-2"}`}>
+        <label className={`shrink-0 border-r border-bagati-border pr-2 ${mobile ? "hidden max-w-[108px] min-[420px]:block" : "max-w-[158px] px-2"}`}>
           <span className="sr-only">Kateqoriya seç</span>
           <select
             name="category"

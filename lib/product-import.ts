@@ -75,7 +75,7 @@ export function parseImportVariants(raw: string): { variants: ImportVariant[]; e
   try {
     data = JSON.parse(trimmed);
   } catch {
-    return { variants: [], error: "Variant məlumatları JSON formatında olmalıdır" };
+    return { variants: [], error: "Variant məlumatlarının formatı yanlışdır" };
   }
   if (!Array.isArray(data)) return { variants: [], error: "Variant məlumatları JSON massivi olmalıdır" };
   const variants: ImportVariant[] = [];
@@ -84,7 +84,7 @@ export function parseImportVariants(raw: string): { variants: ImportVariant[]; e
       return { variants: [], error: "Hər variant obyekt olmalıdır" };
     }
     const record = entry as Record<string, unknown>;
-    if (!isWellFormedSku(record.sku)) return { variants: [], error: "Variant SKU məlumatı yanlışdır" };
+    if (!isWellFormedSku(record.sku)) return { variants: [], error: "Variant məhsul kodu yanlışdır" };
     const options = record.options && typeof record.options === "object" && !Array.isArray(record.options)
       ? (record.options as Record<string, unknown>)
       : {};
@@ -171,8 +171,8 @@ export function checkImportRows(input: {
     if (!name) errors.push("Məhsul adı yoxdur");
     if (name.length > 160) errors.push("Məhsul adı 160 simvoldan çox ola bilməz");
     if (description && description.length > 5000) errors.push("Məhsul təsviri 5000 simvoldan çox ola bilməz");
-    if (!isWellFormedSku(rawSku)) errors.push("SKU məlumatı yanlışdır");
-    if (rawSku.length > 80 || sku.length > 80) errors.push("SKU 80 simvoldan çox ola bilməz");
+    if (!isWellFormedSku(rawSku)) errors.push("Məhsul kodu yanlışdır");
+    if (rawSku.length > 80 || sku.length > 80) errors.push("Məhsul kodu 80 simvoldan çox ola bilməz");
     if (!Number.isFinite(price) || price <= 0 || price > MAX_IMPORT_PRICE) errors.push("Qiymət müsbət və icazə verilən həddə olmalıdır");
     if (discountPrice !== null && (!Number.isFinite(discountPrice) || discountPrice <= 0 || discountPrice >= price || discountPrice > MAX_IMPORT_PRICE)) {
       errors.push("Endirimli qiymət əsas qiymətdən aşağı olmalıdır");
@@ -190,10 +190,10 @@ export function checkImportRows(input: {
       for (const [variantIndex, variant] of variants.entries()) {
         if (!variant.name) errors.push(`Variant ${variantIndex + 1}: ad yoxdur`);
         if (variant.name.length > 100) errors.push(`Variant ${variantIndex + 1}: ad 100 simvoldan çox ola bilməz`);
-        if ((variant.sku?.length ?? 0) > 80) errors.push(`Variant ${variantIndex + 1}: SKU 80 simvoldan çox ola bilməz`);
+        if ((variant.sku?.length ?? 0) > 80) errors.push(`Variant ${variantIndex + 1}: məhsul kodu 80 simvoldan çox ola bilməz`);
         const variantSkuKey = normalizeSku(variant.sku);
         if (variantSkuKey) {
-          if (seenVariantSkus.has(variantSkuKey)) errors.push(`Variant ${variantIndex + 1}: SKU artıq mövcuddur və ya idxal faylında təkrarlanır`);
+          if (seenVariantSkus.has(variantSkuKey)) errors.push(`Variant ${variantIndex + 1}: məhsul kodu artıq mövcuddur və ya faylda təkrarlanır`);
           else seenVariantSkus.add(variantSkuKey);
         }
         if (!Object.keys(variant.options).length) errors.push(`Variant ${variantIndex + 1}: parametrlər yoxdur`);
@@ -236,14 +236,14 @@ export function checkImportRows(input: {
     if (sku) {
       const key = normalizeSku(sku)!;
       if (seenSkus.has(key)) {
-        errors.push(`Fayl daxilində SKU təkrarlanır: ${sku}`);
+        errors.push(`Faylda məhsul kodu təkrarlanır: ${sku}`);
       }
       seenSkus.add(key);
       const match = existingBySku.get(key);
       if (mode === "create") {
-        if (match) errors.push(`SKU artıq mövcuddur: ${sku}`);
+        if (match) errors.push(`Məhsul kodu artıq mövcuddur: ${sku}`);
       } else if (mode === "update") {
-        if (!match) errors.push(`Yeniləmə üçün SKU tapılmadı: ${sku}`);
+        if (!match) errors.push(`Yeniləmək üçün məhsul kodu tapılmadı: ${sku}`);
         else {
           action = "update";
           existingId = match.id;

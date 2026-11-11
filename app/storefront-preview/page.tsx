@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { CategoryIcon, categoryKind } from "@/components/category-icon";
 import { CategoryMegaMenu } from "@/components/category-mega-menu";
@@ -51,7 +52,11 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
   );
 }
 
+// Sample data only: never served to real shoppers. Set BAGATI_ENABLE_PREVIEW_ROUTES=true on a staging host to view it.
+export const metadata = { robots: { index: false, follow: false } };
+
 export default function StorefrontPreviewPage() {
+  if (process.env.NODE_ENV === "production" && process.env.BAGATI_ENABLE_PREVIEW_ROUTES !== "true") notFound();
   return (
     <main className="min-h-screen bg-bagati-page text-bagati-text">
       <header className="relative z-40 border-b border-bagati-border bg-white">

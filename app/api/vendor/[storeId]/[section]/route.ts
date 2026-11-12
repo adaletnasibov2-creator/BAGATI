@@ -23,6 +23,7 @@ import { assertUniqueVariantCombinations } from "@/lib/product-variants";
 import { parseImportByExtension, ImportParseError } from "@/lib/import-parsers";
 import { isStorefrontTheme } from "@/lib/storefront-themes";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
+import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { checkStoreSubmission } from "@/lib/store-submission";
 import { checkVendorProductActivation, isVendorProductActivation } from "@/lib/vendor-product-publication";
 import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/stock-quantity";
@@ -461,7 +462,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     latitude:z.number().finite().min(-90).max(90).nullable(),
     longitude:z.number().finite().min(-180).max(180).nullable(),
     mapUrl:z.string().url().max(1000).nullable().optional(),
-    contactPhone:z.string().trim().min(5).max(40).optional().or(z.literal("")),
+    contactPhone:optionalAzPhoneSchema.optional(),
     contactEmail:z.string().trim().email().max(254).optional().or(z.literal("")),
     freeDeliveryThreshold:deliveryAmountSchema.optional(),
     deliveryFee:deliveryAmountSchema.optional(),
@@ -470,7 +471,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     voen:z.string().trim().max(32).nullable().optional(),
     legalAddress:z.string().trim().max(400).nullable().optional(),
    }).safeParse(b);
-   if(!s.success)return NextResponse.json({error:"Mağaza və hüquqi məlumatları yoxlayın"},{status:422});
+   if(!s.success)return NextResponse.json({error:contactPhoneIssue(s.error)??"Mağaza və hüquqi məlumatları yoxlayın"},{status:422});
    const d=s.data;
    if((d.latitude===null)!==(d.longitude===null))return NextResponse.json({error:"Koordinatlar birlikdə daxil edilməlidir"},{status:422});
    if(d.mapUrl&&!/^https:\/\//i.test(d.mapUrl))return NextResponse.json({error:"Xəritə linki HTTPS olmalıdır"},{status:422});

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalAzPhoneSchema } from "@/lib/az-phone";
 
 export const registerSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -54,7 +55,7 @@ export const adminCreateVendorSchema = z
     storeDescription: z.string().trim().max(3000).optional().nullable(),
     cityId: z.string().trim().min(1),
     storeAddress: z.string().trim().max(300).optional().nullable(),
-    contactPhone: z.string().trim().max(40).optional().nullable(),
+    contactPhone: optionalAzPhoneSchema.optional(),
     contactEmail: z.string().trim().email().max(254).optional().nullable(),
     initialStatus: z.enum(["DRAFT", "PENDING_REVIEW"]).default("DRAFT"),
     adminManaged: z.boolean().default(false),

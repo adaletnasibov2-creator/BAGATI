@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { adminCreateVendorSchema } from "@/lib/validation";
+import { contactPhoneIssue } from "@/lib/az-phone";
 import { enqueueVerificationEmail } from "@/lib/email-outbox";
 import { isDuplicateEmailError } from "@/lib/registration-errors";
 import {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = adminCreateVendorSchema.safeParse(data);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Satıcı məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
+    return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? "Satıcı məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   }
 
   const values = parsed.data;

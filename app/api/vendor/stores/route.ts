@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -16,7 +17,7 @@ const schema = z.object({
   latitude: z.number().finite().min(-90).max(90).optional().nullable(),
   longitude: z.number().finite().min(-180).max(180).optional().nullable(),
   mapUrl: z.string().url().max(1000).optional().nullable(),
-  contactPhone: z.string().trim().min(5).max(40).optional().or(z.literal("")),
+  contactPhone: optionalAzPhoneSchema.optional(),
   contactEmail: z.string().trim().email().max(254).optional().or(z.literal("")),
 });
 
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
   let raw: unknown;
   try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = schema.safeParse(raw);
-  if (!parsed.success) return NextResponse.json({ error: "Mağaza məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
+  if (!parsed.success) return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? "Mağaza məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   const data = parsed.data;
   if ((data.latitude == null) !== (data.longitude == null)) return NextResponse.json({ error: "Xəritə üçün enlik və uzunluq birlikdə daxil edilməlidir" }, { status: 422 });
   if (data.mapUrl && !/^https:\/\//i.test(data.mapUrl)) return NextResponse.json({ error: "Xəritə linki HTTPS olmalıdır" }, { status: 422 });

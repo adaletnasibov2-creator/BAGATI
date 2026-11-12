@@ -13,6 +13,7 @@ import { hasCommissionRuleConflict } from "@/lib/commission-rules";
 import { logSecurityOperationFailure } from "@/lib/security-logging";
 import { getProductPublicationBlockers } from "@/lib/admin-store-product-publishing";
 import { supportedSubscriptionPlanSlugs } from "@/lib/subscription-plans";
+import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 
 const db: any = prisma;
 const storeStatuses = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "SUSPENDED", "REJECTED"] as const;
@@ -147,8 +148,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     if (section === "stores") {
       if (body && typeof body === "object" && "status" in body) return NextResponse.json({ error: "Mağaza statusu yalnız admin yoxlama workflow-u ilə dəyişdirilə bilər." }, { status: 405 });
-      const parsed = z.object({ id: z.string(), vendorId: z.string().optional(), name: z.string().trim().min(2).max(120).optional(), cityId: z.string().optional(), logoUrl: z.string().url().max(1000).nullable().optional().refine((value) => !value || value.startsWith("https://")), description: z.string().max(3000).nullable().optional(), address: z.string().max(300).nullable().optional(), contactPhone: z.string().max(40).nullable().optional(), contactEmail: z.string().email().nullable().optional(), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), mapUrl: z.string().url().nullable().optional(), freeDeliveryThreshold: deliveryAmountSchema.optional(), deliveryFee: deliveryAmountSchema.optional() }).safeParse(body);
-      if (!parsed.success) return NextResponse.json({ error: "Mağaza məlumatlarını yoxlayın" }, { status: 422 });
+      const parsed = z.object({ id: z.string(), vendorId: z.string().optional(), name: z.string().trim().min(2).max(120).optional(), cityId: z.string().optional(), logoUrl: z.string().url().max(1000).nullable().optional().refine((value) => !value || value.startsWith("https://")), description: z.string().max(3000).nullable().optional(), address: z.string().max(300).nullable().optional(), contactPhone: optionalAzPhoneSchema.optional(), contactEmail: z.string().email().nullable().optional(), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), mapUrl: z.string().url().nullable().optional(), freeDeliveryThreshold: deliveryAmountSchema.optional(), deliveryFee: deliveryAmountSchema.optional() }).safeParse(body);
+      if (!parsed.success) return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? "Mağaza məlumatlarını yoxlayın" }, { status: 422 });
       const { id: storeId, vendorId, ...values } = parsed.data;
       if ((values.latitude === null) !== (values.longitude === null) && (values.latitude !== undefined || values.longitude !== undefined)) return NextResponse.json({ error: "Koordinatlar birlikdə daxil edilməlidir" }, { status: 422 });
       if (values.cityId && !await db.city.findFirst({ where: { id: values.cityId, isActive: true }, select: { id: true } })) return NextResponse.json({ error: "Active city not found" }, { status: 422 });

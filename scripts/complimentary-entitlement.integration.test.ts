@@ -135,9 +135,11 @@ test("free-selling grants: path (1) unchanged, path (2) publishes, SQL and JS ag
       assert.deepEqual([...await parity()].sort(), [paid.store.id, free.store.id].sort());
 
       // An expired grant stops selling (SQL and JS), without any job.
-      await tx.$executeRaw`UPDATE "StoreComplimentaryEntitlement" SET "grantedAt" = ${new Date(now.getTime() - 2 * 86_400_000)}, "endsAt" = ${new Date(now.getTime() - 60_000)} WHERE "id" = ${freeGrants[0].id}`;
+      // Typed update on purpose: raw SQL binds a JS Date as timestamptz, which a non-UTC session (e.g. Asia/Baku)
+      // shifts when stored in a TIMESTAMP column. Prisma's typed writes store UTC, like the application does.
+      await tx.storeComplimentaryEntitlement.update({ where: { id: freeGrants[0].id }, data: { grantedAt: new Date(now.getTime() - 2 * 86_400_000), endsAt: new Date(now.getTime() - 60_000) } });
       assert.equal((await parity()).has(free.store.id), false);
-      await tx.$executeRaw`UPDATE "StoreComplimentaryEntitlement" SET "endsAt" = NULL WHERE "id" = ${freeGrants[0].id}`;
+      await tx.storeComplimentaryEntitlement.update({ where: { id: freeGrants[0].id }, data: { endsAt: null } });
       assert.equal((await parity()).has(free.store.id), true);
 
       // Saving an ACTIVE paid subscription revokes the grant in the same transaction; the store keeps selling on the paid plan.

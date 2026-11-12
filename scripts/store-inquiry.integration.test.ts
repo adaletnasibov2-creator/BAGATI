@@ -96,6 +96,15 @@ test("store inquiry flow: eligible stores only, stored without SMTP, outbox noti
     const quietResult = await submitStoreInquiry(prisma, { storeId: quiet.id, data: input({}), ipHash: null });
     assert.deepEqual(quietResult.kind === "CREATED" && quietResult.emailQueued, false);
 
+    // 3b. Store page lookup: with two eligible stores, each id and slug resolves to its own store
+    //     (regression: a spread used to overwrite the id/slug OR and return the first eligible store).
+    const { publicStoreByIdOrSlugWhere } = await import("../lib/store-visibility");
+    for (const target of [store, quiet]) {
+      assert.equal((await prisma.store.findFirst({ where: publicStoreByIdOrSlugWhere(target.id), select: { id: true } }))?.id, target.id);
+      assert.equal((await prisma.store.findFirst({ where: publicStoreByIdOrSlugWhere(target.slug), select: { id: true } }))?.id, target.id);
+    }
+    assert.equal(await prisma.store.findFirst({ where: publicStoreByIdOrSlugWhere(`missing-${tag}`), select: { id: true } }), null);
+
     // 4. Store that is not publicly visible: refused, nothing stored.
     const draft = await makeStore("draft", { status: "DRAFT" });
     assert.deepEqual(await submitStoreInquiry(prisma, { storeId: draft.id, data: input({}), ipHash: null }), { kind: "NOT_FOUND" });

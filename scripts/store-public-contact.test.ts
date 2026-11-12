@@ -61,6 +61,17 @@ test("rendered header and contact card never contain the store email or a mailto
   assert.match(contact, /name="consent"/);
 });
 
+test("store lookup combines id/slug and eligibility with AND, so eligibility cannot overwrite the match", async () => {
+  const { publicStoreByIdOrSlugWhere } = await import("../lib/store-visibility");
+  const where = publicStoreByIdOrSlugWhere("store-1", new Date("2026-11-12T12:00:00Z")) as { AND: Array<Record<string, unknown>>; OR?: unknown };
+  assert.equal(where.OR, undefined);
+  assert.deepEqual(where.AND[0], { OR: [{ id: "store-1" }, { slug: "store-1" }] });
+  assert.ok(Array.isArray(where.AND[1].OR), "eligibility keeps its own OR inside the second AND branch");
+  const page = readFileSync("app/(customer)/stores/[storeId]/page.tsx", "utf8");
+  assert.match(page, /where: publicStoreByIdOrSlugWhere\(storeId\)/);
+  assert.doesNotMatch(page, /OR: \[\{ id: storeId \}, \{ slug: storeId \}\],\s*\.\.\./);
+});
+
 test("public store page never selects or passes the store email", () => {
   const page = readFileSync("app/(customer)/stores/[storeId]/page.tsx", "utf8");
   assert.doesNotMatch(page.replace(/\/\/.*$/gm, ""), /contactEmail|mailto:/);

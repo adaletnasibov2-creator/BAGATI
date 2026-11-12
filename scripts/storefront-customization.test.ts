@@ -11,6 +11,7 @@ const assetsRoute = readFileSync(resolve(root, "app/api/vendor/[storeId]/assets/
 const sellerEditor = readFileSync(resolve(root, "components/vendor-store-profile-editor.tsx"), "utf8");
 const storesDirectory = readFileSync(resolve(root, "app/(customer)/stores/page.tsx"), "utf8");
 const storefrontPage = readFileSync(resolve(root, "app/(customer)/stores/[storeId]/page.tsx"), "utf8");
+const storefrontVisibility = () => readFileSync(resolve(root, "lib/store-visibility.ts"), "utf8");
 const productDetailPage = readFileSync(resolve(root, "app/(customer)/products/[productId]/page.tsx"), "utf8");
 const checkoutPage = readFileSync(resolve(root, "app/(customer)/checkout/page.tsx"), "utf8");
 const adminPage = readFileSync(resolve(root, "app/admin/[...section]/page.tsx"), "utf8");
@@ -60,7 +61,9 @@ test("seller profile only exposes branding edits when the database supports them
 
 test("public storefront is dynamic, uses shared eligibility, and keeps draft products private", () => {
   assert.match(storefrontPage, /export const dynamic = "force-dynamic"/);
-  assert.match(storefrontPage, /publicStoreEligibilityBaseWhere/);
+  // The shared eligibility filter now arrives through publicStoreByIdOrSlugWhere (AND-combined with the id/slug match).
+  assert.match(storefrontPage, /publicStoreByIdOrSlugWhere\(storeId\)/);
+  assert.match(storefrontVisibility(), /export function publicStoreByIdOrSlugWhere[\s\S]*?publicStoreEligibilityBaseWhere\(now\)/);
   assert.match(storefrontPage, /isPublicStoreEligible\(store\)/);
   assert.match(storefrontPage, /publicProductVisibilityWhere/);
   assert.match(storefrontPage, /prisma\.product\.count\(\{ where: catalogWhere \}\)/);

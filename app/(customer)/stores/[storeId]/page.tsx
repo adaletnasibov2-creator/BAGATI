@@ -6,8 +6,7 @@ import { PackageOpen, Search } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isPublicStoreEligible } from "@/lib/store-eligibility";
-import { publicProductVisibilityWhere } from "@/lib/store-visibility";
-import { publicStoreEligibilityBaseWhere } from "@/lib/seller-legal-policy";
+import { publicProductVisibilityWhere, publicStoreByIdOrSlugWhere } from "@/lib/store-visibility";
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
@@ -69,10 +68,7 @@ type PublicStore = Prisma.StoreGetPayload<{ select: typeof storeSelect }>;
 
 const getPublicStore = cache(async (storeId: string): Promise<PublicStore | null> => {
   const store = await prisma.store.findFirst({
-    where: {
-      OR: [{ id: storeId }, { slug: storeId }],
-      ...publicStoreEligibilityBaseWhere(),
-    },
+    where: publicStoreByIdOrSlugWhere(storeId),
     select: storeSelect,
   });
   return store && isPublicStoreEligible(store) ? store : null;

@@ -28,7 +28,7 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
 
   return <header id="top" className="overflow-hidden rounded-[26px] border border-line bg-white shadow-[0_12px_36px_rgba(23,58,58,.07)]">
     {/* Fixed aspect ratio: the cover never pushes or hides the content below it. */}
-    <div className="relative isolate aspect-[16/7] w-full overflow-hidden sm:aspect-[4/1]" style={{ backgroundColor: colors.accentSoft }}>
+    <div className="relative isolate aspect-[16/7] w-full overflow-hidden sm:aspect-[4/1] lg:aspect-auto lg:h-72" style={{ backgroundColor: colors.accentSoft }}>
       {store.bannerUrl
         ? <StorefrontImage src={store.bannerUrl} alt={`${store.name} mağazasının örtük şəkli`} className="absolute inset-0 h-full w-full object-cover" fill sizes="(max-width: 1280px) 100vw, 1280px" priority fallback={<CoverFallback accent={colors.accent} highlight={colors.highlight}/>}/>
         : <CoverFallback accent={colors.accent} highlight={colors.highlight}/>}
@@ -64,7 +64,7 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
         <a href="#store-products" className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 hover:bg-[#F4F2EC] ${focusRing}`} style={{ color: colors.accent }}>Məhsullar <span className="rounded-full bg-[#F0F4F0] px-2 py-0.5 text-xs text-[#52645D]">{store.productCount}</span></a>
         {store.hasAbout && <a href="#store-about" className={`inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-muted hover:bg-[#F4F2EC] hover:text-ink ${focusRing}`}>Haqqında</a>}
         <a href="#store-contact" className={`inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-muted hover:bg-[#F4F2EC] hover:text-ink ${focusRing}`}>Əlaqə</a>
-        <Link href="/stores" className={`ml-auto inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-muted hover:bg-[#F4F2EC] hover:text-ink ${focusRing}`}>Bütün mağazalar</Link>
+        <Link href="/stores" className={`ml-auto hidden min-h-11 shrink-0 items-center sm:inline-flex rounded-lg px-3 text-muted hover:bg-[#F4F2EC] hover:text-ink ${focusRing}`}>Bütün mağazalar</Link>
       </nav>
     </div>
   </header>;

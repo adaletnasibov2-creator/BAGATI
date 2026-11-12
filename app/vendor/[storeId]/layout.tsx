@@ -17,11 +17,12 @@ export default async function VendorLayout({ children, params }: Readonly<{ chil
   const { storeId } = await params;
   const access = await requireStoreAccess(storeId);
   if (!access) notFound();
-  const [store, stores, unread, entitlement] = await Promise.all([
+  const [store, stores, unread, entitlement, newInquiries] = await Promise.all([
     prisma.store.findUnique({ where: { id: access.storeId }, select: { name: true, status: true, isActive: true, city: { select: { name: true } }, subscription: { select: { status: true, plan: { select: { name: true } } } } } }),
     prisma.store.findMany({ where: { vendor: { userId: access.user.id } }, select: { id: true, name: true, city: { select: { name: true } } }, orderBy: { createdAt: "desc" } }),
     db.notification.count({ where: vendorNotificationScope(access.user.id, access.storeId, { unreadOnly: true }) }),
     getStoreEntitlements(storeId, db),
+    prisma.storeInquiry.count({ where: { storeId: access.storeId, status: "NEW" } }),
   ]);
   if (!store) notFound();
   return <div className="min-h-screen bg-[#f7f5ef] text-[#16202c]">
@@ -38,7 +39,7 @@ export default async function VendorLayout({ children, params }: Readonly<{ chil
         </div>
       </div>
     </header>
-    <VendorNavigation storeId={storeId} canUseBulkImport={hasFeature(entitlement, "BULK_IMPORT")} unread={unread}/>
+    <VendorNavigation storeId={storeId} canUseBulkImport={hasFeature(entitlement, "BULK_IMPORT")} unread={unread} newInquiries={newInquiries}/>
     <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1600px] p-4 sm:p-7 lg:ml-[248px] lg:p-9 xl:p-10">{children}</main>
   </div>;
 }

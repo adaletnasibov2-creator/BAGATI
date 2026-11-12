@@ -149,6 +149,7 @@ test("public eligibility requires active approval, legal review, and subscriptio
       { OR: [{ currentPeriodStart: null }, { currentPeriodStart: { lte: new Date("2026-10-20T12:00:00.000Z") } }] },
       { OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: new Date("2026-10-20T12:00:00.000Z") } }] },
     ], plan: { isActive: true, slug: { in: ["basic", "pro", "professional"], mode: "insensitive" } } } } },
+    { complimentaryEntitlements: { some: { revokedAt: null, OR: [{ endsAt: null }, { endsAt: { gt: new Date("2026-10-20T12:00:00.000Z") } }] } } },
   ]);
   assert.ok(where.vendor);
 });

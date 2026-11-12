@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireStoreAccess } from "@/lib/auth";
 import { statusLabel } from "@/lib/order-status";
 import { getStorePublicationBlockers } from "@/lib/admin-store-product-publishing";
+import { activeComplimentaryEntitlementSelect, complimentaryFromRows } from "@/lib/subscription-entitlements";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
 import { missingSellerLegalFields, sellerRequirementLabels } from "@/lib/seller-legal-policy";
 import { buildVendorStoreSetup, subscriptionStatusLabels } from "@/lib/vendor-store-setup";
@@ -32,6 +33,7 @@ export default async function VendorOverview({ params }: Props) {
         status: true, currentPeriodStart: true, currentPeriodEnd: true,
         plan: { select: { slug: true, isActive: true, name: true } },
       } },
+      complimentaryEntitlements: activeComplimentaryEntitlementSelect,
     } }),
     db.storeOrder.count({ where: { storeId, createdAt: { gte: todayStart } } }),
     db.storeOrder.count({ where: { storeId, status: { in: ["NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER"] } } }),
@@ -64,6 +66,7 @@ export default async function VendorOverview({ params }: Props) {
     planActive: store.subscription?.plan.isActive ?? false,
     periodStart: store.subscription?.currentPeriodStart ?? null,
     periodEnd: store.subscription?.currentPeriodEnd ?? null,
+    complimentary: complimentaryFromRows(store.complimentaryEntitlements),
   });
   const setup = buildVendorStoreSetup({
     name: store.name, slug: store.slug, description: store.description, cityName: store.city.name,

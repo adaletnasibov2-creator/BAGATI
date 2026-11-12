@@ -68,6 +68,9 @@ export function publicStoreEligibilityBaseWhere(now = new Date()): Prisma.StoreW
         { OR: [{ currentPeriodStart: null }, { currentPeriodStart: { lte: now } }] },
         { OR: [{ currentPeriodEnd: null }, { currentPeriodEnd: { gt: now } }] },
       ], plan: { isActive: true, slug: { in: [...supportedSubscriptionPlanSlugs], mode: "insensitive" } } } } },
+      // Admin complimentary (free) grant: unrevoked and not past its optional end date.
+      // Must stay identical to isComplimentaryCurrent() in lib/subscription-entitlements.ts.
+      { complimentaryEntitlements: { some: { revokedAt: null, OR: [{ endsAt: null }, { endsAt: { gt: now } }] } } },
     ],
   };
 }

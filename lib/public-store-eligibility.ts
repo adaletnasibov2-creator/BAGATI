@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { missingSellerLegalFields } from "@/lib/seller-legal-policy";
-import { resolveStoreEntitlements } from "@/lib/subscription-entitlements";
+import { activeComplimentaryEntitlementSelect, complimentaryFromRows, resolveStoreEntitlements } from "@/lib/subscription-entitlements";
 
 const STORE_ID_BATCH_SIZE = 100;
 
@@ -26,6 +26,8 @@ export type PublicStoreCandidate = {
     currentPeriodEnd: Date | null;
     plan: { isActive: boolean; slug: string };
   } | null;
+  /** Unrevoked admin complimentary grant rows (load with activeComplimentaryEntitlementSelect). Required. */
+  complimentaryEntitlements: ReadonlyArray<{ tier: string; endsAt: Date | null }>;
 };
 
 export type PublicStoreEligibilityClient = {
@@ -52,6 +54,7 @@ export type PublicStoreEligibilityClient = {
           currentPeriodEnd: true;
           plan: { select: { isActive: true; slug: true } };
         } };
+        complimentaryEntitlements: typeof activeComplimentaryEntitlementSelect;
       };
     }): Promise<PublicStoreCandidate[]>;
   };
@@ -70,6 +73,7 @@ export function isPublicStoreEligible(candidate: PublicStoreCandidate, now = new
     planActive: candidate.subscription?.plan.isActive ?? false,
     periodStart: candidate.subscription?.currentPeriodStart ?? null,
     periodEnd: candidate.subscription?.currentPeriodEnd ?? null,
+    complimentary: complimentaryFromRows(candidate.complimentaryEntitlements),
   }, now).eligible;
 }
 
@@ -110,6 +114,7 @@ export async function resolvePublicStoreEligibility(
             plan: { select: { isActive: true, slug: true } },
           },
         },
+        complimentaryEntitlements: activeComplimentaryEntitlementSelect,
       },
     });
     for (const candidate of candidates) {

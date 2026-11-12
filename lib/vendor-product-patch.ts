@@ -4,6 +4,8 @@ import { assertUniqueVariantCombinations } from "@/lib/product-variants";
 import {
   assertVariantLimit,
   EntitlementError,
+  activeComplimentaryEntitlementSelect,
+  complimentaryFromRows,
   getStoreEntitlements,
 } from "@/lib/subscription-entitlements";
 import { checkVendorProductActivation, isVendorProductActivation } from "@/lib/vendor-product-publication";
@@ -204,6 +206,7 @@ export async function updateVendorProduct(
             plan: { select: { slug: true, isActive: true } },
           },
         },
+        complimentaryEntitlements: activeComplimentaryEntitlementSelect,
       },
     });
     if (!store) throw new VendorProductPatchError("STORE_NOT_ELIGIBLE", ["Mağaza tapılmadı."]);
@@ -225,6 +228,7 @@ export async function updateVendorProduct(
         planActive: store.subscription?.plan.isActive ?? false,
         periodStart: store.subscription?.currentPeriodStart ?? null,
         periodEnd: store.subscription?.currentPeriodEnd ?? null,
+        complimentary: complimentaryFromRows(store.complimentaryEntitlements),
       },
       product: {
         id: product.id,

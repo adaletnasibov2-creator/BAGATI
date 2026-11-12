@@ -13,7 +13,7 @@ import { deliveryAmountSchema } from "@/lib/delivery";
 import { allowedShipmentTransitions, SHIPMENT_STATUSES, type ShipmentStatusValue } from "@/lib/shipment-tracking";
 import { hasOverlappingEnabledPromotion } from "@/lib/promotion-pricing";
 import { countProductsWithLowStock } from "@/lib/vendor-inventory";
-import { assertFeature, assertProductLimit, EntitlementError, entitlementErrorResponse, getStoreEntitlements } from "@/lib/subscription-entitlements";
+import { activeComplimentaryEntitlementSelect, assertFeature, assertProductLimit, complimentaryFromRows, EntitlementError, entitlementErrorResponse, getStoreEntitlements } from "@/lib/subscription-entitlements";
 import { enqueueEmail } from "@/lib/email-outbox";
 import { checkImportRows, ImportInventoryReservationError, isSafeImportImageUrl, parseImportVariants } from "@/lib/product-import";
 import { CatalogSkuConflictError, findExistingProductSkuMatches, findExistingVariantSkuKeys, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
@@ -386,6 +386,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
        city:{select:{isActive:true}},
        vendor:{select:{sellerType:true,legalName:true,voen:true,legalAddress:true,user:{select:{isActive:true}}}},
        subscription:{select:{status:true,currentPeriodStart:true,currentPeriodEnd:true,plan:{select:{slug:true,isActive:true}}}},
+       complimentaryEntitlements:activeComplimentaryEntitlementSelect,
       }});
       if(!store)return {error:"STORE_NOT_ELIGIBLE" as const,blockers:["Mağaza tapılmadı."]};
       const categoryId=v.categoryId!==undefined?v.categoryId:current.categoryId;
@@ -411,6 +412,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
         sellerType:store.vendor.sellerType,legalName:store.vendor.legalName,voen:store.vendor.voen,legalAddress:store.vendor.legalAddress,
         subscriptionStatus:store.subscription?.status??null,planSlug:store.subscription?.plan.slug??null,planActive:store.subscription?.plan.isActive??false,
         periodStart:store.subscription?.currentPeriodStart??null,periodEnd:store.subscription?.currentPeriodEnd??null,
+        complimentary:complimentaryFromRows(store.complimentaryEntitlements),
        },
        product:productCandidate,
        activeProductCount,

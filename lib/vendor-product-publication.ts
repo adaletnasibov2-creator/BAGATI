@@ -40,6 +40,7 @@ export function checkVendorProductActivation(input: {
     planActive: input.store.planActive,
     periodStart: input.store.periodStart,
     periodEnd: input.store.periodEnd,
+    complimentary: input.store.complimentary,
   }, now);
   if (!entitlement.eligible || !entitlement.plan) {
     return { ok: false, reason: "STORE_NOT_ELIGIBLE", blockers: ["Mağaza satış üçün uyğun deyil."] };

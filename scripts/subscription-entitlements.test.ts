@@ -6,6 +6,7 @@ const activeBasic = {
   adminManaged: false,
   storeStatus: "ACTIVE", storeActive: true, vendorActive: true, cityActive: true,
   subscriptionStatus: "ACTIVE", planSlug: "basic", planActive: true, periodEnd: null,
+  complimentary: null,
 };
 const activePro = { ...activeBasic, planSlug: "professional" };
 

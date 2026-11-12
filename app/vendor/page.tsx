@@ -4,6 +4,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStorePublicationBlockers } from "@/lib/admin-store-product-publishing";
+import { activeComplimentaryEntitlementSelect, complimentaryFromRows } from "@/lib/subscription-entitlements";
 import VendorLogoutButton from "@/components/vendor-logout-button";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export default async function VendorStoresPage() {
       city: { select: { name: true, isActive: true } },
       vendor: { select: { sellerType: true, legalName: true, voen: true, legalAddress: true, user: { select: { isActive: true } } } },
       subscription: { select: { status: true, currentPeriodStart: true, currentPeriodEnd: true, plan: { select: { name: true, slug: true, isActive: true, monthlyPrice: true } } } },
+      complimentaryEntitlements: activeComplimentaryEntitlementSelect,
       _count: { select: { products: true, storeOrders: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -42,6 +44,7 @@ export default async function VendorStoresPage() {
       planActive: store.subscription?.plan.isActive ?? false,
       periodStart: store.subscription?.currentPeriodStart ?? null,
       periodEnd: store.subscription?.currentPeriodEnd ?? null,
+      complimentary: complimentaryFromRows(store.complimentaryEntitlements),
     });
     const canSell = blockers.length === 0;
     return <article key={store.id} className="rounded-2xl border border-[#E8E7E2] bg-white p-5 shadow-[0_8px_24px_rgba(11,23,38,.03)]"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-[#0B1726]">{store.name}</h2><p className="mt-1 text-sm text-[#667085]">{store.city.name}</p></div><span className={`rounded-full px-2.5 py-1 text-xs ${canSell?"bg-emerald-50 text-emerald-800":"bg-amber-50 text-amber-800"}`}>{canSell?"Satış aktivdir":"Yayımlanma tələbləri tamamlanmayıb"}</span></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-[#f8f7f4] p-3"><p className="text-xs text-slate-500">Məhsullar</p><b className="mt-1 block text-lg">{store._count.products}</b></div><div className="rounded-xl bg-[#f8f7f4] p-3"><p className="text-xs text-slate-500">Sifarişlər</p><b className="mt-1 block text-lg">{store._count.storeOrders}</b></div></div>{blockers.length>0&&<p className="mt-4 text-sm leading-6 text-amber-800">{blockers.join(" ")}</p>}<div className="mt-4 text-sm text-slate-600">{store.adminManaged?"Admin tərəfindən idarə olunur · abunəlik ödənişi tələb olunmur":store.subscription?`${store.subscription.plan.name} · ${subscriptionLabel[store.subscription.status]||store.subscription.status} · ${Number(store.subscription.plan.monthlyPrice).toFixed(2)} ₼/ay`:"Abunəlik planı seçilməyib"}</div><Link className="mt-5 inline-flex rounded-lg bg-[#173c40] px-4 py-2.5 text-sm font-medium text-white" href={`/vendor/${store.id}`}>Paneli aç <span aria-hidden className="ml-2">→</span></Link></article>;

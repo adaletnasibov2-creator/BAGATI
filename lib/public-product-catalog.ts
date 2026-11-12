@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { isPublicStoreEligible, type PublicStoreCandidate } from "@/lib/public-store-eligibility";
 import { publicStoreEligibilityBaseWhere } from "@/lib/seller-legal-policy";
+import { activeComplimentaryEntitlementSelect } from "@/lib/subscription-entitlements";
 import { productCatalogOrderBy, type ProductCatalogSort } from "@/lib/catalog-sort";
 
 export const PUBLIC_PRODUCT_CATALOG_BATCH_SIZE = 100;
@@ -38,6 +39,7 @@ const candidateSelect = {
           plan: { select: { isActive: true, slug: true } },
         },
       },
+      complimentaryEntitlements: activeComplimentaryEntitlementSelect,
     },
   },
 } satisfies Prisma.ProductSelect;

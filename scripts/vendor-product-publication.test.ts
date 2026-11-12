@@ -19,6 +19,7 @@ const eligibleStore: StorePublicationState = {
   planActive: true,
   periodStart: null,
   periodEnd: null,
+  complimentary: null,
 };
 
 const readyProduct: DraftProductCandidate = {

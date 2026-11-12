@@ -4,6 +4,7 @@ import { missingSellerLegalFields, sellerRequirementLabels } from "@/lib/seller-
 import {
   planEntitlements,
   resolveStoreEntitlements,
+  type ComplimentaryEntitlementState,
   type EntitlementPlan,
 } from "@/lib/subscription-entitlements";
 
@@ -46,6 +47,8 @@ export type StorePublicationState = {
   planActive: boolean;
   periodStart: Date | null;
   periodEnd: Date | null;
+  /** Unrevoked admin complimentary (free) grant, or null. Required so callers cannot forget it. */
+  complimentary: ComplimentaryEntitlementState;
 };
 
 export type ProductPublicationResult = {
@@ -88,6 +91,7 @@ export function getStorePublicationBlockers(store: StorePublicationState, now = 
     planActive: store.planActive,
     periodStart: store.periodStart,
     periodEnd: store.periodEnd,
+    complimentary: store.complimentary,
   }, now);
   if (!store.adminManaged && !entitlement.eligible) {
     blockers.push("Satış üçün aktiv, qüvvədə olan Basic və ya Pro abunəliyi tələb olunur.");

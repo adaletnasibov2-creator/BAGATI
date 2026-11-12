@@ -1,5 +1,6 @@
 import { isPublicStoreEligible, type PublicStoreCandidate } from "@/lib/public-store-eligibility";
 import { publicStoreEligibilityBaseWhere } from "@/lib/seller-legal-policy";
+import { activeComplimentaryEntitlementSelect } from "@/lib/subscription-entitlements";
 import { isValidCoordinates } from "@/lib/map-location";
 
 type StoreMapRecord = PublicStoreCandidate & {
@@ -32,6 +33,7 @@ export async function getPublicStoreMapMarkers(findMany: FindMany): Promise<Publ
       city:{select:{name:true,isActive:true}},
       vendor:{select:{sellerType:true,legalName:true,voen:true,legalAddress:true,user:{select:{isActive:true}}}},
       subscription:{select:{status:true,currentPeriodStart:true,currentPeriodEnd:true,plan:{select:{isActive:true,slug:true}}}},
+      complimentaryEntitlements: activeComplimentaryEntitlementSelect,
     },
     orderBy: { name: "asc" },
   });

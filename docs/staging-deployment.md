@@ -28,7 +28,7 @@ Provider references: [Render PostgreSQL setup and connection URLs](https://rende
 - Region: same as the staging PostgreSQL database.
 - Runtime `DATABASE_URL`: Render's **internal** URL for `bagati_staging`; do not use the external URL for an in-region service.
 - Do not configure production secrets, production database URLs, or real SMTP/payment credentials in this service.
-- Run `npx prisma generate` during build; there is no postinstall generation hook.
+- `npm run build` runs `prisma generate` before `next build`, so a host that keeps `node_modules` between deploys still builds against the current schema. It needs no database connection and never migrates. There is still no postinstall generation hook.
 - Migration must finish before deploying code that queries the new homepage tables. Do not make the web service run migrations on startup or as an automatic unreviewed pre-deploy step.
 
 The health endpoint proves only that the web process responds. It does not prove database, email, or storage readiness; validate each separately in staging.

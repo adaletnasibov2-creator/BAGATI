@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node --stack-size=8192 node_modules/next/dist/bin/next build",
+    "build": "prisma generate && node --stack-size=8192 node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "node --stack-size=8192 node_modules/typescript/bin/tsc --noEmit",

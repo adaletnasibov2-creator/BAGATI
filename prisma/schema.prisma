@@ -129,6 +129,12 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
+/// Product/feature tier granted by an admin complimentary (free) entitlement.
+enum EntitlementTier {
+  BASIC
+  PRO
+}
+
 enum SubscriptionAccessSource {
   UNKNOWN
   ADMIN_MANUAL
@@ -366,6 +372,10 @@ model StoreComplimentaryEntitlement {
   grantedByAdminId String
   grantedAt        DateTime  @default(now())
   grantReason      String    @db.VarChar(500)
+  /// Limits and features of the free grant. BASIC unless the admin chooses PRO.
+  tier             EntitlementTier @default(BASIC)
+  /// Optional end of the free grant (exclusive). Null means no end date.
+  endsAt           DateTime?
   revokedAt        DateTime?
   revokedByAdminId String?
   revokeReason     String?   @db.VarChar(500)

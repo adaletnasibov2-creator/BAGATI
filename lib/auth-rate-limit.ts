@@ -14,7 +14,7 @@ function authRateLimitSecret() {
   return value;
 }
 
-export function authRateLimitKey(scope: "login" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback", identity: string) {
+export function authRateLimitKey(scope: "login" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "store-inquiry", identity: string) {
   return createHmac("sha256", authRateLimitSecret())
     .update(`BAGATI_AUTH_RATE_LIMIT_V1:${scope}:${identity.trim().toLowerCase()}`)
     .digest("hex");

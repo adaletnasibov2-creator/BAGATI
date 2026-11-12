@@ -16,6 +16,20 @@ export function publicStoreListingWhere(
   };
 }
 
+/**
+ * One public store by id or slug. The id/slug match and the eligibility filter are combined with AND:
+ * the eligibility filter has its own `OR` key, so spreading it next to an `OR` overwrites the match
+ * (that bug made every /stores/<id> URL return the first eligible store).
+ */
+export function publicStoreByIdOrSlugWhere(storeIdOrSlug: string, now = new Date()): Prisma.StoreWhereInput {
+  return {
+    AND: [
+      { OR: [{ id: storeIdOrSlug }, { slug: storeIdOrSlug }] },
+      publicStoreEligibilityBaseWhere(now),
+    ],
+  };
+}
+
 export function publicStoreListingCandidateWhere(
   filters: { citySlug?: string | null; query?: string | null } = {},
   now = new Date(),

@@ -16,6 +16,7 @@ export const EMAIL_TEMPLATES = [
   "SELLER_RETURN_STATUS",
   "SUBSCRIPTION_STATUS",
   "ACCOUNT_SECURITY",
+  "STORE_INQUIRY",
 ] as const;
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[number];
 export type EmailPayload = Record<string, string | number | boolean | null>;
@@ -50,12 +51,21 @@ function senderDomain(from: string) {
   return domain;
 }
 
+/** A single plain address safe for the Reply-To header (no display name, no CR/LF, no list), or undefined. */
+export function safeReplyTo(raw: string): string | undefined {
+  const address = raw.trim();
+  if (!address || address.length > 254) return undefined;
+  if (!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(address)) return undefined;
+  return address;
+}
+
 export function buildTransactionalEmail(template: EmailTemplate, payload: EmailPayload, from: string, to: string, messageId: string): SendMailOptions {
   let subject = "BAGATI hesab yeniləməsi";
   let lines: string[] = ["BAGATI marketplace hesabınızda yenilik var."];
   let verificationCode: string | undefined;
   let passwordResetUrl: string | undefined;
   let trackingUrl: string | undefined;
+  let replyTo: string | undefined;
   switch (template) {
     case "EMAIL_VERIFICATION":
       verificationCode = value(payload, "code");
@@ -100,6 +110,25 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
     case "SELLER_RETURN_STATUS": subject = "Mağaza qaytarılma sorğusu yeniləndi"; lines = [`${value(payload, "storeName", "Mağaza")} üçün ${value(payload, "productName", "məhsul")} sorğusu: ${returnStatus(value(payload, "status"))}.`, `Sifariş: #${value(payload, "orderRef")}`, ...(value(payload, "resolution") === "REFUND" ? [`Geri ödəniş məbləği: ${azn(payload, "refundAmount")}`] : [])]; break;
     case "SUBSCRIPTION_STATUS": subject = "Mağaza abunəliyinin statusu yeniləndi"; lines = [`${value(payload, "storeName", "Mağaza")} üçün ${value(payload, "planName", "abunəlik")} planının statusu: ${value(payload, "status")}.`, "Abunəlik statusu ödəniş provayderinin təsdiqi kimi qəbul edilmir."]; break;
     case "ACCOUNT_SECURITY": subject = "BAGATI hesabınızda təhlükəsizlik dəyişikliyi"; lines = ["Hesabınızın şifrəsi yeniləndi.", "Bu əməliyyatı siz etməmisinizsə, hesabınıza daxil olun və dəstək xidməti ilə əlaqə saxlayın."]; break;
+    case "STORE_INQUIRY": {
+      // Buyer text is plain text: every line is HTML-escaped below, and nothing from the buyer reaches a header except a validated Reply-To.
+      const storeName = value(payload, "storeName", "Mağaza").slice(0, 120);
+      const senderEmail = value(payload, "senderEmail");
+      const senderPhone = value(payload, "senderPhone");
+      subject = `BAGATI — "${storeName}" mağazası üçün yeni mesaj`.replace(/[\r\n]+/g, " ");
+      lines = [
+        `"${storeName}" mağazanıza BAGATI-da yeni mesaj gəlib.`,
+        `Göndərən: ${value(payload, "senderName", "Alıcı")}`,
+        ...(senderEmail ? [`E-poçt: ${senderEmail}`] : []),
+        ...(senderPhone ? [`Telefon: ${senderPhone}`] : []),
+        "Mesaj:",
+        ...value(payload, "message").split(/\r?\n/),
+        ...(value(payload, "inboxUrl") ? [`Bütün mesajlar: ${value(payload, "inboxUrl")}`] : []),
+        senderEmail ? "Bu məktuba cavab versəniz, cavabınız birbaşa alıcıya gedəcək." : "Alıcı e-poçt qeyd etməyib; telefonla əlaqə saxlayın.",
+      ];
+      replyTo = safeReplyTo(senderEmail);
+      break;
+    }
   }
   const htmlLines = lines.map((line) => `<p style="margin:12px 0;font-size:15px;line-height:1.65;color:#344254">${escapeHtml(line)}</p>`).join("");
   const link = trackingUrl ? `<p style="margin:18px 0"><a href="${escapeHtml(trackingUrl)}" rel="noopener noreferrer" style="color:#176b63">Göndərişi izləyin</a></p>` : "";
@@ -109,5 +138,6 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
     from, to, subject, text: [...lines, ...(passwordResetUrl ? [passwordResetUrl] : []), ...(trackingUrl ? [trackingUrl] : [])].join("\n\n"),
     html: `<!doctype html><html lang="az"><body style="margin:0;background:#f7f5ef;font-family:Arial,sans-serif;color:#16202c"><main style="max-width:560px;margin:32px auto;padding:32px;background:#fff;border:1px solid #e8e7e2;border-radius:20px"><p style="margin:0;color:#9a701e;font-size:12px;font-weight:bold;letter-spacing:3px">BAGATI</p><h1 style="font-size:23px;margin:24px 0 16px">${escapeHtml(subject)}</h1>${htmlLines}${codeHtml}${resetLink}${link}<p style="margin-top:28px;border-top:1px solid #eee;padding-top:18px;font-size:12px;color:#718096">Bu, BAGATI marketplace tərəfindən göndərilən avtomatik məlumat məktubudur.</p></main></body></html>`,
     messageId: `<${messageId}@${senderDomain(from)}>`,
+    ...(replyTo ? { replyTo } : {}),
   };
 }

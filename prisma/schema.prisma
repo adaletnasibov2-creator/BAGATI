@@ -135,6 +135,12 @@ enum EntitlementTier {
   PRO
 }
 
+/// Buyer-to-store contact message status.
+enum StoreInquiryStatus {
+  NEW
+  READ
+}
+
 enum SubscriptionAccessSource {
   UNKNOWN
   ADMIN_MANUAL
@@ -358,6 +364,7 @@ model Store {
   complimentaryEntitlements StoreComplimentaryEntitlement[]
   returnRequests ReturnRequest[]
   catalogImportJobs ImportJob[]
+  inquiries      StoreInquiry[]
 
   @@index([vendorId, cityId])
   @@index([cityId, isActive])
@@ -939,4 +946,24 @@ model StoreSubscription {
   @@index([status, currentPeriodEnd])
   @@index([planId])
   @@index([grantedByAdminId])
+}
+
+/// A buyer's message to a store, sent from the public store page. The store's email is never shown to buyers.
+model StoreInquiry {
+  id           String             @id @default(cuid())
+  storeId      String
+  name         String             @db.VarChar(80)
+  contactEmail String?            @db.VarChar(254)
+  /// E.164 (+994XXXXXXXXX)
+  contactPhone String?            @db.VarChar(16)
+  message      String             @db.VarChar(2000)
+  status       StoreInquiryStatus @default(NEW)
+  /// HMAC-SHA256 of the client IP (keyed by SESSION_SECRET); null when the trusted proxy header is not enabled. Raw IPs are never stored.
+  ipHash       String?            @db.VarChar(64)
+  createdAt    DateTime           @default(now())
+  readAt       DateTime?
+  store        Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, status, createdAt])
+  @@index([storeId, createdAt])
 }

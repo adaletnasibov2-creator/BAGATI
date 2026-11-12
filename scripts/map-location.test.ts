@@ -43,7 +43,7 @@ test("public map query uses shared eligibility rules and only selects public sto
   assert.ok(Array.isArray(subscription.AND));
   assert.deepEqual(query.where.latitude, {not:null});
   assert.deepEqual(query.where.longitude, {not:null});
-  assert.deepEqual(Object.keys(query.select).sort(), ["address","adminManaged","city","id","isActive","latitude","legalInfoApproved","logoUrl","longitude","name","slug","status","subscription","vendor"].sort());
+  assert.deepEqual(Object.keys(query.select).sort(), ["address","adminManaged","city","complimentaryEntitlements","id","isActive","latitude","legalInfoApproved","logoUrl","longitude","name","slug","status","subscription","vendor"].sort());
   assert.deepEqual(items, [{id:"store-1",name:"BAGATI mağazası",slug:"bagati",address:"Mərkəz",logoUrl:"https://example.test/logo.png",latitude:40.4,longitude:49.8,city:"Bakı"}]);
   assert.equal("vendorId" in items[0], false);
   assert.equal("email" in items[0], false);

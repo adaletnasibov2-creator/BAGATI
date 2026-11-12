@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStorePublicationBlockers, publishEligibleDraftProducts } from "@/lib/admin-store-product-publishing";
-import { resolveStoreEntitlements } from "@/lib/subscription-entitlements";
+import { activeComplimentaryEntitlementSelect, complimentaryFromRows, resolveStoreEntitlements } from "@/lib/subscription-entitlements";
 import { missingSellerLegalFields } from "@/lib/seller-legal-policy";
 import { getStoreReviewUpdate, type StoreReviewStatus } from "@/lib/store-review";
 import { enqueueEmail } from "@/lib/email-outbox";
@@ -41,6 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
               plan: { select: { slug: true, isActive: true } },
             },
           },
+          complimentaryEntitlements: activeComplimentaryEntitlementSelect,
           vendor: {
             select: {
               sellerType: true, legalName: true, voen: true, legalAddress: true,
@@ -77,6 +78,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
         planActive: store.subscription?.plan.isActive ?? false,
         periodStart: store.subscription?.currentPeriodStart ?? null,
         periodEnd: store.subscription?.currentPeriodEnd ?? null,
+        complimentary: complimentaryFromRows(store.complimentaryEntitlements),
       } : null;
       const activationBlockers = candidateState ? getStorePublicationBlockers(candidateState) : [];
       const update = activating
@@ -133,6 +135,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
               planActive: candidateState.planActive,
               periodStart: candidateState.periodStart,
               periodEnd: candidateState.periodEnd,
+              complimentary: candidateState.complimentary,
             }).plan
             : null,
           storeBlockers: activationBlockers,

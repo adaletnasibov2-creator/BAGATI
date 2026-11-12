@@ -25,6 +25,8 @@ export type AdminStoreReadinessInput = {
     planSlug: string;
     planActive: boolean;
   } | null;
+  /** Unrevoked admin complimentary (free) grant, or null. Required so callers cannot forget it. */
+  complimentary: { tier: "BASIC" | "PRO"; endsAt: Date | null } | null;
   productCount: number;
   activeProductCount: number;
   categoryLinkedProductCount: number;
@@ -50,6 +52,7 @@ export type AdminStoreReadinessDependencies = {
     planActive: boolean;
     periodStart: Date | null;
     periodEnd: Date | null;
+    complimentary: { tier: "BASIC" | "PRO"; endsAt: Date | null } | null;
   }) => { eligible: boolean };
 };
 
@@ -74,6 +77,7 @@ export function buildAdminStoreReadiness(
     planActive: input.subscription?.planActive ?? false,
     periodStart: input.subscription?.periodStart ?? null,
     periodEnd: input.subscription?.periodEnd ?? null,
+    complimentary: input.complimentary,
   });
   const profileReady = Boolean(
     input.name.trim() && input.slug.trim() && input.description?.trim() && input.logoUrl

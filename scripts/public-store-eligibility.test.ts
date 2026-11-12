@@ -32,6 +32,7 @@ const eligibleStore = (id: string, overrides: Partial<PublicStoreCandidate> = {}
     currentPeriodEnd: null,
     plan: { isActive: true, slug: "basic" },
   },
+  complimentaryEntitlements: [],
   ...overrides,
 });
 

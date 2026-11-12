@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { isPublicStoreEligible } from "@/lib/store-eligibility";
 import { publicProductVisibilityWhere } from "@/lib/store-visibility";
 import { publicStoreEligibilityBaseWhere } from "@/lib/seller-legal-policy";
+import { activeComplimentaryEntitlementSelect } from "@/lib/subscription-entitlements";
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
@@ -61,6 +62,7 @@ const storeSelect = {
       plan: { select: { isActive: true, slug: true } },
     },
   },
+  complimentaryEntitlements: activeComplimentaryEntitlementSelect,
 } satisfies Prisma.StoreSelect;
 
 type PublicStore = Prisma.StoreGetPayload<{ select: typeof storeSelect }>;

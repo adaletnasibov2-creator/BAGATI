@@ -39,6 +39,7 @@ function candidate(
       currentPeriodEnd: null,
       plan: { isActive: true, slug: "basic" },
     },
+    complimentaryEntitlements: [],
     ...overrides,
   };
 }

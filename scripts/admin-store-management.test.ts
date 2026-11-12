@@ -47,6 +47,7 @@ test("admin-managed entitlement is BASIC-only and paid subscription eligibility 
     planSlug: null,
     planActive: false,
     periodEnd: null,
+    complimentary: null,
   });
   assert.equal(managed.eligible, true);
   assert.equal(managed.plan, "BASIC");
@@ -61,6 +62,7 @@ test("admin-managed entitlement is BASIC-only and paid subscription eligibility 
     planSlug: null,
     planActive: false,
     periodEnd: null,
+    complimentary: null,
   }).eligible, false);
   const now = new Date("2026-10-20T12:00:00.000Z");
   assert.deepEqual(publicStoreWhere(now).OR?.[1], {
@@ -178,6 +180,7 @@ test("store publication blockers include legal approval and verified seller requ
     planActive: true,
     periodStart: new Date("2026-10-01T00:00:00.000Z"),
     periodEnd: new Date("2026-11-01T00:00:00.000Z"),
+    complimentary: null,
   }, now);
 
   assert.ok(blockers.some((reason) => reason.includes("Satıcı növü")));
@@ -200,6 +203,7 @@ test("store publication blockers include legal approval and verified seller requ
     planActive: true,
     periodStart: new Date("2026-10-01T00:00:00.000Z"),
     periodEnd: new Date("2026-11-01T00:00:00.000Z"),
+    complimentary: null,
   }, now);
   assert.deepEqual(eligible, []);
 

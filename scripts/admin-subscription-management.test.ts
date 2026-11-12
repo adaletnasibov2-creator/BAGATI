@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { assertFeature, hasFeature, resolveStoreEntitlements } from "../lib/subscription-entitlements";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
-const active = { adminManaged: false, storeStatus: "ACTIVE", storeActive: true, vendorActive: true, cityActive: true, subscriptionStatus: "ACTIVE", planActive: true, periodStart: new Date("2026-10-01T00:00:00Z"), periodEnd: new Date("2026-11-01T00:00:00Z") };
+const active = { adminManaged: false, storeStatus: "ACTIVE", storeActive: true, vendorActive: true, cityActive: true, subscriptionStatus: "ACTIVE", planActive: true, periodStart: new Date("2026-10-01T00:00:00Z"), periodEnd: new Date("2026-11-01T00:00:00Z"), complimentary: null };
 
 test("Basic and Pro can bulk import; pending, suspended, expired and out-of-period access cannot", () => {
   for (const state of [active, { ...active, planSlug: "basic" }, { ...active, planSlug: "professional" }]) {

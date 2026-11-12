@@ -19,6 +19,32 @@ export const planEntitlements: Record<EntitlementPlan, {
   PRO: { activeProducts: 2_000, activeVariants: 10_000, staffAccounts: 5, features: new Set(subscriptionFeatures) },
 };
 
+/**
+ * The store's unrevoked admin complimentary (free) grant, or null.
+ * Required (not optional) on purpose: every caller must load it, so a missed caller fails to compile.
+ * The SQL twin of this rule is `publicStoreEligibilityBaseWhere` in lib/seller-legal-policy.ts.
+ */
+export type ComplimentaryEntitlementState = { tier: EntitlementPlan; endsAt: Date | null } | null;
+
+/** Prisma relation select for the unrevoked grant (at most one exists: partial unique index). */
+export const activeComplimentaryEntitlementSelect = {
+  where: { revokedAt: null },
+  orderBy: { grantedAt: "desc" },
+  take: 1,
+  select: { tier: true, endsAt: true },
+} as const;
+
+/** Maps the rows loaded with `activeComplimentaryEntitlementSelect` to the rule input. */
+export function complimentaryFromRows(rows: ReadonlyArray<{ tier: string; endsAt: Date | null }> | null | undefined): ComplimentaryEntitlementState {
+  const row = rows?.[0];
+  if (!row || (row.tier !== "BASIC" && row.tier !== "PRO")) return null;
+  return { tier: row.tier, endsAt: row.endsAt };
+}
+
+export function isComplimentaryCurrent(complimentary: ComplimentaryEntitlementState, now = new Date()) {
+  return Boolean(complimentary && (!complimentary.endsAt || complimentary.endsAt > now));
+}
+
 export type StoreEntitlementState = {
   adminManaged: boolean;
   storeStatus: string;
@@ -30,15 +56,25 @@ export type StoreEntitlementState = {
   planActive: boolean;
   periodStart?: Date | null;
   periodEnd: Date | null;
+  complimentary: ComplimentaryEntitlementState;
 };
 
+/**
+ * Sell rule. A store sells when its base checks pass AND it is admin-managed, has a current paid
+ * subscription, or has a current admin complimentary grant. Plan precedence: paid subscription,
+ * then the complimentary tier, then BASIC for admin-managed stores.
+ */
 export function resolveStoreEntitlements(state: StoreEntitlementState, now = new Date()) {
   const plan = resolveSubscriptionPlanSlug(state.planSlug);
   const baseEligible = state.storeActive && state.storeStatus === "ACTIVE" && state.vendorActive && state.cityActive;
   const subscriptionEligible = state.subscriptionStatus === "ACTIVE" && state.planActive && Boolean(plan)
     && (!state.periodStart || state.periodStart <= now) && (!state.periodEnd || state.periodEnd > now);
-  const eligible = baseEligible && (state.adminManaged || subscriptionEligible);
-  const resolvedPlan = eligible ? subscriptionEligible ? plan : state.adminManaged ? "BASIC" : null : null;
+  const complimentaryEligible = isComplimentaryCurrent(state.complimentary, now);
+  const eligible = baseEligible && (state.adminManaged || subscriptionEligible || complimentaryEligible);
+  const resolvedPlan: EntitlementPlan | null = !eligible ? null
+    : subscriptionEligible ? plan
+      : complimentaryEligible && state.complimentary ? state.complimentary.tier
+        : state.adminManaged ? "BASIC" : null;
   return { eligible, plan: resolvedPlan, limits: resolvedPlan ? planEntitlements[resolvedPlan] : null };
 }
 
@@ -49,7 +85,7 @@ export function isProBadgeEligible(state: StoreEntitlementState, now = new Date(
 export async function getStoreEntitlements(storeId: string, client: any = prisma, now = new Date()) {
   const store = await client.store.findUnique({
     where: { id: storeId },
-    select: { id: true, status: true, isActive: true, adminManaged: true, city: { select: { isActive: true } }, vendor: { select: { user: { select: { isActive: true } } } }, subscription: { select: { status: true, currentPeriodStart: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } },
+    select: { id: true, status: true, isActive: true, adminManaged: true, city: { select: { isActive: true } }, vendor: { select: { user: { select: { isActive: true } } } }, subscription: { select: { status: true, currentPeriodStart: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } }, complimentaryEntitlements: activeComplimentaryEntitlementSelect },
   });
   if (!store) return { exists: false as const, eligible: false, plan: null, limits: null };
   const resolved = resolveStoreEntitlements({
@@ -59,6 +95,7 @@ export async function getStoreEntitlements(storeId: string, client: any = prisma
     planSlug: store.subscription?.plan.slug ?? null, planActive: store.subscription?.plan.isActive ?? false,
     periodStart: store.subscription?.currentPeriodStart ?? null,
     periodEnd: store.subscription?.currentPeriodEnd ?? null,
+    complimentary: complimentaryFromRows(store.complimentaryEntitlements),
   }, now);
   return { exists: true as const, ...resolved };
 }

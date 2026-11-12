@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { adminStoreVisibilityMutation, type StoreWorkflowStatus } from "@/lib/store-visibility";
 import { getStorePublicationBlockers, publishEligibleDraftProducts } from "@/lib/admin-store-product-publishing";
-import { resolveStoreEntitlements } from "@/lib/subscription-entitlements";
+import { activeComplimentaryEntitlementSelect, complimentaryFromRows, resolveStoreEntitlements } from "@/lib/subscription-entitlements";
 
 const requestSchema = z.object({ isActive: z.boolean(), reason: z.string().trim().min(3).max(500) });
 
@@ -55,6 +55,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ st
               plan: { select: { slug: true, isActive: true } },
             },
           },
+          complimentaryEntitlements: activeComplimentaryEntitlementSelect,
         },
       });
       if (!store) return { kind: "NOT_FOUND" as const };
@@ -104,6 +105,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ st
         planActive: store.subscription?.plan.isActive ?? false,
         periodStart: store.subscription?.currentPeriodStart ?? null,
         periodEnd: store.subscription?.currentPeriodEnd ?? null,
+        complimentary: complimentaryFromRows(store.complimentaryEntitlements),
       };
       const storeBlockers = getStorePublicationBlockers(publicationState);
       const entitlement = resolveStoreEntitlements({
@@ -117,6 +119,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ st
         planActive: publicationState.planActive,
         periodStart: publicationState.periodStart,
         periodEnd: publicationState.periodEnd,
+        complimentary: publicationState.complimentary,
       });
       const products = parsed.data.isActive
         ? await publishEligibleDraftProducts(tx, {

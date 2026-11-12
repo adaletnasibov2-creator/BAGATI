@@ -14,4 +14,4 @@ The separate store activation and seller legal approval workflow remains in forc
 
 The schema change is additive. Before deployment, review and apply `20261020000000_admin_subscription_management` through the established migration process. It adds an access-source enum and nullable administrator/reason fields, with a safe `UNKNOWN` default for existing rows. It does not change existing statuses, plan assignments, users, stores, orders, or payments. Do not apply it to production without the normal backup and controlled deployment process.
 
-Plan prices continue to come from the existing `SubscriptionPlan` rows and are not changed here. No payment provider is integrated.
+Plan prices continue to come from the existing `SubscriptionPlan` rows and are not changed here. No payment provider is integrated. The approved design for automatic card payments through Epoint, not yet implemented, is in `docs/epoint-subscription-payments.md`.

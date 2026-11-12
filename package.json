@@ -49,6 +49,7 @@
     "test:subscription-entitlements": "tsx --test scripts/subscription-entitlements.test.ts",
     "test:complimentary-entitlement-rule": "tsx --test scripts/complimentary-entitlement-rule.test.ts",
     "test:complimentary-entitlements": "tsx --test scripts/complimentary-entitlements.test.ts",
+    "test:complimentary-entitlement:integration": "tsx --test scripts/complimentary-entitlement.integration.test.ts",
     "test:admin-subscription-management": "tsx --test scripts/admin-subscription-management.test.ts",
     "security:smoke": "node scripts/security-smoke.mjs",
     "test:admin-auth:security": "node --test scripts/admin-auth-security.test.mjs",

@@ -278,6 +278,14 @@ export async function googleAuthorizationUrl(input: {
   return { url: authorization, signedState };
 }
 
+/** The Google account's email is not verified by Google; BAGATI never signs in or creates accounts for it. */
+export class GoogleEmailUnverifiedError extends Error {
+  constructor() {
+    super("Google account email is not verified.");
+    this.name = "GoogleEmailUnverifiedError";
+  }
+}
+
 export async function exchangeGoogleCode(code: string, verifier: string, config: ReturnType<typeof googleOAuthConfig>) {
   const response = await fetch(googleEndpoints().token, {
     method: "POST",
@@ -309,13 +317,14 @@ export async function exchangeGoogleCode(code: string, verifier: string, config:
     || !payload.sub
     || typeof payload.email !== "string"
     || payload.email.length > 254
-    || payload.email_verified !== true
     || typeof payload.nonce !== "string"
     || typeof payload.name !== "string" && payload.name !== undefined
     || typeof payload.given_name !== "string" && payload.given_name !== undefined
     || typeof payload.family_name !== "string" && payload.family_name !== undefined
     || (payload.azp !== undefined && payload.azp !== config.clientId)
-  ) throw new Error("Google identity claims are invalid or the email is not verified.");
+  ) throw new Error("Google identity claims are invalid.");
+  // Checked after the token's signature, issuer, audience and claim shapes are trusted.
+  if (payload.email_verified !== true) throw new GoogleEmailUnverifiedError();
   const cleanName = (value: unknown) => typeof value === "string" ? value.trim().slice(0, 80) : "";
   const email = payload.email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Google returned an invalid email address.");

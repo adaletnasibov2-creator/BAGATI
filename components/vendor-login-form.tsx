@@ -119,10 +119,10 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
       <p className="text-center text-sm text-[#667085]">
         Satıcı hesabınız yoxdur?{" "}
         <Link
-          href="/vendor/register"
+          href="/vendor/apply"
           className="font-medium text-[#9A701E]"
         >
-          Satıcı kimi qeydiyyatdan keçin
+          Satıcı olmaq istəyirəm
         </Link>
       </p>
 

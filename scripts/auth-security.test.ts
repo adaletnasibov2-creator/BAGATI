@@ -181,7 +181,8 @@ test("new and duplicate registrations receive the same non-enumerating acknowled
   assert.equal(duplicate.cookies.has("bagati_email_verification"), true);
   assert.equal(created.cookies.has("bagati_email_verification"), true);
   const [customer, vendor] = await Promise.all([source("app/api/auth/register/route.ts"), source("app/api/auth/vendor-register/route.ts")]);
-  for (const route of [customer, vendor]) {
+  assert.match(vendor, /status: 410/);
+  for (const route of [customer]) {
     assert.match(route, /registerSchema\.safeParse|vendorRegisterSchema\.safeParse/);
     assert.match(route, /enqueueVerificationEmail\(tx/);
     assert.match(route, /isDuplicateEmailError\(error\)/);

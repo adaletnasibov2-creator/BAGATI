@@ -23,6 +23,9 @@ export function googleOAuthMessage(code?: string, _intent: GoogleOAuthIntent = "
     case "unavailable": return "Google girişi serverdə konfiqurasiya edilməyib.";
     case "account-exists": return "Təsdiqlənmiş Google e-poçtu ilə BAGATI hesabı tapıldı. Hesablar avtomatik birləşdirilmir. Mövcud hesabınıza uyğun giriş bölməsini seçin.";
     case "not-registered": return "Bu Google e-poçtu ilə BAGATI hesabı tapılmadı. Qeydiyyat səhifəsindən hesab yaradın.";
+    case "seller-not-found": return "Bu Google e-poçtu ilə satıcı hesabı tapılmadı. Satıcı olmaq üçün əvvəlcə müştəri kimi qeydiyyatdan keçin, sonra satıcı müraciəti göndərin və admin təsdiqini gözləyin.";
+    case "account-inactive": return "Bu e-poçta aid BAGATI hesabı deaktiv edilib. Ətraflı məlumat üçün dəstək xidməti ilə əlaqə saxlayın.";
+    case "email-unverified": return "Google hesabınızın e-poçtu Google tərəfindən təsdiqlənməyib. E-poçtu Google-da təsdiqləyin və ya BAGATI-da e-poçt və şifrə ilə qeydiyyatdan keçin.";
     case "wrong-role": return "Bu Google hesabı başqa BAGATI roluna bağlıdır. Uyğun hesab bölməsindən daxil olun.";
     case "cancelled": return "Google girişi ləğv edildi.";
     case "invalid": return "Google giriş sorğusu etibarsızdır və ya vaxtı bitib. Yenidən cəhd edin.";
@@ -73,6 +76,10 @@ export function GoogleOAuthButton({ intent, mode, nextPath, errorCode, portal }:
         </nav>
         <p className="mt-3 text-xs leading-5">Müştəri və satıcı hesablarında Google-ı uyğun təhlükəsizlik bölməsindən bağlayın. Admin hesablarına Google bağlama dəstəklənmir; admin girişi üçün BAGATI şifrəsindən istifadə edin.</p>
       </>}
+      {errorCode === "seller-not-found" && <nav aria-label="Satıcı olmaq üçün addımlar" className="mt-3 flex flex-wrap gap-x-4 gap-y-2 font-semibold underline">
+        <Link href="/register?next=%2Fvendor%2Fapply">Müştəri kimi qeydiyyatdan keç</Link>
+        <Link href="/vendor/apply">Satıcı müraciəti göndər</Link>
+      </nav>}
     </div>}
     <Link href={`/api/auth/google/start?${query.toString()}`} className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 py-3.5 font-medium text-ink transition hover:bg-slate-50">
       <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.28-1.93-6.15-4.53H2.16v2.84A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.85 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.16a11 11 0 0 0 0 9.9l3.69-2.84Z"/><path fill="#EA4335" d="M12 4.36c1.62 0 3.07.56 4.21 1.68l3.15-3.15C17.45 1.1 14.97 0 12 0a11 11 0 0 0-9.84 7.05l3.69 2.84C6.72 7.29 9.14 4.36 12 4.36Z"/></svg>

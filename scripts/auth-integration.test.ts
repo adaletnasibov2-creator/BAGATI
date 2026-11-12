@@ -668,8 +668,18 @@ test("real auth and cross-account checks use isolated fixture database only", { 
       assert.match(signedOutHtml, /aria-label="Giriş"[^>]*href="\/login"/);
     });
 
-    await t.test("customer and seller registration queue encrypted verification without sending email", async () => {
-      for (const role of ["customer", "vendor"] as const) {
+    await t.test("seller self-registration is closed and creates no account", async () => {
+      const email = `vendor-registration-${tag}@auth-test.invalid`;
+      fixtureEmailAddresses.push(email);
+      const response = await request("/api/auth/vendor-register", { method: "POST", headers: { "content-type": "application/json", origin: baseUrl }, body: JSON.stringify({ email, password: correctPassword, firstName: "Closed", lastName: "Fixture", phone: "0500000000" }) });
+      assert.equal(response.status, 410);
+      assert.equal((await json(response)).code, "SELLER_SELF_REGISTRATION_CLOSED");
+      assert.equal(await prisma.user.count({ where: { email } }), 0);
+    });
+
+    await t.test("customer registration queues encrypted verification without sending email", async () => {
+      // Seller self-registration is closed (see the test above); only the customer path remains.
+      for (const role of ["customer"] as ("customer" | "vendor")[]) {
         const email = `${role}-registration-${tag}@auth-test.invalid`;
         fixtureEmailAddresses.push(email);
         const body = { email, password: correctPassword, firstName: `${role}Reg${tag}`, lastName: "Fixture", ...(role === "vendor" ? { phone: "0500000000" } : {}) };
@@ -774,8 +784,7 @@ test("real auth and cross-account checks use isolated fixture database only", { 
     await t.test("verified and cross-role duplicate addresses cannot resume another account verification", async () => {
       const attempts = [
         { path: "/api/auth/register", email: customerA.email, expectedRole: "CUSTOMER" },
-        { path: "/api/auth/vendor-register", email: customerA.email, expectedRole: "VENDOR" },
-      ] as const;
+      ] as { path: string; email: string; expectedRole: "CUSTOMER" | "VENDOR" }[];
       for (const attempt of attempts) {
         const response = await request(attempt.path, {
           method: "POST",

@@ -197,12 +197,22 @@ test("customer seller application requires no tax number and preserves existing 
   assert.doesNotMatch(application, /\.delete\(/);
 });
 
-test("vendor registration requires a contact phone and saves it on the existing vendor profile", () => {
+test("vendor registration schema still requires a contact phone", () => {
   const data = { email: "seller@example.test", password: "a-long-test-password", firstName: "Aysel", lastName: "Satici" };
   assert.equal(vendorRegisterSchema.safeParse(data).success, false);
   assert.equal(vendorRegisterSchema.safeParse({ ...data, phone: "+994501234567" }).success, true);
+});
+
+test("seller self-registration is closed: sellers start as customers and apply at /vendor/apply", () => {
   const route = source("app/api/auth/vendor-register/route.ts");
+  const page = source("app/vendor/register/page.tsx");
   const form = source("components/vendor-register-form.tsx");
-  assert.match(route, /vendorProfile:\s*\{\s*create:\s*\{[\s\S]*?phone:\s*parsed\.data\.phone/);
-  assert.match(form, /name="phone" type="tel" required/);
+  const login = source("components/vendor-login-form.tsx");
+  assert.match(route, /status: 410/);
+  assert.match(route, /SELLER_SELF_REGISTRATION_CLOSED/);
+  assert.doesNotMatch(route, /prisma|\.create\(/);
+  assert.match(page, /redirect\("\/register\?next=%2Fvendor%2Fapply"\)/);
+  assert.doesNotMatch(form, /GoogleOAuthButton/);
+  assert.match(login, /href="\/vendor\/apply"[\s\S]*?Satıcı olmaq istəyirəm/);
+  assert.doesNotMatch(login, /href="\/vendor\/register"/);
 });

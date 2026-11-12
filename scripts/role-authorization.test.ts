@@ -18,7 +18,9 @@ test("public registration assigns a fixed role and never reads a role from the r
   const customer = read("app/api/auth/register/route.ts");
   const vendor = read("app/api/auth/vendor-register/route.ts");
   assert.match(customer, /role: "CUSTOMER"/);
-  assert.match(vendor, /role: "VENDOR"/);
+  // Seller self-registration is closed: the route answers 410 and creates nothing.
+  assert.match(vendor, /status: 410/);
+  assert.doesNotMatch(vendor, /prisma|\.create\(|role: "VENDOR"/);
   for (const source of [customer, vendor]) {
     assert.doesNotMatch(source, /role: "ADMIN"/);
     assert.doesNotMatch(source, /(parsed\.data|body|data)\.role/);
@@ -27,7 +29,8 @@ test("public registration assigns a fixed role and never reads a role from the r
 
 test("Google sign-in can only target customer or seller accounts, never admin", () => {
   const callback = read("app/api/auth/google/callback/route.ts");
-  assert.match(callback, /const role = state\.intent === "vendor" \? "VENDOR" : "CUSTOMER"/);
+  assert.match(callback, /role: "CUSTOMER",/);
+  assert.doesNotMatch(callback, /role: "VENDOR"|vendorProfile/);
   assert.doesNotMatch(callback, /"ADMIN"/);
   assert.match(callback, /account\.role !== state\.intent\.toUpperCase\(\)/);
 });

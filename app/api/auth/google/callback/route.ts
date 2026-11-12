@@ -6,9 +6,10 @@ import { createSession } from "@/lib/auth";
 import { currentUser } from "@/lib/auth";
 import { logAuthFailure } from "@/lib/auth-logging";
 import { enqueueEmail } from "@/lib/email-outbox";
-import { GOOGLE_OAUTH_COOKIE, exchangeGoogleCode, googleOAuthConfig, googleOAuthCookieOptions, safeEqual, safeOAuthNextPath, verifyGoogleOAuthState, type GoogleOAuthIntent, type GoogleOAuthMode } from "@/lib/google-oauth";
+import { GOOGLE_OAUTH_COOKIE, GoogleEmailUnverifiedError, exchangeGoogleCode, googleOAuthConfig, googleOAuthCookieOptions, safeEqual, safeOAuthNextPath, verifyGoogleOAuthState, type GoogleOAuthIntent, type GoogleOAuthMode } from "@/lib/google-oauth";
+import { decideGoogleSignIn, intentRole, type GoogleSignInDecision } from "@/lib/google-oauth-decision";
 import { existingAccountIdentity } from "@/lib/existing-account";
-import { createGoogleLinkTransaction, GOOGLE_LINK_COOKIE, GOOGLE_LINK_NEXT_COOKIE, googleLinkCookieOptions, googleLinkDestination, isGoogleLinkableRole, isMissingGoogleLinkStore } from "@/lib/google-link";
+import { createGoogleLinkTransaction, GOOGLE_LINK_COOKIE, GOOGLE_LINK_NEXT_COOKIE, googleLinkCookieOptions, isMissingGoogleLinkStore } from "@/lib/google-link";
 import { loginPortalForRole, type LoginPortal } from "@/lib/login-portal";
 import { prisma } from "@/lib/prisma";
 import { authRateLimitKey, consumeAuthProcessRateLimit, consumeAuthRateLimit, OAUTH_IP_RATE_LIMIT } from "@/lib/auth-rate-limit";
@@ -18,7 +19,8 @@ type CallbackState = { intent: GoogleOAuthIntent; mode: GoogleOAuthMode; next: s
 
 function entryPath(intent: GoogleOAuthIntent, mode: GoogleOAuthMode) {
   if (mode === "link") return intent === "vendor" ? "/vendor/security" : "/account/security";
-  if (intent === "vendor") return mode === "register" ? "/vendor/register" : "/vendor/login";
+  // Seller self-registration is closed, so every seller result lands on the seller login page.
+  if (intent === "vendor") return "/vendor/login";
   return mode === "register" ? "/register" : "/login";
 }
 
@@ -26,29 +28,24 @@ function resultUrl(origin: string, state: CallbackState | null, result: string, 
   const target = new URL(entryPath(state?.intent ?? "customer", state?.mode ?? "login"), origin);
   target.searchParams.set("oauth", result);
   if (portal && (result === "account-exists" || result === "wrong-role" || result === "link-pending")) target.searchParams.set("portal", portal);
+  // Keep the customer's destination (e.g. /checkout, /vendor/apply) across an error on the login/register page.
+  if (state && state.intent === "customer" && state.mode !== "link" && state.next !== "/account") target.searchParams.set("next", state.next);
   return target;
 }
 
-async function redirectForExistingEmail(origin: string, state: CallbackState, email: string, googleSub: string) {
-  const existing = await existingAccountIdentity(email);
-  if (existing.kind === "none") return null;
-  const portal = existing.kind === "one" ? loginPortalForRole(existing.role) : undefined;
-  if (existing.kind === "one" && existing.isActive && isGoogleLinkableRole(existing.role)) {
-    try {
-      const token = await createGoogleLinkTransaction({ userId: existing.id, googleSub, email });
-      const intentMatches = (state.intent === "vendor" && portal === "vendor") || (state.intent === "customer" && portal === "customer");
-      const next = intentMatches ? safeOAuthNextPath(state.next, state.intent) : googleLinkDestination(existing.role);
-      const response = finish(NextResponse.redirect(new URL("/auth/google/link", origin)));
-      response.cookies.set(GOOGLE_LINK_COOKIE, token, googleLinkCookieOptions());
-      response.cookies.set(GOOGLE_LINK_NEXT_COOKIE, next, googleLinkCookieOptions());
-      return response;
-    } catch (error) {
-      if (!isMissingGoogleLinkStore(error)) throw error;
-      logAuthFailure("google_link_transaction_store", error);
-      return finish(NextResponse.redirect(new URL("/auth/google/link?status=unavailable", origin)));
-    }
+/** Starts the password-confirmed link for a same-role account. The browser never supplies the account id. */
+async function redirectToPasswordLink(origin: string, state: CallbackState, userId: string, email: string, googleSub: string) {
+  try {
+    const token = await createGoogleLinkTransaction({ userId, googleSub, email });
+    const response = finish(NextResponse.redirect(new URL("/auth/google/link", origin)));
+    response.cookies.set(GOOGLE_LINK_COOKIE, token, googleLinkCookieOptions());
+    response.cookies.set(GOOGLE_LINK_NEXT_COOKIE, safeOAuthNextPath(state.next, state.intent), googleLinkCookieOptions());
+    return response;
+  } catch (error) {
+    if (!isMissingGoogleLinkStore(error)) throw error;
+    logAuthFailure("google_link_transaction_store", error);
+    return finish(NextResponse.redirect(new URL("/auth/google/link?status=unavailable", origin)));
   }
-  return finish(NextResponse.redirect(resultUrl(origin, state, "account-exists", portal)));
 }
 
 function finish(response: NextResponse) {
@@ -143,23 +140,24 @@ export async function GET(request: NextRequest) {
       return finish(NextResponse.redirect(resultUrl(origin, state, "linked")));
     }
 
-    let userId = await linkedUserId(identity.sub);
-    if (userId) {
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, isActive: true } });
-      if (!user?.isActive || user.role !== state.intent.toUpperCase()) {
-        return finish(NextResponse.redirect(resultUrl(origin, state, "wrong-role", user?.isActive ? loginPortalForRole(user.role) : undefined)));
-      }
-      userId = user.id;
-    } else {
-      const existingRedirect = await redirectForExistingEmail(origin, state, identity.email, identity.sub);
-      if (existingRedirect) return existingRedirect;
-      if (state.mode === "login") return finish(NextResponse.redirect(resultUrl(origin, state, "not-registered")));
+    const resolve = async (): Promise<GoogleSignInDecision> => {
+      const linkedId = await linkedUserId(identity.sub);
+      const linkedUser = linkedId ? await prisma.user.findUnique({ where: { id: linkedId }, select: { id: true, role: true, isActive: true } }) : null;
+      // A dangling GoogleAccount row without a user is treated as unlinked; the unique index still guards creation.
+      return decideGoogleSignIn({
+        intent: state.intent,
+        linkedUser,
+        existing: linkedUser ? { kind: "none" } : await existingAccountIdentity(identity.email),
+      });
+    };
 
+    let decision = await resolve();
+    if (decision.kind === "create-customer") {
+      // Only reachable with intent=customer (see decideGoogleSignIn); the role is fixed here, never taken from state.
       const displayName = [identity.givenName, identity.familyName].filter(Boolean).join(" ") || identity.name || identity.email.split("@")[0];
       const firstName = identity.givenName || identity.name.split(/\s+/)[0] || "";
       const lastName = identity.familyName || identity.name.split(/\s+/).slice(1).join(" ");
       const passwordHash = await bcrypt.hash(randomBytes(48).toString("base64url"), 12);
-      const role = state.intent === "vendor" ? "VENDOR" : "CUSTOMER";
       try {
         const user = await prisma.$transaction(async transaction => {
           const created = await transaction.user.create({
@@ -167,12 +165,12 @@ export async function GET(request: NextRequest) {
               email: identity.email,
               passwordHash,
               passwordAuthEnabled: false,
-              role,
+              role: "CUSTOMER",
               isActive: true,
+              // exchangeGoogleCode only returns identities whose email Google has verified.
               emailVerifiedAt: new Date(),
-              ...(role === "CUSTOMER"
-                ? { customerProfile: { create: { firstName: firstName.slice(0, 80), lastName: lastName.slice(0, 80) } }, cart: { create: {} } }
-                : { vendorProfile: { create: { displayName: displayName.slice(0, 120) } } }),
+              customerProfile: { create: { firstName: firstName.slice(0, 80), lastName: lastName.slice(0, 80) } },
+              cart: { create: {} },
             },
             select: { id: true },
           });
@@ -183,27 +181,28 @@ export async function GET(request: NextRequest) {
           await enqueueEmail(transaction, {
             eventKey: `google-welcome:${created.id}`,
             recipient: identity.email,
-            template: role === "VENDOR" ? "WELCOME_SELLER" : "WELCOME_CUSTOMER",
+            template: "WELCOME_CUSTOMER",
             payload: { name: displayName },
           });
           return created;
         });
-        userId = user.id;
+        decision = { kind: "session", userId: user.id };
       } catch (error) {
-        const raced = await linkedUserId(identity.sub);
-        if (!raced) {
-          const conflictRedirect = await redirectForExistingEmail(origin, state, identity.email, identity.sub);
-          if (conflictRedirect) return conflictRedirect;
-          throw error;
-        }
-        userId = raced;
+        // A concurrent sign-in may have created the account or link; decide again from the database.
+        decision = await resolve();
+        if (decision.kind === "create-customer") throw error;
       }
     }
 
-    if (!userId) throw new Error("Google OAuth account resolution failed.");
+    if (decision.kind === "link") return redirectToPasswordLink(origin, state, decision.userId, identity.email, identity.sub);
+    if (decision.kind === "redirect") return finish(NextResponse.redirect(resultUrl(origin, state, decision.result, decision.portal)));
+    if (decision.kind !== "session") throw new Error("Google OAuth account resolution failed.");
+
+    const userId = decision.userId;
     const account = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, isActive: true } });
-    if (!account?.isActive || account.role !== state.intent.toUpperCase()) {
-      return finish(NextResponse.redirect(resultUrl(origin, state, "wrong-role", account?.isActive ? loginPortalForRole(account.role) : undefined)));
+    if (!account?.isActive) return finish(NextResponse.redirect(resultUrl(origin, state, "account-inactive")));
+    if (account.role !== intentRole(state.intent)) {
+      return finish(NextResponse.redirect(resultUrl(origin, state, "wrong-role", loginPortalForRole(account.role))));
     }
     const session = await createSession(userId);
     const destination = safeOAuthNextPath(state.next, state.intent);
@@ -211,6 +210,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(session);
     return finish(response);
   } catch (error) {
+    if (error instanceof GoogleEmailUnverifiedError) return finish(NextResponse.redirect(resultUrl(origin, state, "email-unverified")));
     logAuthFailure("google_oauth_callback", error);
     return finish(NextResponse.redirect(resultUrl(origin, state, "failed")));
   }

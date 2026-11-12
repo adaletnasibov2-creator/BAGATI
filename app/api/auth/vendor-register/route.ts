@@ -1,91 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
-import { logAuthFailure } from "@/lib/auth-logging";
-import { vendorRegisterSchema } from "@/lib/validation";
-import { enqueueVerificationEmail } from "@/lib/email-outbox";
-import { registrationAcknowledgement } from "@/lib/registration-response";
-import { isDuplicateEmailError, resumableRegistrationUserId } from "@/lib/registration-errors";
-import { authRateLimitKey, consumeAuthProcessRateLimit, consumeAuthRateLimit, REGISTRATION_IP_RATE_LIMIT, REGISTRATION_RATE_LIMIT } from "@/lib/auth-rate-limit";
-import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
-import {
-  EMAIL_CODE_TTL_MS,
-  generateVerificationCode,
-  hashVerificationCode,
-} from "@/lib/email-verification";
+import { NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
-  let data: unknown;
-  try {
-    data = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Sorğu məlumatları yanlışdır." }, { status: 400 });
-  }
+/**
+ * Seller self-registration is closed. A seller starts as a customer account and submits the
+ * seller application at /vendor/apply; stores then go through admin review. Nothing is created here.
+ */
+const SELLER_SELF_REGISTRATION_CLOSED_MESSAGE =
+  "Satıcı hesabı birbaşa yaradılmır. Əvvəlcə müştəri kimi qeydiyyatdan keçin, sonra satıcı müraciəti göndərin və admin təsdiqini gözləyin.";
 
-  const parsed = vendorRegisterSchema.safeParse(data);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Məlumatları yoxlayın.", details: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const email = parsed.data.email.toLowerCase();
-  if (!consumeAuthProcessRateLimit("registration", 120, 60_000)) {
-    return registrationAcknowledgement(null, "VENDOR", "/vendor/verify-email");
-  }
-  try {
-    const emailAllowed = await consumeAuthRateLimit(
-      authRateLimitKey("registration", email),
-      REGISTRATION_RATE_LIMIT.limit,
-      REGISTRATION_RATE_LIMIT.windowMs,
-    );
-    const clientIp = trustedCloudflareClientIp(request.headers);
-    const ipAllowed = !clientIp || await consumeAuthRateLimit(
-      authRateLimitKey("registration", `ip:${clientIp}`),
-      REGISTRATION_IP_RATE_LIMIT.limit,
-      REGISTRATION_IP_RATE_LIMIT.windowMs,
-    );
-    if (!emailAllowed || !ipAllowed) return registrationAcknowledgement(null, "VENDOR", "/vendor/verify-email");
-  } catch (error) {
-    logAuthFailure("vendor_registration_rate_limit", error);
-    return NextResponse.json({ error: "Qeydiyyat xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
-  }
-  let exists;
-  try { exists = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true, emailVerifiedAt: true } }); }
-  catch (error) { logAuthFailure("vendor_registration_lookup", error); return NextResponse.json({ error: "Qeydiyyat xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } }); }
-  if (exists) {
-    const userId = await resumableRegistrationUserId(exists, parsed.data.password, "VENDOR");
-    return registrationAcknowledgement(userId, "VENDOR", "/vendor/verify-email");
-  }
-
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const code = generateVerificationCode();
-  const now = new Date();
-  const codeHash = hashVerificationCode(code);
-  let user;
-  try { user = await prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        email, passwordHash, role: "VENDOR", emailVerifiedAt: null,
-        vendorProfile: { create: { displayName: `${parsed.data.firstName} ${parsed.data.lastName}`.trim(), phone: parsed.data.phone } },
-        emailVerification: { create: { codeHash, expiresAt: new Date(now.getTime() + EMAIL_CODE_TTL_MS), lastSentAt: now, resendWindowStartedAt: now } },
-      },
-      select: { id: true, email: true, role: true },
-    });
-    await enqueueVerificationEmail(tx, { userId: created.id, recipient: created.email, codeHash, code, expiresAt: new Date(now.getTime() + EMAIL_CODE_TTL_MS) });
-    return created;
-  }); } catch (error) {
-    if (isDuplicateEmailError(error)) {
-      try {
-        const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true, emailVerifiedAt: true } });
-        const userId = await resumableRegistrationUserId(existing, parsed.data.password, "VENDOR");
-        return registrationAcknowledgement(userId, "VENDOR", "/vendor/verify-email");
-      } catch (lookupError) {
-        logAuthFailure("vendor_registration_duplicate_lookup", lookupError);
-        return NextResponse.json({ error: "Qeydiyyat xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
-      }
-    }
-    logAuthFailure("vendor_registration_create", error);
-    return NextResponse.json({ error: "Qeydiyyatı tamamlamaq mümkün olmadı. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
-  }
-
-  return registrationAcknowledgement(user.id, user.role, "/vendor/verify-email");
+export async function POST() {
+  return NextResponse.json(
+    {
+      error: SELLER_SELF_REGISTRATION_CLOSED_MESSAGE,
+      code: "SELLER_SELF_REGISTRATION_CLOSED",
+      registerPath: "/register?next=%2Fvendor%2Fapply",
+      applyPath: "/vendor/apply",
+    },
+    { status: 410, headers: { "Cache-Control": "no-store" } },
+  );
 }

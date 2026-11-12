@@ -4,9 +4,9 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registrationErrorMessage } from "@/lib/auth-form-errors";
-import { GoogleOAuthButton } from "@/components/google-oauth-button";
 
-export default function VendorRegisterForm({ oauthError, portal }: { oauthError?: string; portal?: string | null }) {
+/** Unused since seller self-registration closed (Option A); /vendor/register redirects to customer registration. */
+export default function VendorRegisterForm() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,7 +27,6 @@ export default function VendorRegisterForm({ oauthError, portal }: { oauthError?
   }
   const field = "mt-1.5 w-full rounded-xl border border-[#E1DED4] bg-white px-4 py-3 outline-none focus:border-[#D9A441]";
   return <>
-    <GoogleOAuthButton intent="vendor" mode="register" nextPath="/vendor" errorCode={oauthError} portal={portal}/>
     <form onSubmit={submit} className="mt-7 space-y-4">
     <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Ad<input name="firstName" required maxLength={80} autoComplete="given-name" className={field}/></label><label className="text-sm font-medium">Soyad<input name="lastName" required maxLength={80} autoComplete="family-name" className={field}/></label></div>
     <label className="block text-sm font-medium">E-poçt<input name="email" type="email" required maxLength={254} autoComplete="email" className={field}/></label>

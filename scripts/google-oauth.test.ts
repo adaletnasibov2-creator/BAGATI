@@ -247,7 +247,9 @@ test("OAuth account creation and linking preserve legacy password state without 
   assert.match(migration, /FOREIGN KEY \("userId"\) REFERENCES "User"\("id"\) ON DELETE CASCADE/);
   assert.doesNotMatch(migration, /\b(DROP|TRUNCATE)\b|DELETE\s+FROM|\bUPDATE\s+"(?:User|GoogleAccount)"/i);
   assert.match(oauth, /email_verified !== true/);
-  assert.match(callback, /state\.mode === "login"/);
+  // Customer sign-in may create a CUSTOMER account in login or register mode; the decision lives in lib/google-oauth-decision.ts.
+  assert.match(callback, /decideGoogleSignIn\(/);
+  assert.doesNotMatch(callback, /resultUrl\(origin, state, "not-registered"/);
   assert.match(callback, /state\.intent\.toUpperCase\(\)/);
   assert.match(callback, /account-exists/);
   assert.match(callback, /existingAccountIdentity/);
@@ -271,7 +273,7 @@ test("OAuth account creation and linking preserve legacy password state without 
   assert.match(preserveLinkedPasswordAuthMigration, /Intentionally no data backfill/);
   assert.doesNotMatch(preserveLinkedPasswordAuthMigration, /\b(UPDATE|DELETE|INSERT|DROP|TRUNCATE)\b/i);
   assert.match(schema, /passwordAuthEnabled\s+Boolean\s+@default\(true\)/);
-  const linkingFlow = callback.slice(callback.indexOf('if (state.mode === "link")'), callback.indexOf("let userId = await linkedUserId"));
+  const linkingFlow = callback.slice(callback.indexOf('if (state.mode === "link")'), callback.indexOf("const resolve = async"));
   assert.match(linkingFlow, /googleAccount\.create/);
   assert.doesNotMatch(linkingFlow, /passwordAuthEnabled/);
   assert.match(callback, /transaction\.user\.create\([\s\S]*?passwordAuthEnabled: false/);

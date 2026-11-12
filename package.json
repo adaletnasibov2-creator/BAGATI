@@ -12,6 +12,8 @@
     "test:auth": "tsx --test scripts/auth-security.test.ts",
     "test:auth:switch": "tsx --test scripts/auth-account-switch.integration.test.ts",
     "test:google-oauth": "tsx --test scripts/google-oauth.test.ts",
+    "test:google-oauth-decision": "tsx --test scripts/google-oauth-decision.test.ts",
+    "test:google-signin:integration": "tsx --test scripts/google-signin.integration.test.ts",
     "test:csrf": "tsx --test scripts/csrf.test.ts",
     "test:category-order": "tsx --test scripts/category-order.test.ts",
     "test:public-product-catalog": "tsx --test scripts/public-product-catalog.test.ts",

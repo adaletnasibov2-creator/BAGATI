@@ -17,7 +17,7 @@ import {
 
 function formPath(intent: GoogleOAuthIntent, mode: GoogleOAuthMode) {
   if (mode === "link") return intent === "vendor" ? "/vendor/security" : "/account/security";
-  if (intent === "vendor") return mode === "register" ? "/vendor/register" : "/vendor/login";
+  if (intent === "vendor") return "/vendor/login";
   return mode === "register" ? "/register" : "/login";
 }
 
@@ -31,6 +31,10 @@ export async function GET(request: NextRequest) {
   }
   const intent: GoogleOAuthIntent = intentValue;
   const mode: GoogleOAuthMode = modeValue;
+  // Seller accounts are never created through Google; sellers apply from a customer account at /vendor/apply.
+  if (intent === "vendor" && mode === "register") {
+    return NextResponse.redirect(new URL("/vendor/login?oauth=invalid", origin));
+  }
   if (!consumeAuthProcessRateLimit("google-oauth-start", 600, 60_000)) {
     return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=unavailable`, origin));
   }

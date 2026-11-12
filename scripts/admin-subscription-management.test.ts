@@ -24,17 +24,22 @@ test("Basic and Pro can bulk import; pending, suspended, expired and out-of-peri
 
 test("admin subscription controls are role protected, store scoped, manual-only and audited", () => {
   const api = source("app/api/admin/[...resource]/route.ts");
+  // The manual save transaction lives in lib/admin-manual-subscription.ts; the route only validates and delegates.
+  const save = source("lib/admin-manual-subscription.ts");
   const schema = source("prisma/schema.prisma");
   const adminPage = source("app/admin/[...section]/page.tsx");
   assert.match(api, /export async function PATCH[\s\S]*?requireRole\("ADMIN"\)/);
   assert.match(api, /adminSubscriptionSchema[\s\S]*?storeId:[\s\S]*?planId:[\s\S]*?currentPeriodStart:[\s\S]*?currentPeriodEnd:[\s\S]*?reason:/);
-  assert.match(api, /SELECT "id" FROM "Store" WHERE "id" = \$\{parsed\.data\.storeId\} FOR UPDATE/);
-  assert.match(api, /accessSource: "ADMIN_MANUAL"/);
-  assert.match(api, /ADMIN_SUBSCRIPTION_MANUAL_CREATE/);
-  assert.match(api, /ADMIN_SUBSCRIPTION_MANUAL_UPDATE/);
+  assert.match(api, /saveManualSubscription\(tx, \{[\s\S]*?storeId: parsed\.data\.storeId[\s\S]*?adminId: admin\.id/);
+  assert.match(save, /SELECT "id" FROM "Store" WHERE "id" = \$\{input\.storeId\} FOR UPDATE/);
+  assert.match(save, /accessSource: "ADMIN_MANUAL"/);
+  assert.match(save, /ADMIN_SUBSCRIPTION_MANUAL_CREATE/);
+  assert.match(save, /ADMIN_SUBSCRIPTION_MANUAL_UPDATE/);
+  assert.match(save, /actorId: input\.adminId/);
   assert.match(api, /actorId: admin\.id/);
-  assert.match(api, /grantReason: parsed\.data\.reason/);
+  assert.match(save, /grantReason: input\.reason/);
   assert.doesNotMatch(api, /payment\.create\(/);
+  assert.doesNotMatch(save, /payment\.create\(/);
   assert.match(schema, /enum SubscriptionAccessSource[\s\S]*ADMIN_MANUAL[\s\S]*PAYMENT_CONFIRMED/);
   assert.match(adminPage, /db\.store\.findMany\(\{where,select:\{[\s\S]*subscription:\{select:\{[\s\S]*plan:\{select:\{name:true,monthlyPrice:true\}\},grantedByAdmin:\{select:\{email:true\}\}/);
   assert.match(adminPage, /<AdminSubscriptionManager storeId=\{store\.id\}/);

@@ -18,7 +18,8 @@ const archiveRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/
 const deleteStoreRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/route.ts"), "utf8");
 const activationRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/activation/route.ts"), "utf8");
 const activationAction = readFileSync(resolve(root, "components/admin-store-activation-action.tsx"), "utf8");
-const reviewRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/review/route.ts"), "utf8");
+// The review route delegates its transaction to lib/store-review-transaction.ts; check both together.
+const reviewRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/review/route.ts"), "utf8") + "\n" + readFileSync(resolve(root, "lib/store-review-transaction.ts"), "utf8");
 const vendorStoreRoute = readFileSync(resolve(root, "app/api/vendor/[storeId]/[section]/route.ts"), "utf8");
 const vendorOverview = readFileSync(resolve(root, "app/vendor/[storeId]/page.tsx"), "utf8");
 

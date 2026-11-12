@@ -760,7 +760,7 @@ test("worker delivers the verification code accepted by the verification logic",
 
 test("event routes enqueue within committed flows and admin email operations require ADMIN", () => {
   const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
-  for (const route of ["app/api/auth/register/route.ts", "app/api/orders/route.ts", "app/api/vendor/apply/route.ts", "app/api/admin/stores/[storeId]/review/route.ts"]) {
+  for (const route of ["app/api/auth/register/route.ts", "app/api/orders/route.ts", "app/api/vendor/apply/route.ts", "lib/store-review-transaction.ts"]) {
     assert.match(source(route), /enqueue(?:Verification)?Email\(/, `${route} should enqueue its actual event`);
   }
   const adminEmail = source("app/api/admin/email/route.ts");

@@ -13,6 +13,7 @@ import { hasCommissionRuleConflict } from "@/lib/commission-rules";
 import { logSecurityOperationFailure } from "@/lib/security-logging";
 import { getProductPublicationBlockers } from "@/lib/admin-store-product-publishing";
 import { supportedSubscriptionPlanSlugs } from "@/lib/subscription-plans";
+import { saveManualSubscription } from "@/lib/admin-manual-subscription";
 
 const db: any = prisma;
 const storeStatuses = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "SUSPENDED", "REJECTED"] as const;
@@ -109,34 +110,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const now = new Date();
     if (parsed.data.status === "ACTIVE" && (periodStart > now || periodEnd <= now)) return NextResponse.json({ error: "Aktiv abunəlik dövrü bugünkü tarixi əhatə etməlidir." }, { status: 422 });
     try {
-      const result = await db.$transaction(async (tx: any) => {
-        await tx.$queryRaw`SELECT "id" FROM "Store" WHERE "id" = ${parsed.data.storeId} FOR UPDATE`;
-        const store = await tx.store.findUnique({ where: { id: parsed.data.storeId }, select: { id: true, name: true, vendor: { select: { user: { select: { email: true } } } } } });
-        if (!store) return { missingStore: true as const };
-        const plan = await tx.subscriptionPlan.findFirst({ where: { id: parsed.data.planId, isActive: true, slug: { in: [...supportedSubscriptionPlanSlugs] } }, select: { id: true, name: true } });
-        if (!plan) return { invalidPlan: true as const };
-        const prior = await tx.storeSubscription.findUnique({ where: { storeId: store.id }, include: { plan: { select: { id: true, name: true } } } });
-        const values = {
-          planId: plan.id, status: parsed.data.status, currentPeriodStart: periodStart, currentPeriodEnd: periodEnd,
-          ...(parsed.data.status === "ACTIVE" ? { startedAt: prior?.startedAt ?? now, cancelledAt: null } : parsed.data.status === "CANCELLED" ? { cancelledAt: now } : {}),
-          accessSource: "ADMIN_MANUAL" as const, grantedByAdminId: admin.id, grantReason: parsed.data.reason,
-        };
-        const item = prior
-          ? await tx.storeSubscription.update({ where: { id: prior.id }, data: values, include: { plan: true, grantedByAdmin: { select: { id: true, email: true } } } })
-          : await tx.storeSubscription.create({ data: { storeId: store.id, ...values }, include: { plan: true, grantedByAdmin: { select: { id: true, email: true } } } });
-        const auditRow = await tx.auditLog.create({ data: {
-          actorId: admin.id, action: prior ? "ADMIN_SUBSCRIPTION_MANUAL_UPDATE" : "ADMIN_SUBSCRIPTION_MANUAL_CREATE",
-          entityType: "StoreSubscription", entityId: item.id,
-          metadata: { source: "ADMIN_MANUAL", reason: parsed.data.reason,
-            previous: prior ? { planId: prior.planId, planName: prior.plan.name, status: prior.status, currentPeriodStart: prior.currentPeriodStart?.toISOString() ?? null, currentPeriodEnd: prior.currentPeriodEnd?.toISOString() ?? null, accessSource: prior.accessSource } : null,
-            next: { planId: plan.id, planName: plan.name, status: item.status, currentPeriodStart: periodStart.toISOString(), currentPeriodEnd: periodEnd.toISOString(), accessSource: "ADMIN_MANUAL" } },
-        }, select: { id: true } });
-        if (!prior || prior.status !== item.status) await enqueueEmail(tx, { eventKey: `subscription-status:${auditRow.id}`, recipient: store.vendor.user.email, template: "SUBSCRIPTION_STATUS", payload: { storeName: store.name, planName: plan.name, status: item.status } });
-        return { item };
-      }, { isolationLevel: "Serializable" });
+      const result = await db.$transaction((tx: any) => saveManualSubscription(tx, {
+        storeId: parsed.data.storeId, planId: parsed.data.planId, status: parsed.data.status,
+        periodStart, periodEnd, reason: parsed.data.reason, adminId: admin.id, now,
+      }), { isolationLevel: "Serializable" });
       if ("missingStore" in result) return NextResponse.json({ error: "Mağaza tapılmadı." }, { status: 404 });
       if ("invalidPlan" in result) return NextResponse.json({ error: "Aktiv BASIC və ya PRO planı seçin." }, { status: 422 });
-      return NextResponse.json({ item: result.item, message: "Admin tərəfindən verilən əl ilə giriş saxlanıldı. Ödəniş və ya ödəniş təsdiqi qeydə alınmayıb." });
+      return NextResponse.json({ item: result.item, complimentaryRevoked: result.complimentaryRevoked, message: `Admin tərəfindən verilən əl ilə giriş saxlanıldı. Ödəniş və ya ödəniş təsdiqi qeydə alınmayıb.${result.complimentaryRevoked ? " Ödənişsiz satış icazəsi ləğv edildi." : ""}` });
     } catch (error) {
       return createFailure(error, "admin_subscription_manual_change", "Abunəlik eyni vaxtda dəyişdirilib. Yenidən yükləyib təkrar edin.");
     }

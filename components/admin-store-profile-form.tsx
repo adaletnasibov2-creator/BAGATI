@@ -42,6 +42,6 @@ export default function AdminStoreProfileForm({ store }: { store: any }) {
       { name: "description", label: "Təsvir", type: "textarea", value: store.description },
     ]}/>
     <AdminStoreArchiveAction storeId={store.id} storeName={store.name}/>
-    <AdminStoreReviewActions storeId={store.id} status={store.status} legalInfoApproved={store.legalInfoApproved} sellerType={store.vendor?.sellerType||null} legalName={store.vendor?.legalName||null} voen={store.vendor?.voen||null} legalAddress={store.vendor?.legalAddress||null}/>
+    <AdminStoreReviewActions storeId={store.id} status={store.status} legalInfoApproved={store.legalInfoApproved} sellerType={store.vendor?.sellerType||null} legalName={store.vendor?.legalName||null} voen={store.vendor?.voen||null} legalAddress={store.vendor?.legalAddress||null} hasActiveGrant={Boolean(store.complimentaryEntitlements?.some((grant: { revokedAt: unknown }) => !grant.revokedAt))}/>
   </section>;
 }

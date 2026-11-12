@@ -100,3 +100,28 @@ export async function changeComplimentary(tx: any, input: { storeId: string; adm
   await audit(tx, input.adminId, COMPLIMENTARY_AUDIT.change, row.id, { storeId: input.storeId, source: "ADMIN_PANEL", reason: input.reason, previous: snapshot(existing), next: snapshot(row) });
   return { kind: "CHANGED" as const, grant: row, previous: existing };
 }
+
+/** Prisma select for the admin grant history panel (newest first). */
+export const complimentaryHistorySelect = {
+  orderBy: { grantedAt: "desc" },
+  take: 10,
+  select: { id: true, tier: true, endsAt: true, grantReason: true, grantedAt: true, revokedAt: true, revokeReason: true, grantedByAdmin: { select: { email: true } }, revokedByAdmin: { select: { email: true } } },
+} as const;
+
+/** Serializes a history row for the client panel (ISO strings only). */
+export function complimentaryGrantView(row: {
+  id: string; tier: string; endsAt: Date | null; grantReason: string; grantedAt: Date; revokedAt: Date | null; revokeReason: string | null;
+  grantedByAdmin?: { email: string } | null; revokedByAdmin?: { email: string } | null;
+}) {
+  return {
+    id: row.id,
+    tier: row.tier === "PRO" ? "PRO" as const : "BASIC" as const,
+    endsAt: row.endsAt?.toISOString() ?? null,
+    grantReason: row.grantReason,
+    grantedAt: row.grantedAt.toISOString(),
+    grantedBy: row.grantedByAdmin?.email ?? null,
+    revokedAt: row.revokedAt?.toISOString() ?? null,
+    revokeReason: row.revokeReason,
+    revokedBy: row.revokedByAdmin?.email ?? null,
+  };
+}

@@ -152,3 +152,17 @@ test("the grant API is ADMIN-only, locks the store, and requires a reason for ev
   assert.match(api, /FOR UPDATE/);
   assert.equal((api.match(/reason: complimentaryReasonSchema/g) ?? []).length, 3);
 });
+
+test("approval UI: the free-sale option starts OFF and is only sent with approve", () => {
+  const ui = source("components/admin-store-review-actions.tsx");
+  assert.match(ui, /const \[freeSale, setFreeSale\] = useState\(false\);/);
+  assert.match(ui, /const withFreeSale = action === "approve" && freeSale;/);
+  assert.match(ui, /\.\.\.\(withFreeSale \? \{ complimentary: \{ tier: freeTier, endsAt: freeEndsAt \|\| null, reason: freeReason\.trim\(\) \} \} : \{\}\)/);
+  assert.match(ui, /Ödənişsiz satış \(admin icazəsi\)/);
+});
+
+test("admin store page and subscriptions page both render the grant panel", () => {
+  const page = source("app/admin/[...section]/page.tsx");
+  assert.equal((page.match(/<AdminComplimentaryManager storeId=\{store\.id\}/g) ?? []).length, 2);
+  assert.equal((page.match(/complimentaryEntitlements:complimentaryHistorySelect/g) ?? []).length, 2);
+});

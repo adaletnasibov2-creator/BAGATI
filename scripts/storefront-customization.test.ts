@@ -77,8 +77,10 @@ test("public storefront is dynamic, uses shared eligibility, and keeps draft pro
   assert.match(storefrontPage, /generateMetadata/);
   assert.match(storefrontCompatibilityPolicy(), /to_jsonb\(store_record\)/);
   assert.match(storefrontHeader, /Mağaza bölmələri/);
-  assert.match(storefrontHeader, /tel:\$\{store\.contactPhone\}/);
-  assert.match(storefrontHeader, /mailto:\$\{store\.contactEmail\}/);
+  // Contact: WhatsApp (new tab) and the message form; the store email is never rendered publicly.
+  assert.match(storefrontHeader, /href=\{store\.whatsappUrl\} target="_blank" rel="noopener noreferrer"/);
+  assert.match(storefrontHeader, /href="#store-message"/);
+  assert.doesNotMatch(storefrontHeader, /mailto:|contactEmail/);
   assert.match(storefrontImage, /failedSrc === src/);
   assert.match(storefrontImage, /onError=\{\(\) => setFailedSrc\(src\)\}/);
   assert.match(productImage, /onError=\{\(\) => setFailedSources\(\(current\) => \[\.\.\.current, primarySrc\]\)\}/);
@@ -90,7 +92,8 @@ test("public store pages remain compatible before additive branding columns are 
   assert.match(discovery, /id: true,\s*name: true,\s*slug: true,\s*description: true,\s*logoUrl: true,\s*latitude: true,\s*longitude: true/);
   assert.doesNotMatch(storesDirectory, /voen|legalAddress|contactEmail/);
   assert.doesNotMatch(storesDirectory, /include:\s*\{\s*city:/);
-  assert.match(storefrontPage, /const storeSelect = \{[\s\S]*?description: true,[\s\S]*?logoUrl: true,[\s\S]*?contactPhone: true,[\s\S]*?contactEmail: true/);
+  assert.match(storefrontPage, /const storeSelect = \{[\s\S]*?description: true,[\s\S]*?logoUrl: true,[\s\S]*?contactPhone: true,/);
+  assert.doesNotMatch(storefrontPage.slice(storefrontPage.indexOf("const storeSelect = {"), storefrontPage.indexOf("satisfies Prisma.StoreSelect")), /contactEmail: true/);
   assert.match(storefrontPage, /select: storeSelect/);
   assert.doesNotMatch(storefrontPage, /vendor:\s*\{\s*include:/);
   assert.match(storefrontPage, /getStorefrontBrandingCompatibility\(store\.id\)/);

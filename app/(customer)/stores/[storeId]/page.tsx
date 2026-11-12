@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { Search } from "lucide-react";
+import { PackageOpen, Search } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isPublicStoreEligible } from "@/lib/store-eligibility";
@@ -12,7 +12,9 @@ import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
 import StorefrontBranding, { type StorefrontBrand } from "@/components/storefront-branding";
-import { InteractiveMap } from "@/components/interactive-map";
+import StorefrontContact from "@/components/storefront-contact";
+import { buildTelHref, buildWhatsAppUrl, normalizeAzPhone } from "@/lib/az-phone";
+import { formatStoreAddress, openStreetMapUrl, safePublicMapUrl } from "@/lib/store-public-contact";
 import { calculateEffectivePrice } from "@/lib/promotion-pricing";
 import { normalizeProductCatalogSort, productCatalogOrderBy } from "@/lib/catalog-sort";
 
@@ -42,7 +44,7 @@ const storeSelect = {
   latitude: true,
   longitude: true,
   contactPhone: true,
-  contactEmail: true,
+  // contactEmail is intentionally NOT selected: the store's email must never reach the public page or the browser.
   city: { select: { name: true, isActive: true } },
   vendor: {
     select: {
@@ -141,17 +143,10 @@ export default async function StorefrontPage({
 
   const publicLogo = store.logoUrl && isOwnedStoreAssetUrl(store.id, store.logoUrl) ? store.logoUrl : null;
   const publicBanner = branding.bannerUrl && isOwnedStoreAssetUrl(store.id, branding.bannerUrl) ? branding.bannerUrl : null;
-  const publicStorefront: StorefrontBrand = {
-    id: store.id,
-    name: store.name,
-    description: store.description,
-    logoUrl: publicLogo,
-    bannerUrl: publicBanner,
-    theme: branding.theme ?? "forest",
-    city: store.city,
-    contactPhone: store.contactPhone,
-    contactEmail: store.contactEmail,
-  };
+  const phone = normalizeAzPhone(store.contactPhone);
+  const whatsappUrl = buildWhatsAppUrl(store.contactPhone, store.name);
+  const description = store.description?.trim() || null;
+  const coordinates = store.latitude !== null && store.longitude !== null ? { latitude: store.latitude, longitude: store.longitude } : null;
 
   const rawQuery = firstParam(search.q)?.trim() ?? "";
   const queryTooLong = rawQuery.length > MAX_STOREFRONT_SEARCH_LENGTH;
@@ -174,14 +169,17 @@ export default async function StorefrontPage({
     } : {}),
   };
 
-  const [categoryResult, catalogCount] = await Promise.all([
+  const hasFilters = Boolean(query || category);
+  const [categoryResult, catalogCount, unfilteredCount] = await Promise.all([
     prisma.product.findMany({
       where: { ...productWhere, categoryId: { not: null }, category: { isActive: true } },
       select: { category: { select: { id: true, name: true, slug: true } } },
       distinct: ["categoryId"],
     }),
     prisma.product.count({ where: catalogWhere }),
+    hasFilters ? prisma.product.count({ where: productWhere }) : Promise.resolve(null),
   ]);
+  const storeProductCount = unfilteredCount ?? catalogCount;
   const totalPages = Math.max(1, Math.ceil(catalogCount / STOREFRONT_PAGE_SIZE));
   const currentPage = storefrontPageNumber(firstParam(search.page), totalPages);
   const skip = (currentPage - 1) * STOREFRONT_PAGE_SIZE;
@@ -268,14 +266,35 @@ export default async function StorefrontPage({
     const campaign = promoted.get(product.id);
     return campaign ? { ...product, ...campaign, storeId: store.id } : { ...product, storeId: store.id };
   });
-  const hasFilters = Boolean(query || category);
   const hasNonDefaultSort = sort !== "newest";
   const hasCatalogSelection = hasFilters || hasNonDefaultSort;
   const filterParams = { q: query, category, sort };
 
   return <div className="container py-6 sm:py-9">
-    <StorefrontBranding store={publicStorefront} categoryCount={availableCategories.length}/>
+    <StorefrontBranding store={{
+      id: store.id,
+      name: store.name,
+      logoUrl: publicLogo,
+      bannerUrl: publicBanner,
+      theme: branding.theme ?? "forest",
+      cityName: store.city.name,
+      whatsappUrl,
+      hasAbout: Boolean(description),
+      productCount: storeProductCount,
+    } satisfies StorefrontBrand}/>
 
+    {storeProductCount === 0
+      ? <section id="store-products" className="mt-6 scroll-mt-6 rounded-2xl border border-dashed border-[#D9D3C5] bg-white px-5 py-10 text-center sm:px-10">
+        <span aria-hidden="true" className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#F0F4F0] text-[#2F5D50]"><PackageOpen size={26}/></span>
+        <h2 className="mt-4 text-xl font-semibold text-ink">Mağaza hələ məhsul yayımlamayıb</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">Satıcı məhsullarını hazırlayır. Axtardığınız məhsul barədə soruşmaq istəyirsinizsə, satıcıya birbaşa yazın.</p>
+        <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+          {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">WhatsApp-da soruş</a>}
+          <a href="#store-message" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Mesaj yaz</a>
+          <Link href="/stores" className="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-medium text-emerald hover:underline">Digər mağazalara bax</Link>
+        </div>
+      </section>
+      : <>
     {availableCategories.length > 0 && <nav id="store-categories" aria-label="Mağaza kateqoriyaları" className="mt-5 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
       <Link
         href={storefrontPageHref(store.id, 1, { ...filterParams, category: "" })}
@@ -290,7 +309,7 @@ export default async function StorefrontPage({
       >{item.name}</Link>)}
     </nav>}
 
-    <section id="store-products" className="mt-7 scroll-mt-6">
+    <section id="store-products" className="mt-6 scroll-mt-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Mağazanın kataloqu</p>
@@ -348,24 +367,19 @@ export default async function StorefrontPage({
         {currentPage < totalPages && <Link href={storefrontPageHref(store.id, currentPage + 1, filterParams)} rel="next" className="inline-flex min-h-11 items-center rounded-full border border-line bg-white px-4 text-sm font-medium text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Növbəti</Link>}
       </nav>}
     </section>
+    </>}
 
-    {store.description && <section id="store-about" className="mt-10 scroll-mt-6 rounded-2xl border border-line bg-white p-5 sm:p-7">
-      <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Mağaza haqqında</p>
-      <h2 className="mt-1 text-xl font-semibold text-ink">{store.name}</h2>
-      <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-7 text-muted">{store.description}</p>
-    </section>}
-
-    {(store.address || store.mapUrl || (store.latitude !== null && store.longitude !== null)) && <section className="mt-6 grid gap-4 rounded-2xl border border-line bg-white p-5 sm:grid-cols-[1fr_1.2fr] sm:p-6">
-      <div>
-        <h2 className="font-semibold text-ink">Mağaza ünvanı</h2>
-        <p className="mt-2 text-sm text-muted">{[store.address, store.city.name].filter(Boolean).join(", ")}</p>
-        {store.contactPhone && <a href={`tel:${store.contactPhone}`} className="mt-2 inline-flex min-h-11 items-center text-sm text-muted">Telefon: {store.contactPhone}</a>}
-        {store.contactEmail && <a href={`mailto:${store.contactEmail}`} className="mt-1 inline-flex min-h-11 items-center text-sm text-muted">E-poçt: {store.contactEmail}</a>}
-        {store.mapUrl && <a href={store.mapUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center text-sm text-emerald">Xəritədə aç →</a>}
-        {store.latitude !== null && store.longitude !== null && <a href={`https://www.openstreetmap.org/?mlat=${store.latitude}&mlon=${store.longitude}#map=15/${store.latitude}/${store.longitude}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center text-sm text-emerald">Mövqeyi OpenStreetMap-də aç →</a>}
-      </div>
-      {store.latitude !== null && store.longitude !== null && <InteractiveMap selected={{ latitude: store.latitude, longitude: store.longitude }} className="h-56" zoom={14}/>}
-    </section>}
+    <StorefrontContact info={{
+      storeId: store.id,
+      storeName: store.name,
+      description,
+      whatsappUrl,
+      phoneDisplay: phone?.display ?? null,
+      telHref: buildTelHref(store.contactPhone),
+      address: formatStoreAddress(store.address, store.city.name),
+      mapLink: safePublicMapUrl(store.mapUrl) ?? openStreetMapUrl(store.latitude, store.longitude),
+      coordinates,
+    }}/>
     <div className="mt-8 text-right"><a href="#top" className="inline-flex min-h-11 items-center text-sm text-muted hover:underline">Səhifənin əvvəlinə ↑</a></div>
   </div>;
 }

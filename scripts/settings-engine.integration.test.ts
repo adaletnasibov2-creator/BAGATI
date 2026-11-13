@@ -127,3 +127,83 @@ test("settings engine on the verify database: versions, revisions, audit, reset,
     await prisma.$disconnect();
   }
 });
+
+test("order commission: store rule ?? default setting ?? null, snapshotted once and never changed afterwards", { timeout: 120_000 }, async (t) => {
+  const guard = guardedVerifyUrl();
+  if ("skip" in guard) return t.skip(`NOT VERIFIED: ${guard.skip}`);
+  if ("refuse" in guard) throw new Error(`Refusing to run: ${guard.refuse}.`);
+  process.env.DATABASE_URL = guard.url;
+  const prisma = new PrismaClient({ datasources: { db: { url: guard.url } } });
+  const tag = randomUUID().replace(/-/g, "").slice(0, 10);
+  const ids = { users: [] as string[], stores: [] as string[], orders: [] as string[], cityId: "" };
+  try {
+    try { await prisma.$queryRaw`SELECT 1`; } catch { return t.skip("NOT VERIFIED: verify database on 127.0.0.1:5433 is unreachable"); }
+    const table = await prisma.$queryRaw<Array<{ t: string | null }>>`SELECT to_regclass('"SiteSetting"')::text AS t`;
+    if (!table[0]?.t) return t.skip("NOT VERIFIED: SiteSetting table missing in this schema");
+    if (await prisma.siteSetting.count({ where: { key: KEY } })) return t.skip(`NOT VERIFIED: ${KEY} already has a row in this schema; refusing to change it`);
+
+    const { commissionRatesForNewOrder } = await import("../lib/order-commission");
+    const write = await import("../lib/settings/write");
+    const admin = await prisma.user.create({ data: { email: `commission-admin-${tag}@verify.invalid`, passwordHash: "x", role: "ADMIN" } });
+    const customer = await prisma.user.create({ data: { email: `commission-customer-${tag}@verify.invalid`, passwordHash: "x", role: "CUSTOMER" } });
+    const seller = await prisma.user.create({ data: { email: `commission-seller-${tag}@verify.invalid`, passwordHash: "x", role: "VENDOR", vendorProfile: { create: { displayName: "Commission Seller" } } }, include: { vendorProfile: true } });
+    ids.users.push(admin.id, customer.id, seller.id);
+    const city = await prisma.city.create({ data: { name: `Commission City ${tag}`, slug: `commission-city-${tag}` } });
+    ids.cityId = city.id;
+    const store = (label: string) => prisma.store.create({ data: { vendorId: seller.vendorProfile!.id, cityId: city.id, name: `${label} ${tag}`, slug: `${label.toLowerCase()}-${tag}` } });
+    const plain = await store("Plain");
+    const ruled = await store("Ruled");
+    ids.stores.push(plain.id, ruled.id);
+    await prisma.commission.create({ data: { storeId: ruled.id, rate: "0.0500", startsAt: new Date(Date.now() - 86_400_000) } });
+    const sensitive = { actorId: admin.id, confirm: true, reason: "Sınaq: standart komissiya" };
+
+    // The same steps as the order route: rates read inside the order transaction, written once on each StoreOrder.
+    const placeOrder = () => prisma.$transaction(async (tx) => {
+      const at = new Date();
+      const rates = await commissionRatesForNewOrder(tx, [plain.id, ruled.id], at);
+      const order = await tx.order.create({
+        data: {
+          userId: customer.id, subtotal: "20.00", total: "20.00", addressSnapshot: {},
+          storeOrders: { create: [plain.id, ruled.id].map((storeId) => ({ storeId, subtotal: "10.00", createdAt: at, commissionRateSnapshot: rates.get(storeId) ?? null })) },
+        },
+        select: { id: true },
+      });
+      ids.orders.push(order.id);
+      return order.id;
+    });
+    const snapshots = async (orderId: string) => {
+      const rows = await prisma.storeOrder.findMany({ where: { orderId }, select: { storeId: true, commissionRateSnapshot: true } });
+      const of = (storeId: string) => rows.find((row) => row.storeId === storeId)?.commissionRateSnapshot?.toFixed(4) ?? null;
+      return { plain: of(plain.id), ruled: of(ruled.id) };
+    };
+
+    const orderA = await placeOrder();
+    assert.deepEqual(await snapshots(orderA), { plain: null, ruled: "0.0500" }, "default null: identical to before (no rule -> NULL)");
+
+    await write.updateSetting(prisma, { ...sensitive, key: KEY, expectedVersion: 0, input: "10" });
+    const orderB = await placeOrder();
+    assert.deepEqual(await snapshots(orderB), { plain: "0.1000", ruled: "0.0500" }, "default applies only where the store has no rule");
+    assert.deepEqual(await snapshots(orderA), { plain: null, ruled: "0.0500" }, "order A is unchanged (no backfill)");
+
+    await write.updateSetting(prisma, { ...sensitive, key: KEY, expectedVersion: 1, input: "12" });
+    const orderC = await placeOrder();
+    assert.deepEqual(await snapshots(orderC), { plain: "0.1200", ruled: "0.0500" });
+    assert.deepEqual(await snapshots(orderB), { plain: "0.1000", ruled: "0.0500" }, "changing the default again does not touch order B");
+
+    await write.resetSetting(prisma, { ...sensitive, key: KEY, expectedVersion: 2 });
+    const orderD = await placeOrder();
+    assert.deepEqual(await snapshots(orderD), { plain: null, ruled: "0.0500" }, "reset: back to no default");
+    assert.deepEqual(await snapshots(orderC), { plain: "0.1200", ruled: "0.0500" });
+  } finally {
+    if (ids.orders.length) await prisma.order.deleteMany({ where: { id: { in: ids.orders } } });
+    await prisma.siteSettingRevision.deleteMany({ where: { key: KEY, changedById: { in: ids.users } } });
+    await prisma.siteSetting.deleteMany({ where: { key: KEY } });
+    if (ids.stores.length) await prisma.store.deleteMany({ where: { id: { in: ids.stores } } });
+    if (ids.cityId) await prisma.city.deleteMany({ where: { id: ids.cityId } });
+    if (ids.users.length) {
+      await prisma.auditLog.deleteMany({ where: { actorId: { in: ids.users } } });
+      await prisma.user.deleteMany({ where: { id: { in: ids.users } } });
+    }
+    await prisma.$disconnect();
+  }
+});

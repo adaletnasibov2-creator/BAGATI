@@ -192,6 +192,11 @@ model User {
   reviewedVendorApplications VendorApplication[] @relation("VendorApplicationReviewer")
   siteSettingUpdates    SiteSetting[]          @relation("SiteSettingUpdatedBy")
   siteSettingRevisions  SiteSettingRevision[]  @relation("SiteSettingRevisionBy")
+  securityRuleUpdates   SecurityAlertRule[]    @relation("SecurityAlertRuleUpdatedBy")
+  assignedSecurityIncidents     SecurityIncident[] @relation("SecurityIncidentAssignee")
+  acknowledgedSecurityIncidents SecurityIncident[] @relation("SecurityIncidentAcknowledgedBy")
+  resolvedSecurityIncidents     SecurityIncident[] @relation("SecurityIncidentResolvedBy")
+  securityIncidentNotes SecurityIncidentNote[]
 
   @@index([role, isActive])
 }
@@ -1038,6 +1043,8 @@ model SecurityEvent {
   severity      String   @db.VarChar(16)
   action        String   @db.VarChar(32)
   ruleId        String?  @db.VarChar(128)
+  /// Masked form of sourceIp ("203.0.*.*"); kept after the raw IP is cleared (7 days). Shown in the UI instead of sourceIp.
+  sourceIpMasked String? @db.VarChar(64)
   createdAt     DateTime @default(now())
 
   @@unique([source, sourceEventId])
@@ -1046,6 +1053,105 @@ model SecurityEvent {
   @@index([eventType, occurredAt])
   @@index([severity, occurredAt])
   @@index([sourceIp, occurredAt])
+}
+
+enum SecurityIncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  FALSE_POSITIVE
+}
+
+/// Per-minute request counters by route group, summed across app processes (upsert-increment every 30 s).
+/// No IPs, paths or query strings. Kept 14 days (migration 20261114020000_security_center_live has the CHECK constraints).
+model SecurityMinuteStat {
+  bucketStart   DateTime
+  routeGroup    String   @db.VarChar(48)
+  requests      Int      @default(0)
+  status4xx     Int      @default(0)
+  status5xx     Int      @default(0)
+  authDenied    Int      @default(0)
+  notFound      Int      @default(0)
+  rateLimited   Int      @default(0)
+  loginFailures Int      @default(0)
+  ipMismatches  Int      @default(0)
+  durationMsSum BigInt   @default(0)
+  durationMsMax Int      @default(0)
+
+  @@id([bucketStart, routeGroup])
+  @@index([bucketStart])
+}
+
+/// Hourly roll-up of SecurityMinuteStat (recomputed, idempotent). Kept 90 days.
+model SecurityHourStat {
+  bucketStart   DateTime
+  routeGroup    String   @db.VarChar(48)
+  requests      Int      @default(0)
+  status4xx     Int      @default(0)
+  status5xx     Int      @default(0)
+  authDenied    Int      @default(0)
+  notFound      Int      @default(0)
+  rateLimited   Int      @default(0)
+  loginFailures Int      @default(0)
+  ipMismatches  Int      @default(0)
+  durationMsSum BigInt   @default(0)
+  durationMsMax Int      @default(0)
+
+  @@id([bucketStart, routeGroup])
+  @@index([bucketStart])
+}
+
+/// Admin override of a code-defined alert rule (lib/security-monitoring/rules.ts). No row = code default.
+model SecurityAlertRule {
+  key             String   @id @db.VarChar(48)
+  enabled         Boolean
+  threshold       Int
+  windowMinutes   Int
+  cooldownMinutes Int
+  version         Int      @default(1)
+  updatedById     String?
+  updatedAt       DateTime @updatedAt
+  updatedBy       User?    @relation("SecurityAlertRuleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// Opened by an alert rule (one per rule per cooldown period); handled by admins.
+model SecurityIncident {
+  id               String                 @id @default(cuid())
+  ruleKey          String                 @db.VarChar(48)
+  title            String                 @db.VarChar(160)
+  severity         String                 @db.VarChar(16)
+  status           SecurityIncidentStatus @default(OPEN)
+  observedValue    Int
+  threshold        Int
+  windowMinutes    Int
+  windowStart      DateTime
+  windowEnd        DateTime
+  assigneeId       String?
+  acknowledgedAt   DateTime?
+  acknowledgedById String?
+  resolvedAt       DateTime?
+  resolvedById     String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  assignee         User?                  @relation("SecurityIncidentAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  acknowledgedBy   User?                  @relation("SecurityIncidentAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  resolvedBy       User?                  @relation("SecurityIncidentResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  notes            SecurityIncidentNote[]
+
+  @@index([status, createdAt])
+  @@index([ruleKey, createdAt])
+}
+
+model SecurityIncidentNote {
+  id         String           @id @default(cuid())
+  incidentId String
+  authorId   String?
+  body       String
+  createdAt  DateTime         @default(now())
+  incident   SecurityIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  author     User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId, createdAt])
 }
 
 model SubscriptionPlan {

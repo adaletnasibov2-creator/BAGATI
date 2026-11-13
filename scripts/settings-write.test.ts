@@ -83,8 +83,10 @@ test("audit values: long texts shortened, display tolerates invalid stored value
   assert.equal(displaySettingValue(commission, 0.1), "yanlış dəyər");
 });
 
-test("permission hook: ADMIN holds both settings permissions; other roles none; unknown keys need all permissions", () => {
-  assert.deepEqual([...settingPermissionsFor("ADMIN")].sort(), ["settings.content", "settings.finance"]);
+test("permission hook: ADMIN holds every settings permission; other roles none; unknown keys need all permissions", () => {
+  // Part 2 added settings.limits; ADMIN holds all three today.
+  assert.deepEqual([...settingPermissionsFor("ADMIN")].sort(), ["settings.content", "settings.finance", "settings.limits"]);
+  assert.equal(requireSettingPermission({ role: "ADMIN" }, "settings.limits"), true);
   assert.deepEqual(settingPermissionsFor("VENDOR"), []);
   assert.deepEqual(settingPermissionsFor("CUSTOMER"), []);
   assert.equal(requireSettingPermission({ role: "ADMIN" }, "settings.finance"), true);

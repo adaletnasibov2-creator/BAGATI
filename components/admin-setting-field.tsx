@@ -11,7 +11,7 @@ export type SettingFieldView = {
   description: string;
   sensitive: boolean;
   sensitiveNotice: string | null;
-  input: { kind: "percent"; min: number; max: number; step: number; unit: "%" } | { kind: "integer"; min: number; max: number; unit?: string } | { kind: "text"; minLength: number; maxLength: number; multiline?: boolean };
+  input: { kind: "percent"; min: number; max: number; step: number; unit: "%" } | { kind: "integer"; min: number; max: number; unit?: string } | { kind: "text"; minLength: number; maxLength: number; multiline?: boolean; placeholder?: string } | { kind: "announcement"; textMax: number };
   currentInput: string;
   currentDisplay: string;
   defaultDisplay: string;
@@ -91,7 +91,7 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
     ? { inputMode: "decimal" as const, placeholder: `${view.input.min}–${view.input.max}`, maxLength: 5 }
     : view.input.kind === "integer"
       ? { inputMode: "numeric" as const, placeholder: `${view.input.min}–${view.input.max}`, maxLength: 6 }
-      : { maxLength: view.input.maxLength };
+      : view.input.kind === "text" ? { maxLength: view.input.maxLength } : {};
 
   return <section className="rounded-2xl border border-[#e7e3d9] bg-white p-5" aria-labelledby={`setting-${view.key}`}>
     <div className="flex flex-wrap items-start justify-between gap-3">

@@ -60,7 +60,7 @@ export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
 
   if (codes) {
     return <div className="space-y-4">
-      <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
         <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
         <p>İki mərhələli təsdiq aktivləşdirildi. {mode === "settings" ? "Digər sessiyalar bağlandı." : ""}</p>
       </div>

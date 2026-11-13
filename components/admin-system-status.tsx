@@ -43,7 +43,7 @@ const workerLabel: Record<string, string> = {
 };
 
 function Row({ label, children, tone }: { label: string; children: ReactNode; tone?: "good" | "warn" | "bad" }) {
-  const color = tone === "good" ? "text-emerald-800" : tone === "warn" ? "text-amber-800" : tone === "bad" ? "text-red-700" : "text-[#0d1b2a]";
+  const color = tone === "good" ? "text-green-800" : tone === "warn" ? "text-amber-800" : tone === "bad" ? "text-red-700" : "text-[#0d1b2a]";
   return <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-[#f0ece4] py-2.5 text-sm last:border-0">
     <dt className="text-slate-500">{label}</dt>
     <dd className={`min-w-0 break-words text-right font-medium ${color}`}>{children}</dd>

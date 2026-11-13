@@ -45,7 +45,7 @@ export default function AdminSessionsList({ sessions }: { sessions: AdminSession
       </button>
     </div>
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-    {message && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
+    {message && <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">{message}</p>}
     <ul className="divide-y divide-[#eeeae2] rounded-2xl border border-[#e7e3d9] bg-white">
       {sessions.map((session) => <li key={session.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
         <div className="flex min-w-0 items-start gap-3">
@@ -53,7 +53,7 @@ export default function AdminSessionsList({ sessions }: { sessions: AdminSession
           <div className="min-w-0 text-sm">
             <p className="font-medium text-[#0d1b2a]">
               {session.userAgent ?? "Naməlum cihaz"}
-              {session.current && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Bu cihaz</span>}
+              {session.current && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Bu cihaz</span>}
             </p>
             <p className="mt-1 text-slate-500">IP: <span className="font-mono">{session.ipMasked ?? "məlum deyil"}</span></p>
             <p className="mt-1 text-xs text-slate-500">Yaradılıb: {session.createdLabel} · Son aktivlik: {session.lastSeenLabel} · Bitir: {session.expiresLabel}</p>

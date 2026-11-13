@@ -218,6 +218,26 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       await assert.rejects(prisma.vendorApplication.create({ data: { userId: created.seller.id, status: "WITHDRAWN", withdrawnAt: new Date(), displayName: "x", voenNormalized: "123" } }), /check constraint|self_voen/i);
     });
 
+    await t.test("per-IP limit: enforced on the trusted client IP bucket; only the HMAC key is stored", async () => {
+      const { authRateLimitKey, consumeAuthRateLimit, clearAuthRateLimit } = await import("../lib/auth-rate-limit");
+      const { applicantRateLimitBuckets, SELLER_APPLICATION_IP_RATE_LIMIT } = await import("../lib/seller-application");
+      const ip = `198.51.100.${Number.parseInt(tag.slice(0, 2), 16) % 250}`;
+      const [, ipBucket] = applicantRateLimitBuckets(`user-${tag}`, ip, (identity) => authRateLimitKey("seller-application", identity));
+      assert.equal(ipBucket.kind, "ip");
+      try {
+        for (let attempt = 1; attempt <= SELLER_APPLICATION_IP_RATE_LIMIT.limit; attempt += 1) {
+          assert.equal(await consumeAuthRateLimit(ipBucket.key, ipBucket.limit, ipBucket.windowMs), true, `attempt ${attempt}`);
+        }
+        assert.equal(await consumeAuthRateLimit(ipBucket.key, ipBucket.limit, ipBucket.windowMs), false, "over the per-IP limit");
+        const rows = await prisma.$queryRaw<{ keyHash: string }[]>`SELECT "keyHash" FROM "AuthRateLimit" WHERE "keyHash" = ${ipBucket.key}`;
+        assert.equal(rows.length, 1);
+        const raw = await prisma.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "AuthRateLimit" WHERE "keyHash" LIKE ${`%${ip}%`}`;
+        assert.equal(raw[0].n, 0, "no raw IP stored");
+      } finally {
+        await clearAuthRateLimit(ipBucket.key);
+      }
+    });
+
     await t.test("applicant state reports the latest application and the reapply time", async () => {
       const applicant = await user("state");
       const empty = await service.applicantState(prisma, applicant.id);

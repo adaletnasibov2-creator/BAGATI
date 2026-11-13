@@ -27,6 +27,19 @@ export const SELLER_APPLICATION_RULES = {
 /** Per-user request limit on the application endpoints (in addition to the reapply rules). */
 export const SELLER_APPLICATION_RATE_LIMIT = { limit: 20, windowMs: HOUR_MS } as const;
 export const SELLER_APPLICATION_PROCESS_RATE_LIMIT = { limit: 300, windowMs: 15 * 60 * 1000 } as const;
+/** Per client IP, only when a trusted Cloudflare client IP exists. Higher than per user: several customers can share one IP. */
+export const SELLER_APPLICATION_IP_RATE_LIMIT = { limit: 60, windowMs: HOUR_MS } as const;
+
+/**
+ * Rate-limit buckets for one applicant request: always the user; the client IP only when a trusted one exists.
+ * `keyFor` must be a keyed hash (authRateLimitKey: HMAC-SHA256 with SESSION_SECRET), so the raw IP is never stored.
+ */
+export function applicantRateLimitBuckets(userId: string, clientIp: string | null, keyFor: (identity: string) => string) {
+  return [
+    { kind: "user" as const, key: keyFor(`user:${userId}`), ...SELLER_APPLICATION_RATE_LIMIT },
+    ...(clientIp ? [{ kind: "ip" as const, key: keyFor(`ip:${clientIp}`), ...SELLER_APPLICATION_IP_RATE_LIMIT }] : []),
+  ];
+}
 
 export const SELLER_APPLICATION_STATUS_LABELS = {
   PENDING: "Yoxlanılır",

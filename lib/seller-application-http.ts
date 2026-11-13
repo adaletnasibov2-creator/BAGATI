@@ -3,7 +3,8 @@ import { currentUser } from "@/lib/auth";
 import { authRateLimitKey, consumeAuthProcessRateLimit, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 import { csrfRejection } from "@/lib/csrf";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
-import { SELLER_APPLICATION_MESSAGES, SELLER_APPLICATION_PROCESS_RATE_LIMIT, SELLER_APPLICATION_RATE_LIMIT } from "@/lib/seller-application";
+import { applicantRateLimitBuckets, SELLER_APPLICATION_MESSAGES, SELLER_APPLICATION_PROCESS_RATE_LIMIT } from "@/lib/seller-application";
+import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
 import type { SellerApplicationError } from "@/lib/seller-application-service";
 
 const headers = { "Cache-Control": "no-store" };
@@ -11,7 +12,7 @@ export const applicantJson = (body: Record<string, unknown>, status = 200) => Ne
 
 /**
  * Shared guard for the applicant endpoints, in this order: same-origin, a signed-in active CUSTOMER with a
- * verified e-mail (currentUser returns null otherwise), then rate limits. Exceeding a limit is recorded in the
+ * verified e-mail (currentUser returns null otherwise), then rate limits (process, user, trusted client IP). Exceeding a limit is recorded in the
  * Security Center. Returns the user or the response to send.
  */
 export async function guardApplicantRequest(request: Request, path: string) {
@@ -20,8 +21,15 @@ export async function guardApplicantRequest(request: Request, path: string) {
   const user = await currentUser();
   if (!user || user.role !== "CUSTOMER") return { response: applicantJson({ error: SELLER_APPLICATION_MESSAGES.signIn }, user ? 403 : 401) };
   const processAllowed = consumeAuthProcessRateLimit("seller-application", SELLER_APPLICATION_PROCESS_RATE_LIMIT.limit, SELLER_APPLICATION_PROCESS_RATE_LIMIT.windowMs);
-  const userAllowed = processAllowed && await consumeAuthRateLimit(authRateLimitKey("seller-application", `user:${user.id}`), SELLER_APPLICATION_RATE_LIMIT.limit, SELLER_APPLICATION_RATE_LIMIT.windowMs);
-  if (!userAllowed) {
+  // Per user always; per client IP only when BAGATI_TRUST_CLOUDFLARE_IP=true yields a trusted address.
+  // Keys are HMAC-SHA256 (authRateLimitKey); the raw IP is never stored.
+  const buckets = applicantRateLimitBuckets(user.id, trustedCloudflareClientIp(request.headers), (identity) => authRateLimitKey("seller-application", identity));
+  let allowed = processAllowed;
+  for (const bucket of buckets) {
+    if (!allowed) break;
+    allowed = await consumeAuthRateLimit(bucket.key, bucket.limit, bucket.windowMs);
+  }
+  if (!allowed) {
     await captureApplicationSecurityEvent({ request, eventType: "RATE_LIMIT_VIOLATION", path });
     return { response: applicantJson({ error: SELLER_APPLICATION_MESSAGES.rateLimited }, 429) };
   }

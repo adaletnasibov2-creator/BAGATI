@@ -132,3 +132,34 @@ test("only PENDING applications are open", () => {
   assert.equal(isOpenApplication("PENDING"), true);
   for (const status of ["APPROVED", "REJECTED", "WITHDRAWN"] as const) assert.equal(isOpenApplication(status), false);
 });
+
+test("rate-limit buckets: always the user, the client IP only when trusted; keys are HMAC hashes, never the raw IP", async () => {
+  const previous = process.env.SESSION_SECRET;
+  process.env.SESSION_SECRET = ["unit", "test", "only"].join("-").padEnd(48, "x"); // test placeholder, not a real secret
+  try {
+    const { authRateLimitKey } = await import("../lib/auth-rate-limit");
+    const { applicantRateLimitBuckets, SELLER_APPLICATION_IP_RATE_LIMIT, SELLER_APPLICATION_RATE_LIMIT } = await import("../lib/seller-application");
+    const { trustedCloudflareClientIp } = await import("../lib/trusted-proxy");
+    const keyFor = (identity: string) => authRateLimitKey("seller-application", identity);
+    const headers = new Headers({ "cf-connecting-ip": "203.0.113.57" });
+
+    const untrusted = applicantRateLimitBuckets("user-1", trustedCloudflareClientIp(headers, false), keyFor);
+    assert.deepEqual(untrusted.map((bucket) => bucket.kind), ["user"], "flag off: no IP bucket");
+    assert.equal(untrusted[0].limit, SELLER_APPLICATION_RATE_LIMIT.limit);
+
+    const trusted = applicantRateLimitBuckets("user-1", trustedCloudflareClientIp(headers, true), keyFor);
+    assert.deepEqual(trusted.map((bucket) => bucket.kind), ["user", "ip"]);
+    assert.equal(trusted[1].limit, SELLER_APPLICATION_IP_RATE_LIMIT.limit);
+    assert.equal(trusted[1].windowMs, SELLER_APPLICATION_IP_RATE_LIMIT.windowMs);
+    for (const bucket of trusted) assert.match(bucket.key, /^[0-9a-f]{64}$/);
+    assert.doesNotMatch(JSON.stringify(trusted), /203\.0\.113\.57/, "the raw IP never appears in a key");
+    assert.notEqual(trusted[1].key, applicantRateLimitBuckets("user-2", "203.0.113.58", keyFor)[1].key, "different IPs, different keys");
+    assert.equal(trusted[1].key, applicantRateLimitBuckets("user-2", "203.0.113.57", keyFor)[1].key, "same IP shared across users");
+    assert.notEqual(trusted[1].key, authRateLimitKey("store-inquiry", "ip:203.0.113.57"), "scoped: not shared with other limits");
+    // A spoofed multi-value header is not trusted.
+    assert.equal(trustedCloudflareClientIp(new Headers({ "cf-connecting-ip": "203.0.113.57, 10.0.0.1" }), true), null);
+  } finally {
+    if (previous === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = previous;
+  }
+});

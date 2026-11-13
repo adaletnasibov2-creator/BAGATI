@@ -99,7 +99,8 @@ test("business pulse counts pending seller applications", () => {
 test("applicant routes: same-origin, then an active verified CUSTOMER, then rate limits recorded in the Security Center", () => {
   const guard = read("lib/seller-application-http.ts");
   const fn = between(guard, "export async function guardApplicantRequest", "\nexport function applicantErrorResponse");
-  const order = ["csrfRejection(request)", "await currentUser()", 'user.role !== "CUSTOMER"', "consumeAuthProcessRateLimit(", 'authRateLimitKey("seller-application", `user:${user.id}`)', 'eventType: "RATE_LIMIT_VIOLATION"'].map((needle) => {
+  // Follow-up: the per-user key moved into applicantRateLimitBuckets (which adds the trusted client IP bucket).
+  const order = ["csrfRejection(request)", "await currentUser()", 'user.role !== "CUSTOMER"', "consumeAuthProcessRateLimit(", "applicantRateLimitBuckets(user.id, trustedCloudflareClientIp(request.headers), (identity) => authRateLimitKey(\"seller-application\", identity))", "consumeAuthRateLimit(bucket.key, bucket.limit, bucket.windowMs)", 'eventType: "RATE_LIMIT_VIOLATION"'].map((needle) => {
     const index = fn.indexOf(needle);
     assert.ok(index >= 0, needle);
     return index;

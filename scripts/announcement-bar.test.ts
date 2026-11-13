@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { ANNOUNCEMENT_DISMISS_KEY, ANNOUNCEMENT_TONE_CLASSES, announcementPrePaintScript, announcementSignature, isAnnouncementVisible, type AnnouncementView } from "../lib/announcement";
+import { ANNOUNCEMENT_TONE_CLASSES } from "../components/announcement-tones";
+import { ANNOUNCEMENT_DISMISS_KEY, announcementPrePaintScript, announcementSignature, isAnnouncementVisible, type AnnouncementView } from "../lib/announcement";
 import { getSettingDefinition, SETTING_KEYS } from "../lib/settings/registry";
 
 const root = join(__dirname, "..");
@@ -67,4 +68,13 @@ test("rendering: customer layout only, above the header, plain text, accessible,
   assert.match(client, /try \{ sessionStorage\.setItem\(ANNOUNCEMENT_DISMISS_KEY, signature\); \} catch/);
   assert.match(client, /aria-label="Elanı bağla"/);
   assert.deepEqual(Object.keys(ANNOUNCEMENT_TONE_CLASSES).sort(), ["danger", "info", "success", "warning"]);
+});
+
+test("tone classes live where Tailwind scans them (the browser check found an invisible white-on-white bar)", () => {
+  const config = read("tailwind.config.ts");
+  const globs = [...config.matchAll(/"\.\/([a-z]+)\/\*\*\/\*\.\{ts,tsx\}"/g)].map((match) => match[1]);
+  assert.ok(globs.includes("components"), "components/ is scanned");
+  assert.ok(!globs.includes("lib"), "lib/ is not scanned, so no Tailwind class may be defined only in lib/");
+  assert.doesNotMatch(read("lib/announcement.ts"), /\bbg-|text-white/, "no tone classes in lib/");
+  assert.match(read("components/announcement-tones.ts"), /success: "bg-green-700 text-white"/);
 });

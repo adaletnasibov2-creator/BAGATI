@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { ANNOUNCEMENT_DISMISS_KEY, ANNOUNCEMENT_TONE_CLASSES, type AnnouncementView } from "@/lib/announcement";
+import { ANNOUNCEMENT_DISMISS_KEY, type AnnouncementView } from "@/lib/announcement";
+import { ANNOUNCEMENT_TONE_CLASSES } from "@/components/announcement-tones";
 
 /**
  * The visible bar with its dismiss button. Text is plain text (React escapes it). The dismissal is remembered for this

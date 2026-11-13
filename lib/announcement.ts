@@ -40,10 +40,3 @@ export function announcementPrePaintScript(signature: string): string {
   if (!/^[0-9a-f]{8}$/.test(signature)) throw new Error("invalid announcement signature");
   return `try{if(sessionStorage.getItem(${JSON.stringify(ANNOUNCEMENT_DISMISS_KEY)})===${JSON.stringify(signature)}){var s=document.createElement("style");s.textContent='[data-announcement-bar="${signature}"]{display:none}';document.head.appendChild(s)}}catch(e){}`;
 }
-
-export const ANNOUNCEMENT_TONE_CLASSES: Record<AnnouncementView["tone"], string> = {
-  info: "bg-[#173c40] text-white",
-  success: "bg-green-700 text-white",
-  warning: "bg-amber-300 text-[#2b2104]",
-  danger: "bg-red-700 text-white",
-};

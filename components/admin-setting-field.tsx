@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { History, RotateCcw, X } from "lucide-react";
-import { ANNOUNCEMENT_TONE_CLASSES, ANNOUNCEMENT_TONE_LABELS } from "@/lib/announcement";
+import { ANNOUNCEMENT_TONE_LABELS } from "@/lib/announcement";
+import { ANNOUNCEMENT_TONE_CLASSES } from "@/components/announcement-tones";
 
 /** Same shape as AdminSettingView in lib/settings/admin.ts (client components do not import lib/settings). */
 export type SettingFieldView = {

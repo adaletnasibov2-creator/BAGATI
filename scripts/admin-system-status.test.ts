@@ -99,3 +99,16 @@ test("cache reuses results for the TTL; manual refresh only after the minimum in
   await new Promise((done) => setImmediate(done));
   assert.equal(await cache.get("bad", async () => 7), 7, "a failure is evicted immediately");
 });
+
+test("raw SQL date bounds are converted to UTC wall-clock time (regression: 4h shift under TimeZone=Asia/Baku)", async () => {
+  const { utcTimestamp } = await import("../lib/sql-timestamp");
+  const fragment = utcTimestamp(new Date("2026-11-13T00:00:00Z"));
+  assert.equal(fragment.text, "($1::timestamptz AT TIME ZONE 'UTC')");
+  assert.deepEqual(fragment.values, [new Date("2026-11-13T00:00:00Z")]);
+  // Every comparison against a timestamp column in these raw queries must go through utcTimestamp().
+  for (const path of ["lib/admin-system-status-cards.ts", "lib/admin-audit-log-query.ts"]) {
+    const source = read(path);
+    assert.doesNotMatch(source, /(>=|<=|<|>) \$\{(?!utcTimestamp\()/, path);
+    assert.match(source, /utcTimestamp\(/, path);
+  }
+});

@@ -8,6 +8,7 @@ import {
   escapeLikePattern,
   type AuditLogFilters,
 } from "@/lib/admin-audit-log";
+import { utcTimestamp } from "@/lib/sql-timestamp";
 
 type Db = Pick<PrismaClient, "$transaction" | "user" | "auditLog">;
 type Tx = Prisma.TransactionClient;
@@ -29,7 +30,7 @@ const EXPORT_STATEMENT_TIMEOUT_MS = 15_000;
 /** A real cuid can never equal this, so an unknown actor e-mail yields an empty result without a special case. */
 const NO_SUCH_ACTOR = "-no-such-actor-";
 
-async function boundedRead<T>(db: Db, timeoutMs: number, work: (tx: Tx) => Promise<T>): Promise<T> {
+export async function boundedRead<T>(db: Db, timeoutMs: number, work: (tx: Tx) => Promise<T>): Promise<T> {
   return db.$transaction(async (tx) => {
     await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
     await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${Math.trunc(timeoutMs)}`);
@@ -61,8 +62,8 @@ export function buildAuditWhere(filters: AuditLogFilters, actorId: string | null
   if (filters.entityId) conditions.push(Prisma.sql`a."entityId" = ${filters.entityId}`);
   const from = filters.from ? bakuDayBounds(filters.from) : null;
   const to = filters.to ? bakuDayBounds(filters.to) : null;
-  if (from) conditions.push(Prisma.sql`a."createdAt" >= ${from.start}`);
-  if (to) conditions.push(Prisma.sql`a."createdAt" < ${to.endExclusive}`);
+  if (from) conditions.push(Prisma.sql`a."createdAt" >= ${utcTimestamp(from.start)}`);
+  if (to) conditions.push(Prisma.sql`a."createdAt" < ${utcTimestamp(to.endExclusive)}`);
   if (filters.q) {
     const pattern = `%${escapeLikePattern(filters.q)}%`;
     conditions.push(Prisma.sql`(a."entityId" ILIKE ${pattern} ESCAPE '\\' OR a."metadata"::text ILIKE ${pattern} ESCAPE '\\')`);

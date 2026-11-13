@@ -15,6 +15,7 @@ import {
   type SystemStatusCard,
 } from "@/lib/admin-system-status";
 import { collectReadinessDetails } from "@/lib/readiness-signals";
+import { utcTimestamp } from "@/lib/sql-timestamp";
 import { storageReadinessMode } from "@/lib/storage/store-assets";
 import { getSmtpConfiguration } from "@/lib/email";
 import { emailPayloadEncryptionMode } from "@/lib/email-outbox";
@@ -27,7 +28,7 @@ type CountRow = { key: string; count: number };
  * Runs one card's queries in a short read-only transaction with a per-statement timeout, so a slow
  * query fails that card alone instead of holding a connection.
  */
-async function bounded<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
+export async function boundedStatusRead<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
     await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${SYSTEM_STATUS_STATEMENT_TIMEOUT_MS}`);
@@ -52,7 +53,7 @@ async function databaseCard() {
   const started = performance.now();
   await prisma.$queryRaw`SELECT 1`;
   const latencyMs = Math.round(performance.now() - started);
-  return bounded(async (tx) => {
+  return boundedStatusRead(async (tx) => {
     const [settings] = await tx.$queryRaw<{ timezone: string; version: string }[]>`
       SELECT current_setting('TimeZone') AS "timezone", current_setting('server_version_num') AS "version"`;
     const applied = await tx.$queryRaw<{ name: string; finishedAt: Date }[]>`
@@ -76,7 +77,7 @@ async function databaseCard() {
 }
 
 async function readinessCard() {
-  return bounded(async (tx) => {
+  return boundedStatusRead(async (tx) => {
     const details = await collectReadinessDetails(tx);
     return { storage: storageReadinessMode(), ...details };
   });
@@ -88,7 +89,7 @@ function smtpConfigured() {
 
 async function emailCard(now: Date) {
   const since = new Date(now.getTime() - 24 * 60 * 60_000);
-  const database = await bounded(async (tx) => {
+  const database = await boundedStatusRead(async (tx) => {
     const byStatus = await tx.$queryRaw<CountRow[]>`
       SELECT "status"::text AS "key", COUNT(*)::int AS "count" FROM "EmailOutbox" GROUP BY "status"`;
     const [oldest] = await tx.$queryRaw<{ oldest: Date | null }[]>`
@@ -97,7 +98,7 @@ async function emailCard(now: Date) {
     // (status, availableAt) index skip the SENT bulk.
     const [failures] = await tx.$queryRaw<{ count: number }[]>`
       SELECT COUNT(*)::int AS "count" FROM "EmailOutbox"
-      WHERE "status" IN ('PENDING', 'PROCESSING', 'FAILED') AND "failedAt" >= ${since}`;
+      WHERE "status" IN ('PENDING', 'PROCESSING', 'FAILED') AND "failedAt" >= ${utcTimestamp(since)}`;
     return { byStatus: countMap(byStatus), oldestPendingAt: oldest?.oldest ?? null, failedLast24h: Number(failures?.count ?? 0) };
   });
   const heartbeat = await readEmailWorkerHeartbeat();
@@ -128,15 +129,15 @@ async function emailCard(now: Date) {
 async function importsCard(now: Date) {
   const stuckBefore = new Date(now.getTime() - IMPORT_JOB_STUCK_AFTER_MS);
   const since = new Date(now.getTime() - 24 * 60 * 60_000);
-  return bounded(async (tx) => {
+  return boundedStatusRead(async (tx) => {
     const byStatus = await tx.$queryRaw<CountRow[]>`
       SELECT "status"::text AS "key", COUNT(*)::int AS "count" FROM "ImportJob" GROUP BY "status"`;
     const [stuck] = await tx.$queryRaw<{ count: number }[]>`
       SELECT COUNT(*)::int AS "count" FROM "ImportJob"
-      WHERE "status" IN ('UPLOADING', 'QUEUED', 'PROCESSING') AND "updatedAt" < ${stuckBefore}`;
+      WHERE "status" IN ('UPLOADING', 'QUEUED', 'PROCESSING') AND "updatedAt" < ${utcTimestamp(stuckBefore)}`;
     const [failed] = await tx.$queryRaw<{ count: number }[]>`
       SELECT COUNT(*)::int AS "count" FROM "ImportJob"
-      WHERE "status" = 'FAILED' AND "updatedAt" >= ${since}`;
+      WHERE "status" = 'FAILED' AND "updatedAt" >= ${utcTimestamp(since)}`;
     const recent = await tx.$queryRaw<{ id: string; storeName: string; status: string; totalRows: number; processedRows: number; failedRows: number; createdAt: Date }[]>`
       SELECT j."id", s."name" AS "storeName", j."status"::text AS "status", j."totalRows", j."processedRows", j."failedRows", j."createdAt"
       FROM "ImportJob" j JOIN "Store" s ON s."id" = j."storeId"
@@ -155,20 +156,20 @@ async function importsCard(now: Date) {
 async function securityCard(now: Date) {
   const since24h = new Date(now.getTime() - 24 * 60 * 60_000);
   const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
-  return bounded(async (tx) => {
+  return boundedStatusRead(async (tx) => {
     const byType = await tx.$queryRaw<{ eventType: string; last24h: number; last7d: number }[]>`
       SELECT "eventType",
-        COUNT(*) FILTER (WHERE "occurredAt" >= ${since24h})::int AS "last24h",
+        COUNT(*) FILTER (WHERE "occurredAt" >= ${utcTimestamp(since24h)})::int AS "last24h",
         COUNT(*)::int AS "last7d"
       FROM "SecurityEvent"
-      WHERE "occurredAt" >= ${since7d} AND "occurredAt" <= ${now}
+      WHERE "occurredAt" >= ${utcTimestamp(since7d)} AND "occurredAt" <= ${utcTimestamp(now)}
       GROUP BY "eventType"
       ORDER BY "last7d" DESC
       LIMIT 20`;
     const repeated = await tx.$queryRaw<{ sourceIp: string; count: number }[]>`
       SELECT "sourceIp", COUNT(*)::int AS "count"
       FROM "SecurityEvent"
-      WHERE "occurredAt" >= ${since7d} AND "occurredAt" <= ${now} AND "sourceIp" IS NOT NULL
+      WHERE "occurredAt" >= ${utcTimestamp(since7d)} AND "occurredAt" <= ${utcTimestamp(now)} AND "sourceIp" IS NOT NULL
       GROUP BY "sourceIp"
       HAVING COUNT(*) >= 2
       ORDER BY "count" DESC
@@ -183,12 +184,12 @@ async function securityCard(now: Date) {
 async function businessCard(now: Date) {
   const today = bakuStartOfDay(now);
   const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
-  return bounded(async (tx) => {
+  return boundedStatusRead(async (tx) => {
     const [row] = await tx.$queryRaw<{ ordersToday: number; failedPaymentsToday: number; newSellers7d: number; pendingStoreReviews: number; unreadInquiries: number }[]>`
       SELECT
-        (SELECT COUNT(*)::int FROM "Order" WHERE "createdAt" >= ${today}) AS "ordersToday",
-        (SELECT COUNT(*)::int FROM "Payment" WHERE "status" = 'FAILED' AND "createdAt" >= ${today}) AS "failedPaymentsToday",
-        (SELECT COUNT(*)::int FROM "User" WHERE "role" = 'VENDOR' AND "createdAt" >= ${since7d}) AS "newSellers7d",
+        (SELECT COUNT(*)::int FROM "Order" WHERE "createdAt" >= ${utcTimestamp(today)}) AS "ordersToday",
+        (SELECT COUNT(*)::int FROM "Payment" WHERE "status" = 'FAILED' AND "createdAt" >= ${utcTimestamp(today)}) AS "failedPaymentsToday",
+        (SELECT COUNT(*)::int FROM "User" WHERE "role" = 'VENDOR' AND "createdAt" >= ${utcTimestamp(since7d)}) AS "newSellers7d",
         (SELECT COUNT(*)::int FROM "Store" WHERE "status" = 'PENDING_REVIEW') AS "pendingStoreReviews",
         (SELECT COUNT(*)::int FROM "StoreInquiry" WHERE "status" = 'NEW') AS "unreadInquiries"`;
     return {
@@ -241,7 +242,8 @@ export type SystemStatusData = {
   application: Awaited<ReturnType<typeof applicationCard>>;
 };
 
-const loaders: Record<SystemStatusCard, (now: Date) => Promise<unknown>> = {
+/** Uncached loaders (used by the cache below and by the verify-database test). */
+export const systemStatusLoaders: Record<SystemStatusCard, (now: Date) => Promise<unknown>> = {
   database: () => databaseCard(),
   readiness: () => readinessCard(),
   email: emailCard,
@@ -258,6 +260,6 @@ export function loadSystemStatusCard(card: SystemStatusCard, options: { refresh?
   if (card === "application") return applicationCard().then((data) => ({ generatedAt: new Date().toISOString(), data }));
   return cache.get(card, async () => {
     const now = new Date();
-    return { generatedAt: now.toISOString(), data: await loaders[card](now) };
+    return { generatedAt: now.toISOString(), data: await systemStatusLoaders[card](now) };
   }, options);
 }

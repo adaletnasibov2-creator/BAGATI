@@ -104,6 +104,61 @@ test("audit log filters, export and system status cards on the verify database",
     assert.deepEqual(entries[0].metadata, { filters: { action: "VERIFY_A", entityType }, rowCount: 3, truncated: false, maxRows: 10_000 });
     assert.equal((entries[1].metadata as { truncated: boolean }).truncated, true);
 
+    // Transaction guards, observed on real PostgreSQL.
+    const { boundedStatusRead } = await import("../lib/admin-system-status-cards");
+    const { boundedRead } = await import("../lib/admin-audit-log-query");
+    const settings = (tx: { $queryRaw: PrismaClient["$queryRaw"] }) => tx.$queryRaw<{ ro: string; timeout: string }[]>`
+      SELECT current_setting('transaction_read_only') AS "ro", current_setting('statement_timeout') AS "timeout"`;
+    const [cardSettings] = await boundedStatusRead((tx) => settings(tx));
+    assert.deepEqual(cardSettings, { ro: "on", timeout: "2500ms" }, "status card: READ ONLY + statement_timeout 2500ms");
+    const [pageSettings] = await boundedRead(prisma, 5_000, (tx) => settings(tx));
+    assert.deepEqual(pageSettings, { ro: "on", timeout: "5s" }, "audit read: READ ONLY + statement_timeout 5s");
+    const [outside] = await settings(prisma);
+    assert.equal(outside.ro, "off", "SET LOCAL / SET TRANSACTION do not leak to the pooled connection");
+    await assert.rejects(
+      boundedStatusRead((tx) => tx.$executeRaw`UPDATE "AuditLog" SET "action" = "action" WHERE "entityType" = ${entityType}`),
+      (error: unknown) => /25006|read-only transaction/i.test(String((error as { message?: string })?.message ?? error)),
+      "a write inside a card transaction is refused",
+    );
+    await assert.rejects(
+      boundedStatusRead((tx) => tx.$queryRaw`SELECT pg_sleep(3)`),
+      (error: unknown) => /57014|statement timeout|canceling statement/i.test(String((error as { message?: string })?.message ?? error)),
+      "a statement over 2.5s is cancelled",
+    );
+    // Statement order: BEGIN → SET TRANSACTION READ ONLY → SET LOCAL statement_timeout → work.
+    const logged = new PrismaClient({ datasources: { db: { url: guard.url } }, log: [{ emit: "event", level: "query" }] });
+    const statements: string[] = [];
+    logged.$on("query", (event) => statements.push(event.query.replace(/\s+/g, " ").trim()));
+    try {
+      await boundedRead(logged, 5_000, (tx) => tx.$queryRaw`SELECT 42 AS "marker"`);
+    } finally {
+      await logged.$disconnect();
+    }
+    const begin = statements.findIndex((query) => /^BEGIN/i.test(query));
+    const tail = statements.slice(begin);
+    assert.ok(begin >= 0, `BEGIN logged: ${JSON.stringify(statements)}`);
+    assert.equal(tail[1], "SET TRANSACTION READ ONLY", JSON.stringify(tail));
+    assert.equal(tail[2], "SET LOCAL statement_timeout = 5000", JSON.stringify(tail));
+    assert.match(tail[3], /SELECT 42/);
+    t.diagnostic(`statement order: ${JSON.stringify(tail.slice(0, 5))}`);
+
+    // Regression (found on this cluster, TimeZone=Asia/Baku): raw Date parameters bind as timestamptz while the
+    // columns are UTC `timestamp`, which shifted every window by 4h. Timestamps must also read back as UTC.
+    const readBack = await findAuditLogPage(prisma, parseAuditLogFilters({ entityType, entityId: "e-2" }).filters, { skip: 0, take: 1 });
+    assert.equal(readBack.rows[0].createdAt.toISOString(), "2020-01-10T21:00:00.000Z", "raw read-back is UTC");
+    const { systemStatusLoaders } = await import("../lib/admin-system-status-cards");
+    type EmailCard = { failedLast24h: number; oldestPendingAgeMs: number | null };
+    const now = new Date();
+    const emailBefore = await systemStatusLoaders.email(now) as EmailCard;
+    const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000);
+    await prisma.emailOutbox.createMany({ data: [
+      { dedupeKey: `verify-${tag}-22h`, recipient: `x-${tag}@verify.invalid`, template: "VERIFY", payload: {}, status: "FAILED", failedAt: hoursAgo(22) },
+      { dedupeKey: `verify-${tag}-25h`, recipient: `x-${tag}@verify.invalid`, template: "VERIFY", payload: {}, status: "FAILED", failedAt: hoursAgo(25) },
+    ] });
+    const emailAfter = await systemStatusLoaders.email(now) as EmailCard;
+    assert.equal(emailAfter.failedLast24h - emailBefore.failedLast24h, 1, "failure 22h ago counts, 25h ago does not");
+    await prisma.emailOutbox.deleteMany({ where: { dedupeKey: { startsWith: `verify-${tag}-` } } });
+
     // System status: every card loads against real PostgreSQL (read-only transaction + statement timeout).
     for (const card of SYSTEM_STATUS_CARDS) {
       const result = await loadSystemStatusCard(card, { refresh: true });
@@ -115,6 +170,7 @@ test("audit log filters, export and system status cards on the verify database",
     assert.ok(database.appliedMigrations > 0);
   } finally {
     await prisma.auditLog.deleteMany({ where: { entityType } }).catch(() => undefined);
+    await prisma.emailOutbox.deleteMany({ where: { dedupeKey: { startsWith: `verify-${tag}-` } } }).catch(() => undefined);
     if (userIds.length) {
       await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds }, action: "AUDIT_EXPORT" } }).catch(() => undefined);
       await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => undefined);

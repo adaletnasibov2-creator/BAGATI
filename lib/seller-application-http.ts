@@ -5,6 +5,7 @@ import { csrfRejection } from "@/lib/csrf";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
 import { applicantRateLimitBuckets, SELLER_APPLICATION_MESSAGES, SELLER_APPLICATION_PROCESS_RATE_LIMIT } from "@/lib/seller-application";
 import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
+import { loadSellerApplicationLimits } from "@/lib/settings/limits";
 import type { SellerApplicationError } from "@/lib/seller-application-service";
 
 const headers = { "Cache-Control": "no-store" };
@@ -23,7 +24,9 @@ export async function guardApplicantRequest(request: Request, path: string) {
   const processAllowed = consumeAuthProcessRateLimit("seller-application", SELLER_APPLICATION_PROCESS_RATE_LIMIT.limit, SELLER_APPLICATION_PROCESS_RATE_LIMIT.windowMs);
   // Per user always; per client IP only when BAGATI_TRUST_CLOUDFLARE_IP=true yields a trusted address.
   // Keys are HMAC-SHA256 (authRateLimitKey); the raw IP is never stored.
-  const buckets = applicantRateLimitBuckets(user.id, trustedCloudflareClientIp(request.headers), (identity) => authRateLimitKey("seller-application", identity));
+  // Per-user and per-IP numbers come from the settings engine (limits.sellerApplication.*, defaults 20 and 60).
+  const limits = await loadSellerApplicationLimits();
+  const buckets = applicantRateLimitBuckets(user.id, trustedCloudflareClientIp(request.headers), (identity) => authRateLimitKey("seller-application", identity), limits);
   let allowed = processAllowed;
   for (const bucket of buckets) {
     if (!allowed) break;
@@ -33,7 +36,7 @@ export async function guardApplicantRequest(request: Request, path: string) {
     await captureApplicationSecurityEvent({ request, eventType: "RATE_LIMIT_VIOLATION", path });
     return { response: applicantJson({ error: SELLER_APPLICATION_MESSAGES.rateLimited }, 429) };
   }
-  return { user };
+  return { user, limits };
 }
 
 export function applicantErrorResponse(error: SellerApplicationError) {

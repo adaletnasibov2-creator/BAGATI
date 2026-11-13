@@ -10,6 +10,9 @@ import { publicProductVisibilityWhere, publicStoreByIdOrSlugWhere } from "@/lib/
 import { activeComplimentaryEntitlementSelect } from "@/lib/subscription-entitlements";
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
+import { getSetting } from "@/lib/settings/read";
+import { SETTING_KEYS } from "@/lib/settings/registry";
+import { storeMetaDescription } from "@/lib/seo";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
 import StorefrontBranding, { type StorefrontBrand } from "@/components/storefront-branding";
 import StorefrontContact from "@/components/storefront-contact";
@@ -112,8 +115,9 @@ export async function generateMetadata({
   const store = await getPublicStore(storeId);
   if (!store) return {};
 
-  const description = store.description?.trim().slice(0, 160)
-    || `Məhsulları ${store.name} mağazasından BAGATI marketplace-də kəşf edin.`;
+  // The store's own description, else the seo.storeDescriptionTemplate setting with {store} replaced (max 160).
+  const template = await getSetting<string>(SETTING_KEYS.seoStoreDescriptionTemplate);
+  const description = storeMetaDescription({ template: template ?? "", storeName: store.name, storeDescription: store.description });
   return {
     title: store.name,
     description,

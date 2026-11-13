@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 /** Withdraw the applicant's own PENDING application, after an explicit confirmation step. */
-export default function VendorApplyWithdraw({ applicationId }: { applicationId: string }) {
+/** `confirmText` comes from the server page (built from the configured wait in hours). */
+export default function VendorApplyWithdraw({ applicationId, confirmText }: { applicationId: string; confirmText: string }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -28,7 +29,7 @@ export default function VendorApplyWithdraw({ applicationId }: { applicationId: 
     {!confirming
       ? <button type="button" onClick={() => setConfirming(true)} className="rounded-xl border border-[#ded9cf] px-4 py-2.5 text-sm font-medium text-slate-700">Müraciəti geri götür</button>
       : <div className="grid gap-3">
-        <p className="text-sm text-slate-700">Müraciəti geri götürsəniz, yeni müraciəti ən tezi 24 saat sonra göndərə bilərsiniz. Davam edilsin?</p>
+        <p className="text-sm text-slate-700">{confirmText}</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" disabled={busy} onClick={withdraw} className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Göndərilir…" : "Bəli, geri götür"}</button>
           <button type="button" disabled={busy} onClick={() => setConfirming(false)} className="rounded-xl border border-[#ded9cf] px-4 py-2.5 text-sm">İmtina</button>

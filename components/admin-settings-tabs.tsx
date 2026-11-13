@@ -3,6 +3,9 @@ import Link from "next/link";
 export const ADMIN_SETTINGS_TABS = [
   { id: "general", label: "Ümumi", href: "/admin/settings" },
   { id: "finance", label: "Maliyyə", href: "/admin/settings?tab=finance" },
+  { id: "seo", label: "SEO", href: "/admin/settings?tab=seo" },
+  { id: "announcement", label: "Elan zolağı", href: "/admin/settings?tab=announcement" },
+  { id: "limits", label: "Limitlər", href: "/admin/settings?tab=limits" },
 ] as const;
 export type AdminSettingsTab = (typeof ADMIN_SETTINGS_TABS)[number]["id"];
 

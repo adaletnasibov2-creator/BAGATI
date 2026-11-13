@@ -6,7 +6,8 @@ import VendorApplyForm, { type VendorApplyDefaults } from "@/components/vendor-a
 import VendorApplyWithdraw from "@/components/vendor-apply-withdraw";
 import StatusBadge from "@/components/seller-application-status-badge";
 import { formatBakuDateTime } from "@/lib/admin-audit-log";
-import { SELLER_TYPE_LABELS } from "@/lib/seller-application";
+import { reapplyRulesFrom, SELLER_TYPE_LABELS, sellerApplicationLimitTexts } from "@/lib/seller-application";
+import { loadSellerApplicationLimits } from "@/lib/settings/limits";
 import { applicantState } from "@/lib/seller-application-service";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +26,12 @@ export default async function VendorApplyPage() {
   if (!user) redirect("/login?next=%2Fvendor%2Fapply");
   if (user.role === "VENDOR") redirect("/vendor");
   if (user.role !== "CUSTOMER") redirect("/");
+  // Wait and count come from the settings engine (defaults 24 hours and 3 per 30 days); texts are built from them.
+  const limits = await loadSellerApplicationLimits();
+  const texts = sellerApplicationLimitTexts(limits);
   const [profile, state] = await Promise.all([
     prisma.customerProfile.findUnique({ where: { userId: user.id }, select: { firstName: true, lastName: true, phone: true } }),
-    applicantState(prisma, user.id),
+    applicantState(prisma, user.id, new Date(), reapplyRulesFrom(limits)),
   ]);
   const { latest, decision } = state;
   const previous = latest && latest.status !== "PENDING" ? latest : null;
@@ -61,7 +65,7 @@ export default async function VendorApplyPage() {
         ["Telefon", latest.phone],
         ["Planlaşdırılan mağaza", latest.plannedStoreName],
       ]} />
-      <VendorApplyWithdraw applicationId={latest.id} />
+      <VendorApplyWithdraw applicationId={latest.id} confirmText={texts.withdrawConfirm} />
     </section>}
 
     {latest?.status === "REJECTED" && <section className={card} aria-labelledby="application-rejected">
@@ -92,7 +96,7 @@ export default async function VendorApplyPage() {
       : waitUntil && <section className={card} role="status">
         <h2 className="text-lg font-semibold text-[#142d38]">Yeni müraciət</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          {decision.reason === "LIMIT" ? "Son 30 gündə 3 müraciət göndərmisiniz." : "Rədd edilmiş və ya geri götürülmüş müraciətdən sonra 24 saat gözləmək lazımdır."}
+          {decision.reason === "LIMIT" ? texts.limitReached : texts.waitRule}
           {" "}Yeni müraciəti <strong>{formatBakuDateTime(waitUntil)}</strong> (Bakı vaxtı) tarixindən sonra göndərə bilərsiniz.
         </p>
       </section>)}

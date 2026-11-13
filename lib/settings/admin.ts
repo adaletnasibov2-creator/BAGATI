@@ -39,6 +39,10 @@ export type AdminSettingView = {
   changedBy: string | null;
   changedAt: string | null;
   storedValueInvalid: boolean;
+  /** Form state for composite inputs (announcement); null for simple inputs. */
+  currentForm: Record<string, string | boolean> | null;
+  /** True for settings served from the 30-second cache (the page says changes apply within 30 seconds). */
+  cached: boolean;
   reason: { min: number; max: number };
   history: AdminSettingHistoryItem[];
 };
@@ -87,6 +91,8 @@ export async function loadAdminSettingsGroup(db: Prisma.TransactionClient, group
       changedBy: row ? row.updatedBy?.email ?? "silinmiş istifadəçi" : null,
       changedAt: row ? formatBakuDateTime(row.updatedAt) : null,
       storedValueInvalid,
+      currentForm: definition.toForm ? definition.toForm(value) : null,
+      cached: definition.read === "ttl",
       reason: { ...SETTING_REASON },
       history,
     };

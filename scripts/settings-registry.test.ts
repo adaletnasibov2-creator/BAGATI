@@ -29,12 +29,16 @@ test("every key: format, unique, default valid, Azerbaijani label and descriptio
     assert.ok(definition.label.length >= 3 && AZ.test(definition.label + definition.description), `${where}: Azerbaijani label/description`);
     assert.ok(definition.description.length >= 20, `${where}: description`);
     assert.ok(SETTING_GROUPS[definition.group], `${where}: known group`);
-    assert.match(definition.permission, /^settings\.(finance|content)$/, where);
+    // Part 2 added the settings.limits permission (RBAC hook) next to finance and content.
+    assert.match(definition.permission, /^settings\.(finance|content|limits)$/, where);
     if (definition.input.kind === "percent" || definition.input.kind === "integer") {
       assert.ok(Number.isFinite(definition.input.min) && Number.isFinite(definition.input.max) && definition.input.min < definition.input.max, `${where}: numeric bounds`);
+    } else if (definition.input.kind === "text") {
+      assert.ok(definition.input.maxLength > 0 && definition.input.minLength >= 0, `${where}: text bounds`);
     } else {
-      assert.ok(definition.input.maxLength > 0, `${where}: text bound`);
+      assert.ok(definition.input.textMax > 0 && definition.toForm && definition.objectFields?.length, `${where}: composite input bounds and form`);
     }
+    assert.ok(definition.read === "ttl" || definition.key === "commission.defaultRate", `${where}: only the commission is read uncached`);
     if (definition.sensitive) assert.ok(definition.sensitiveNotice && AZ.test(definition.sensitiveNotice), `${where}: sensitive notice`);
     assert.equal(getSettingDefinition(definition.key), definition);
   }
@@ -46,9 +50,14 @@ test("forbidden key names: secrets, keys, URLs, DSNs, 2FA, sessions, CSRF, proxy
     const lastPart = definition.key.split(".").pop() ?? "";
     const forbidden = FORBIDDEN_NAME.test(definition.key) || FORBIDDEN_NAME.test(lastPart);
     assert.ok(!forbidden || definition.key in FORBIDDEN_NAME_EXCEPTIONS, `${definition.key} matches the forbidden-name pattern`);
+    // Field names inside object values are scanned too ("key#field" in the allowlist).
+    for (const field of definition.objectFields ?? []) {
+      assert.ok(!FORBIDDEN_NAME.test(field) || `${definition.key}#${field}` in FORBIDDEN_NAME_EXCEPTIONS, `${definition.key}#${field} matches the forbidden-name pattern`);
+    }
   }
   for (const [key, why] of Object.entries(FORBIDDEN_NAME_EXCEPTIONS)) {
-    assert.ok(getSettingDefinition(key), `allowlisted ${key} must exist`);
+    const [base, field] = key.split("#");
+    assert.ok(getSettingDefinition(base) && (!field || getSettingDefinition(base)!.objectFields?.includes(field)), `allowlisted ${key} must exist`);
     assert.ok(why.length >= 20, `allowlisted ${key} needs a written justification`);
   }
   // The pattern itself catches the obvious mistakes.

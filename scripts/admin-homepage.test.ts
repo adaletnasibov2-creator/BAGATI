@@ -108,7 +108,9 @@ test("saved site branding is rendered in the public header, footer, and metadata
   assert.match(brand, /priority=\{priority\}/);
   assert.match(layout, /<Header\s+branding=\{\{ siteName: settings\.siteName, logoUrl: settings\.logoUrl \}\}/);
   assert.match(footer, /<BrandLogo variant="full"[^>]*siteName=\{settings\.siteName\} logoUrl=\{settings\.logoUrl\}/);
-  assert.match(rootLayout, /icon: settings\.logoUrl \?\? "\/icon\.svg"/);
+  // Settings engine part 2 moved the metadata object into lib/seo.ts (rootMetadata); the layout passes the logo through.
+  assert.match(rootLayout, /rootMetadata\(\{ siteName: settings\.siteName, logoUrl: settings\.logoUrl,/);
+  assert.match(source("lib/seo.ts"), /icon: input\.logoUrl \?\? "\/icon\.svg"/);
 });
 
 test("admin payment route clearly reports that transactions are unavailable", () => {

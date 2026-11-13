@@ -15,6 +15,7 @@ import {
 } from "@/lib/store-inquiry";
 import { submitStoreInquiry } from "@/lib/store-inquiry-submit";
 import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
+import { loadInquiryLimits } from "@/lib/settings/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -52,8 +53,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
   }
   const clientIp = trustedCloudflareClientIp(request.headers);
   try {
-    const ipAllowed = !clientIp || await consumeAuthRateLimit(authRateLimitKey("store-inquiry", `ip:${clientIp}`), INQUIRY_IP_RATE_LIMIT.limit, INQUIRY_IP_RATE_LIMIT.windowMs);
-    const storeAllowed = await consumeAuthRateLimit(authRateLimitKey("store-inquiry", `store:${storeId}`), INQUIRY_STORE_RATE_LIMIT.limit, INQUIRY_STORE_RATE_LIMIT.windowMs);
+    // Hourly numbers from the settings engine (limits.inquiry.*, defaults 5 per IP and 30 per store); windows stay in code.
+    const limits = await loadInquiryLimits();
+    const ipAllowed = !clientIp || await consumeAuthRateLimit(authRateLimitKey("store-inquiry", `ip:${clientIp}`), limits.perIpPerHour, INQUIRY_IP_RATE_LIMIT.windowMs);
+    const storeAllowed = await consumeAuthRateLimit(authRateLimitKey("store-inquiry", `store:${storeId}`), limits.perStorePerHour, INQUIRY_STORE_RATE_LIMIT.windowMs);
     if (!ipAllowed || !storeAllowed) return json({ error: INQUIRY_MESSAGES.rateLimited }, 429);
 
     const result = await submitStoreInquiry(prisma, {

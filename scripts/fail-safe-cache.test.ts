@@ -72,7 +72,8 @@ test("getSiteSettings is cached and fail-safe; public pages and metadata use it;
   const lib = read("lib/site-settings.ts");
   assert.match(lib, /createFailSafeLoader\(\{[\s\S]*?ttlMs: SITE_SETTINGS_CACHE_TTL_MS,[\s\S]*?fallback: \(\) => SITE_SETTINGS_DEFAULTS,/);
   assert.match(lib, /SITE_SETTINGS_CACHE_TTL_MS = 30_000/);
-  assert.match(read("app/layout.tsx"), /const settings = await getSiteSettings\(\);/);
+  // Part 2 reads the site settings and the SEO settings together (Promise.all); still through getSiteSettings().
+  assert.match(read("app/layout.tsx"), /const \[settings, description, ogTitle, ogDescription\] = await Promise\.all\(\[\s*getSiteSettings\(\),/);
   assert.doesNotMatch(read("app/layout.tsx"), /prisma/);
   assert.doesNotMatch(read("app/(customer)/layout.tsx"), /siteSettings\.find/);
   const route = read("app/api/admin/site-settings/route.ts");

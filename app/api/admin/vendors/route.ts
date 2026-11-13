@@ -7,6 +7,7 @@ import { adminCreateVendorSchema } from "@/lib/validation";
 import { contactPhoneIssue } from "@/lib/az-phone";
 import { enqueueVerificationEmail } from "@/lib/email-outbox";
 import { isDuplicateEmailError } from "@/lib/registration-errors";
+import { recordAdminCreatedSeller } from "@/lib/seller-application-service";
 import {
   EMAIL_CODE_TTL_MS,
   generateVerificationCode,
@@ -123,6 +124,21 @@ export async function POST(request: NextRequest) {
           select: { id: true, name: true, slug: true, status: true, isActive: true },
         });
 
+        // Every seller has an APPROVED application row; admin-created sellers are recorded with source ADMIN.
+        const application = await recordAdminCreatedSeller(tx, {
+          userId: user.id,
+          vendorProfileId,
+          adminId: admin.id,
+          displayName,
+          phone: values.phone || null,
+          sellerType: values.sellerType,
+          legalName: values.legalName,
+          voen: values.voen,
+          legalAddress: values.legalAddress || null,
+          storeName: values.storeName,
+          now,
+        });
+
         await enqueueVerificationEmail(tx, {
           userId: user.id,
           recipient: user.email,
@@ -140,6 +156,7 @@ export async function POST(request: NextRequest) {
             metadata: {
               vendorUserId: user.id,
               vendorProfileId,
+              vendorApplicationId: application.id,
               adminManaged: values.adminManaged,
               subscriptionPaymentRequired: !values.adminManaged,
               initialStatus: values.initialStatus,

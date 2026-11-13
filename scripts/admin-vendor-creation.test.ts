@@ -39,6 +39,19 @@ test("admin vendor creation links User, VendorProfile and Store in one committed
   assert.match(vendorRoute, /if \(!vendorProfileId\) throw new Error\("VendorProfile could not be created"\)/);
 });
 
+test("admin vendor creation records an APPROVED seller application with source ADMIN in the same transaction", () => {
+  const transaction = vendorRoute.slice(vendorRoute.indexOf("prisma.$transaction("), vendorRoute.indexOf("TransactionIsolationLevel.Serializable"));
+  assert.match(transaction, /const application = await recordAdminCreatedSeller\(tx, \{[\s\S]*?vendorProfileId,[\s\S]*?adminId: admin\.id,/);
+  assert.match(transaction, /vendorApplicationId: application\.id/);
+  const service = readFileSync(resolve(root, "lib/seller-application-service.ts"), "utf8");
+  const helper = service.slice(service.indexOf("export async function recordAdminCreatedSeller"));
+  assert.match(helper, /status: "APPROVED",\s+source: "ADMIN",/);
+  assert.match(helper, /voenNormalized: normalizeVoen\(input\.voen\)/);
+  assert.match(helper, /reviewedById: input\.adminId,\s+reviewedAt: input\.now,/);
+  // No openUserId: an APPROVED row is never "open" (the database CHECK requires NULL).
+  assert.doesNotMatch(helper.slice(0, helper.indexOf("\n}\n")), /openUserId/);
+});
+
 test("admin vendor creation reuses the existing email verification outbox", () => {
   assert.match(vendorRoute, /enqueueVerificationEmail\(tx, \{/);
   assert.match(vendorRoute, /recipient: user\.email/);

@@ -28,6 +28,7 @@ import {
   X,
   Settings,
   Images,
+  Activity,
 } from "lucide-react";
 
 const items = [
@@ -56,6 +57,7 @@ const items = [
   ["/admin/reports", "Hesabatlar", ChartNoAxesCombined],
   ["/admin/notifications", "Bildirişlər", Bell],
   ["/admin/email", "E-poçt çatdırılması", Bell],
+  ["/admin/system", "Sistem vəziyyəti", Activity],
   ["/admin/audit-log", "Audit jurnalı", FileClock],
 ] as const;
 

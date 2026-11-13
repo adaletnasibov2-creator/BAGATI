@@ -83,8 +83,11 @@ test("rate limits: process limiter blocks after the limit; route applies per-IP 
   assert.notEqual(authRateLimitKey("store-inquiry", "ip:203.0.113.7"), authRateLimitKey("store-inquiry", "store:abc"));
   assert.ok(INQUIRY_IP_RATE_LIMIT.limit <= 10 && INQUIRY_STORE_RATE_LIMIT.limit <= 60);
   const route = readFileSync("app/api/stores/[storeId]/inquiries/route.ts", "utf8");
-  assert.match(route, /authRateLimitKey\("store-inquiry", `ip:\$\{clientIp\}`\), INQUIRY_IP_RATE_LIMIT\.limit/);
-  assert.match(route, /authRateLimitKey\("store-inquiry", `store:\$\{storeId\}`\), INQUIRY_STORE_RATE_LIMIT\.limit/);
+  // Settings engine part 2: the hourly numbers come from loadInquiryLimits() (defaults = the constants above);
+  // the windows stay the code constants.
+  assert.match(route, /const limits = await loadInquiryLimits\(\);/);
+  assert.match(route, /authRateLimitKey\("store-inquiry", `ip:\$\{clientIp\}`\), limits\.perIpPerHour, INQUIRY_IP_RATE_LIMIT\.windowMs/);
+  assert.match(route, /authRateLimitKey\("store-inquiry", `store:\$\{storeId\}`\), limits\.perStorePerHour, INQUIRY_STORE_RATE_LIMIT\.windowMs/);
   assert.match(route, /status:\s*429|, 429\)/);
 });
 

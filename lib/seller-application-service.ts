@@ -3,7 +3,7 @@
  * exercised against the isolated verify database. Routes stay thin: CSRF, auth, body, then one call here.
  */
 import type { Prisma, SellerType } from "@prisma/client";
-import { normalizeVoen, reapplyDecision, type SellerApplicationInput } from "@/lib/seller-application";
+import { normalizeVoen, reapplyDecision, type ReapplyRules, type SellerApplicationInput } from "@/lib/seller-application";
 
 /**
  * Records a seller created directly by an admin as an APPROVED application with source ADMIN.
@@ -289,7 +289,7 @@ export async function duplicateVoenFlags(db: Prisma.TransactionClient, rows: { i
 const historySelect = { status: true, source: true, createdAt: true, reviewedAt: true, withdrawnAt: true } as const;
 
 /** What the applicant sees on /vendor/apply: latest application, its history and whether a new one is allowed now. */
-export async function applicantState(db: Prisma.TransactionClient, userId: string, now = new Date()) {
+export async function applicantState(db: Prisma.TransactionClient, userId: string, now = new Date(), rules?: ReapplyRules) {
   const applications = await db.vendorApplication.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -299,7 +299,7 @@ export async function applicantState(db: Prisma.TransactionClient, userId: strin
       legalAddress: true, plannedStoreName: true, rejectionReason: true,
     },
   });
-  return { latest: applications[0] ?? null, decision: reapplyDecision(applications, now) };
+  return { latest: applications[0] ?? null, decision: reapplyDecision(applications, now, rules) };
 }
 
 /**
@@ -307,7 +307,7 @@ export async function applicantState(db: Prisma.TransactionClient, userId: strin
  * submissions of the same user run one after the other; the reapply rules are checked against the history;
  * openUserId (unique) makes a second open application impossible even outside this code.
  */
-export async function submitSellerApplication(db: TransactionRunner, input: { userId: string; data: SellerApplicationInput; enqueue: OutboxEnqueue; now?: Date }) {
+export async function submitSellerApplication(db: TransactionRunner, input: { userId: string; data: SellerApplicationInput; enqueue: OutboxEnqueue; now?: Date; rules?: ReapplyRules }) {
   const now = input.now ?? new Date();
   try {
     return await db.$transaction(async (tx) => {
@@ -317,7 +317,7 @@ export async function submitSellerApplication(db: TransactionRunner, input: { us
       const user = users[0];
       if (!user || user.role !== "CUSTOMER" || !user.isActive || !user.verified) throw new SellerApplicationError("ACCOUNT_CHANGED");
       const history = await tx.vendorApplication.findMany({ where: { userId: input.userId }, select: historySelect });
-      const decision = reapplyDecision(history, now);
+      const decision = reapplyDecision(history, now, input.rules);
       if (!decision.allowed) {
         throw new SellerApplicationError(decision.reason, "nextAllowedAt" in decision ? { nextAllowedAt: decision.nextAllowedAt.toISOString() } : {});
       }

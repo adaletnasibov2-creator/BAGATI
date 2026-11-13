@@ -12,9 +12,9 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 export const SELLER_APPLICATION_RULES = {
-  /** Wait after a REJECTED or WITHDRAWN application before the next one. */
+  /** Wait after a REJECTED or WITHDRAWN application before the next one. Code default; the settings engine may override. */
   reapplyWaitMs: 24 * HOUR_MS,
-  /** At most `maxPerWindow` customer applications in any rolling `windowMs`. */
+  /** At most `maxPerWindow` customer applications in any rolling `windowMs` (fixed 30 days). maxPerWindow is the code default. */
   windowMs: 30 * DAY_MS,
   maxPerWindow: 3,
   applicantNoteMax: 1000,
@@ -31,13 +31,40 @@ export const SELLER_APPLICATION_PROCESS_RATE_LIMIT = { limit: 300, windowMs: 15 
 export const SELLER_APPLICATION_IP_RATE_LIMIT = { limit: 60, windowMs: HOUR_MS } as const;
 
 /**
+ * Limits an admin can change in the settings engine (limits.sellerApplication.*). The 30-day window and the
+ * process-wide limit stay fixed in code. The defaults below are today's values and the registry defaults.
+ */
+export type SellerApplicationLimits = { reapplyWaitHours: number; maxPer30Days: number; perUserPerHour: number; perIpPerHour: number };
+export const DEFAULT_SELLER_APPLICATION_LIMITS: SellerApplicationLimits = {
+  reapplyWaitHours: SELLER_APPLICATION_RULES.reapplyWaitMs / HOUR_MS,
+  maxPer30Days: SELLER_APPLICATION_RULES.maxPerWindow,
+  perUserPerHour: SELLER_APPLICATION_RATE_LIMIT.limit,
+  perIpPerHour: SELLER_APPLICATION_IP_RATE_LIMIT.limit,
+};
+
+/** Rules used by reapplyDecision. */
+export type ReapplyRules = { reapplyWaitMs: number; maxPerWindow: number; windowMs: number };
+export function reapplyRulesFrom(limits: SellerApplicationLimits): ReapplyRules {
+  return { reapplyWaitMs: limits.reapplyWaitHours * HOUR_MS, maxPerWindow: limits.maxPer30Days, windowMs: SELLER_APPLICATION_RULES.windowMs };
+}
+
+/** Customer-facing texts that mention the configured numbers. Built here so no page hardcodes them. */
+export function sellerApplicationLimitTexts(limits: SellerApplicationLimits) {
+  return {
+    waitRule: `Rədd edilmiş və ya geri götürülmüş müraciətdən sonra ${limits.reapplyWaitHours} saat gözləmək lazımdır.`,
+    limitReached: `Son 30 gündə ${limits.maxPer30Days} müraciət göndərmisiniz.`,
+    withdrawConfirm: `Müraciəti geri götürsəniz, yeni müraciəti ən tezi ${limits.reapplyWaitHours} saat sonra göndərə bilərsiniz. Davam edilsin?`,
+  };
+}
+
+/**
  * Rate-limit buckets for one applicant request: always the user; the client IP only when a trusted one exists.
  * `keyFor` must be a keyed hash (authRateLimitKey: HMAC-SHA256 with SESSION_SECRET), so the raw IP is never stored.
  */
-export function applicantRateLimitBuckets(userId: string, clientIp: string | null, keyFor: (identity: string) => string) {
+export function applicantRateLimitBuckets(userId: string, clientIp: string | null, keyFor: (identity: string) => string, limits: SellerApplicationLimits = DEFAULT_SELLER_APPLICATION_LIMITS) {
   return [
-    { kind: "user" as const, key: keyFor(`user:${userId}`), ...SELLER_APPLICATION_RATE_LIMIT },
-    ...(clientIp ? [{ kind: "ip" as const, key: keyFor(`ip:${clientIp}`), ...SELLER_APPLICATION_IP_RATE_LIMIT }] : []),
+    { kind: "user" as const, key: keyFor(`user:${userId}`), limit: limits.perUserPerHour, windowMs: SELLER_APPLICATION_RATE_LIMIT.windowMs },
+    ...(clientIp ? [{ kind: "ip" as const, key: keyFor(`ip:${clientIp}`), limit: limits.perIpPerHour, windowMs: SELLER_APPLICATION_IP_RATE_LIMIT.windowMs }] : []),
   ];
 }
 
@@ -166,13 +193,14 @@ export type ReapplyDecision =
   | { allowed: false; reason: "WAIT" | "LIMIT"; nextAllowedAt: Date };
 
 /**
- * May this customer submit a new application now?
+ * May this customer submit a new application now? Pure; the rules are injected (settings engine), defaulting
+ * to today's values:
  *  - never while one is PENDING (the database enforces this too) or after an approval;
- *  - 24 hours after the last REJECTED or WITHDRAWN application;
- *  - at most 3 customer applications in any rolling 30 days.
+ *  - `reapplyWaitMs` after the last REJECTED or WITHDRAWN application (default 24 hours);
+ *  - at most `maxPerWindow` customer applications in any rolling `windowMs` (default 3 in 30 days).
  * When both waits apply, the later time is returned.
  */
-export function reapplyDecision(history: ApplicationHistoryItem[], now: Date): ReapplyDecision {
+export function reapplyDecision(history: ApplicationHistoryItem[], now: Date, rules: ReapplyRules = reapplyRulesFrom(DEFAULT_SELLER_APPLICATION_LIMITS)): ReapplyDecision {
   if (history.some((item) => item.status === "PENDING")) return { allowed: false, reason: "OPEN" };
   if (history.some((item) => item.status === "APPROVED")) return { allowed: false, reason: "APPROVED" };
   const blocks: { reason: "WAIT" | "LIMIT"; at: number }[] = [];
@@ -182,19 +210,19 @@ export function reapplyDecision(history: ApplicationHistoryItem[], now: Date): R
     .filter((value): value is Date => value instanceof Date)
     .map((value) => value.getTime());
   if (closedAt.length) {
-    const waitUntil = Math.max(...closedAt) + SELLER_APPLICATION_RULES.reapplyWaitMs;
+    const waitUntil = Math.max(...closedAt) + rules.reapplyWaitMs;
     if (waitUntil > now.getTime()) blocks.push({ reason: "WAIT", at: waitUntil });
   }
 
-  const windowStart = now.getTime() - SELLER_APPLICATION_RULES.windowMs;
+  const windowStart = now.getTime() - rules.windowMs;
   const recent = history
     .filter((item) => item.source === "SELF" && item.createdAt.getTime() > windowStart)
     .map((item) => item.createdAt.getTime())
     .sort((a, b) => a - b);
-  if (recent.length >= SELLER_APPLICATION_RULES.maxPerWindow) {
+  if (recent.length >= rules.maxPerWindow) {
     // Allowed again once only maxPerWindow - 1 applications remain inside the window.
-    const oldestThatMustExpire = recent[recent.length - SELLER_APPLICATION_RULES.maxPerWindow];
-    blocks.push({ reason: "LIMIT", at: oldestThatMustExpire + SELLER_APPLICATION_RULES.windowMs });
+    const oldestThatMustExpire = recent[recent.length - rules.maxPerWindow];
+    blocks.push({ reason: "LIMIT", at: oldestThatMustExpire + rules.windowMs });
   }
 
   if (!blocks.length) return { allowed: true };

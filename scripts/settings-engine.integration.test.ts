@@ -207,3 +207,49 @@ test("order commission: store rule ?? default setting ?? null, snapshotted once 
     await prisma.$disconnect();
   }
 });
+
+test("limit settings: a saved value reaches the loaders after cache invalidation; reset returns the defaults", { timeout: 120_000 }, async (t) => {
+  const guard = guardedVerifyUrl();
+  if ("skip" in guard) return t.skip(`NOT VERIFIED: ${guard.skip}`);
+  if ("refuse" in guard) throw new Error(`Refusing to run: ${guard.refuse}.`);
+  process.env.DATABASE_URL = guard.url;
+  const prisma = new PrismaClient({ datasources: { db: { url: guard.url } } });
+  const tag = randomUUID().replace(/-/g, "").slice(0, 10);
+  const keys = ["limits.inquiry.perIpPerHour", "limits.sellerApplication.maxPer30Days"];
+  const userIds: string[] = [];
+  try {
+    try { await prisma.$queryRaw`SELECT 1`; } catch { return t.skip("NOT VERIFIED: verify database on 127.0.0.1:5433 is unreachable"); }
+    const table = await prisma.$queryRaw<Array<{ t: string | null }>>`SELECT to_regclass('"SiteSetting"')::text AS t`;
+    if (!table[0]?.t) return t.skip("NOT VERIFIED: SiteSetting table missing in this schema");
+    if (await prisma.siteSetting.count({ where: { key: { in: keys } } })) return t.skip("NOT VERIFIED: limit settings already have rows in this schema; refusing to change them");
+    const write = await import("../lib/settings/write");
+    const { invalidateSettingsCache } = await import("../lib/settings/read");
+    const { loadInquiryLimits, loadSellerApplicationLimits } = await import("../lib/settings/limits");
+    const admin = await prisma.user.create({ data: { email: `limits-admin-${tag}@verify.invalid`, passwordHash: "x", role: "ADMIN" } });
+    userIds.push(admin.id);
+
+    invalidateSettingsCache();
+    assert.deepEqual(await loadInquiryLimits(), { perIpPerHour: 5, perStorePerHour: 30 }, "empty table: defaults");
+    assert.deepEqual(await loadSellerApplicationLimits(), { reapplyWaitHours: 24, maxPer30Days: 3, perUserPerHour: 20, perIpPerHour: 60 });
+
+    await write.updateSetting(prisma, { key: keys[0], expectedVersion: 0, actorId: admin.id, input: "1" });
+    await write.updateSetting(prisma, { key: keys[1], expectedVersion: 0, actorId: admin.id, input: "1" });
+    assert.equal((await write.updateSetting(prisma, { key: keys[0], expectedVersion: 1, actorId: admin.id, input: "51" }).catch((error) => error.code)), "INVALID", "bounds enforced");
+    invalidateSettingsCache();
+    assert.deepEqual(await loadInquiryLimits(), { perIpPerHour: 1, perStorePerHour: 30 });
+    assert.equal((await loadSellerApplicationLimits()).maxPer30Days, 1);
+
+    await write.resetSetting(prisma, { key: keys[0], expectedVersion: 1, actorId: admin.id });
+    await write.resetSetting(prisma, { key: keys[1], expectedVersion: 1, actorId: admin.id });
+    invalidateSettingsCache();
+    assert.deepEqual(await loadInquiryLimits(), { perIpPerHour: 5, perStorePerHour: 30 }, "reset: defaults again");
+  } finally {
+    await prisma.siteSettingRevision.deleteMany({ where: { key: { in: keys }, changedById: { in: userIds } } });
+    await prisma.siteSetting.deleteMany({ where: { key: { in: keys } } });
+    if (userIds.length) {
+      await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
+      await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+    }
+    await prisma.$disconnect();
+  }
+});

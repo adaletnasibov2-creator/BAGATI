@@ -4,6 +4,7 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
+import AnnouncementBar from "@/components/announcement-bar";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
 
   return (
     <>
+      <AnnouncementBar />
       <Header
         branding={{ siteName: settings.siteName, logoUrl: settings.logoUrl }}
         user={publicUser}

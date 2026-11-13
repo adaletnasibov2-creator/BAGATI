@@ -185,13 +185,14 @@ async function businessCard(now: Date) {
   const today = bakuStartOfDay(now);
   const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
   return boundedStatusRead(async (tx) => {
-    const [row] = await tx.$queryRaw<{ ordersToday: number; failedPaymentsToday: number; newSellers7d: number; pendingStoreReviews: number; unreadInquiries: number }[]>`
+    const [row] = await tx.$queryRaw<{ ordersToday: number; failedPaymentsToday: number; newSellers7d: number; pendingStoreReviews: number; unreadInquiries: number; pendingSellerApplications: number }[]>`
       SELECT
         (SELECT COUNT(*)::int FROM "Order" WHERE "createdAt" >= ${utcTimestamp(today)}) AS "ordersToday",
         (SELECT COUNT(*)::int FROM "Payment" WHERE "status" = 'FAILED' AND "createdAt" >= ${utcTimestamp(today)}) AS "failedPaymentsToday",
         (SELECT COUNT(*)::int FROM "User" WHERE "role" = 'VENDOR' AND "createdAt" >= ${utcTimestamp(since7d)}) AS "newSellers7d",
         (SELECT COUNT(*)::int FROM "Store" WHERE "status" = 'PENDING_REVIEW') AS "pendingStoreReviews",
-        (SELECT COUNT(*)::int FROM "StoreInquiry" WHERE "status" = 'NEW') AS "unreadInquiries"`;
+        (SELECT COUNT(*)::int FROM "StoreInquiry" WHERE "status" = 'NEW') AS "unreadInquiries",
+        (SELECT COUNT(*)::int FROM "VendorApplication" WHERE "status" = 'PENDING') AS "pendingSellerApplications"`;
     return {
       dayStartsAt: today.toISOString(),
       ordersToday: Number(row?.ordersToday ?? 0),
@@ -199,6 +200,7 @@ async function businessCard(now: Date) {
       newSellers7d: Number(row?.newSellers7d ?? 0),
       pendingStoreReviews: Number(row?.pendingStoreReviews ?? 0),
       unreadInquiries: Number(row?.unreadInquiries ?? 0),
+      pendingSellerApplications: Number(row?.pendingSellerApplications ?? 0),
     };
   });
 }

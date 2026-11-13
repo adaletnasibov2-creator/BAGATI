@@ -30,6 +30,7 @@ import {
   Images,
   Activity,
   MonitorSmartphone,
+  ClipboardCheck,
 } from "lucide-react";
 
 const items = [
@@ -42,6 +43,7 @@ const items = [
   ["/admin/promotions", "Kampaniyalar", BadgePercent],
   ["/admin/stores", "Mağazalar", Store],
   ["/admin/vendors", "Satıcılar", Users],
+  ["/admin/seller-applications", "Satıcı müraciətləri", ClipboardCheck],
   ["/admin/customers", "Müştərilər", UserRound],
   ["/admin/products", "Məhsullar", Package],
   ["/admin/categories", "Kateqoriyalar", Tags],

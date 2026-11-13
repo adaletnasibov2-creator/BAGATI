@@ -155,11 +155,14 @@ test("payment attempts are rate limited without touching a database", () => {
 test("payment callback IP keys ignore untrusted forwarded headers", () => {
   const spoofed = new Headers({
     "cf-connecting-ip": "198.51.100.10",
-    "x-real-ip": "203.0.113.20",
     "x-forwarded-for": "192.0.2.30",
   });
   assert.equal(paymentClientKey(spoofed, false), null);
   assert.equal(paymentClientKey(spoofed, true), "trusted-ip:198.51.100.10");
+  // CF-Connecting-IP and X-Real-IP disagreeing means the client IP is unknown (lib/trusted-proxy.ts): no per-client
+  // key, so the callback falls back to the global limit only (as with an untrusted proxy); it is never blocked by it.
+  assert.equal(paymentClientKey(new Headers({ "cf-connecting-ip": "198.51.100.10", "x-real-ip": "203.0.113.20" }), true), null);
+  assert.equal(paymentClientKey(new Headers({ "cf-connecting-ip": "198.51.100.10", "x-real-ip": "198.51.100.10" }), true), "trusted-ip:198.51.100.10");
   assert.equal(paymentClientKey(new Headers({ "x-real-ip": "203.0.113.20" }), true), null);
   assert.equal(paymentClientKey(new Headers({ "cf-connecting-ip": "198.51.100.10, 203.0.113.20" }), true), null);
   assert.equal(paymentClientKey(new Headers({ "cf-connecting-ip": "not-an-ip" }), true), null);

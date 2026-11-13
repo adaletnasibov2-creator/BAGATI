@@ -45,8 +45,10 @@ test("every admin API except login requires the ADMIN role on the server", () =>
   for (const path of routes) {
     if (loginCodeStep(path)) assert.match(read(path), /const admin = await readChallenge\(request, "code"\);\s*if \(!admin\) return/, path);
     else if (enrollment(path)) assert.match(read(path), /const actor = await resolveEnrollmentActor\(request\);[^\n]*\n\s*if \(!actor\) return/, path);
-    else assert.match(read(path), /requireRole\("ADMIN"\)/, path);
+    // Security Center routes go through authorizeSecurityAdmin (same-origin -> requireRole("ADMIN") -> permission).
+    else assert.match(read(path), /requireRole\("ADMIN"\)|await authorizeSecurityAdmin\(request, "security\.[a-z]+", \{ write: (true|false) \}\);\s*if \("response" in auth\) return auth\.response;/, path);
   }
+  assert.match(read("lib/security-monitoring/http.ts"), /const admin = await requireRole\("ADMIN"\);\s*if \(!admin\) return/);
   // The helpers themselves only accept a signed-in ADMIN or a challenge whose user is still an active ADMIN.
   const twoFactor = read("lib/admin-2fa.ts");
   assert.match(twoFactor, /export async function resolveEnrollmentActor[\s\S]*?await requireRole\("ADMIN"\)/);

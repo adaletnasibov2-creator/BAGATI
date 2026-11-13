@@ -91,3 +91,12 @@ export async function loadAdminSettingsGroup(db: Prisma.TransactionClient, group
   });
   return { group: SETTING_GROUPS[group], settings };
 }
+
+/** Current value of one setting for a read-only summary (uncached; e.g. the default commission on /admin/commissions). */
+export async function loadSettingSummary(db: Prisma.TransactionClient, key: string) {
+  const definition = SETTING_DEFINITIONS.find((item) => item.key === key);
+  if (!definition) throw new Error(`Unknown setting key: ${key}`);
+  const row = await db.siteSetting.findUnique({ where: { key }, select: { value: true } });
+  const value = resolveSettingValue(definition, row?.value ?? null, Date.now(), () => undefined);
+  return { key, label: definition.label, display: definition.display(value), isSet: value !== null };
+}

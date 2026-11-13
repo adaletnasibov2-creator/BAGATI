@@ -11,6 +11,7 @@
  * permissions here: they stay in environment variables or code. The registry test rejects such key names.
  */
 import { z } from "zod";
+import { commissionPercentToRate, commissionRateToPercent } from "@/lib/commission-rules";
 
 export type SettingPermission = "settings.finance" | "settings.content";
 export type SettingGroupId = "finance";
@@ -56,19 +57,12 @@ export const COMMISSION_MAX_BASIS_POINTS = 3000;
 
 /** "10" → "0.1000", "12.5" → "0.1250", "0.01" → "0.0001". Integer arithmetic only; never a float. */
 export function percentToRate(percent: string): string | null {
-  const match = /^(\d{1,2})(?:[.,](\d{1,2}))?$/.exec(percent.trim());
-  if (!match) return null;
-  const basisPoints = Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
-  if (basisPoints > COMMISSION_MAX_BASIS_POINTS) return null;
-  return `0.${String(basisPoints).padStart(4, "0")}`;
+  return commissionPercentToRate(percent, COMMISSION_MAX_BASIS_POINTS / 100);
 }
 
 /** "0.1000" → "10", "0.1250" → "12.5", "0.0001" → "0.01". */
 export function rateToPercent(rate: string): string {
-  const basisPoints = Number(rate.slice(2));
-  const whole = Math.floor(basisPoints / 100);
-  const fraction = String(basisPoints % 100).padStart(2, "0").replace(/0+$/, "");
-  return fraction ? `${whole}.${fraction}` : String(whole);
+  return commissionRateToPercent(rate);
 }
 
 const commissionRate = z.string().regex(/^0\.\d{4}$/, "Komissiya 0.0000 formatında saxlanılmalıdır")

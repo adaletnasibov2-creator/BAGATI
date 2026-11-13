@@ -13,6 +13,9 @@ import { summarizeMonthlyStoreSales } from "@/lib/store-monthly-sales";
 import { formatLocalDateInput, parseLocalDateRange } from "@/lib/admin-report-dates";
 import { allowedAdminOrderTransitions } from "@/lib/order-fulfillment";
 import AdminSiteSettingsForm from "@/components/admin-site-settings-form";
+import AdminSettingsTabs from "@/components/admin-settings-tabs";
+import AdminSettingField from "@/components/admin-setting-field";
+import { loadAdminSettingsGroup } from "@/lib/settings/admin";
 import AdminHomepageManager from "@/components/admin-homepage-manager";
 import AdminProductEditForm from "@/components/admin-product-edit-form";
 import AdminPromotionManager from "@/components/admin-promotion-manager";
@@ -49,8 +52,12 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
  const shell=(content:React.ReactNode)=><AdminShell email={admin.email}>{content}</AdminShell>;
 
  if(route==="settings"){
+  if(sp.tab==="finance"){
+   const finance=await loadAdminSettingsGroup(prisma,"finance");
+   return shell(<><Header title="Sayt parametrləri" detail={finance.group.description}/><AdminSettingsTabs active="finance"/><div className="grid gap-4">{finance.settings.map(view=><AdminSettingField key={view.key} view={view}/>)}</div></>);
+  }
   const settings=await db.siteSettings.findUnique({where:{id:SITE_SETTINGS_DEFAULTS.id}});
-  return shell(<><Header title="Sayt parametrləri" detail="Dəyişikliklər ictimai header, əlaqə məlumatları, qaydalar və ana səhifə təqdimatında görünür."/><AdminSiteSettingsForm initial={settings??SITE_SETTINGS_DEFAULTS}/></>);
+  return shell(<><Header title="Sayt parametrləri" detail="Dəyişikliklər ictimai header, əlaqə məlumatları, qaydalar və ana səhifə təqdimatında görünür."/><AdminSettingsTabs active="general"/><AdminSiteSettingsForm initial={settings??SITE_SETTINGS_DEFAULTS}/></>);
  }
  if(route==="homepage")return shell(<><Header title="Ana səhifə və bannerlər" detail="Bannerlər yalnız aktiv və təyin olunmuş tarix aralığında göstərilir. Mağaza kampaniyaları mövcud satıcı kampaniya axınından idarə olunur."/><AdminHomepageManager/></>);
  if(route==="promotions")return shell(<><Header title="Kampaniyalar" detail="Mağaza məhsullarına tarix və status əsasında endirim kampaniyaları təyin edin."/><AdminPromotionManager/></>);

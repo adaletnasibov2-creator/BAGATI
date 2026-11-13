@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import AdminAuditExportButton from "@/components/admin-audit-export-button";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeAdminPage, normalizeAdminSearchParams, type AdminSearchParams } from "@/lib/admin-pagination";
@@ -78,9 +79,7 @@ export default async function AdminAuditLogPage({ searchParams }: { searchParams
         <h1 className="mt-2 text-3xl font-semibold text-[#0d1b2a]">Audit jurnalı</h1>
         <p className="mt-2 text-sm text-slate-500">Yalnız sistemdə yazılmış audit qeydləri göstərilir. Tarixlər Bakı vaxtı ilə filtrlənir.</p>
       </div>
-      <a href={`/api/admin/audit-log/export${query ? `?${query}` : ""}`} className="rounded-xl border border-[#c7ad78] bg-white px-4 py-2.5 text-sm font-semibold text-[#85621d]">
-        CSV ixrac (maks. {AUDIT_EXPORT_MAX_ROWS.toLocaleString("az-AZ")} sətir)
-      </a>
+      <AdminAuditExportButton filters={Object.fromEntries(auditFiltersToSearchParams(filters))} maxRows={AUDIT_EXPORT_MAX_ROWS} />
     </div>
 
     <form action="/admin/audit-log" className="mb-4 grid gap-3 rounded-2xl border border-[#e7e3d9] bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">

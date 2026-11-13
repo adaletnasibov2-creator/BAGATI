@@ -23,8 +23,12 @@ const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 test("audit page and CSV export require the ADMIN role", () => {
   assert.match(read("app/admin/audit-log/page.tsx"), /const admin = await requireRole\("ADMIN"\);\s*if \(!admin\) redirect\("\/admin\/login"\)/);
   const route = read("app/api/admin/audit-log/export/route.ts");
-  assert.match(route, /export async function GET[\s\S]*?const admin = await requireRole\("ADMIN"\);\s*if \(!admin\) return NextResponse\.json\(\{ error: "İcazə yoxdur" \}, \{ status: 403 \}\)/);
-  assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
+  assert.match(route, /export async function POST\(request: NextRequest\) \{\s*const crossSite = csrfRejection\(request\);\s*if \(crossSite\) return crossSite;\s*const admin = await requireRole\("ADMIN"\);\s*if \(!admin\) return NextResponse\.json\(\{ error: "İcazə yoxdur" \}, \{ status: 403 \}\)/);
+  assert.doesNotMatch(route, /export async function (GET|PUT|PATCH|DELETE)/);
+  assert.match(route, /readJsonBodyLimited\(request, MAX_BODY_BYTES\)/);
+  const button = read("components/admin-audit-export-button.tsx");
+  assert.match(button, /method: "POST"/);
+  assert.doesNotMatch(read("app/admin/audit-log/page.tsx"), /href=\{`\/api\/admin\/audit-log\/export/, "no GET link to the export");
   // The old catch-all branch is gone, so the dedicated page is the only audit list.
   assert.doesNotMatch(read("app/admin/[...section]/page.tsx"), /route==="audit-log"/);
 });
@@ -158,4 +162,35 @@ test("CSV is capped at the row limit and reports truncation", () => {
 
 test("Baku time formatting", () => {
   assert.equal(formatBakuDateTime(new Date("2026-12-31T21:00:00Z")), "2027-01-01 01:00:00");
+});
+
+test("export rejects GET: the route module exports no GET handler, so Next.js answers 405", async () => {
+  const route = await import("../app/api/admin/audit-log/export/route");
+  assert.equal((route as Record<string, unknown>).GET, undefined);
+  assert.equal(typeof route.POST, "function");
+});
+
+test("export rejects a cross-origin POST in the route itself and in middleware, before any session lookup", async () => {
+  const { NextRequest } = await import("next/server");
+  const { POST } = await import("../app/api/admin/audit-log/export/route");
+  const { middleware } = await import("../middleware");
+  const url = "http://localhost:3000/api/admin/audit-log/export";
+  const crossOrigin = () => new NextRequest(url, {
+    method: "POST",
+    headers: { host: "localhost:3000", origin: "https://evil.example", "content-type": "application/json", cookie: "bagati_session=x" },
+    body: "{}",
+  });
+  const direct = await POST(crossOrigin());
+  assert.equal(direct.status, 403);
+  assert.equal((await direct.json()).code, "CROSS_SITE_REQUEST");
+  const viaMiddleware = await middleware(crossOrigin());
+  assert.equal(viaMiddleware?.status, 403);
+  const fetchMetadata = await POST(new NextRequest(url, {
+    method: "POST",
+    headers: { host: "localhost:3000", origin: "http://localhost:3000", "sec-fetch-site": "cross-site", "content-type": "application/json" },
+    body: "{}",
+  }));
+  assert.equal(fetchMetadata.status, 403);
+  const noOrigin = await POST(new NextRequest(url, { method: "POST", headers: { host: "localhost:3000", "content-type": "application/json" }, body: "{}" }));
+  assert.equal(noOrigin.status, 403, "a POST with neither Origin nor Referer is rejected");
 });

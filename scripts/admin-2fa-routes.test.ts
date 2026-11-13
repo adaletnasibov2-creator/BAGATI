@@ -156,3 +156,13 @@ test("session metadata is display-safe: masked IP and a short browser summary on
   assert.match(auth, /ipMasked: ip \? maskIpAddress\(ip\) : null/);
   assert.match(auth, /userAgent: summarizeUserAgent\(list\.get\("user-agent"\)\)/);
 });
+
+test("every session revocation path writes an audit entry (regression: forced enrollment revoked sessions silently)", () => {
+  const activate = read("app/api/admin/2fa/activate/route.ts");
+  assert.match(activate, /revokeOtherOwnSessions\(actor\.userId, await currentSessionId\(\), "2fa-enrolled"\)/);
+  assert.match(activate, /revokeOtherOwnSessions\(actor\.userId, null, "2fa-enrolled"\)/);
+  assert.doesNotMatch(activate, /revokeUserSessions\(/, "the unaudited helper is not used directly");
+  const sessions = read("lib/admin-sessions.ts");
+  assert.match(sessions, /export async function revokeOtherOwnSessions[\s\S]*?revokeUserSessions\(userId, currentSessionId\);[\s\S]*?action: "ADMIN_SESSIONS_REVOKED"/);
+  assert.match(read("lib/admin-2fa.ts"), /"ADMIN_2FA_DISABLED", \{ method: factor\.method, revokedOtherSessions: revoked\.count \}/);
+});

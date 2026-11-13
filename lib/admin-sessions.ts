@@ -38,6 +38,6 @@ export async function revokeOwnSession(userId: string, sessionId: string, curren
 
 export async function revokeOtherOwnSessions(userId: string, currentSessionId: string | null, reason: "manual" | "2fa-enrolled") {
   const revoked = await revokeUserSessions(userId, currentSessionId);
-  await prisma.auditLog.create({ data: { actorId: userId, action: "ADMIN_SESSIONS_REVOKED", entityType: "User", entityId: userId, metadata: { scope: "others", reason, count: revoked } } });
+  await prisma.auditLog.create({ data: { actorId: userId, action: "ADMIN_SESSIONS_REVOKED", entityType: "User", entityId: userId, metadata: { scope: currentSessionId ? "others" : "all", reason, count: revoked } } });
   return revoked;
 }

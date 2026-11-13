@@ -9,7 +9,7 @@ const read = (path: string) => readFileSync(join(root, path), "utf8");
 function pages(dir: string): string[] {
   return readdirSync(join(root, dir)).flatMap((name) => {
     const path = join(dir, name);
-    return statSync(join(root, path)).isDirectory() ? pages(path) : name === "page.tsx" ? [relative(".", path).replace(/\\/g, "/")] : [];
+    return statSync(join(root, path)).isDirectory() ? pages(path) : name === "page.tsx" || name === "layout.tsx" ? [relative(".", path).replace(/\\/g, "/")] : [];
   });
 }
 
@@ -25,9 +25,11 @@ test("a signed-in CUSTOMER who opens the seller area goes to /vendor/apply; othe
   }
 });
 
-test("every store-scoped seller page uses requireVendorStorePage (owner continues, CUSTOMER to /vendor/apply, others 404)", () => {
+test("every store-scoped seller page and layout uses requireVendorStorePage (owner continues, CUSTOMER to /vendor/apply, others 404)", () => {
   const storePages = pages("app/vendor/[storeId]");
-  assert.ok(storePages.length >= 6);
+  assert.ok(storePages.length >= 7);
+  // The layout runs before every store page; the browser check found it still answered 404 to customers.
+  assert.ok(storePages.includes("app/vendor/[storeId]/layout.tsx"));
   for (const page of storePages) {
     const source = read(page);
     assert.match(source, /requireVendorStorePage\(storeId\)/, page);

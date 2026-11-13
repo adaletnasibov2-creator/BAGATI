@@ -50,7 +50,7 @@ export default async function AdminSellerApplicationsPage({ searchParams }: { se
       : !result.rows.length
         ? <div className="rounded-2xl border border-[#e7e3d9] bg-white p-5 text-sm text-slate-500">Bu filtrlə müraciət yoxdur.</div>
         : <>
-          <ul className="grid gap-3 md:hidden">{result.rows.map((row) => <li key={row.id}>
+          <ul className="grid gap-3 lg:hidden">{result.rows.map((row) => <li key={row.id}>
             <Link href={`/admin/seller-applications/${row.id}`} className="block rounded-2xl border border-[#e7e3d9] bg-white p-4">
               <div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words font-medium text-[#0d1b2a]">{row.displayName}</p><StatusBadge status={row.status} /></div>
               <p className="mt-1 break-all text-sm text-slate-600">{row.user.email}</p>
@@ -58,7 +58,7 @@ export default async function AdminSellerApplicationsPage({ searchParams }: { se
               {row.duplicateVoen && <p className="mt-2 text-xs font-medium text-amber-800">VÖEN başqa yerdə də var</p>}
             </Link>
           </li>)}</ul>
-          <div className="hidden overflow-x-auto rounded-2xl border border-[#e7e3d9] bg-white md:block">
+          <div className="hidden overflow-x-auto rounded-2xl border border-[#e7e3d9] bg-white lg:block">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-[#f8f7f4] text-xs uppercase tracking-wide text-slate-500">
                 <tr>{["Göndərilib (Bakı)", "Müraciətçi", "Satıcı adı", "Növ", "VÖEN", "Status", "Mənbə"].map((title) => <th key={title} className="px-4 py-3 font-medium">{title}</th>)}</tr>

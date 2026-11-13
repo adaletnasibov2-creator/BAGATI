@@ -63,7 +63,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
     </div>}
 
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-      <div className="grid min-w-0 gap-4">
+      <div className="grid min-w-0 content-start gap-4">
         <section className={card}>
           <h2 className="font-semibold text-[#0d1b2a]">Satıcı məlumatları</h2>
           <dl className="mt-3 grid gap-3 sm:grid-cols-2">

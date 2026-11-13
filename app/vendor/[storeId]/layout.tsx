@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { VendorNavigation } from "@/components/vendor-navigation";
 import VendorLogoutButton from "@/components/vendor-logout-button";
-import { requireStoreAccess } from "@/lib/auth";
+import { requireVendorStorePage } from "@/lib/vendor-area";
 import { prisma } from "@/lib/prisma";
 import { getStoreEntitlements, hasFeature } from "@/lib/subscription-entitlements";
 import { storeStatusLabels, subscriptionStatusLabels } from "@/lib/vendor-store-setup";
@@ -15,8 +15,8 @@ const db: any = prisma;
 
 export default async function VendorLayout({ children, params }: Readonly<{ children: React.ReactNode; params: Promise<{ storeId: string }> }>) {
   const { storeId } = await params;
-  const access = await requireStoreAccess(storeId);
-  if (!access) notFound();
+  // Owner continues; a signed-in CUSTOMER goes to /vendor/apply; anyone else gets a 404.
+  const access = await requireVendorStorePage(storeId);
   const [store, stores, unread, entitlement, newInquiries] = await Promise.all([
     prisma.store.findUnique({ where: { id: access.storeId }, select: { name: true, status: true, isActive: true, city: { select: { name: true } }, subscription: { select: { status: true, plan: { select: { name: true } } } } } }),
     prisma.store.findMany({ where: { vendor: { userId: access.user.id } }, select: { id: true, name: true, city: { select: { name: true } } }, orderBy: { createdAt: "desc" } }),

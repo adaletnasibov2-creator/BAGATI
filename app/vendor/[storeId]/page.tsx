@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Activity, AlertTriangle, ArrowUpRight, BadgeCheck, ClipboardList, Package, PackageCheck, Plus, RotateCcw, ShoppingBag, TrendingUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireStoreAccess } from "@/lib/auth";
+import { requireVendorStorePage } from "@/lib/vendor-area";
 import { statusLabel } from "@/lib/order-status";
 import { getStorePublicationBlockers } from "@/lib/admin-store-product-publishing";
 import { activeComplimentaryEntitlementSelect, complimentaryFromRows } from "@/lib/subscription-entitlements";
@@ -19,7 +19,7 @@ type Props = { params: Promise<{ storeId: string }> };
 
 export default async function VendorOverview({ params }: Props) {
   const { storeId } = await params;
-  const access = await requireStoreAccess(storeId);
+  const access = await requireVendorStorePage(storeId);
   if (!access) notFound();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);

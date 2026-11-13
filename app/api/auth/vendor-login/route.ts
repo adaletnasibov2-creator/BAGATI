@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/auth";
 import { logAuthFailure, logAuthRejection } from "@/lib/auth-logging";
-import { wrongPortalBody } from "@/lib/login-portal";
+import { vendorLoginCustomerBody, wrongPortalBody } from "@/lib/login-portal";
 import { authRateLimitKey, clearAuthRateLimit, consumeAuthRateLimit, LOGIN_RATE_LIMIT } from "@/lib/auth-rate-limit";
 import { loginSchema } from "@/lib/validation";
 import { attachEmailVerificationContext, clearEmailVerificationContext, createEmailVerificationContext, emailVerificationRequired, mayUseVendorLogin } from "@/lib/email-verification";
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     logAuthRejection("vendor_login", "wrong-portal", user.role);
     try { await clearAuthRateLimit(rateKey); }
     catch (error) { logAuthFailure("vendor_login_rate_limit_clear", error); }
-    return NextResponse.json(wrongPortalBody(user.role), { status: 403, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(user.role === "CUSTOMER" ? vendorLoginCustomerBody() : wrongPortalBody(user.role), { status: 403, headers: { "Cache-Control": "no-store" } });
   }
   try { await clearAuthRateLimit(rateKey); }
   catch (error) { logAuthFailure("vendor_login_rate_limit_clear", error); }

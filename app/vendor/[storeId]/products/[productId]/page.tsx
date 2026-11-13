@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import VendorProductEditor from "@/components/vendor-product-editor";
-import { requireStoreAccess } from "@/lib/auth";
+import { requireVendorStorePage } from "@/lib/vendor-area";
 
 export default async function EditVendorProductPage({ params }: { params: Promise<{ storeId: string; productId: string }> }) {
   const { storeId, productId } = await params;
-  if (!await requireStoreAccess(storeId)) notFound();
+  if (!await requireVendorStorePage(storeId)) notFound();
   return <VendorProductEditor storeId={storeId} productId={productId}/>;
 }

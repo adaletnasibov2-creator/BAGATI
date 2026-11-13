@@ -79,7 +79,7 @@
     "test:staging-health": "tsx --test scripts/staging-health.test.ts",
     "staging:migrate": "node scripts/migrate-staging.mjs",
     "test:seller-onboarding": "tsx --test scripts/seller-onboarding.test.ts",
-    "test:seller-application": "tsx --test scripts/seller-application.test.ts scripts/seller-application-routes.test.ts scripts/vendor-role-allowlist.test.ts",
+    "test:seller-application": "tsx --test scripts/seller-application.test.ts scripts/seller-application-routes.test.ts scripts/vendor-role-allowlist.test.ts scripts/vendor-area-customer.test.ts",
     "test:seller-application:integration": "tsx --test scripts/seller-application.integration.test.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

@@ -3,7 +3,7 @@
 import { FormEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { finishAuthNavigation } from "@/lib/auth-client";
-import { isLoginPortal, loginPortalLinkLabel, loginPortalPath } from "@/lib/login-portal";
+import { isLoginPortal, loginPortalLinkLabel, loginPortalPath, SELLER_APPLY_LOGIN_PATH } from "@/lib/login-portal";
 import { GoogleOAuthButton } from "@/components/google-oauth-button";
 
 export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: string; notice?: string; portal?: string | null }) {
@@ -11,6 +11,7 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [portalHint, setPortalHint] = useState("");
+  const [applyHint, setApplyHint] = useState(false);
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
 
@@ -21,6 +22,7 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
     setBusy(true);
     setError("");
     setPortalHint("");
+    setApplyHint(false);
 
     try {
       const response = await fetch("/api/auth/vendor-login", {
@@ -45,6 +47,7 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
 
       if (!response.ok) {
         setPortalHint(data.code === "WRONG_PORTAL" && isLoginPortal(data.portal) ? data.portal : "");
+        setApplyHint(data.code === "WRONG_PORTAL" && data.applyPath === SELLER_APPLY_LOGIN_PATH);
         throw new Error(data.error || "Giriş alınmadı.");
       }
 
@@ -104,7 +107,9 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
           className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           <p>{error}</p>
-          {isLoginPortal(portalHint) && <Link href={loginPortalPath(portalHint) ?? "/login"} className="mt-2 inline-block font-semibold underline">{loginPortalLinkLabel(portalHint)}</Link>}
+          {applyHint
+            ? <Link href={SELLER_APPLY_LOGIN_PATH} className="mt-2 inline-block font-semibold underline">Satıcı müraciətinə keç</Link>
+            : isLoginPortal(portalHint) && <Link href={loginPortalPath(portalHint) ?? "/login"} className="mt-2 inline-block font-semibold underline">{loginPortalLinkLabel(portalHint)}</Link>}
         </div>
       )}
 

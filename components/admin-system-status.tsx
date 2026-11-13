@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
-import type { SystemStatusData } from "@/lib/admin-system-status-cards";
+import type { SystemStatusData as CachedCardData } from "@/lib/admin-system-status-cards";
+import type { ClientIpDiagnostics } from "@/lib/client-ip-diagnostics";
 
+/** Cached cards plus the request-specific client IP card. */
+type SystemStatusData = CachedCardData & { "client-ip": ClientIpDiagnostics };
 type CardName = keyof SystemStatusData;
 type CardState = { status: "loading" | "ready" | "unavailable"; data?: SystemStatusData[CardName]; generatedAt?: string };
 
@@ -147,6 +150,31 @@ function ApplicationBody({ data }: { data: SystemStatusData["application"] }) {
   </dl>;
 }
 
+function ClientIpBody({ data }: { data: SystemStatusData["client-ip"] }) {
+  return <>
+    <p className="text-xs text-slate-500">Yalnız sizin bu sorğunuz. Dəyərlər maskalanıb; tam IP göstərilmir.</p>
+    <dl className="mt-2">
+      {data.headers.map((header) => <Row key={header.name} label={header.name} tone={header.present ? undefined : "warn"}>
+        {header.present ? <span className="font-mono text-xs">{header.values.join(", ") || "boş"}</span> : "yoxdur"}
+      </Row>)}
+      <Row label="Socket ünvanı">{data.socketAddressAvailable ? "əlçatandır" : "birbaşa əlçatan deyil"}</Row>
+    </dl>
+    {data.forwardedChain.length > 0 && <>
+      <h3 className="mt-4 text-sm font-semibold">X-Forwarded-For zənciri (soldan sağa)</h3>
+      <ol className="mt-2 space-y-1 text-xs">{data.forwardedChain.map((hop, index) => <li key={index} className="flex justify-between gap-3 rounded-lg bg-[#f8f7f4] px-3 py-1.5">
+        <span className="font-mono">{hop.masked}</span><span className={hop.cloudflare ? "font-semibold text-green-800" : "text-slate-500"}>{hop.cloudflare ? "Cloudflare diapazonu" : "Cloudflare deyil"}</span>
+      </li>)}</ol>
+    </>}
+    <dl className="mt-3">
+      <Row label="BAGATI_TRUST_CLOUDFLARE_IP" tone={data.flagEnabled ? "good" : "warn"}>{data.flagEnabled ? "true" : "false / təyin edilməyib"}</Row>
+      <Row label="İstifadə olunan IP (bayraq söndürülü)">{data.ipWithFlagOff ?? "yoxdur"}</Row>
+      <Row label="İstifadə olunan IP (bayraq aktiv)" tone={data.ipWithFlagOn ? "good" : "bad"}><span className="font-mono text-xs">{data.ipWithFlagOn ?? "yoxdur"}</span></Row>
+      <Row label="Son hop Cloudflare-dir">{data.rightmostHopCloudflare === null ? "—" : yesNo(data.rightmostHopCloudflare)}</Row>
+      <Row label="CF-Connecting-IP = XFF ilk dəyəri">{data.cfConnectingIpMatchesLeftmostXff === null ? "—" : yesNo(data.cfConnectingIpMatchesLeftmostXff)}</Row>
+    </dl>
+  </>;
+}
+
 function spec<K extends CardName>(name: K, title: string, Body: (props: { data: SystemStatusData[K] }) => ReactNode) {
   // The API returns the shape for the card that was requested, so the narrowing cast is sound.
   return { name, title, render: (data: SystemStatusData[CardName]) => <Body data={data as SystemStatusData[K]} /> };
@@ -160,6 +188,7 @@ const cards = [
   spec("imports", "Məhsul idxalı işləri", ImportsBody),
   spec("security", "Təhlükəsizlik hadisələri", SecurityBody),
   spec("application", "Tətbiq", ApplicationBody),
+  spec("client-ip", "Müştəri IP başlıqları", ClientIpBody),
 ];
 
 export default function AdminSystemStatus() {

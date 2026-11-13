@@ -56,7 +56,7 @@
     "test:store-inquiry:integration": "tsx --test scripts/store-inquiry.integration.test.ts",
     "audit:store-phones": "tsx scripts/audit-store-phones.ts",
     "test:admin-subscription-management": "tsx --test scripts/admin-subscription-management.test.ts",
-    "test:admin-system-status": "tsx --test scripts/admin-system-status.test.ts",
+    "test:admin-system-status": "tsx --test scripts/admin-system-status.test.ts scripts/client-ip-diagnostics.test.ts",
     "test:admin-audit-log": "tsx --test scripts/admin-audit-log.test.ts",
     "test:admin-2fa": "tsx --test scripts/admin-2fa.test.ts scripts/admin-2fa-routes.test.ts",
     "test:admin-2fa:integration": "tsx --test scripts/admin-2fa.integration.test.ts",

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { parseSystemStatusCard } from "@/lib/admin-system-status";
 import { loadSystemStatusCard } from "@/lib/admin-system-status-cards";
+import { clientIpDiagnostics } from "@/lib/client-ip-diagnostics";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
@@ -10,6 +11,11 @@ const headers = { "Cache-Control": "no-store" };
 export async function GET(request: NextRequest) {
   const admin = await requireRole("ADMIN");
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403, headers });
+  // Request-specific and never cached: how this admin's own request reached the app (masked values only).
+  if (request.nextUrl.searchParams.get("card") === "client-ip") {
+    const data = clientIpDiagnostics(request.headers, process.env.BAGATI_TRUST_CLOUDFLARE_IP === "true");
+    return NextResponse.json({ ok: true, card: "client-ip", generatedAt: new Date().toISOString(), data }, { headers });
+  }
   const card = parseSystemStatusCard(request.nextUrl.searchParams.get("card"));
   if (!card) return NextResponse.json({ error: "Naməlum kart" }, { status: 422, headers });
   try {

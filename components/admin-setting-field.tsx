@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { History, RotateCcw, X } from "lucide-react";
 
@@ -49,6 +49,8 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
   const [conflict, setConflict] = useState(false);
   const [message, setMessage] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  // After a save the page data refreshes; show the stored value again instead of the last typed text.
+  useEffect(() => { setValue(view.currentInput); }, [view.version, view.currentInput]);
 
   const reasonRequired = view.sensitive;
   const reasonOk = !reasonRequired || (reason.trim().length >= view.reason.min && reason.trim().length <= view.reason.max);

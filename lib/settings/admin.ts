@@ -20,7 +20,7 @@ export type AdminSettingHistoryItem = {
   reason: string | null;
   changedBy: string;
   changedAt: string;
-  /** Restorable: not the current version, and the value still passes today's rules. */
+  /** Restorable: not the current version, a different value from the current one, and still valid under today's rules. */
   restorable: boolean;
 };
 
@@ -68,7 +68,9 @@ export async function loadAdminSettingsGroup(db: Prisma.TransactionClient, group
       reason: item.reason,
       changedBy: item.changedBy?.email ?? "silinmiş istifadəçi",
       changedAt: formatBakuDateTime(item.createdAt),
-      restorable: item.version !== row?.version && (item.value === null || definition.schema.safeParse(item.value).success),
+      restorable: item.version !== row?.version
+        && JSON.stringify(item.value ?? null) !== JSON.stringify(stored)
+        && (item.value === null || definition.schema.safeParse(item.value).success),
     }));
     return {
       key: definition.key,

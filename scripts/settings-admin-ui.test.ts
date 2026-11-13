@@ -41,6 +41,8 @@ test("admin view data: uncached database read, Baku times, restorable only when 
   assert.match(admin, /db\.siteSetting\.findMany\(/);
   assert.doesNotMatch(admin, /getSetting\(|loader/);
   assert.match(admin, /formatBakuDateTime\(row\.updatedAt\)/);
-  assert.match(admin, /restorable: item\.version !== row\?\.version && \(item\.value === null \|\| definition\.schema\.safeParse\(item\.value\)\.success\)/);
+  assert.match(admin, /restorable: item\.version !== row\?\.version\s+&& JSON\.stringify\(item\.value \?\? null\) !== JSON\.stringify\(stored\)\s+&& \(item\.value === null \|\| definition\.schema\.safeParse\(item\.value\)\.success\)/);
+  // The field shows the stored value again after a save (browser check found the typed text staying).
+  assert.match(read("components/admin-setting-field.tsx"), /useEffect\(\(\) => \{ setValue\(view\.currentInput\); \}, \[view\.version, view\.currentInput\]\);/);
   assert.match(admin, /isDefault: stored === null \|\| storedValueInvalid/);
 });

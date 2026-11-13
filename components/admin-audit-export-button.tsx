@@ -56,7 +56,7 @@ export default function AdminAuditExportButton({ filters, maxRows }: Props) {
       <Download size={16} aria-hidden="true" />
       {busy ? "Hazırlanır…" : `CSV ixrac (maks. ${formatRowLimit(maxRows)} sətir)`}
     </button>
-    {message && <p role="status" className="text-xs text-emerald-800">{message}</p>}
+    {message && <p role="status" className="text-xs text-green-800">{message}</p>}
     {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
   </div>;
 }

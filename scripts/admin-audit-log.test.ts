@@ -202,3 +202,12 @@ test("export button text is locale-independent so SSR and the browser match (reg
   assert.equal(formatRowLimit(1_234_567), "1\u00a0234\u00a0567");
   assert.doesNotMatch(read("components/admin-audit-export-button.tsx"), /\.toLocaleString\(|new Intl\./);
 });
+
+test("audit page shows times explicitly in Asia/Baku, not in the server timezone", () => {
+  const page = read("app/admin/audit-log/page.tsx");
+  assert.match(page, /formatBakuDateTime\(row\.createdAt\)/);
+  assert.match(page, /"Tarix \(Bakı\)"/);
+  assert.doesNotMatch(page, /toLocaleString\(/);
+  // Same instant, same text, whatever the host timezone: the formatter pins Asia/Baku.
+  assert.equal(formatBakuDateTime(new Date("2026-11-13T20:30:00Z")), "2026-11-14 00:30:00");
+});

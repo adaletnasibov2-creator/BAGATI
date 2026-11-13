@@ -186,6 +186,8 @@ model User {
   complimentaryGrants       StoreComplimentaryEntitlement[] @relation("StoreComplimentaryEntitlementGrantedBy")
   complimentaryRevocations StoreComplimentaryEntitlement[] @relation("StoreComplimentaryEntitlementRevokedBy")
   catalogImportJobs     ImportJob[]            @relation("CatalogImportJobCreator")
+  adminTwoFactor        AdminTwoFactor?
+  adminRecoveryCodes    AdminRecoveryCode[]
 
   @@index([role, isActive])
 }
@@ -221,6 +223,12 @@ model AuthSession {
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime  @default(now())
+  /// Admin sessions only: last request (written at most every 5 minutes), used for the idle timeout and the session list.
+  lastSeenAt DateTime?
+  /// Admin sessions only: masked client IP (e.g. 203.0.*.*), never the full address. Null when no trusted IP is available.
+  ipMasked  String?   @db.VarChar(64)
+  /// Admin sessions only: short browser summary (e.g. "Chrome 140 · Windows"), never the full User-Agent header.
+  userAgent String?   @db.VarChar(120)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
@@ -238,6 +246,33 @@ model PasswordResetToken {
 
   @@index([userId, usedAt])
   @@index([expiresAt])
+}
+
+/// Admin TOTP second factor, one row per admin. A row with enrolledAt = null is an unfinished enrollment.
+model AdminTwoFactor {
+  userId          String    @id
+  /// AES-256-GCM ciphertext ("v1.iv.tag.ct") under BAGATI_ADMIN_2FA_KEY, bound to userId. Never the plain secret.
+  secretEncrypted String    @db.VarChar(512)
+  enrolledAt      DateTime?
+  /// Highest TOTP time step accepted so far; codes for this step or older are rejected (replay protection).
+  lastUsedStep    Int?
+  failedAttempts  Int       @default(0)
+  lockedUntil     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Single-use admin 2FA recovery codes, stored only as scrypt hashes.
+model AdminRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    @db.VarChar(200)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
 }
 
 model AuthRateLimit {
@@ -888,6 +923,8 @@ model AuditLog {
 
   @@index([createdAt])
   @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
 }
 
 model SecurityEvent {

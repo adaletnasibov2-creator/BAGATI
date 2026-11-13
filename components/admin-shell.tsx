@@ -29,11 +29,13 @@ import {
   Settings,
   Images,
   Activity,
+  MonitorSmartphone,
 } from "lucide-react";
 
 const items = [
   ["/admin/security-center", "Təhlükəsizlik mərkəzi", ShieldCheck],
-  ["/admin/security", "Şifrə təhlükəsizliyi", ShieldCheck],
+  ["/admin/security", "Hesab təhlükəsizliyi", ShieldCheck],
+  ["/admin/security/sessions", "Aktiv sessiyalar", MonitorSmartphone],
   ["/admin", "İcmal", LayoutDashboard],
   ["/admin/settings", "Sayt parametrləri", Settings],
   ["/admin/homepage", "Ana səhifə və bannerlər", Images],
@@ -127,6 +129,11 @@ export default function AdminShell({ children, email }: AdminShellProps) {
   function navigation(mobile = false) {
     const visibleItems = items.filter(([, label]) =>
       label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+    // Only the most specific matching item is active (e.g. /admin/security/sessions, not also /admin/security).
+    const activeHref = items
+      .map(([href]) => href as string)
+      .filter((href) => path === href || (href !== "/admin" && path.startsWith(`${href}/`)))
+      .sort((a, b) => b.length - a.length)[0];
 
     return <nav aria-label="Admin naviqasiyası" className="space-y-1">
       <label className="mb-3 flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-slate-400">
@@ -143,9 +150,9 @@ export default function AdminShell({ children, email }: AdminShellProps) {
         key={href}
         href={href}
         onClick={() => mobile && setOpen(false)}
-        aria-current={path === href || (href !== "/admin" && path.startsWith(`${href}/`)) ? "page" : undefined}
+        aria-current={href === activeHref ? "page" : undefined}
         className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
-          path === href || (href !== "/admin" && path.startsWith(`${href}/`))
+          href === activeHref
             ? "bg-[#25374a] text-white"
             : "text-slate-300 hover:bg-white/10 hover:text-white"
         }`}

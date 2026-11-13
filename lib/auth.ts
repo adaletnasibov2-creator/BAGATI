@@ -1,13 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { emailVerificationRequired } from "@/lib/email-verification";
 import { requestCookieSecure } from "@/lib/cookie-security";
+import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
+import { maskIpAddress } from "@/lib/admin-system-status";
+import { adminMayUseSession, isAdmin2faRequired } from "@/lib/admin-2fa-policy";
+import { isSessionIdleExpired, sessionTtlSeconds, shouldWriteLastSeen, summarizeUserAgent, tracksSessionActivity } from "@/lib/session-policy";
 import type { Role } from "@prisma/client";
 
 export const AUTH_SESSION_COOKIE = "bagati_session";
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+/** Longest session lifetime (non-admin roles). Admin sessions use ADMIN_SESSION_TTL_SECONDS (12 hours). */
+const SESSION_TTL_SECONDS = sessionTtlSeconds("CUSTOMER");
 function secret() { const value = process.env.SESSION_SECRET; if (!value || value.length < 32) throw new Error("SESSION_SECRET must contain at least 32 characters"); return new TextEncoder().encode(value); }
 function cookieOptions(maxAge = SESSION_TTL_SECONDS, secure = process.env.NODE_ENV === "production") {
   return {
@@ -41,16 +46,32 @@ function sessionCookie(value: string, maxAge = SESSION_TTL_SECONDS, secure?: boo
   return { name: AUTH_SESSION_COOKIE, value, ...cookieOptions(maxAge, secure) };
 }
 
+/** Masked IP and short browser summary for the admin session list. Never the full IP or User-Agent. */
+async function sessionClientMetadata() {
+  try {
+    const list = await headers();
+    const ip = trustedCloudflareClientIp(list);
+    return { ipMasked: ip ? maskIpAddress(ip) : null, userAgent: summarizeUserAgent(list.get("user-agent")) };
+  } catch {
+    return { ipMasked: null, userAgent: null };
+  }
+}
+
 /**
  * Creates a new session and revokes the session currently held by this browser.
  * The cookie is returned instead of being written with cookies().set: Next merges
  * that store before response cookies and drops Max-Age=0 when it re-parses Set-Cookie.
  * Callers must set the returned cookie on the Response they actually send.
+ * Lifetime depends on the role: 12 hours for ADMIN, 7 days otherwise.
  */
 export async function createSession(userId: string) {
   const cookieStore = await cookies();
+  const account = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  const role: Role = account?.role ?? "CUSTOMER";
+  const ttlSeconds = sessionTtlSeconds(role);
   const sessionId = randomUUID();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
   const token = await new SignJWT({ sub: userId, jti: sessionId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer("bagati")
@@ -58,9 +79,10 @@ export async function createSession(userId: string) {
     .setIssuedAt()
     .setExpirationTime(Math.floor(expiresAt.getTime() / 1000))
     .sign(secret());
-  await prisma.authSession.create({ data: { id: sessionId, userId, expiresAt } });
+  const activity = tracksSessionActivity(role) ? { lastSeenAt: now, ...(await sessionClientMetadata()) } : {};
+  await prisma.authSession.create({ data: { id: sessionId, userId, expiresAt, ...activity } });
   await revokeCookieSession(cookieStore.get(AUTH_SESSION_COOKIE)?.value);
-  return sessionCookie(token, SESSION_TTL_SECONDS, await requestCookieSecure());
+  return sessionCookie(token, ttlSeconds, await requestCookieSecure());
 }
 
 export async function currentUser() {
@@ -69,13 +91,25 @@ export async function currentUser() {
   try {
     const claims = await readSessionClaims(token);
     if (!claims) return null;
-    const session = await prisma.authSession.findUnique({ where: { id: claims.sessionId }, select: { userId: true, expiresAt: true, revokedAt: true } });
+    const session = await prisma.authSession.findUnique({ where: { id: claims.sessionId }, select: { userId: true, expiresAt: true, revokedAt: true, createdAt: true, lastSeenAt: true } });
+    const now = new Date();
     if (!session || session.userId !== claims.userId || session.revokedAt || session.expiresAt <= new Date()) return null;
     const user = await prisma.user.findUnique({
       where: { id: claims.userId, isActive: true },
-      select: { id: true, email: true, role: true, emailVerifiedAt: true, customerProfile: { select: { firstName: true, lastName: true } }, vendorProfile: { select: { displayName: true } } },
+      select: { id: true, email: true, role: true, emailVerifiedAt: true, customerProfile: { select: { firstName: true, lastName: true } }, vendorProfile: { select: { displayName: true } }, adminTwoFactor: { select: { enrolledAt: true } } },
     });
     if (!user || emailVerificationRequired(user.role, user.emailVerifiedAt)) return null;
+    if (user.role === "ADMIN") {
+      if (isSessionIdleExpired({ role: user.role, lastSeenAt: session.lastSeenAt, createdAt: session.createdAt, now })) {
+        await prisma.authSession.updateMany({ where: { id: claims.sessionId, revokedAt: null }, data: { revokedAt: now } });
+        return null;
+      }
+      // With BAGATI_ADMIN_2FA_REQUIRED=true an admin without 2FA cannot use any admin page or API, even with an older session.
+      if (!adminMayUseSession({ required: isAdmin2faRequired(), enrolled: Boolean(user.adminTwoFactor?.enrolledAt) })) return null;
+      if (shouldWriteLastSeen(session.lastSeenAt, now)) {
+        await prisma.authSession.updateMany({ where: { id: claims.sessionId, revokedAt: null }, data: { lastSeenAt: now } });
+      }
+    }
     const displayName = user.role === "VENDOR"
       ? user.vendorProfile?.displayName
       : [user.customerProfile?.firstName, user.customerProfile?.lastName].filter(Boolean).join(" ");
@@ -87,6 +121,22 @@ export async function requireStoreAccess(storeId: string) { const user = await c
 /** `secure` must match how the cookie was set, or browsers on plain-HTTP LAN pages refuse the deletion. */
 export function expiredSessionCookie(secure?: boolean) {
   return sessionCookie("", 0, secure);
+}
+
+/** Id of the session this request is authenticated with, or null. Used to mark and protect the current session. */
+export async function currentSessionId(): Promise<string | null> {
+  const token = (await cookies()).get(AUTH_SESSION_COOKIE)?.value;
+  if (!token) return null;
+  try { return (await readSessionClaims(token))?.sessionId ?? null; } catch { return null; }
+}
+
+/** Revokes every active session of the user except `keepSessionId` (null revokes all). Returns the number revoked. */
+export async function revokeUserSessions(userId: string, keepSessionId: string | null) {
+  const result = await prisma.authSession.updateMany({
+    where: { userId, revokedAt: null, ...(keepSessionId ? { id: { not: keepSessionId } } : {}) },
+    data: { revokedAt: new Date() },
+  });
+  return result.count;
 }
 
 /** Revokes the database session only. The route expires bagati_session on its Response. */

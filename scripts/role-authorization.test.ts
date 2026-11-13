@@ -36,9 +36,21 @@ test("Google sign-in can only target customer or seller accounts, never admin", 
 });
 
 test("every admin API except login requires the ADMIN role on the server", () => {
-  const routes = routeFiles("app/api/admin").filter((path) => !path.replace(/\\/g, "/").endsWith("admin/login/route.ts"));
+  const normalized = (path: string) => path.replace(/\\/g, "/");
+  // Pre-session steps are authorized by an ADMIN-only challenge issued after a correct password, not by a session.
+  const loginCodeStep = (path: string) => normalized(path).endsWith("admin/login/2fa/route.ts");
+  const enrollment = (path: string) => /admin\/2fa\/(setup|activate)\/route\.ts$/.test(normalized(path));
+  const routes = routeFiles("app/api/admin").filter((path) => !normalized(path).endsWith("admin/login/route.ts"));
   assert.ok(routes.length > 5);
-  for (const path of routes) assert.match(read(path), /requireRole\("ADMIN"\)/, path);
+  for (const path of routes) {
+    if (loginCodeStep(path)) assert.match(read(path), /const admin = await readChallenge\(request, "code"\);\s*if \(!admin\) return/, path);
+    else if (enrollment(path)) assert.match(read(path), /const actor = await resolveEnrollmentActor\(request\);[^\n]*\n\s*if \(!actor\) return/, path);
+    else assert.match(read(path), /requireRole\("ADMIN"\)/, path);
+  }
+  // The helpers themselves only accept a signed-in ADMIN or a challenge whose user is still an active ADMIN.
+  const twoFactor = read("lib/admin-2fa.ts");
+  assert.match(twoFactor, /export async function resolveEnrollmentActor[\s\S]*?await requireRole\("ADMIN"\)/);
+  assert.match(twoFactor, /user\.role !== "ADMIN" \|\| !user\.isActive/);
 });
 
 test("seller APIs resolve store ownership for the signed-in seller", () => {

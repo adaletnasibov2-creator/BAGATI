@@ -133,6 +133,7 @@ function BusinessBody({ data }: { data: SystemStatusData["business"] }) {
     <Row label="Bu gün sifarişlər (Bakı vaxtı)">{data.ordersToday}</Row>
     <Row label="Bu gün uğursuz ödənişlər" tone={data.failedPaymentsToday ? "bad" : undefined}>{data.failedPaymentsToday}</Row>
     <Row label="Son 7 gündə yeni satıcılar">{data.newSellers7d}</Row>
+    <Row label="Yoxlama gözləyən satıcı müraciətləri" tone={data.pendingSellerApplications ? "warn" : undefined}>{data.pendingSellerApplications}</Row>
     <Row label="Yoxlama gözləyən mağazalar" tone={data.pendingStoreReviews ? "warn" : undefined}>{data.pendingStoreReviews}</Row>
     <Row label="Oxunmamış alıcı mesajları" tone={data.unreadInquiries ? "warn" : undefined}>{data.unreadInquiries}</Row>
   </dl>;

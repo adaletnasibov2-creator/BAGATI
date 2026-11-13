@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { currentUser } from "@/lib/auth";
+import { vendorAreaRedirectPath } from "@/lib/vendor-area";
 import { prisma } from "@/lib/prisma";
 import { getStorePublicationBlockers } from "@/lib/admin-store-product-publishing";
 import { activeComplimentaryEntitlementSelect, complimentaryFromRows } from "@/lib/subscription-entitlements";
@@ -13,7 +14,7 @@ const subscriptionLabel: Record<string, string> = { PENDING: "Ödəniş gözləy
 
 export default async function VendorStoresPage() {
   const user = await currentUser();
-  if (!user || user.role !== "VENDOR") redirect("/vendor/login");
+  if (!user || user.role !== "VENDOR") redirect(vendorAreaRedirectPath(user?.role));
   const stores = await prisma.store.findMany({
     where: { vendor: { userId: user.id } },
     select: {

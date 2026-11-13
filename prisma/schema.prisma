@@ -188,6 +188,8 @@ model User {
   catalogImportJobs     ImportJob[]            @relation("CatalogImportJobCreator")
   adminTwoFactor        AdminTwoFactor?
   adminRecoveryCodes    AdminRecoveryCode[]
+  vendorApplications    VendorApplication[]    @relation("VendorApplicationApplicant")
+  reviewedVendorApplications VendorApplication[] @relation("VendorApplicationReviewer")
 
   @@index([role, isActive])
 }
@@ -345,7 +347,63 @@ model VendorProfile {
   voen        String?
   legalAddress String?
   stores      Store[]
+  applications VendorApplication[]
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum VendorApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum VendorApplicationSource {
+  SELF
+  ADMIN
+  LEGACY
+}
+
+/// A customer's request to become a seller. The role stays CUSTOMER until an admin approves.
+/// VendorProfile stays the single live source of seller details; this row is the submitted snapshot and its review.
+/// CHECK constraints (migration 20261113030000) keep openUserId = userId exactly while PENDING (one open
+/// application per user through the unique index), require a reason on REJECTED and a 10-digit VOEN on SELF rows.
+model VendorApplication {
+  id                     String                  @id @default(cuid())
+  userId                 String
+  status                 VendorApplicationStatus @default(PENDING)
+  source                 VendorApplicationSource @default(SELF)
+  /// Equals userId while PENDING, NULL otherwise. Unique, so a user can have only one open application.
+  openUserId             String?                 @unique
+  displayName            String
+  phone                  String?
+  sellerType             SellerType?
+  legalName              String?
+  voen                   String?
+  /// Digits only; used to find the same VOEN on other profiles and applications.
+  voenNormalized         String?
+  legalAddress           String?
+  plannedStoreName       String?
+  /// Written by the applicant, visible to admins only. At most 1000 characters (CHECK).
+  applicantNote          String?
+  /// Internal admin note, never shown to the applicant. At most 1000 characters (CHECK).
+  adminNote              String?
+  /// Shown to the applicant. Required when REJECTED, at most 500 characters (CHECK).
+  rejectionReason        String?
+  duplicateVoenConfirmed Boolean                 @default(false)
+  vendorProfileId        String?
+  reviewedById           String?
+  reviewedAt             DateTime?
+  withdrawnAt            DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  user                   User                    @relation("VendorApplicationApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy             User?                   @relation("VendorApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  vendorProfile          VendorProfile?          @relation(fields: [vendorProfileId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([voenNormalized])
 }
 
 model City {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { currentUser } from "@/lib/auth";
+import { vendorAreaRedirectPath } from "@/lib/vendor-area";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ const labels: Record<string, string> = { PENDING: "Ödəniş gözləyir", ACTIVE
 
 export default async function VendorSubscriptionsPage() {
   const user = await currentUser();
-  if (!user || user.role !== "VENDOR") redirect("/vendor/login");
+  if (!user || user.role !== "VENDOR") redirect(vendorAreaRedirectPath(user?.role));
   const [stores, plans] = await Promise.all([
     db.store.findMany({ where: { vendor: { userId: user.id } }, select: { id: true, name: true, subscription: { include: { plan: true } } }, orderBy: { createdAt: "desc" } }),
     db.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { monthlyPrice: "asc" } }),

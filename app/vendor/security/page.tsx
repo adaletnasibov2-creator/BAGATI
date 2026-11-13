@@ -6,13 +6,14 @@ import { GoogleUnlinkButton } from "@/components/google-unlink-button";
 import { PasswordChangeForm } from "@/components/password-change-form";
 import VendorLogoutButton from "@/components/vendor-logout-button";
 import { currentUser } from "@/lib/auth";
+import { vendorAreaRedirectPath } from "@/lib/vendor-area";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function VendorSecurityPage({ searchParams }: { searchParams: Promise<{ oauth?: string; portal?: string }> }) {
   const user = await currentUser();
-  if (!user || user.role !== "VENDOR") redirect("/vendor/login");
+  if (!user || user.role !== "VENDOR") redirect(vendorAreaRedirectPath(user?.role));
   const [{ oauth, portal }, googleAccount, accountSecurity] = await Promise.all([
     searchParams,
     prisma.googleAccount.findUnique({ where: { userId: user.id }, select: { id: true } }),

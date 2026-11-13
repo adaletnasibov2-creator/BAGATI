@@ -25,6 +25,31 @@ export function loginPortalForRole(role: Role): LoginPortal {
   return "customer";
 }
 
+/**
+ * Where a visitor who is not a seller goes when they open the seller area.
+ * A signed-in CUSTOMER goes to /vendor/apply (apply, or see the application status); everyone else to the seller login.
+ */
+export function vendorAreaRedirectPath(role: Role | null | undefined): "/vendor/apply" | "/vendor/login" {
+  return role === "CUSTOMER" ? "/vendor/apply" : "/vendor/login";
+}
+
+/** Customer sign-in that returns to the seller application page. */
+export const SELLER_APPLY_LOGIN_PATH = "/login?next=%2Fvendor%2Fapply";
+
+/**
+ * Seller login with a CUSTOMER account (shown only after the password matches). Customers become sellers
+ * through an application, so point them there instead of only to the customer login.
+ * Says nothing about whether an application exists.
+ */
+export function vendorLoginCustomerBody() {
+  return {
+    error: "Bu hesab müştəri hesabıdır, satıcı hesabı deyil. Satıcı olmaq və ya satıcı müraciətinizin statusunu görmək üçün müştəri kimi daxil olub “Satıcı müraciəti” səhifəsinə keçin.",
+    code: "WRONG_PORTAL" as const,
+    portal: "customer" as const,
+    applyPath: SELLER_APPLY_LOGIN_PATH,
+  };
+}
+
 /** Shown only after the password matches. A missing account or wrong password stays generic. */
 export function wrongPortalBody(role: Role) {
   const portal = loginPortalForRole(role);

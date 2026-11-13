@@ -189,12 +189,21 @@ test("profile review submission saves the current form before sending it for rev
   assert.match(vendorApi, /status:true,isActive:true,legalInfoApproved:true/);
 });
 
-test("customer seller application requires no tax number and preserves existing records", () => {
+test("customer seller application keeps the CUSTOMER role and collects legal details for admin review", () => {
+  // Changed for seller applications (Variant B). This test used to pin the old behaviour: the route switched
+  // the role to VENDOR on submission (data: { role: "VENDOR" }) and asked for no VÖEN. Now the role stays
+  // CUSTOMER until an admin approves (scripts/vendor-role-allowlist.test.ts guards that), and the application
+  // carries the legal details, including a 10-digit VÖEN, that the admin reviews.
   const application = source("app/api/vendor/apply/route.ts");
-  assert.match(application, /user\.role !== "CUSTOMER"/);
-  assert.match(application, /sellerType: z\.enum/);
-  assert.doesNotMatch(application, /voen:/);
-  assert.match(application, /data: \{ role: "VENDOR" \}/);
+  const guard = source("lib/seller-application-http.ts");
+  const rules = source("lib/seller-application.ts");
+  assert.match(guard, /user\.role !== "CUSTOMER"/);
+  assert.match(rules, /sellerType: z\.enum\(sellerTypes\)/);
+  // The 10-digit rule moved into newVoenSchema (shared with admin-created sellers since the follow-up).
+  assert.match(rules, /voen: newVoenSchema,/);
+  assert.match(rules, /export const newVoenSchema = z\.string\(\)[\s\S]*?\/\^\\d\{10\}\$\//);
+  assert.match(application, /submitSellerApplication\(prisma/);
+  assert.doesNotMatch(application, /role: "VENDOR"|vendorProfile/);
   assert.doesNotMatch(application, /\.delete\(/);
 });
 

@@ -137,6 +137,9 @@ test("vendor inbox API and page are scoped to the seller's own store", () => {
   assert.match(api, /const access = await requireStoreAccess\(storeId\);\s*if \(!access\)/);
   assert.match(api, /storeId: access\.storeId/);
   const page = readFileSync("app/vendor/[storeId]/inquiries/page.tsx", "utf8");
-  assert.match(page, /requireStoreAccess\(storeId\)/);
+  // The page now uses requireVendorStorePage, which wraps requireStoreAccess and only adds the redirect of a
+  // signed-in CUSTOMER to /vendor/apply (seller application follow-up). Store scoping is unchanged.
+  assert.match(page, /requireVendorStorePage\(storeId\)/);
+  assert.match(readFileSync("lib/vendor-area.ts", "utf8"), /const access = await requireStoreAccess\(storeId\);\s+if \(access\) return access;/);
   assert.match(page, /where: \{ storeId: access\.storeId \}/);
 });

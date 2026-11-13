@@ -1,7 +1,7 @@
 ﻿import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireStoreAccess } from "@/lib/auth";
+import { requireVendorStorePage } from "@/lib/vendor-area";
 import { statusLabel, paymentStatusLabel } from "@/lib/order-status";
 import VendorOrderActions from "@/components/vendor-order-actions";
 import { InteractiveMap } from "@/components/interactive-map";
@@ -17,7 +17,7 @@ function optionText(options: unknown) {
 
 export default async function VendorOrderDetail({ params }: { params: Promise<{ storeId: string; storeOrderId: string }> }) {
   const { storeId, storeOrderId } = await params;
-  const access = await requireStoreAccess(storeId);
+  const access = await requireVendorStorePage(storeId);
   if (!access) notFound();
 
   const order = await db.storeOrder.findFirst({

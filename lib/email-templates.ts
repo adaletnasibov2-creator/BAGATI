@@ -6,6 +6,8 @@ export const EMAIL_TEMPLATES = [
   "WELCOME_CUSTOMER",
   "WELCOME_SELLER",
   "SELLER_APPLICATION_SUBMITTED",
+  "SELLER_APPLICATION_APPROVED",
+  "SELLER_APPLICATION_REJECTED",
   "STORE_REVIEW",
   "SELLER_NEW_ORDER",
   "CUSTOMER_ORDER_CONFIRMED",
@@ -87,7 +89,9 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
     }
     case "WELCOME_CUSTOMER": subject = "BAGATI-ya xoş gəlmisiniz"; lines = [`Salam ${value(payload, "name", "")},`, "BAGATI hesabınız yaradıldı. Alış-verişinizdə xoş təcrübə arzulayırıq."]; break;
     case "WELCOME_SELLER": subject = "BAGATI satıcı platformasına xoş gəlmisiniz"; lines = [`Salam ${value(payload, "name", "")},`, "Satıcı profiliniz yaradıldı. Mağazanız təsdiqlənənədək satış üçün aktiv olmayacaq."]; break;
-    case "SELLER_APPLICATION_SUBMITTED": subject = "Satıcı müraciətiniz qeydə alındı"; lines = ["Satıcı müraciətiniz BAGATI-da qeydə alındı.", "Müraciətinizlə bağlı qərar olduqda bu ünvana məlumat göndəriləcək."]; break;
+    case "SELLER_APPLICATION_SUBMITTED": subject = "Satıcı müraciətiniz qeydə alındı"; lines = ["Satıcı müraciətiniz BAGATI-da qeydə alındı və admin tərəfindən yoxlanılacaq.", "Yoxlama bitənədək hesabınız müştəri hesabı olaraq qalır. Müraciətin statusunu hesabınızda “Satıcı müraciəti” bölməsində görə bilərsiniz."]; break;
+    case "SELLER_APPLICATION_APPROVED": subject = "Satıcı müraciətiniz təsdiqləndi"; lines = [`Salam ${value(payload, "displayName", "")},`.replace(" ,", ","), "Satıcı müraciətiniz təsdiqləndi. Hesabınız artıq satıcı hesabıdır.", "Satıcı girişindən daxil olub mağaza qaralamasını yarada bilərsiniz. Mağaza ictimai satış üçün ayrıca admin yoxlamasından keçir."]; break;
+    case "SELLER_APPLICATION_REJECTED": subject = "Satıcı müraciəti barədə qərar"; lines = ["Satıcı müraciətiniz rədd edildi.", `Səbəb: ${value(payload, "reason", "Qeyd göstərilməyib")}`, "Hesabınız müştəri hesabı olaraq qalır. Səbəbi aradan qaldırdıqdan sonra yeni müraciət göndərə bilərsiniz."]; break;
     case "STORE_REVIEW": {
       const status = value(payload, "status");
       if (status === "ACTIVE") { subject = "Mağazanız təsdiqləndi"; lines = [`${value(payload, "storeName", "Mağaza")} admin tərəfindən təsdiqləndi.`, "Satış üçün aktiv abunəlik də tələb olunur."]; }

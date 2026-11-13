@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Mail, MessageCircle, Phone } from "lucide-react";
 import VendorInquiryReadButton from "@/components/vendor-inquiry-actions";
 import { normalizeAzPhone } from "@/lib/az-phone";
-import { requireStoreAccess } from "@/lib/auth";
+import { requireVendorStorePage } from "@/lib/vendor-area";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ const dateFormat = new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeS
 /** Seller inbox: buyer messages sent from the public store page. Works without SMTP; email is only a notification. */
 export default async function VendorInquiriesPage({ params }: { params: Promise<{ storeId: string }> }) {
   const { storeId } = await params;
-  const access = await requireStoreAccess(storeId);
+  const access = await requireVendorStorePage(storeId);
   if (!access) notFound();
   const [store, inquiries, unread] = await Promise.all([
     prisma.store.findUnique({ where: { id: access.storeId }, select: { name: true, contactEmail: true } }),

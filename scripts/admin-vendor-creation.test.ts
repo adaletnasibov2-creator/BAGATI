@@ -39,6 +39,19 @@ test("admin vendor creation links User, VendorProfile and Store in one committed
   assert.match(vendorRoute, /if \(!vendorProfileId\) throw new Error\("VendorProfile could not be created"\)/);
 });
 
+test("admin vendor creation records an APPROVED seller application with source ADMIN in the same transaction", () => {
+  const transaction = vendorRoute.slice(vendorRoute.indexOf("prisma.$transaction("), vendorRoute.indexOf("TransactionIsolationLevel.Serializable"));
+  assert.match(transaction, /const application = await recordAdminCreatedSeller\(tx, \{[\s\S]*?vendorProfileId,[\s\S]*?adminId: admin\.id,/);
+  assert.match(transaction, /vendorApplicationId: application\.id/);
+  const service = readFileSync(resolve(root, "lib/seller-application-service.ts"), "utf8");
+  const helper = service.slice(service.indexOf("export async function recordAdminCreatedSeller"));
+  assert.match(helper, /status: "APPROVED",\s+source: "ADMIN",/);
+  assert.match(helper, /voenNormalized: normalizeVoen\(input\.voen\)/);
+  assert.match(helper, /reviewedById: input\.adminId,\s+reviewedAt: input\.now,/);
+  // No openUserId: an APPROVED row is never "open" (the database CHECK requires NULL).
+  assert.doesNotMatch(helper.slice(0, helper.indexOf("\n}\n")), /openUserId/);
+});
+
 test("admin vendor creation reuses the existing email verification outbox", () => {
   assert.match(vendorRoute, /enqueueVerificationEmail\(tx, \{/);
   assert.match(vendorRoute, /recipient: user\.email/);
@@ -68,7 +81,8 @@ test("admin UI exposes a vendors/new route with the full onboarding form", () =>
   assert.match(adminPage, /name:"lastName"/);
   assert.match(adminPage, /name:"email",label:"E-poçt",type:"email"/);
   assert.match(adminPage, /name:"password",label:"İlkin parol/);
-  assert.match(adminPage, /name:"voen",label:"VÖEN"/);
+  // Label now states the 10-digit rule (follow-up); the field itself is unchanged.
+  assert.match(adminPage, /name:"voen",label:"VÖEN \(10 rəqəm\)",required:true/);
   assert.match(adminPage, /name:"legalName"/);
   assert.match(adminPage, /name:"legalAddress"/);
   assert.match(adminPage, /name:"storeAddress"/);
@@ -108,4 +122,26 @@ test("admin seller detail uses a bounded, schema-explicit query and handles miss
   assert.match(sellerDetail, /vendor\._count\.stores > vendor\.stores\.length/);
   assert.doesNotMatch(sellerDetail, /(?:db|prisma)\.store\.update|subscription\.update/);
   assert.doesNotMatch(sellerDetail, /catch\s*\{/);
+});
+
+test("admin-created sellers need the same 10-digit VÖEN as customer applications", async () => {
+  // Follow-up change: the schema used to accept any 3–32 characters (voen: z.string().trim().min(3).max(32)).
+  // New admin-created sellers now use newVoenSchema from lib/seller-application.ts, the rule for SELF applications.
+  // Older sellers keep their stored value: only new input is validated (ADMIN/LEGACY rows stay exempt in the database).
+  const { adminCreateVendorSchema } = await import("../lib/validation");
+  const base = {
+    firstName: "Aysel", lastName: "Satıcı", email: "seller@example.test", password: "x".repeat(16),
+    sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Aysel Satıcı", storeName: "Aysel Store", cityId: "city-1",
+  };
+  const parsed = adminCreateVendorSchema.parse({ ...base, voen: "12 345-678 90" });
+  assert.equal(parsed.voen, "1234567890", "stored as digits only");
+  for (const voen of ["123", "123456789", "12345678901", "AZ-123", ""]) {
+    const result = adminCreateVendorSchema.safeParse({ ...base, voen });
+    assert.equal(result.success, false, voen);
+    assert.ok(result.error?.issues.some((issue) => issue.path.includes("voen")), voen);
+  }
+  const validation = readFileSync(resolve(root, "lib/validation.ts"), "utf8");
+  assert.match(validation, /voen: newVoenSchema,/);
+  assert.doesNotMatch(validation, /voen: z\.string\(\)\.trim\(\)\.min\(3\)\.max\(32\)/);
+  assert.match(vendorRoute, /issue\.path\.includes\("voen"\)\) \? SELLER_APPLICATION_MESSAGES\.voen/);
 });

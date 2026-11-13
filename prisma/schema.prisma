@@ -190,6 +190,8 @@ model User {
   adminRecoveryCodes    AdminRecoveryCode[]
   vendorApplications    VendorApplication[]    @relation("VendorApplicationApplicant")
   reviewedVendorApplications VendorApplication[] @relation("VendorApplicationReviewer")
+  siteSettingUpdates    SiteSetting[]          @relation("SiteSettingUpdatedBy")
+  siteSettingRevisions  SiteSettingRevision[]  @relation("SiteSettingRevisionBy")
 
   @@index([role, isActive])
 }
@@ -806,6 +808,46 @@ model SiteSettings {
   homeIntroLinkLabel    String   @default("Kataloqa bax")
   homeIntroLinkUrl      String   @default("/categories")
   updatedAt             DateTime @updatedAt
+}
+
+enum SiteSettingAction {
+  UPDATE
+  RESET
+  ROLLBACK
+}
+
+/// One row per changed setting of the settings engine. Keys and their types, bounds and defaults live in
+/// lib/settings/registry.ts; a key without a row (or with value NULL) uses the code default.
+/// CHECK constraints (migration 20261114010000): key format, value <= 16384 bytes, version >= 1.
+model SiteSetting {
+  key         String    @id
+  /// NULL = use the code default. Validated by the registry on every write and every read.
+  value       Json?
+  /// Optimistic concurrency: a write must name the version it read.
+  version     Int       @default(1)
+  updatedById String?
+  updatedAt   DateTime  @updatedAt
+  updatedBy   User?     @relation("SiteSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// History of every settings change; never rewritten. A rollback adds a new revision.
+/// CHECK constraints (migration 20261114010000): key format, version >= 1, reason <= 500, values <= 16384 bytes.
+model SiteSettingRevision {
+  id            String            @id @default(cuid())
+  key           String
+  /// The SiteSetting.version this change produced.
+  version       Int
+  /// NULL = reset to the code default.
+  value         Json?
+  previousValue Json?
+  action        SiteSettingAction
+  reason        String?
+  changedById   String?
+  createdAt     DateTime          @default(now())
+  changedBy     User?             @relation("SiteSettingRevisionBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@unique([key, version])
+  @@index([key, createdAt])
 }
 
 model HomeBanner {

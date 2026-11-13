@@ -199,7 +199,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       assert.equal((audit.metadata as Record<string, unknown>).duplicateVoenConfirmed, true);
     });
 
-    await t.test("admin-created sellers get an APPROVED/ADMIN row; older VÖEN formats are accepted there", async () => {
+    await t.test("admin-created sellers get an APPROVED/ADMIN row; the database still exempts ADMIN rows from the VÖEN CHECK (older values)", async () => {
       const created = await prisma.$transaction(async (tx) => {
         const seller = await tx.user.create({ data: { email: `sa-admin-made-${tag}@verify.invalid`, passwordHash: "x", role: "VENDOR", vendorProfile: { create: { displayName: "Admin Made", voen: "AZ-123" } } }, include: { vendorProfile: true } });
         const application = await service.recordAdminCreatedSeller(tx, {

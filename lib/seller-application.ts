@@ -88,6 +88,19 @@ export function maskVoen(value: string | null | undefined): string {
   return `${"•".repeat(Math.max(0, digits.length - 3))}${digits.slice(-3)}`;
 }
 
+/**
+ * VÖEN for every NEW seller (customer application and admin-created seller): digits only, exactly 10.
+ * Spaces and dashes are accepted on input and removed. Older stored values are not re-validated.
+ */
+export const newVoenSchema = z.string().max(40).transform((value, context) => {
+  const digits = normalizeVoen(value);
+  if (!digits || !/^\d{10}$/.test(digits)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: SELLER_APPLICATION_MESSAGES.voen });
+    return z.NEVER;
+  }
+  return digits;
+});
+
 const optionalText = (max: number) => z.union([z.string(), z.null(), z.undefined()])
   .transform((value) => (typeof value === "string" && value.trim() ? value.trim() : null))
   .refine((value) => value === null || value.length <= max, { message: `Ən çox ${max} simvol.` });
@@ -104,14 +117,7 @@ export const sellerApplicationInputSchema = z.object({
   }),
   sellerType: z.enum(sellerTypes),
   legalName: z.string().trim().min(2, "Hüquqi adı yazın.").max(200),
-  voen: z.string().max(40).transform((value, context) => {
-    const digits = normalizeVoen(value);
-    if (!digits || !/^\d{10}$/.test(digits)) {
-      context.addIssue({ code: z.ZodIssueCode.custom, message: SELLER_APPLICATION_MESSAGES.voen });
-      return z.NEVER;
-    }
-    return digits;
-  }),
+  voen: newVoenSchema,
   legalAddress: optionalText(300),
   plannedStoreName: optionalText(120),
   applicantNote: optionalText(SELLER_APPLICATION_RULES.applicantNoteMax),

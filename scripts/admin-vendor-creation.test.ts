@@ -81,7 +81,8 @@ test("admin UI exposes a vendors/new route with the full onboarding form", () =>
   assert.match(adminPage, /name:"lastName"/);
   assert.match(adminPage, /name:"email",label:"E-poçt",type:"email"/);
   assert.match(adminPage, /name:"password",label:"İlkin parol/);
-  assert.match(adminPage, /name:"voen",label:"VÖEN"/);
+  // Label now states the 10-digit rule (follow-up); the field itself is unchanged.
+  assert.match(adminPage, /name:"voen",label:"VÖEN \(10 rəqəm\)",required:true/);
   assert.match(adminPage, /name:"legalName"/);
   assert.match(adminPage, /name:"legalAddress"/);
   assert.match(adminPage, /name:"storeAddress"/);
@@ -121,4 +122,26 @@ test("admin seller detail uses a bounded, schema-explicit query and handles miss
   assert.match(sellerDetail, /vendor\._count\.stores > vendor\.stores\.length/);
   assert.doesNotMatch(sellerDetail, /(?:db|prisma)\.store\.update|subscription\.update/);
   assert.doesNotMatch(sellerDetail, /catch\s*\{/);
+});
+
+test("admin-created sellers need the same 10-digit VÖEN as customer applications", async () => {
+  // Follow-up change: the schema used to accept any 3–32 characters (voen: z.string().trim().min(3).max(32)).
+  // New admin-created sellers now use newVoenSchema from lib/seller-application.ts, the rule for SELF applications.
+  // Older sellers keep their stored value: only new input is validated (ADMIN/LEGACY rows stay exempt in the database).
+  const { adminCreateVendorSchema } = await import("../lib/validation");
+  const base = {
+    firstName: "Aysel", lastName: "Satıcı", email: "seller@example.test", password: "x".repeat(16),
+    sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Aysel Satıcı", storeName: "Aysel Store", cityId: "city-1",
+  };
+  const parsed = adminCreateVendorSchema.parse({ ...base, voen: "12 345-678 90" });
+  assert.equal(parsed.voen, "1234567890", "stored as digits only");
+  for (const voen of ["123", "123456789", "12345678901", "AZ-123", ""]) {
+    const result = adminCreateVendorSchema.safeParse({ ...base, voen });
+    assert.equal(result.success, false, voen);
+    assert.ok(result.error?.issues.some((issue) => issue.path.includes("voen")), voen);
+  }
+  const validation = readFileSync(resolve(root, "lib/validation.ts"), "utf8");
+  assert.match(validation, /voen: newVoenSchema,/);
+  assert.doesNotMatch(validation, /voen: z\.string\(\)\.trim\(\)\.min\(3\)\.max\(32\)/);
+  assert.match(vendorRoute, /issue\.path\.includes\("voen"\)\) \? SELLER_APPLICATION_MESSAGES\.voen/);
 });

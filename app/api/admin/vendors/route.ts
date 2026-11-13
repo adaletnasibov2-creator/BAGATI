@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { adminCreateVendorSchema } from "@/lib/validation";
 import { contactPhoneIssue } from "@/lib/az-phone";
+import { SELLER_APPLICATION_MESSAGES } from "@/lib/seller-application";
 import { enqueueVerificationEmail } from "@/lib/email-outbox";
 import { isDuplicateEmailError } from "@/lib/registration-errors";
 import { recordAdminCreatedSeller } from "@/lib/seller-application-service";
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   const parsed = adminCreateVendorSchema.safeParse(data);
   if (!parsed.success) {
-    return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? "Satıcı məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
+    return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? (parsed.error.issues.some((issue) => issue.path.includes("voen")) ? SELLER_APPLICATION_MESSAGES.voen : "Satıcı məlumatlarını yoxlayın"), details: parsed.error.flatten() }, { status: 422 });
   }
 
   const values = parsed.data;

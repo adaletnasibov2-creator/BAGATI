@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { optionalAzPhoneSchema } from "@/lib/az-phone";
+import { newVoenSchema } from "@/lib/seller-application";
 
 export const registerSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -48,7 +49,8 @@ export const adminCreateVendorSchema = z
     phone: z.string().trim().max(40).optional().nullable(),
     sellerType: z.enum(["INDIVIDUAL_ENTREPRENEUR", "REGISTERED_COMPANY"]),
     legalName: z.string().trim().min(2).max(200),
-    voen: z.string().trim().min(3).max(32),
+    // Same rule as customer applications: exactly 10 digits, stored as digits only.
+    voen: newVoenSchema,
     legalAddress: z.string().trim().max(400).optional().nullable(),
 
     storeName: z.string().trim().min(2).max(120),

@@ -131,7 +131,8 @@ test("readiness reports missing reference data and Google configuration without 
   assert.deepEqual(await response.json(), { status: "ready", storage: "unconfigured", googleSignIn: "unconfigured", referenceData: "missing" });
   const failingDetails = await readinessResponse(async () => 1, "local", async () => { throw new Error("db password=secret"); });
   assert.deepEqual(await failingDetails.json(), { status: "ready", storage: "local" });
-  assert.match(read("app/api/ready/route.ts"), /googleOAuthConfigIssues\(\)\.length \? "unconfigured" : "configured"/);
+  assert.match(read("app/api/ready/route.ts"), /collectReadinessDetails\(prisma\)/);
+  assert.match(read("lib/readiness-signals.ts"), /googleOAuthConfigIssues\(\)\.length \? "unconfigured" : "configured"/);
 });
 
 // ---------- Category and contact rendering sources ----------

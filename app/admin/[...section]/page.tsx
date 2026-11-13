@@ -335,9 +335,6 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
  if(route==="notifications"){
   const where:any=q?{OR:[{title:{contains:q,mode:"insensitive"}},{body:{contains:q,mode:"insensitive"}},{user:{email:{contains:q,mode:"insensitive"}}}]}:{};const [rows,total]=await Promise.all([db.notification.findMany({where,include:{user:{select:{email:true,role:true}},store:{select:{name:true}}},orderBy:{createdAt:"desc"},skip,take}),db.notification.count({where})]);return shell(<><Header title="Bildirişlər"/><Filters path="/admin/notifications"/><Table rows={rows} columns={[{label:"Başlıq",cell:r=><span>{r.title}<small className="block text-slate-500">{r.body}</small></span>},{label:"Alıcı",cell:r=>`${r.user.email} · ${r.user.role}`},{label:"Mağaza",cell:r=>r.store?.name||"Ümumi"},{label:"Oxunma",cell:r=>r.readAt?`Oxunub ${r.readAt.toLocaleDateString("az-AZ")}`:"Oxunmayıb"},{label:"Tarix",cell:r=>r.createdAt.toLocaleDateString("az-AZ")} ]}/><Pager path="/admin/notifications" page={page} total={total} query={pageQuery}/></>);
  }
- if(route==="audit-log"){
-  const rows=await db.auditLog.findMany({include:{actor:{select:{email:true}}},orderBy:{createdAt:"desc"},skip,take});const total=await db.auditLog.count();return shell(<><Header title="Audit jurnalı" detail="Yalnız sistemdə yazılmış audit qeydləri göstərilir."/><Table rows={rows} columns={[{label:"Tarix",cell:r=>r.createdAt.toLocaleString("az-AZ")},{label:"İstifadəçi",cell:r=>r.actor?.email||"Sistem"},{label:"Əməl",cell:r=>r.action},{label:"Obyekt",cell:r=>`${r.entityType} · ${r.entityId||"—"}`},{label:"Əlavə məlumat",cell:r=><pre className="max-w-xs whitespace-pre-wrap text-xs">{JSON.stringify(r.metadata||{})}</pre>} ]}/><Pager path="/admin/audit-log" page={page} total={total} query={pageQuery}/></>);
- }
  if(route==="reports"){
   const defaultFrom=new Date(new Date().getFullYear(),new Date().getMonth(),1);
   const fromRange=sp.from?parseLocalDateRange(sp.from):null;

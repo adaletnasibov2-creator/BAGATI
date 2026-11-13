@@ -9,8 +9,9 @@ import { loginSchema } from "@/lib/validation";
 import { attachEmailVerificationContext, clearEmailVerificationContext, createEmailVerificationContext, emailVerificationRequired, mayUseVendorLogin } from "@/lib/email-verification";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
 import { applyGoogleLink, expiredGoogleLinkCookie } from "@/lib/google-link";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   let data: unknown;
   try {
     data = await request.json();
@@ -110,3 +111,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Giriş tamamlana bilmədi. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
+
+/** Security Center telemetry: status and duration counted under "auth.vendor-login" (never affects the response). */
+export const POST = withSecurityTelemetry("auth.vendor-login", handlePOST);

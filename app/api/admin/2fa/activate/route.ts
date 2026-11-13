@@ -4,6 +4,7 @@ import { createSession, currentSessionId } from "@/lib/auth";
 import { readJsonBodyLimited } from "@/lib/request-json";
 import { Admin2faError, activateEnrollment, admin2faErrorMessage, expiredChallengeCookie, resolveEnrollmentActor } from "@/lib/admin-2fa";
 import { revokeOtherOwnSessions } from "@/lib/admin-sessions";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -11,7 +12,7 @@ const headers = { "Cache-Control": "no-store" };
  * Activates 2FA with one valid code and returns the 10 recovery codes once. Other sessions are revoked.
  * In forced enrollment (no session yet) the admin is signed in only after activation succeeds.
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
   const actor = await resolveEnrollmentActor(request); // signed-in ADMIN session, or the ADMIN-only enrollment challenge
@@ -38,3 +39,6 @@ export async function POST(request: NextRequest) {
     throw error;
   }
 }
+
+/** Security Center telemetry: status and duration counted under "admin.2fa" (never affects the response). */
+export const POST = withSecurityTelemetry("admin.2fa", handlePOST);

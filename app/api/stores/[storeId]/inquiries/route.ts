@@ -16,6 +16,7 @@ import {
 import { submitStoreInquiry } from "@/lib/store-inquiry-submit";
 import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
 import { loadInquiryLimits } from "@/lib/settings/limits";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ const json = (body: Record<string, unknown>, status: number) => NextResponse.jso
  * Public buyer-to-store message. Same-origin only, JSON only, small bodies, strict validation,
  * per-IP and per-store limits, honeypot. Responses never contain the store's email address.
  */
-export async function POST(request: Request, { params }: { params: Promise<{ storeId: string }> }) {
+async function handlePOST(request: Request, { params }: { params: Promise<{ storeId: string }> }) {
   // Middleware already applies this to /api/*; repeated here so the route stays safe on its own.
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
@@ -72,3 +73,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
     return json({ error: INQUIRY_MESSAGES.unavailable }, 503);
   }
 }
+
+/** Security Center telemetry: status and duration counted under "inquiry" (never affects the response). */
+export const POST = withSecurityTelemetry("inquiry", handlePOST);

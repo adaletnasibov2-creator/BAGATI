@@ -3,6 +3,7 @@ import { csrfRejection } from "@/lib/csrf";
 import { createSession } from "@/lib/auth";
 import { readJsonBodyLimited } from "@/lib/request-json";
 import { expiredChallengeCookie, readChallenge, verifySecondFactor } from "@/lib/admin-2fa";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -10,7 +11,7 @@ const headers = { "Cache-Control": "no-store" };
  * Second login step for an enrolled ADMIN. Requires the challenge cookie from a correct password (readChallenge
  * re-checks role ADMIN, active account and unchanged password). The session is created only after a valid code.
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
   const admin = await readChallenge(request, "code");
@@ -41,3 +42,6 @@ export async function POST(request: NextRequest) {
   response.cookies.set(await expiredChallengeCookie());
   return response;
 }
+
+/** Security Center telemetry: status and duration counted under "admin.2fa" (never affects the response). */
+export const POST = withSecurityTelemetry("admin.2fa", handlePOST);

@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { SecurityEventPayload } from "@/lib/security-event-ingestion";
 import { hashSecurityEventId } from "@/lib/security-event-ingestion";
+import { maskIpAddress } from "@/lib/admin-system-status";
 
 export type SecurityEventRow = {
   id: string;
@@ -31,12 +32,12 @@ export async function insertSecurityEvent(input: {
 }) {
   const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
     INSERT INTO "SecurityEvent" (
-      "id", "source", "sourceEventId", "occurredAt", "sourceIp", "path",
+      "id", "source", "sourceEventId", "occurredAt", "sourceIp", "sourceIpMasked", "path",
       "eventType", "severity", "action", "ruleId", "createdAt"
     )
     VALUES (
       ${randomUUID()}, ${input.source}, ${hashSecurityEventId(input.source, input.event.eventId)}, ${new Date(input.event.occurredAt)},
-      ${input.event.sourceIp ?? null}, ${input.event.path ?? null}, ${input.event.eventType},
+      ${input.event.sourceIp ?? null}, ${input.event.sourceIp ? maskIpAddress(input.event.sourceIp) : null}, ${input.event.path ?? null}, ${input.event.eventType},
       ${input.event.severity}, ${input.event.action}, ${input.event.ruleId ?? null}, NOW()
     )
     ON CONFLICT ("source", "sourceEventId") DO NOTHING

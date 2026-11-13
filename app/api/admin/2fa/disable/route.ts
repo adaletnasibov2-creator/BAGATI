@@ -3,11 +3,12 @@ import { csrfRejection } from "@/lib/csrf";
 import { currentSessionId, requireRole } from "@/lib/auth";
 import { readJsonBodyLimited } from "@/lib/request-json";
 import { Admin2faError, admin2faErrorMessage, disableTwoFactor } from "@/lib/admin-2fa";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 const headers = { "Cache-Control": "no-store" };
 
 /** Turns 2FA off for the signed-in admin after the password and a current code. Revokes the other sessions. */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
   const admin = await requireRole("ADMIN");
@@ -26,3 +27,6 @@ export async function POST(request: NextRequest) {
     throw error;
   }
 }
+
+/** Security Center telemetry: status and duration counted under "admin.2fa" (never affects the response). */
+export const POST = withSecurityTelemetry("admin.2fa", handlePOST);

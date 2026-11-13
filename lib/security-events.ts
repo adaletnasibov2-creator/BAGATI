@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { logAuthFailure } from "@/lib/auth-logging";
 import { securityEventPathFromRequest } from "@/lib/security-event-ingestion";
 import { clientIpHeaderMismatch } from "@/lib/trusted-proxy";
+import { securityTelemetry } from "@/lib/security-monitoring/instance";
+import { routeGroupForPath } from "@/lib/security-monitoring/telemetry";
 import { insertSecurityEvent } from "@/lib/security-event-store";
 import type { SecurityEventPayload } from "@/lib/security-event-ingestion";
 
@@ -43,6 +45,7 @@ export async function captureApplicationSecurityEvent(input: {
   path: string;
 }) {
   noteClientIpHeaderMismatch(input.request, input.path);
+  if (input.eventType === "LOGIN_FAILURE") securityTelemetry.recordLoginFailure(routeGroupForPath(input.path));
   try {
     await recordApplicationSecurityEvent({
       eventType: input.eventType,

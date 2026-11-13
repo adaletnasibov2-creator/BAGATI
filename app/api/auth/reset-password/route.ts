@@ -7,13 +7,14 @@ import { logAuthFailure } from "@/lib/auth-logging";
 import { PASSWORD_RESET_RATE_LIMIT, authRateLimitKey, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 import { hashPasswordResetToken, passwordResetTokenIsUsable } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 const schema = z.object({
   token: z.string().min(40).max(100),
   password: z.string().min(12).max(128),
 });
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   let body: unknown;
   try { body = await request.json(); }
   catch { return NextResponse.json({ error: "Sorğu məlumatları yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } }); }
@@ -77,3 +78,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Şifrəni yeniləmək mümkün olmadı. Yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
+
+/** Security Center telemetry: status and duration counted under "auth.password-reset" (never affects the response). */
+export const POST = withSecurityTelemetry("auth.password-reset", handlePOST);

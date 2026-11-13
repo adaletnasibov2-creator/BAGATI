@@ -13,8 +13,9 @@ import {
   generateVerificationCode,
   hashVerificationCode,
 } from "@/lib/email-verification";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   let data: unknown;
   try {
     data = await request.json();
@@ -89,3 +90,6 @@ export async function POST(request: NextRequest) {
 
   return registrationAcknowledgement(user.id, user.role, "/verify-email");
 }
+
+/** Security Center telemetry: status and duration counted under "auth.register" (never affects the response). */
+export const POST = withSecurityTelemetry("auth.register", handlePOST);

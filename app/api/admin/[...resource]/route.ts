@@ -9,7 +9,7 @@ import { OrderFulfillmentError, transitionAdminOrder } from "@/lib/order-fulfill
 import { VENDOR_ORDER_STATUSES } from "@/lib/order-status";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { assertProductLimit, EntitlementError, entitlementErrorResponse, lockStoreEntitlement } from "@/lib/subscription-entitlements";
-import { hasCommissionRuleConflict } from "@/lib/commission-rules";
+import { commissionRateInput, hasCommissionRuleConflict } from "@/lib/commission-rules";
 import { logSecurityOperationFailure } from "@/lib/security-logging";
 import { getProductPublicationBlockers } from "@/lib/admin-store-product-publishing";
 import { supportedSubscriptionPlanSlugs } from "@/lib/subscription-plans";
@@ -51,14 +51,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const section = resource.join("/");
   if (section === "commissions") {
-    const parsed = z.object({ storeId: z.string().min(1), rate: z.coerce.number().finite().min(0).max(1), startsAt: z.coerce.date(), endsAt: z.coerce.date().nullable().optional() }).safeParse(body);
-    if (!parsed.success || (parsed.data.endsAt && parsed.data.endsAt <= parsed.data.startsAt)) return NextResponse.json({ error: "Komissiya tarix və faiz məlumatlarını yoxlayın" }, { status: 422 });
+    // ratePercent (0–100, the admin form) or the older rate (0–1); see commissionRateInput.
+    const rateInput = commissionRateInput(body);
+    const parsed = z.object({ storeId: z.string().min(1), startsAt: z.coerce.date(), endsAt: z.coerce.date().nullable().optional() }).safeParse(body);
+    if (!rateInput.ok || rateInput.rate === undefined || !parsed.success || (parsed.data.endsAt && parsed.data.endsAt <= parsed.data.startsAt)) return NextResponse.json({ error: "Komissiya tarix və faiz məlumatlarını yoxlayın" }, { status: 422 });
     if (!await db.store.findUnique({ where: { id: parsed.data.storeId }, select: { id: true } })) return NextResponse.json({ error: "Mağaza tapılmadı" }, { status: 422 });
     try {
       const result = await db.$transaction(async (tx: any) => {
         const existing = await tx.commission.findMany({ where: { storeId: parsed.data.storeId }, select: { startsAt: true, endsAt: true } });
         if (hasCommissionRuleConflict({ startsAt: parsed.data.startsAt, endsAt: parsed.data.endsAt || null }, existing)) return { conflict: true as const };
-        const commission = await tx.commission.create({ data: { storeId: parsed.data.storeId, rate: parsed.data.rate, startsAt: parsed.data.startsAt, endsAt: parsed.data.endsAt || null } });
+        const commission = await tx.commission.create({ data: { storeId: parsed.data.storeId, rate: rateInput.rate, startsAt: parsed.data.startsAt, endsAt: parsed.data.endsAt || null } });
         await tx.auditLog.create({ data: { actorId: admin.id, action: "COMMISSION_CREATE", entityType: "Commission", entityId: commission.id, metadata: { storeId: commission.storeId, rate: Number(commission.rate) } } });
         return { item: commission };
       }, { isolationLevel: "Serializable" });
@@ -138,9 +140,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const item = await db.$transaction(async (tx: any) => { const updated = await tx.store.update({ where: { id: storeId }, data: { ...values, ...(vendorId ? { vendorId, legalInfoApproved: false } : {}) }, select: { id: true, name: true, status: true, isActive: true, legalInfoApproved: true } }); await tx.auditLog.create({ data: { actorId: admin.id, action: vendorId ? "STORE_OWNER_CHANGE" : "UPDATE", entityType: "Store", entityId: updated.id, ...(vendorId ? { metadata: { vendorId, legalReviewRequired: true } } : {}) } }); return updated; }); return NextResponse.json({ item });
     }
     if (section === "commissions") {
-      const parsed = z.object({ id: z.string().min(1), storeId: z.string().min(1).optional(), rate: z.coerce.number().finite().min(0).max(1).optional(), startsAt: z.coerce.date().optional(), endsAt: z.coerce.date().nullable().optional() }).safeParse(body);
-      if (!parsed.success) return NextResponse.json({ error: "Komissiya məlumatlarını yoxlayın" }, { status: 422 });
-      const { id: commissionId, ...values } = parsed.data;
+      const rateInput = commissionRateInput(body);
+      const parsed = z.object({ id: z.string().min(1), storeId: z.string().min(1).optional(), startsAt: z.coerce.date().optional(), endsAt: z.coerce.date().nullable().optional() }).safeParse(body);
+      if (!rateInput.ok || !parsed.success) return NextResponse.json({ error: "Komissiya məlumatlarını yoxlayın" }, { status: 422 });
+      const { id: commissionId, ...dates } = parsed.data;
+      const values = { ...dates, ...(rateInput.rate === undefined ? {} : { rate: rateInput.rate }) };
       if (values.storeId && !await db.store.findUnique({ where: { id: values.storeId }, select: { id: true } })) return NextResponse.json({ error: "Mağaza tapılmadı" }, { status: 422 });
       const result = await db.$transaction(async (tx: any) => {
         const prior = await tx.commission.findUnique({ where: { id: commissionId } });

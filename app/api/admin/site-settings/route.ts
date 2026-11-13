@@ -3,6 +3,7 @@ import { csrfRejection } from "@/lib/csrf";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SITE_SETTINGS_DEFAULTS, siteSettingsSchema } from "@/lib/site-content";
+import { invalidateSiteSettingsCache } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export async function PUT(request: NextRequest) {
     });
     return settings;
   });
+  invalidateSiteSettingsCache();
 
   return NextResponse.json({ item, message: "Sayt parametrləri yadda saxlanıldı." });
 }

@@ -13,6 +13,11 @@ import { summarizeMonthlyStoreSales } from "@/lib/store-monthly-sales";
 import { formatLocalDateInput, parseLocalDateRange } from "@/lib/admin-report-dates";
 import { allowedAdminOrderTransitions } from "@/lib/order-fulfillment";
 import AdminSiteSettingsForm from "@/components/admin-site-settings-form";
+import AdminSettingsTabs from "@/components/admin-settings-tabs";
+import AdminSettingField from "@/components/admin-setting-field";
+import { loadAdminSettingsGroup, loadSettingSummary } from "@/lib/settings/admin";
+import { SETTING_KEYS } from "@/lib/settings/registry";
+import { commissionRateToPercent } from "@/lib/commission-rules";
 import AdminHomepageManager from "@/components/admin-homepage-manager";
 import AdminProductEditForm from "@/components/admin-product-edit-form";
 import AdminPromotionManager from "@/components/admin-promotion-manager";
@@ -49,8 +54,12 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
  const shell=(content:React.ReactNode)=><AdminShell email={admin.email}>{content}</AdminShell>;
 
  if(route==="settings"){
+  if(sp.tab==="finance"){
+   const finance=await loadAdminSettingsGroup(prisma,"finance");
+   return shell(<><Header title="Sayt parametrləri" detail={finance.group.description}/><AdminSettingsTabs active="finance"/><div className="grid gap-4">{finance.settings.map(view=><AdminSettingField key={view.key} view={view}/>)}</div></>);
+  }
   const settings=await db.siteSettings.findUnique({where:{id:SITE_SETTINGS_DEFAULTS.id}});
-  return shell(<><Header title="Sayt parametrləri" detail="Dəyişikliklər ictimai header, əlaqə məlumatları, qaydalar və ana səhifə təqdimatında görünür."/><AdminSiteSettingsForm initial={settings??SITE_SETTINGS_DEFAULTS}/></>);
+  return shell(<><Header title="Sayt parametrləri" detail="Dəyişikliklər ictimai header, əlaqə məlumatları, qaydalar və ana səhifə təqdimatında görünür."/><AdminSettingsTabs active="general"/><AdminSiteSettingsForm initial={settings??SITE_SETTINGS_DEFAULTS}/></>);
  }
  if(route==="homepage")return shell(<><Header title="Ana səhifə və bannerlər" detail="Bannerlər yalnız aktiv və təyin olunmuş tarix aralığında göstərilir. Mağaza kampaniyaları mövcud satıcı kampaniya axınından idarə olunur."/><AdminHomepageManager/></>);
  if(route==="promotions")return shell(<><Header title="Kampaniyalar" detail="Mağaza məhsullarına tarix və status əsasında endirim kampaniyaları təyin edin."/><AdminPromotionManager/></>);
@@ -259,20 +268,28 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
   const statuses=["PENDING","ACTIVE","PAST_DUE","SUSPENDED","CANCELLED","EXPIRED"] as const;const status=normalizeAdminEnumFilter(sp.status,statuses);const where:any=status?{status}:{};const [rows,total]=await Promise.all([db.storeSubscription.findMany({where,include:{store:{select:{id:true,name:true,vendor:{select:{displayName:true,user:{select:{email:true}}}}}},plan:true},orderBy:{createdAt:"desc"},skip,take}),db.storeSubscription.count({where})]);return shell(<><Header title="Abunəliklər" detail="Status və dövr məlumatları real abunəlik qeydlərindəndir; bu panel ödəniş təsdiqləmir."/><Filters path="/admin/subscriptions"><FilterSelect name="status" label="Status" values={statuses.map(s=>({id:s,name:s}))}/></Filters><Table rows={rows} columns={[{label:"Mağaza",cell:r=><Link href={`/admin/stores/${r.storeId}`} className="text-[#173c40]">{r.store.name}</Link>},{label:"Satıcı",cell:r=>`${r.store.vendor.displayName} · ${r.store.vendor.user.email}`},{label:"Plan",cell:r=>`${r.plan.name} · ${Number(r.plan.monthlyPrice).toFixed(2)} ₼/ay`},{label:"Status",cell:r=>r.status},{label:"Dövr",cell:r=>`${r.currentPeriodStart?.toLocaleDateString("az-AZ")||"—"} – ${r.currentPeriodEnd?.toLocaleDateString("az-AZ")||"—"}`} ]}/><Pager path="/admin/subscriptions" page={page} total={total} query={pageQuery}/></>);
  }
  if(route==="commissions"){
-  const [rows, total, stores] = await Promise.all([
+  const [rows, total, stores, defaultCommission] = await Promise.all([
    db.commission.findMany({ include: { store: { select: { id: true, name: true } } }, orderBy: { startsAt: "desc" }, skip, take }),
    db.commission.count(),
    db.store.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+   loadSettingSummary(prisma, SETTING_KEYS.commissionDefaultRate),
   ]);
   const storeOptions = stores.map((store: any) => ({ value: store.id, label: store.name }));
   const createFields: AdminField[] = [
    { name: "storeId", label: "Mağaza", type: "select", options: storeOptions, required: true },
-   { name: "rate", label: "Komissiya faizi (0–1)", type: "number", min: "0", max: "1", required: true },
+   { name: "ratePercent", label: "Komissiya faizi (%)", type: "number", min: "0", max: "100", step: "0.01", placeholder: "məsələn 10", required: true },
    { name: "startsAt", label: "Başlanğıc tarixi", type: "date", value: new Date().toISOString().slice(0, 10), required: true },
    { name: "endsAt", label: "Son tarix", type: "date" },
   ];
   return shell(<>
    <Header title="Komissiyalar" detail="Komissiya faizi və tətbiq müddəti sxemdəki real məlumatlardır." />
+   <section className={`${card} mb-5 flex flex-wrap items-center justify-between gap-3`} aria-label="Standart komissiya">
+    <div className="min-w-0">
+     <p className="text-sm font-semibold text-[#0d1b2a]">Standart komissiya: {defaultCommission.display}</p>
+     <p className="mt-1 text-sm text-slate-600">{defaultCommission.isSet ? "Öz qaydası olmayan mağazaların yeni sifarişlərinə tətbiq olunur. Aşağıdakı mağaza qaydaları üstündür." : "Öz qaydası olmayan mağazaların sifarişlərində komissiya qeydə alınmır. Aşağıdakı mağaza qaydaları üstündür."}</p>
+    </div>
+    <Link href="/admin/settings?tab=finance" className="rounded-xl border border-[#ded9cf] px-4 py-2.5 text-sm font-semibold text-[#173c40]">Maliyyə parametrlərinə keç</Link>
+   </section>
    <section className={card}>
     <h2 className="mb-3 font-semibold">Komissiya əlavə et</h2>
     <AdminMutationForm resource="commissions" fields={createFields} button="Yarat" />
@@ -293,7 +310,7 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
        fields={[
         { name: "id", label: "", type: "hidden", value: row.id },
         { name: "storeId", label: "Mağaza", type: "select", value: row.storeId, options: storeOptions, required: true },
-        { name: "rate", label: "Faiz (0–1)", type: "number", value: Number(row.rate), min: "0", max: "1", required: true },
+        { name: "ratePercent", label: "Faiz (%)", type: "number", value: commissionRateToPercent(row.rate), min: "0", max: "100", step: "0.01", required: true },
         { name: "startsAt", label: "Başlanğıc", type: "date", value: row.startsAt.toISOString().slice(0, 10), required: true },
         { name: "endsAt", label: "Son", type: "date", value: row.endsAt?.toISOString().slice(0, 10) || "" },
        ]}

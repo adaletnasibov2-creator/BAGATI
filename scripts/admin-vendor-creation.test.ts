@@ -49,7 +49,10 @@ test("admin vendor creation records an APPROVED seller application with source A
   assert.match(helper, /voenNormalized: normalizeVoen\(input\.voen\)/);
   assert.match(helper, /reviewedById: input\.adminId,\s+reviewedAt: input\.now,/);
   // No openUserId: an APPROVED row is never "open" (the database CHECK requires NULL).
-  assert.doesNotMatch(helper.slice(0, helper.indexOf("\n}\n")), /openUserId/);
+  // End of the helper = the first closing brace on its own line; works with LF and CRLF working copies.
+  const helperEnd = helper.search(/\r?\n\}\r?\n/);
+  assert.ok(helperEnd > 0, "helper end found");
+  assert.doesNotMatch(helper.slice(0, helperEnd), /openUserId/);
 });
 
 test("admin vendor creation reuses the existing email verification outbox", () => {

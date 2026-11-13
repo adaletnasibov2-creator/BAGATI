@@ -10,6 +10,7 @@ import { calculateVariantEffectivePrice, orderVariantSnapshot, quantityAfterSale
 import { enqueueEmail } from "@/lib/email-outbox";
 import { stockAlertCrossing, stockAlertNotification, VENDOR_NOTIFICATION_TITLES } from "@/lib/vendor-notifications";
 import { listCustomerOrderPage, parseCustomerOrderPageSize } from "@/lib/customer-order-pagination";
+import { commissionRatesForNewOrder } from "@/lib/order-commission";
 const db: any = prisma;
 const schema = z.object({ addressId: z.string().min(1), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), expectedPrices: z.array(z.object({ cartItemId: z.string().min(1), unitPrice: z.number().positive() })).max(500).optional() });
 export async function GET(request: NextRequest) {
@@ -64,20 +65,15 @@ export async function POST(request:NextRequest) {
    const groups=new Map<string,any[]>();for(const row of normalized){const storeId=row.item.product.store.id;groups.set(storeId,[...(groups.get(storeId)??[]),row]);}
     const storeOrders=[...groups.entries()].map(([storeId,lines])=>{const store=lines[0].item.product.store;const storeSubtotal=lines.reduce((sum:Prisma.Decimal,row:any)=>sum.add(row.lineTotal),new Prisma.Decimal(0));const delivery=calculateStoreDelivery(storeSubtotal,{freeDeliveryThreshold:store.freeDeliveryThreshold,deliveryFee:store.deliveryFee});return {storeId,subtotal:storeSubtotal,deliveryFee:delivery.deliveryFee,storeTotal:storeSubtotal.add(delivery.deliveryFee),lines};});
     const orderCreatedAt=new Date();
-    const commissionRules = await tx.commission.findMany({
-     where: { storeId: { in: storeOrders.map((group:any)=>group.storeId) }, startsAt: { lte: orderCreatedAt }, OR: [{ endsAt: null }, { endsAt: { gt: orderCreatedAt } }] },
-     orderBy: { startsAt: "desc" },
-     select: { storeId: true, rate: true },
-    });
-    const commissionRateByStore = new Map<string, Prisma.Decimal>();
-    for (const rule of commissionRules) if (!commissionRateByStore.has(rule.storeId)) commissionRateByStore.set(rule.storeId, rule.rate);
+    // Store rule ?? default commission setting ?? null, read inside this transaction and snapshotted once (lib/order-commission.ts).
+    const commissionRates = await commissionRatesForNewOrder(tx, storeOrders.map((group:any)=>group.storeId), orderCreatedAt);
     const subtotal=storeOrders.reduce((sum,group)=>sum.add(group.subtotal),new Prisma.Decimal(0));
     const totalDeliveryFee=storeOrders.reduce((sum,group)=>sum.add(group.deliveryFee),new Prisma.Decimal(0));
     const total=subtotal.add(totalDeliveryFee);
     const hasCoordinates=Object.prototype.hasOwnProperty.call(parsed.data,"latitude");
     const selectedCoordinates=hasCoordinates?(parsed.data.latitude==null?null:{latitude:parsed.data.latitude,longitude:parsed.data.longitude!}):undefined;
     const addressSnapshot=createOrderAddressSnapshot(address,selectedCoordinates);
-     const created=await tx.order.create({data:{userId:user.id,status:"PENDING",subtotal,deliveryFee:totalDeliveryFee,total,addressSnapshot,storeOrders:{create:storeOrders.map(group=>({storeId:group.storeId,status:"NEW",createdAt:orderCreatedAt,subtotal:group.subtotal,commissionRateSnapshot:commissionRateByStore.get(group.storeId)??null,deliveryFee:group.deliveryFee,items:{create:group.lines.map((row:any)=>({productId:row.item.productId,variantId:row.item.variantId,...orderVariantSnapshot(row.item.variant),productName:row.item.product.name,sku:row.item.variant?.sku??row.item.product.sku,unitPrice:row.unitPrice,quantity:row.item.quantity,lineTotal:row.lineTotal}))}}))},payments:{create:{amount:total,currency:"AZN",status:"PENDING"}}},include:{storeOrders:{include:{store:{select:{id:true,name:true,vendor:{select:{user:{select:{id:true,email:true}}}}}},items:true}},payments:true}});
+     const created=await tx.order.create({data:{userId:user.id,status:"PENDING",subtotal,deliveryFee:totalDeliveryFee,total,addressSnapshot,storeOrders:{create:storeOrders.map(group=>({storeId:group.storeId,status:"NEW",createdAt:orderCreatedAt,subtotal:group.subtotal,commissionRateSnapshot:commissionRates.get(group.storeId)??null,deliveryFee:group.deliveryFee,items:{create:group.lines.map((row:any)=>({productId:row.item.productId,variantId:row.item.variantId,...orderVariantSnapshot(row.item.variant),productName:row.item.product.name,sku:row.item.variant?.sku??row.item.product.sku,unitPrice:row.unitPrice,quantity:row.item.quantity,lineTotal:row.lineTotal}))}}))},payments:{create:{amount:total,currency:"AZN",status:"PENDING"}}},include:{storeOrders:{include:{store:{select:{id:true,name:true,vendor:{select:{user:{select:{id:true,email:true}}}}}},items:true}},payments:true}});
    const customer=await tx.user.findUnique({where:{id:user.id},select:{email:true}});
    if(customer)await enqueueEmail(tx,{eventKey:`order-confirmed:${created.id}:${customer.email}`,recipient:customer.email,template:"CUSTOMER_ORDER_CONFIRMED",payload:{orderRef:created.id,total:Number(created.total)}});
    for(const storeOrder of created.storeOrders){

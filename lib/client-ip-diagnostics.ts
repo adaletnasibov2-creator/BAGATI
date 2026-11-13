@@ -4,7 +4,7 @@
  */
 import { isIP } from "node:net";
 import { maskIpAddress } from "@/lib/admin-system-status";
-import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
+import { clientIpHeaderMismatch, trustedCloudflareClientIp } from "@/lib/trusted-proxy";
 
 export const CLIENT_IP_HEADERS = ["cf-connecting-ip", "true-client-ip", "x-forwarded-for", "x-real-ip", "forwarded"] as const;
 
@@ -85,6 +85,8 @@ export type ClientIpDiagnostics = {
   forwardedChain: { masked: string; cloudflare: boolean }[];
   rightmostHopCloudflare: boolean | null;
   cfConnectingIpMatchesLeftmostXff: boolean | null;
+  /** CF-Connecting-IP and X-Real-IP both present but different: the client IP is treated as unknown. */
+  cfRealIpMismatch: boolean;
   /** Route handlers in Next.js 15 cannot read the TCP peer; Next only copies it into X-Forwarded-For when no proxy set that header. */
   socketAddressAvailable: false;
   ipWithFlagOff: null;
@@ -110,6 +112,7 @@ export function clientIpDiagnostics(headers: Headers, flagEnabled: boolean): Cli
     forwardedChain: xff.map((ip) => ({ masked: masked(ip), cloudflare: isCloudflareIp(ip) })),
     rightmostHopCloudflare: rightmost === undefined ? null : isCloudflareIp(rightmost),
     cfConnectingIpMatchesLeftmostXff: cf && xff.length ? xff[0] === cf : null,
+    cfRealIpMismatch: clientIpHeaderMismatch(headers),
     socketAddressAvailable: false,
     ipWithFlagOff: null,
     ipWithFlagOn: flagOn ? maskIpAddress(flagOn) : null,

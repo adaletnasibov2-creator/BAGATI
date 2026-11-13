@@ -134,6 +134,7 @@ const eventLabel: Record<string, string> = {
   ABUSIVE_API: "API istifadəsi qaydası",
   WAF_EVENT: "WAF hadisəsi",
   MODSECURITY_EVENT: "ModSecurity hadisəsi",
+  IP_HEADER_MISMATCH: "IP başlıqları uyğun gəlmir",
 };
 const actionLabel: Record<string, string> = {
   OBSERVED: "Müşahidə edilib",

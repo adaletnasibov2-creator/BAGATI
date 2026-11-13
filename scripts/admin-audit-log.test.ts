@@ -194,3 +194,11 @@ test("export rejects a cross-origin POST in the route itself and in middleware, 
   const noOrigin = await POST(new NextRequest(url, { method: "POST", headers: { host: "localhost:3000", "content-type": "application/json" }, body: "{}" }));
   assert.equal(noOrigin.status, 403, "a POST with neither Origin nor Referer is rejected");
 });
+
+test("export button text is locale-independent so SSR and the browser match (regression: hydration error)", async () => {
+  const { formatRowLimit } = await import("../components/admin-audit-export-button");
+  assert.equal(formatRowLimit(10_000), "10\u00a0000");
+  assert.equal(formatRowLimit(999), "999");
+  assert.equal(formatRowLimit(1_234_567), "1\u00a0234\u00a0567");
+  assert.doesNotMatch(read("components/admin-audit-export-button.tsx"), /\.toLocaleString\(|new Intl\./);
+});

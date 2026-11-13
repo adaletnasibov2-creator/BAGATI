@@ -5,6 +5,11 @@ import { Download } from "lucide-react";
 
 type Props = { filters: Record<string, string>; maxRows: number };
 
+/** Locale-independent ("10 000") so server and browser render the same text; toLocaleString differs between Node ICU and browsers and broke hydration. */
+export function formatRowLimit(value: number) {
+  return String(Math.trunc(value)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
 /** POSTs the active filters (same-origin fetch, so the shared cross-site check passes) and downloads the CSV. */
 export default function AdminAuditExportButton({ filters, maxRows }: Props) {
   const [busy, setBusy] = useState(false);
@@ -49,7 +54,7 @@ export default function AdminAuditExportButton({ filters, maxRows }: Props) {
   return <div className="grid justify-items-end gap-1">
     <button type="button" onClick={() => void exportCsv()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-[#c7ad78] bg-white px-4 py-2.5 text-sm font-semibold text-[#85621d] disabled:opacity-60">
       <Download size={16} aria-hidden="true" />
-      {busy ? "Hazırlanır…" : `CSV ixrac (maks. ${maxRows.toLocaleString("az-AZ")} sətir)`}
+      {busy ? "Hazırlanır…" : `CSV ixrac (maks. ${formatRowLimit(maxRows)} sətir)`}
     </button>
     {message && <p role="status" className="text-xs text-emerald-800">{message}</p>}
     {error && <p role="alert" className="text-xs text-red-700">{error}</p>}

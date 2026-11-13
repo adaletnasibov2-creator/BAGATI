@@ -15,6 +15,7 @@
 import { z } from "zod";
 import { commissionPercentToRate, commissionRateToPercent } from "@/lib/commission-rules";
 import { isSafeHomepageHref } from "@/lib/site-content";
+import { ANNOUNCEMENT_TONE_LABELS } from "@/lib/announcement";
 
 export type SettingPermission = "settings.finance" | "settings.content" | "settings.limits";
 export type SettingGroupId = "finance" | "seo" | "announcement" | "limits";
@@ -29,7 +30,7 @@ export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description
 export type SettingInput =
   | { kind: "percent"; min: number; max: number; step: number; unit: "%" }
   | { kind: "integer"; min: number; max: number; unit?: string }
-  | { kind: "text"; minLength: number; maxLength: number; multiline?: boolean; placeholder?: string }
+  | { kind: "text"; minLength: number; maxLength: number; multiline?: boolean; placeholder?: string; mustContain?: string }
   | { kind: "announcement"; textMax: number };
 
 export type SettingDefinition<T = unknown> = {
@@ -108,7 +109,7 @@ const commissionDefaultRate: SettingDefinition<string> = {
 /** One-line text: whitespace (including line breaks) collapses to single spaces; trimmed; length-bounded. */
 function textSetting(options: {
   key: string; group: SettingGroupId; permission: SettingPermission; label: string; description: string;
-  minLength: number; maxLength: number; default: string | null; extra?: (value: string) => string | null; placeholder?: string;
+  minLength: number; maxLength: number; default: string | null; extra?: (value: string) => string | null; placeholder?: string; mustContain?: string;
 }): SettingDefinition<string> {
   const lengthMessage = `${options.minLength}–${options.maxLength} simvol yazın.`;
   const check = (value: string, context: z.RefinementCtx) => {
@@ -131,7 +132,7 @@ function textSetting(options: {
     toInput: (value) => value,
     display: (value) => (value === null ? "Təyin edilməyib" : value),
     default: options.default,
-    input: { kind: "text", minLength: options.minLength, maxLength: options.maxLength, placeholder: options.placeholder },
+    input: { kind: "text", minLength: options.minLength, maxLength: options.maxLength, placeholder: options.placeholder, mustContain: options.mustContain, multiline: options.maxLength > 120 },
     read: "ttl",
   };
 }
@@ -199,6 +200,7 @@ const seoSettings = [
     default: "Məhsulları {store} mağazasından BAGATI marketplace-də kəşf edin.",
     extra: (value) => (value.split(STORE_NAME_PLACEHOLDER).length - 1 === 1 ? null : "Mətndə {store} yer tutucusu düz bir dəfə olmalıdır."),
     placeholder: "… {store} …",
+    mustContain: STORE_NAME_PLACEHOLDER,
   }),
 ];
 
@@ -247,7 +249,7 @@ const limitSettings = [
 
 export const ANNOUNCEMENT_TONES = ["info", "success", "warning", "danger"] as const;
 export type AnnouncementTone = (typeof ANNOUNCEMENT_TONES)[number];
-export const ANNOUNCEMENT_TONE_LABELS: Record<AnnouncementTone, string> = { info: "Məlumat", success: "Uğur", warning: "Xəbərdarlıq", danger: "Təcili" };
+export { ANNOUNCEMENT_TONE_LABELS };
 export const ANNOUNCEMENT_TEXT_MAX = 200;
 
 export type AnnouncementBar = {

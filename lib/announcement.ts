@@ -12,6 +12,7 @@ export type AnnouncementView = {
 };
 
 export const ANNOUNCEMENT_DISMISS_KEY = "bagati.announcement.dismissed";
+export const ANNOUNCEMENT_TONE_LABELS: Record<AnnouncementView["tone"], string> = { info: "Məlumat", success: "Uğur", warning: "Xəbərdarlıq", danger: "Təcili" };
 
 export function isAnnouncementVisible(bar: AnnouncementView | null, now = new Date()): boolean {
   if (!bar || !bar.enabled || !bar.text.trim()) return false;

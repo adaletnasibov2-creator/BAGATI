@@ -54,9 +54,11 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
  const shell=(content:React.ReactNode)=><AdminShell email={admin.email}>{content}</AdminShell>;
 
  if(route==="settings"){
-  if(sp.tab==="finance"){
-   const finance=await loadAdminSettingsGroup(prisma,"finance");
-   return shell(<><Header title="Sayt parametrləri" detail={finance.group.description}/><AdminSettingsTabs active="finance"/><div className="grid gap-4">{finance.settings.map(view=><AdminSettingField key={view.key} view={view}/>)}</div></>);
+  // Settings-engine tabs (Maliyyə, SEO, Elan zolağı, Limitlər): one generic page per registry group.
+  const engineTab=(["finance","seo","announcement","limits"] as const).find(tab=>tab===sp.tab);
+  if(engineTab){
+   const group=await loadAdminSettingsGroup(prisma,engineTab);
+   return shell(<><Header title="Sayt parametrləri" detail={group.group.description}/><AdminSettingsTabs active={engineTab}/><div className="grid gap-4">{group.settings.map(view=><AdminSettingField key={view.key} view={view}/>)}</div></>);
   }
   const settings=await db.siteSettings.findUnique({where:{id:SITE_SETTINGS_DEFAULTS.id}});
   return shell(<><Header title="Sayt parametrləri" detail="Dəyişikliklər ictimai header, əlaqə məlumatları, qaydalar və ana səhifə təqdimatında görünür."/><AdminSettingsTabs active="general"/><AdminSiteSettingsForm initial={settings??SITE_SETTINGS_DEFAULTS}/></>);

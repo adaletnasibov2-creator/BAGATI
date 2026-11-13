@@ -180,6 +180,19 @@ test("security monitoring on a scratch schema: flush increments, rules with cool
         assert.equal(live.incidentCounts.OPEN, 1);
         assert.ok(!JSON.stringify(live).match(/\b\d+\.\d+\.\d+\.\d+\b/), "no full IPv4 in the live snapshot");
         assert.ok(live.recentEvents.some((event) => event.ip === "203.0.*.*" || event.ip === "2001:db8:*:*"));
+
+        // Events dashboard (existing tab): JSON-serializable (timeline index was a BigInt) and masked only.
+        const { readSecurityEventDashboard } = await import("../lib/security-event-store");
+        await prisma.securityEvent.create({ data: { source: "APPLICATION", sourceEventId: "dash-ip", occurredAt: new Date(now.getTime() - 60_000), sourceIp: "198.51.100.23", eventType: "LOGIN_FAILURE", severity: "HIGH", action: "DENIED" } });
+        await prisma.securityEvent.create({ data: { source: "APPLICATION", sourceEventId: "dash-ip-2", occurredAt: new Date(now.getTime() - 30_000), sourceIp: "198.51.100.23", sourceIpMasked: "198.51.*.*", eventType: "LOGIN_FAILURE", severity: "HIGH", action: "DENIED" } });
+        const dashboard = await readSecurityEventDashboard({ windowStart: new Date(now.getTime() - 86_400_000), previousWindowStart: new Date(now.getTime() - 172_800_000), recentSince: new Date(now.getTime() - 900_000), bucketCount: 24, page: 1, pageSize: 50, now: new Date(now.getTime() + 1_000), search: "198.51." });
+        const json = JSON.stringify(dashboard);
+        assert.ok(dashboard.timeline.length > 0 && dashboard.timeline.every((bucket) => typeof bucket.index === "number"));
+        assert.doesNotMatch(json, /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/, "no full IPv4 in the dashboard");
+        assert.deepEqual(dashboard.events.map((event) => event.sourceIp), ["198.51.*.*", "198.51.*.*"], "a prefix search finds raw and masked rows; both are shown masked");
+        const byMask = await readSecurityEventDashboard({ windowStart: new Date(now.getTime() - 86_400_000), previousWindowStart: new Date(now.getTime() - 172_800_000), recentSince: new Date(now.getTime() - 900_000), bucketCount: 24, page: 1, pageSize: 50, now: new Date(now.getTime() + 1_000), search: "198.51.*.*" });
+        assert.deepEqual(byMask.events.map((event) => event.sourceIp), ["198.51.*.*"], "the masked text matches rows whose mask is stored (retention backfills older rows)");
+        assert.deepEqual(dashboard.repeatedIps.map((row) => [row.sourceIp, row.count]), [["198.51.*.*", 2]], "the same IP twice (one row masked, one not yet) is one repeated source, shown masked");
       } finally {
         await prisma.securityIncidentNote.deleteMany({});
         await prisma.securityIncident.deleteMany({});

@@ -98,3 +98,18 @@ test("a cross-site write is rejected before the session is looked up", async () 
   assert.ok("response" in result);
   assert.equal(result.response.status, 403);
 });
+
+test("UI: client component polls every 15 s, imports no server module, marks Apache as not in use, page checks the permission", () => {
+  const ui = read("components/admin-security-monitoring.tsx");
+  assert.match(ui, /^"use client";/);
+  assert.match(ui, /export const LIVE_POLL_MS = 15_000;/);
+  const imports = [...ui.matchAll(/from "([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(imports.filter((path) => path.startsWith("@/")), ["@/components/admin-security-center"], "no lib/ (server) imports");
+  assert.match(ui, /istifadə olunmur/);
+  for (const label of ["Canlı", "Hadisələr", "İnsidentlər", "Qaydalar", "Mənbələr"]) assert.ok(ui.includes(`label: "${label}"`), label);
+  const page = read("app/admin/security-center/page.tsx");
+  assert.ok(ascending(page, ['requireRole("ADMIN")', 'requireSecurityPermission(admin, "security.view")', "<AdminSecurityMonitoring />"]));
+  const old = read("components/admin-security-center.tsx");
+  assert.match(old, /label: "Kritik hadisələr"/, "the old in-page anchor no longer reads İnsidentlər");
+  assert.match(old, /Apache \/ ModSecurity: istifadə olunmur/);
+});

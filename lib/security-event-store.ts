@@ -208,7 +208,7 @@ export async function readSecurityEventDashboard(input: {
               / (EXTRACT(EPOCH FROM (${input.now} - ${input.windowStart})) / ${input.bucketCount})
             )::int
           )
-        ) AS "index",
+        )::int AS "index", -- the bound bucket count is int8, so LEAST returned a BigInt that JSON cannot serialize
         COUNT(*)::int AS "count",
         COUNT(*) FILTER (WHERE "severity" = 'CRITICAL')::int AS "critical",
         COUNT(*) FILTER (WHERE "severity" = 'HIGH')::int AS "high"

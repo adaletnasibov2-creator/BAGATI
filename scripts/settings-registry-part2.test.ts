@@ -33,10 +33,15 @@ test("defaults equal today's behaviour: limits match the code constants", () => 
 test("defaults equal today's behaviour: SEO texts match the current code; Open Graph is off; the bar is off", () => {
   const description = definition(SETTING_KEYS.seoDefaultDescription).default as string;
   assert.equal(description, "Azərbaycan mağazalarını və məhsullarını bir marketplace-də kəşf edin.");
-  assert.ok(read("app/layout.tsx").includes(`description: "${description}"`), "same text as the hardcoded root description");
+  // Before the SEO wiring this text was hardcoded in app/layout.tsx; it now comes only from the setting default.
+  assert.ok(!read("app/layout.tsx").includes(description), "no second copy of the text in the layout");
+  assert.match(read("app/layout.tsx"), /getSetting<string>\(SETTING_KEYS\.seoDefaultDescription\)/);
   const template = definition(SETTING_KEYS.seoStoreDescriptionTemplate).default as string;
   assert.equal(template, "Məhsulları {store} mağazasından BAGATI marketplace-də kəşf edin.");
-  assert.ok(read("app/(customer)/stores/[storeId]/page.tsx").includes(`\`${template.replace("{store}", "${store.name}")}\``), "same text as the hardcoded store fallback");
+  // Before the SEO wiring this was the template literal `Məhsulları ${store.name} mağazasından BAGATI marketplace-də kəşf edin.`
+  // in the store page; it now comes only from the setting default.
+  assert.ok(!read("app/(customer)/stores/[storeId]/page.tsx").includes("mağazasından BAGATI marketplace-də kəşf edin"), "no second copy in the store page");
+  assert.match(read("app/(customer)/stores/[storeId]/page.tsx"), /getSetting<string>\(SETTING_KEYS\.seoStoreDescriptionTemplate\)/);
   assert.equal(definition(SETTING_KEYS.seoDefaultOgTitle).default, null);
   assert.equal(definition(SETTING_KEYS.seoDefaultOgDescription).default, null);
   assert.deepEqual(definition(SETTING_KEYS.announcementBar).default, { enabled: false, text: "", href: null, tone: "info", startsAt: null, endsAt: null });

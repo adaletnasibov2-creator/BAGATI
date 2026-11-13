@@ -19,6 +19,43 @@ export type SecurityEventRow = {
   ruleId: string | null;
 };
 
+type StoredSecurityEventRow = SecurityEventRow & { sourceIpMasked: string | null };
+
+/** The dashboard never returns a raw IP: the stored mask, or the mask computed from a not-yet-masked row. */
+export function displayIp(row: { sourceIp: string | null; sourceIpMasked: string | null }): string | null {
+  if (row.sourceIpMasked) return row.sourceIpMasked;
+  return row.sourceIp ? maskIpAddress(row.sourceIp) : null;
+}
+
+function toDisplayRow({ sourceIpMasked, ...row }: StoredSecurityEventRow): SecurityEventRow {
+  return { ...row, sourceIp: displayIp({ sourceIp: row.sourceIp, sourceIpMasked }) };
+}
+
+/**
+ * Repeated sources by MASKED address (one row per /16 or IPv6 /32 prefix), merging rows whose mask is stored with
+ * older rows that still carry only the raw address.
+ */
+export function mergeRepeatedIps<T extends { sourceIp: string; sourceIpMasked: string | null; count: number; latestAt: Date; sources: string[]; eventTypes: string[]; critical: number; high: number }>(rows: T[]) {
+  const merged = new Map<string, { sourceIp: string; count: number; latestAt: Date; sources: string[]; eventTypes: string[]; critical: number; high: number }>();
+  for (const row of rows) {
+    const key = displayIp(row) ?? "***";
+    const current = merged.get(key);
+    if (!current) {
+      merged.set(key, { sourceIp: key, count: row.count, latestAt: row.latestAt, sources: [...row.sources], eventTypes: [...row.eventTypes], critical: row.critical, high: row.high });
+      continue;
+    }
+    current.count += row.count;
+    current.critical += row.critical;
+    current.high += row.high;
+    if (row.latestAt > current.latestAt) current.latestAt = row.latestAt;
+    current.sources = [...new Set([...current.sources, ...row.sources])];
+    current.eventTypes = [...new Set([...current.eventTypes, ...row.eventTypes])];
+  }
+  return [...merged.values()]
+    .sort((a, b) => b.critical - a.critical || b.high - a.high || b.count - a.count || b.latestAt.getTime() - a.latestAt.getTime())
+    .slice(0, 8);
+}
+
 export type SecurityTimelineBucket = {
   index: number;
   count: number;
@@ -71,6 +108,7 @@ export async function readSecurityEventDashboard(input: {
       STRPOS(LOWER("id"), ${query}) > 0 OR
       STRPOS(LOWER("sourceEventId"), ${query}) > 0 OR
       STRPOS(LOWER(COALESCE("sourceIp", '')), ${query}) > 0 OR
+      STRPOS(LOWER(COALESCE("sourceIpMasked", '')), ${query}) > 0 OR
       STRPOS(LOWER(COALESCE("path", '')), ${query}) > 0 OR
       STRPOS(LOWER("eventType"), ${query}) > 0 OR
       STRPOS(LOWER("severity"), ${query}) > 0 OR
@@ -117,8 +155,8 @@ export async function readSecurityEventDashboard(input: {
         HAVING COUNT(*) >= 5
       ) AS "repeatedSources"
     `),
-    prisma.$queryRaw<SecurityEventRow[]>(Prisma.sql`
-      SELECT "id", "sourceEventId", "occurredAt", "createdAt" AS "receivedAt", "source", "sourceIp", "path", "eventType", "severity", "action", "ruleId"
+    prisma.$queryRaw<StoredSecurityEventRow[]>(Prisma.sql`
+      SELECT "id", "sourceEventId", "occurredAt", "createdAt" AS "receivedAt", "source", "sourceIp", "sourceIpMasked", "path", "eventType", "severity", "action", "ruleId"
       FROM "SecurityEvent" ${where}
       ORDER BY "occurredAt" DESC
       LIMIT ${input.pageSize} OFFSET ${offset}
@@ -181,6 +219,7 @@ export async function readSecurityEventDashboard(input: {
     `),
     prisma.$queryRaw<{
       sourceIp: string;
+      sourceIpMasked: string | null;
       count: number;
       latestAt: Date;
       sources: string[];
@@ -189,7 +228,8 @@ export async function readSecurityEventDashboard(input: {
       high: number;
     }[]>(Prisma.sql`
       SELECT
-        "sourceIp",
+        COALESCE("sourceIp", "sourceIpMasked") AS "sourceIp",
+        MAX("sourceIpMasked") AS "sourceIpMasked",
         COUNT(*)::int AS "count",
         MAX("occurredAt") AS "latestAt",
         ARRAY_AGG(DISTINCT "source") AS "sources",
@@ -197,14 +237,14 @@ export async function readSecurityEventDashboard(input: {
         COUNT(*) FILTER (WHERE "severity" = 'CRITICAL')::int AS "critical",
         COUNT(*) FILTER (WHERE "severity" = 'HIGH')::int AS "high"
       FROM "SecurityEvent"
-      WHERE ${windowCondition} AND "sourceIp" IS NOT NULL
-      GROUP BY "sourceIp"
+      WHERE ${windowCondition} AND COALESCE("sourceIp", "sourceIpMasked") IS NOT NULL
+      GROUP BY COALESCE("sourceIp", "sourceIpMasked")
       HAVING COUNT(*) >= 2
       ORDER BY "critical" DESC, "high" DESC, "count" DESC, "latestAt" DESC
-      LIMIT 8
+      LIMIT 64
     `),
-    prisma.$queryRaw<SecurityEventRow[]>(Prisma.sql`
-      SELECT "id", "sourceEventId", "occurredAt", "createdAt" AS "receivedAt", "source", "sourceIp", "path", "eventType", "severity", "action", "ruleId"
+    prisma.$queryRaw<StoredSecurityEventRow[]>(Prisma.sql`
+      SELECT "id", "sourceEventId", "occurredAt", "createdAt" AS "receivedAt", "source", "sourceIp", "sourceIpMasked", "path", "eventType", "severity", "action", "ruleId"
       FROM "SecurityEvent"
       WHERE ${windowCondition} AND "severity" IN ('CRITICAL', 'HIGH')
       ORDER BY CASE "severity" WHEN 'CRITICAL' THEN 0 ELSE 1 END, "occurredAt" DESC
@@ -227,13 +267,13 @@ export async function readSecurityEventDashboard(input: {
     totalFiltered: filteredRows[0]?.count ?? 0,
     severity: Object.fromEntries(severityRows.map((row) => [row.severity, row.count])) as Record<string, number>,
     repeatedLoginSourcesLast15Minutes: repeatedLoginRows[0]?.count ?? 0,
-    events: eventRows,
+    events: eventRows.map(toDisplayRow),
     timeline: timelineRows,
-    repeatedIps: repeatedIpRows.map((row) => ({
+    repeatedIps: mergeRepeatedIps(repeatedIpRows).map((row) => ({
       ...row,
       latestAt: row.latestAt.toISOString(),
     })),
-    priorityEvents: priorityEventRows,
+    priorityEvents: priorityEventRows.map(toDisplayRow),
     trend: trendRows[0] ?? { currentCount: 0, previousCount: 0 },
     sourceActivity: sourceActivityRows.map((row) => ({
       ...row,

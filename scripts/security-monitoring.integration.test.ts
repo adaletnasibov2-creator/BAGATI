@@ -127,6 +127,67 @@ test("security monitoring on a scratch schema: flush increments, rules with cool
       assert.deepEqual(ran, { rules: true, maintenance: true });
       assert.deepEqual(await jobs.maybeRunMonitoringJobs(now.getTime() + 1_000, prisma), { rules: false, maintenance: false }, "throttled");
     });
+
+    await t.test("admin: incident status flow, assignee, notes and rule overrides are audited; conflicts are refused", async () => {
+      const admin = await import("../lib/security-monitoring/admin");
+      const suffix = Date.now().toString(36);
+      const actor = await prisma.user.create({ data: { email: `sc-admin-${suffix}@verify.invalid`, passwordHash: "not-a-real-hash", role: "ADMIN" } });
+      const customer = await prisma.user.create({ data: { email: `sc-customer-${suffix}@verify.invalid`, passwordHash: "not-a-real-hash", role: "CUSTOMER" } });
+      try {
+        await prisma.securityIncident.deleteMany({});
+        await prisma.securityAlertRule.deleteMany({});
+        const incident = await prisma.securityIncident.create({ data: { ruleKey: "server_error_spike", title: "t", severity: "HIGH", observedValue: 25, threshold: 20, windowMinutes: 5, windowStart: new Date(now.getTime() - 300_000), windowEnd: now } });
+
+        await admin.updateIncident(prisma, { id: incident.id, actorId: actor.id, expectedStatus: "OPEN", status: "ACKNOWLEDGED", assigneeId: actor.id });
+        await assert.rejects(admin.updateIncident(prisma, { id: incident.id, actorId: actor.id, expectedStatus: "OPEN", status: "RESOLVED" }), { code: "CONFLICT" }, "stale expectedStatus");
+        await assert.rejects(admin.updateIncident(prisma, { id: incident.id, actorId: actor.id, expectedStatus: "ACKNOWLEDGED", assigneeId: customer.id }), { code: "INVALID_ASSIGNEE" });
+        await admin.updateIncident(prisma, { id: incident.id, actorId: actor.id, expectedStatus: "ACKNOWLEDGED", status: "RESOLVED", comment: "Yoxlanıldı" });
+        await assert.rejects(admin.updateIncident(prisma, { id: incident.id, actorId: actor.id, expectedStatus: "RESOLVED", status: "ACKNOWLEDGED" }), { code: "INVALID_TRANSITION" });
+        await admin.addIncidentNote(prisma, { id: incident.id, actorId: actor.id, body: "Əlavə qeyd" });
+        const detail = await admin.readIncident(prisma, incident.id);
+        assert.equal(detail.status, "RESOLVED");
+        assert.equal(detail.assignee, actor.email);
+        assert.ok(detail.resolvedAt && detail.acknowledgedAt);
+        assert.deepEqual(detail.allowedTransitions, ["OPEN"]);
+        assert.equal(detail.notes.length, 3);
+        assert.match(detail.notes[1].body, /Qəbul edilib → Həll edilib\nYoxlanıldı/);
+        await admin.updateIncident(prisma, { id: incident.id, actorId: actor.id, expectedStatus: "RESOLVED", status: "OPEN" });
+        const reopened = await prisma.securityIncident.findUniqueOrThrow({ where: { id: incident.id } });
+        assert.deepEqual([reopened.resolvedAt, reopened.acknowledgedAt], [null, null], "reopen clears the marks");
+
+        const ruleV1 = await admin.updateRule(prisma, { key: "server_error_spike", actorId: actor.id, expectedVersion: 0, settings: { enabled: true, threshold: 40, windowMinutes: 10, cooldownMinutes: 30 } });
+        assert.equal(ruleV1.version, 1);
+        await assert.rejects(admin.updateRule(prisma, { key: "server_error_spike", actorId: actor.id, expectedVersion: 0, settings: { enabled: true, threshold: 41, windowMinutes: 10, cooldownMinutes: 30 } }), { code: "CONFLICT" });
+        assert.equal((await admin.updateRule(prisma, { key: "server_error_spike", actorId: actor.id, expectedVersion: 1, settings: { enabled: false, threshold: 41, windowMinutes: 10, cooldownMinutes: 30 } })).version, 2);
+        await assert.rejects(admin.updateRule(prisma, { key: "nope", actorId: actor.id, expectedVersion: 0, settings: { enabled: true, threshold: 1, windowMinutes: 1, cooldownMinutes: 1 } }), { code: "UNKNOWN_RULE" });
+        const listed = (await admin.listRules(prisma)).find((rule) => rule.key === "server_error_spike")!;
+        assert.deepEqual([listed.isDefault, listed.version, listed.settings.threshold, listed.settings.enabled, listed.updatedBy], [false, 2, 41, false, actor.email]);
+        await assert.rejects(admin.resetRule(prisma, { key: "server_error_spike", actorId: actor.id, expectedVersion: 1 }), { code: "CONFLICT" });
+        assert.deepEqual(await admin.resetRule(prisma, { key: "server_error_spike", actorId: actor.id, expectedVersion: 2 }), { version: 0, changed: true });
+        assert.equal((await admin.listRules(prisma)).find((rule) => rule.key === "server_error_spike")!.isDefault, true);
+
+        const audit = await prisma.auditLog.findMany({ where: { actorId: actor.id }, orderBy: { createdAt: "asc" }, select: { action: true, metadata: true } });
+        assert.deepEqual(audit.map((row) => row.action), [
+          "SECURITY_INCIDENT_STATUS", "SECURITY_INCIDENT_ASSIGN", "SECURITY_INCIDENT_STATUS", "SECURITY_INCIDENT_NOTE", "SECURITY_INCIDENT_STATUS",
+          "SECURITY_RULE_UPDATE", "SECURITY_RULE_UPDATE", "SECURITY_RULE_UPDATE",
+        ]);
+        assert.deepEqual(audit[5].metadata, { key: "server_error_spike", change: "update", before: { enabled: true, threshold: 20, windowMinutes: 5, cooldownMinutes: 15 }, after: { enabled: true, threshold: 40, windowMinutes: 10, cooldownMinutes: 30 }, version: 1 });
+        assert.ok(!JSON.stringify(audit).includes("Əlavə qeyd"), "note text is not copied into the audit log");
+
+        const live = await admin.readLiveSnapshot(prisma, now);
+        assert.equal(live.series.length, 60);
+        assert.equal(live.sources.apache.state, "not_in_use");
+        assert.equal(live.incidentCounts.OPEN, 1);
+        assert.ok(!JSON.stringify(live).match(/\b\d+\.\d+\.\d+\.\d+\b/), "no full IPv4 in the live snapshot");
+        assert.ok(live.recentEvents.some((event) => event.ip === "203.0.*.*" || event.ip === "2001:db8:*:*"));
+      } finally {
+        await prisma.securityIncidentNote.deleteMany({});
+        await prisma.securityIncident.deleteMany({});
+        await prisma.securityAlertRule.deleteMany({});
+        await prisma.auditLog.deleteMany({ where: { actorId: { in: [actor.id, customer.id] } } });
+        await prisma.user.deleteMany({ where: { id: { in: [actor.id, customer.id] } } });
+      }
+    });
   } finally {
     await wipe().catch(() => undefined);
     await prisma.$disconnect();

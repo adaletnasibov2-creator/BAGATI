@@ -95,3 +95,52 @@ test("business pulse counts pending seller applications", () => {
   assert.match(read("lib/admin-system-status-cards.ts"), /FROM "VendorApplication" WHERE "status" = 'PENDING'\) AS "pendingSellerApplications"/);
   assert.match(read("components/admin-system-status.tsx"), /Yoxlama gözləyən satıcı müraciətləri/);
 });
+
+test("applicant routes: same-origin, then an active verified CUSTOMER, then rate limits recorded in the Security Center", () => {
+  const guard = read("lib/seller-application-http.ts");
+  const fn = between(guard, "export async function guardApplicantRequest", "\nexport function applicantErrorResponse");
+  const order = ["csrfRejection(request)", "await currentUser()", 'user.role !== "CUSTOMER"', "consumeAuthProcessRateLimit(", 'authRateLimitKey("seller-application", `user:${user.id}`)', 'eventType: "RATE_LIMIT_VIOLATION"'].map((needle) => {
+    const index = fn.indexOf(needle);
+    assert.ok(index >= 0, needle);
+    return index;
+  });
+  assert.deepEqual([...order].sort((a, b) => a - b), order);
+  for (const path of ["app/api/vendor/apply/route.ts", "app/api/vendor/apply/withdraw/route.ts"]) {
+    const route = read(path);
+    assert.ok(route.indexOf("guardApplicantRequest(request") < route.indexOf("readJsonBodyLimited(request"), `${path}: guard before body`);
+    assert.doesNotMatch(route, /export async function (GET|PUT|PATCH|DELETE)/);
+  }
+  assert.match(read("lib/auth-rate-limit.ts"), /"seller-application", identity: string/);
+});
+
+test("submission and withdrawal are transactional, audited and never change the role", () => {
+  const service = read("lib/seller-application-service.ts");
+  const submit = between(service, "export async function submitSellerApplication", "\n/** The applicant withdraws");
+  assert.match(submit, /FROM "User" WHERE "id" = \$\{input\.userId\} FOR UPDATE/);
+  assert.match(submit, /user\.role !== "CUSTOMER" \|\| !user\.isActive \|\| !user\.verified/);
+  assert.match(submit, /const decision = reapplyDecision\(history, now\);/);
+  assert.match(submit, /openUserId: input\.userId,\s+status: "PENDING",\s+source: "SELF",/);
+  assert.match(submit, /action: "SELLER_APPLICATION_SUBMITTED"/);
+  assert.match(submit, /eventKey: `seller-application:\$\{application\.id\}`/);
+  assert.match(submit, /if \(isUniqueViolation\(error\)\) throw new SellerApplicationError\("OPEN"\)/);
+  const withdraw = between(service, "export async function withdrawSellerApplication", "\nfunction isUniqueViolation");
+  assert.match(withdraw, /await lockApplication\(tx, input\.applicationId\);/);
+  assert.match(withdraw, /if \(application\.userId !== input\.userId\) throw new SellerApplicationError\("NOT_FOUND"\)/);
+  assert.match(withdraw, /status: "WITHDRAWN", openUserId: null, withdrawnAt: now/);
+  assert.match(withdraw, /action: "SELLER_APPLICATION_WITHDRAWN"/);
+  for (const part of [submit, withdraw]) assert.doesNotMatch(part, /role: "VENDOR"/);
+});
+
+test("/vendor/apply shows the status instead of switching the account", () => {
+  const page = read("app/vendor/apply/page.tsx");
+  assert.match(page, /if \(!user\) redirect\("\/login\?next=%2Fvendor%2Fapply"\);/);
+  assert.match(page, /if \(user\.role === "VENDOR"\) redirect\("\/vendor"\);/);
+  assert.match(page, /latest\?\.status === "PENDING" && <section/);
+  assert.match(page, /<VendorApplyWithdraw applicationId=\{latest\.id\} \/>/);
+  assert.match(page, /latest\.rejectionReason/);
+  assert.match(page, /formatBakuDateTime\(waitUntil\)/);
+  assert.doesNotMatch(page, /rolu satıcıya keçirilir/);
+  const form = read("components/vendor-apply-form.tsx");
+  assert.match(form, /fetch\("\/api\/vendor\/apply"/);
+  assert.doesNotMatch(form, /\/vendor\/stores\/new/, "no redirect into the seller panel after applying");
+});

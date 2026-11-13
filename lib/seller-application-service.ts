@@ -3,7 +3,7 @@
  * exercised against the isolated verify database. Routes stay thin: CSRF, auth, body, then one call here.
  */
 import type { Prisma, SellerType } from "@prisma/client";
-import { normalizeVoen } from "@/lib/seller-application";
+import { normalizeVoen, reapplyDecision, type SellerApplicationInput } from "@/lib/seller-application";
 
 /**
  * Records a seller created directly by an admin as an APPROVED application with source ADMIN.
@@ -284,4 +284,103 @@ export async function duplicateVoenFlags(db: Prisma.TransactionClient, rows: { i
     if (other) flagged.add(row.id);
   }
   return flagged;
+}
+
+const historySelect = { status: true, source: true, createdAt: true, reviewedAt: true, withdrawnAt: true } as const;
+
+/** What the applicant sees on /vendor/apply: latest application, its history and whether a new one is allowed now. */
+export async function applicantState(db: Prisma.TransactionClient, userId: string, now = new Date()) {
+  const applications = await db.vendorApplication.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      ...historySelect, id: true, displayName: true, phone: true, sellerType: true, legalName: true, voen: true,
+      legalAddress: true, plannedStoreName: true, rejectionReason: true,
+    },
+  });
+  return { latest: applications[0] ?? null, decision: reapplyDecision(applications, now) };
+}
+
+/**
+ * Customer submits an application. The role stays CUSTOMER. One transaction: the user row is locked so two
+ * submissions of the same user run one after the other; the reapply rules are checked against the history;
+ * openUserId (unique) makes a second open application impossible even outside this code.
+ */
+export async function submitSellerApplication(db: TransactionRunner, input: { userId: string; data: SellerApplicationInput; enqueue: OutboxEnqueue; now?: Date }) {
+  const now = input.now ?? new Date();
+  try {
+    return await db.$transaction(async (tx) => {
+      const users = await tx.$queryRaw<{ role: string; isActive: boolean; verified: boolean; email: string }[]>`
+        SELECT "role"::text AS "role", "isActive", "emailVerifiedAt" IS NOT NULL AS "verified", "email"
+        FROM "User" WHERE "id" = ${input.userId} FOR UPDATE`;
+      const user = users[0];
+      if (!user || user.role !== "CUSTOMER" || !user.isActive || !user.verified) throw new SellerApplicationError("ACCOUNT_CHANGED");
+      const history = await tx.vendorApplication.findMany({ where: { userId: input.userId }, select: historySelect });
+      const decision = reapplyDecision(history, now);
+      if (!decision.allowed) {
+        throw new SellerApplicationError(decision.reason, "nextAllowedAt" in decision ? { nextAllowedAt: decision.nextAllowedAt.toISOString() } : {});
+      }
+      const application = await tx.vendorApplication.create({
+        data: {
+          userId: input.userId,
+          openUserId: input.userId,
+          status: "PENDING",
+          source: "SELF",
+          displayName: input.data.displayName,
+          phone: input.data.phone,
+          sellerType: input.data.sellerType,
+          legalName: input.data.legalName,
+          voen: input.data.voen,
+          voenNormalized: normalizeVoen(input.data.voen),
+          legalAddress: input.data.legalAddress,
+          plannedStoreName: input.data.plannedStoreName,
+          applicantNote: input.data.applicantNote,
+          createdAt: now,
+        },
+        select: { id: true, status: true, createdAt: true },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: input.userId,
+          action: "SELLER_APPLICATION_SUBMITTED",
+          entityType: "VendorApplication",
+          entityId: application.id,
+          metadata: { sellerType: input.data.sellerType, hasPlannedStoreName: Boolean(input.data.plannedStoreName), hasApplicantNote: Boolean(input.data.applicantNote) },
+        },
+      });
+      await input.enqueue(tx, {
+        eventKey: `seller-application:${application.id}`,
+        recipient: user.email,
+        template: "SELLER_APPLICATION_SUBMITTED",
+        payload: { displayName: input.data.displayName },
+      });
+      return application;
+    });
+  } catch (error) {
+    // The unique openUserId index: another open application was committed first.
+    if (isUniqueViolation(error)) throw new SellerApplicationError("OPEN");
+    throw error;
+  }
+}
+
+/** The applicant withdraws their own PENDING application. Audited; no e-mail. */
+export async function withdrawSellerApplication(db: TransactionRunner, input: { userId: string; applicationId: string; now?: Date }) {
+  const now = input.now ?? new Date();
+  return db.$transaction(async (tx) => {
+    await lockApplication(tx, input.applicationId);
+    const application = await tx.vendorApplication.findUniqueOrThrow({ where: { id: input.applicationId }, select: { id: true, userId: true, status: true } });
+    // Another user's application is reported as missing, not as forbidden.
+    if (application.userId !== input.userId) throw new SellerApplicationError("NOT_FOUND");
+    if (application.status !== "PENDING") throw new SellerApplicationError("NOT_PENDING", { status: application.status });
+    await tx.vendorApplication.update({ where: { id: application.id }, data: { status: "WITHDRAWN", openUserId: null, withdrawnAt: now } });
+    await tx.auditLog.create({
+      data: { actorId: input.userId, action: "SELLER_APPLICATION_WITHDRAWN", entityType: "VendorApplication", entityId: application.id, metadata: {} },
+    });
+    return { applicationId: application.id };
+  });
+}
+
+function isUniqueViolation(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code: unknown }).code === "P2002";
 }

@@ -5,7 +5,7 @@ import AdminAuditExportButton from "@/components/admin-audit-export-button";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeAdminPage, normalizeAdminSearchParams, type AdminSearchParams } from "@/lib/admin-pagination";
-import { AUDIT_EXPORT_MAX_ROWS, AUDIT_LOG_PAGE_SIZE, auditFiltersToSearchParams, parseAuditLogFilters, type AuditLogFilters } from "@/lib/admin-audit-log";
+import { AUDIT_EXPORT_MAX_ROWS, AUDIT_LOG_PAGE_SIZE, auditFiltersToSearchParams, formatBakuDateTime, parseAuditLogFilters, type AuditLogFilters } from "@/lib/admin-audit-log";
 import { auditDistinctValues, findAuditLogPage, type AuditLogRow } from "@/lib/admin-audit-log-query";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +45,10 @@ function AuditTable({ rows }: { rows: AuditLogRow[] }) {
   return <div className="overflow-x-auto rounded-2xl border border-[#e7e3d9] bg-white">
     <table className="w-full min-w-[720px] text-left text-sm">
       <thead className="bg-[#f8f7f4] text-xs uppercase tracking-wide text-slate-500">
-        <tr>{["Tarix", "İstifadəçi", "Əməl", "Obyekt", "Əlavə məlumat"].map((title) => <th key={title} className="px-4 py-3 font-medium">{title}</th>)}</tr>
+        <tr>{["Tarix (Bakı)", "İstifadəçi", "Əməl", "Obyekt", "Əlavə məlumat"].map((title) => <th key={title} className="px-4 py-3 font-medium">{title}</th>)}</tr>
       </thead>
       <tbody className="divide-y divide-[#eeeae2]">{rows.map((row) => <tr key={row.id} className="align-top">
-        <td className="px-4 py-3.5">{row.createdAt.toLocaleString("az-AZ")}</td>
+        <td className="px-4 py-3.5"><time dateTime={row.createdAt.toISOString()} className="whitespace-nowrap">{formatBakuDateTime(row.createdAt)}</time></td>
         <td className="px-4 py-3.5">{row.actorEmail || "Sistem"}</td>
         <td className="px-4 py-3.5">{row.action}</td>
         <td className="px-4 py-3.5">{`${row.entityType} · ${row.entityId || "—"}`}</td>

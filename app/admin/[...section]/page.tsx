@@ -6,7 +6,6 @@ import AdminStoreProfileForm from "@/components/admin-store-profile-form";
 import AdminStoreActivationAction from "@/components/admin-store-activation-action";
 import AdminStoreArchiveAction from "@/components/admin-store-archive-action";
 import AdminStoreReadiness from "@/components/admin-store-readiness";
-import { PasswordChangeForm } from "@/components/password-change-form";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { summarizeDeliveredSales } from "@/lib/admin-sales-report";
@@ -383,5 +382,5 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
    </>}
   </>);
  }
- if(route==="security")return shell(<><Header title="Təhlükəsizlik" detail="Admin hesabınızın şifrəsini yeniləyin"/><section className={card}><p className="text-sm text-slate-600">Şifrəni dəyişməzdən əvvəl cari şifrənizi təsdiqləyin. Dəyişiklik audit jurnalında qeydə alınır.</p><PasswordChangeForm/><p className="mt-5 text-xs text-slate-500">Şifrə bərpa keçidi istəmək mümkündür; məktubun göndərilməsi worker və SMTP sazlamalarından asılıdır. Çoxmərhələli təsdiq hazırda təqdim edilmir.</p></section></>); notFound();
+ notFound();
 }

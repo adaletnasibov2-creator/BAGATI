@@ -8,6 +8,9 @@ import { wrongPortalBody } from "@/lib/login-portal";
 import { authRateLimitKey, clearAuthRateLimit, consumeAuthRateLimit, LOGIN_RATE_LIMIT } from "@/lib/auth-rate-limit";
 import { clearEmailVerificationContext } from "@/lib/email-verification";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
+import { admin2faKeyStatus } from "@/lib/admin-2fa-crypto";
+import { adminLoginNextStep, isAdmin2faRequired } from "@/lib/admin-2fa-policy";
+import { challengeCookie } from "@/lib/admin-2fa";
 
 const schema = z.object({ email: z.string().trim().email().max(254), password: z.string().min(1).max(128) });
 export async function POST(request: NextRequest) {
@@ -57,6 +60,24 @@ export async function POST(request: NextRequest) {
   }
   try { await clearAuthRateLimit(rateKey); }
   catch (error) { logAuthFailure("admin_login_rate_limit_clear", error); }
+  // Second factor: no session is created until it passes. Admins without 2FA keep today's flow unless it is required.
+  try {
+    const twoFactor = await prisma.adminTwoFactor.findUnique({ where: { userId: user.id }, select: { enrolledAt: true } });
+    const keyStatus = admin2faKeyStatus();
+    const step = adminLoginNextStep({ enrolled: Boolean(twoFactor?.enrolledAt), required: isAdmin2faRequired(), keyStatus });
+    if (step === "blocked-key-missing") {
+      logAuthRejection("admin_login", "2fa-key-missing");
+      return NextResponse.json({ error: "İki mərhələli təsdiq məcburidir, lakin server açarı konfiqurasiya edilməyib. Sistem administratoru ilə əlaqə saxlayın.", code: "ADMIN_2FA_KEY_MISSING" }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
+    if (step === "code" || step === "enroll") {
+      const response = NextResponse.json({ next: step, ...(step === "code" ? { totpAvailable: keyStatus === "configured" } : {}) }, { headers: { "Cache-Control": "no-store" } });
+      response.cookies.set(await challengeCookie(user.id, user.passwordHash, step));
+      return response;
+    }
+  } catch (error) {
+    logAuthFailure("admin_login_2fa_lookup", error);
+    return NextResponse.json({ error: "Giriş xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
   try {
     const session = await createSession(user.id);
     const response = NextResponse.json({ user: { id: user.id, email: user.email, role: user.role } }, { headers: { "Cache-Control": "no-store" } });

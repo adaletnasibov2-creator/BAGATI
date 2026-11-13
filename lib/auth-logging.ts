@@ -1,6 +1,6 @@
 const prismaCodes = new Set(["P1000", "P1001", "P1002", "P1008", "P1017", "P2002", "P2024", "P2025"]);
 
-export function logAuthRejection(stage: string, reason: "absent" | "inactive" | "password-disabled" | "password-mismatch" | "wrong-portal", role?: string) {
+export function logAuthRejection(stage: string, reason: "absent" | "inactive" | "password-disabled" | "password-mismatch" | "wrong-portal" | "2fa-key-missing", role?: string) {
   console.error("Authentication rejected.", { stage, reason, ...(role ? { role } : {}) });
 }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { commissionPercentToRate, commissionRateInput, commissionRateToPercent, hasCommissionRuleConflict } from "../lib/commission-rules";
@@ -54,7 +54,9 @@ test("commission API input: ratePercent from the form, the older rate (0–1) st
 
 test("/admin/commissions: percent fields and a read-only default commission card linking to the Maliyyə tab", () => {
   const page = adminSectionSource();
-  const branch = page.slice(page.indexOf(' if(route==="commissions"){'), page.indexOf("<Pager path=\"/admin/commissions\""));
+  // The section is a catch-all branch or its own module in app/admin/_sections (moved one at a time).
+  const moved = resolve(root, "app/admin/_sections/commissions.tsx");
+  const branch = existsSync(moved) ? readFileSync(moved, "utf8") : page.slice(page.indexOf(' if(route==="commissions"){'), page.indexOf("<Pager path=\"/admin/commissions\""));
   assert.match(branch, /\{ name: "ratePercent", label: "Komissiya faizi \(%\)", type: "number", min: "0", max: "100", step: "0\.01"/);
   assert.match(branch, /\{ name: "ratePercent", label: "Faiz \(%\)", type: "number", value: commissionRateToPercent\(row\.rate\)/);
   assert.doesNotMatch(branch, /\(0–1\)/);

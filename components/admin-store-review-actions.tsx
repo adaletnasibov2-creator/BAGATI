@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductPublicationResult } from "@/lib/admin-store-product-publishing";
 import AdminStoreProductPublishingResult from "@/components/admin-store-product-publishing-result";
+import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
 
 type Props = { storeId: string; status: string; legalInfoApproved: boolean; sellerType: string | null; legalName: string | null; voen: string | null; legalAddress: string | null; hasActiveGrant?: boolean };
 
 export default function AdminStoreReviewActions(props: Props) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -26,7 +28,7 @@ export default function AdminStoreReviewActions(props: Props) {
     if (withFreeSale && freeReason.trim().length < 8) { setError("Ödənişsiz satış üçün səbəb yazın (ən azı 8 simvol)."); return; }
     const labels = { approve: "təsdiqləmək", reject: "rədd etmək", suspend: "dayandırmaq", reactivate: "yenidən aktivləşdirmək" };
     const freeText = withFreeSale ? ` Ödənişsiz satış icazəsi də veriləcək (${freeTier}${freeEndsAt ? `, ${freeEndsAt} tarixinədək` : ", bitmə tarixi yoxdur"}).` : "";
-    if (!window.confirm(`Mağazanı ${labels[action]} istədiyinizə əminsiniz?${freeText}`)) return;
+    if (!await confirm(`Mağazanı ${labels[action]} istədiyinizə əminsiniz?${freeText}`)) return;
     setBusy(true); setError(""); setMessage(""); setProductResult(null);
     try {
       const response = await fetch(`/api/admin/stores/${encodeURIComponent(props.storeId)}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...(reason.trim() ? { reason: reason.trim() } : {}), ...(withFreeSale ? { complimentary: { tier: freeTier, endsAt: freeEndsAt || null, reason: freeReason.trim() } } : {}) }) });
@@ -38,7 +40,7 @@ export default function AdminStoreReviewActions(props: Props) {
   }
   const input = "w-full rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2.5 text-sm";
   const actions = props.status === "PENDING_REVIEW" ? ["approve", "reject", "suspend"] as const : props.status === "ACTIVE" ? ["approve", "suspend"] as const : props.status === "SUSPENDED" ? ["reactivate"] as const : [];
-  return <section className="mt-5 rounded-2xl border border-[#e7e3d9] bg-white p-5">
+  return <section className="mt-5 rounded-2xl border border-[#e7e3d9] bg-white p-5">{dialog}
     <h2 className="font-semibold text-[#142d38]">Satıcı məlumatları və admin qərarı</h2>
     <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2"><dt className="text-slate-500">Satıcı növü</dt><dd>{props.sellerType === "INDIVIDUAL_ENTREPRENEUR" ? "Fərdi sahibkar" : props.sellerType === "REGISTERED_COMPANY" ? "Qeydiyyatdan keçmiş şirkət" : "Seçilməyib"}</dd><dt className="text-slate-500">Hüquqi ad</dt><dd>{props.legalName || "Daxil edilməyib"}</dd><dt className="text-slate-500">VÖEN</dt><dd>{props.voen || "Daxil edilməyib"}</dd><dt className="text-slate-500">Hüquqi ünvan</dt><dd>{props.legalAddress || "Daxil edilməyib"}</dd><dt className="text-slate-500">Hüquqi məlumatların admin yoxlaması</dt><dd>{props.legalInfoApproved ? "Təsdiqlənib" : "Təsdiqlənməyib"}</dd></dl>
     <p className="mt-3 text-xs leading-5 text-slate-500">Tələb olunan sahələr serverdəki satıcı növü siyasətinə əsaslanır. Bu panel məlumatların dövlət reyestrində yoxlanmasını həyata keçirmir.</p>

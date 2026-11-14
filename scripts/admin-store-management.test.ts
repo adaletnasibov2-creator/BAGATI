@@ -9,10 +9,11 @@ import { publicStoreWhere } from "../lib/seller-legal-policy";
 import { adminStoreVisibilityMutation, publicProductVisibilityWhere, publicStoreListingWhere, publicStoreVisibilityWhere } from "../lib/store-visibility";
 import { getStoreDeletionBlockers } from "../lib/admin-store-deletion";
 import { getProductPublicationBlockers, getStorePublicationBlockers, publishEligibleDraftProducts, type DraftProductCandidate } from "../lib/admin-store-product-publishing";
+import { adminSectionSource } from "./admin-section-source";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const adminRoute = readFileSync(resolve(root, "app/api/admin/[...resource]/route.ts"), "utf8");
-const adminPage = readFileSync(resolve(root, "app/admin/[...section]/page.tsx"), "utf8");
+const adminPage = adminSectionSource();
 const adminRoutePage = adminPage;
 const archiveRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/archive/route.ts"), "utf8");
 const deleteStoreRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/route.ts"), "utf8");

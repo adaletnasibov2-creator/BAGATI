@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getStorefrontTheme, isStorefrontTheme, storefrontThemes } from "../lib/storefront-themes";
+import { adminSectionSource } from "./admin-section-source";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sellerRoute = readFileSync(resolve(root, "app/api/vendor/[storeId]/[section]/route.ts"), "utf8");
@@ -14,7 +15,7 @@ const storefrontPage = readFileSync(resolve(root, "app/(customer)/stores/[storeI
 const storefrontVisibility = () => readFileSync(resolve(root, "lib/store-visibility.ts"), "utf8");
 const productDetailPage = readFileSync(resolve(root, "app/(customer)/products/[productId]/page.tsx"), "utf8");
 const checkoutPage = readFileSync(resolve(root, "app/(customer)/checkout/page.tsx"), "utf8");
-const adminPage = readFileSync(resolve(root, "app/admin/[...section]/page.tsx"), "utf8");
+const adminPage = adminSectionSource();
 const activationRoute = readFileSync(resolve(root, "app/api/admin/stores/[storeId]/activation/route.ts"), "utf8");
 const brandingCompatibility = readFileSync(resolve(root, "lib/storefront-branding-compat.ts"), "utf8");
 const storefrontHeader = readFileSync(resolve(root, "components/storefront-branding.tsx"), "utf8");
@@ -115,8 +116,8 @@ test("store, product-detail, and checkout queries do not implicitly select pendi
 });
 
 test("admin store queries and activation mutations explicitly select schema-compatible fields", () => {
-  assert.match(adminPage, /db\.store\.findMany\(\{where,select:/);
-  assert.match(adminPage, /db\.store\.findUnique\(\{where:\{id\},select:/);
+  assert.match(adminPage, /(?:db|prisma)\.store\.findMany\(\{where,select:/);
+  assert.match(adminPage, /(?:db|prisma)\.store\.findUnique\(\{where:\{id\},select:/);
   assert.doesNotMatch(adminPage, /store:\s*\{\s*include:\s*\{\s*vendor:/);
   assert.match(activationRoute, /tx\.store\.update\(\{ where: \{ id: store\.id \}, data: visibilityUpdate, select: \{ id: true \} \}\)/);
 });

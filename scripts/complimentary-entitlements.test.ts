@@ -10,6 +10,7 @@ import {
   revokeComplimentary,
 } from "../lib/complimentary-entitlements";
 import { getStorePublicationBlockers, type StorePublicationState } from "../lib/admin-store-product-publishing";
+import { adminSectionSource } from "./admin-section-source";
 
 const source = (path: string) => readFileSync(path, "utf8");
 
@@ -162,7 +163,7 @@ test("approval UI: the free-sale option starts OFF and is only sent with approve
 });
 
 test("admin store page and subscriptions page both render the grant panel", () => {
-  const page = source("app/admin/[...section]/page.tsx");
+  const page = adminSectionSource();
   assert.equal((page.match(/<AdminComplimentaryManager storeId=\{store\.id\}/g) ?? []).length, 2);
   assert.equal((page.match(/complimentaryEntitlements:complimentaryHistorySelect/g) ?? []).length, 2);
 });

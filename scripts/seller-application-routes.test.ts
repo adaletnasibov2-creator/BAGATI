@@ -34,7 +34,7 @@ test("admin pages are ADMIN only and list VÖEN masked; full VÖEN only on the d
   assert.doesNotMatch(list, /\{row\.voen\}|applicantNote|phone/);
   assert.match(detail, /findDuplicateVoen\(prisma/);
   assert.match(detail, /application\.status === "PENDING" && <AdminSellerApplicationReview/);
-  assert.match(read("components/admin-shell.tsx"), /\["\/admin\/seller-applications", "Satıcı müraciətləri", ClipboardCheck\]/);
+  assert.match(read("lib/admin-nav.ts"), /\["\/admin\/seller-applications", "Satıcı müraciətləri", ClipboardCheck\]/);
 });
 
 test("approval runs in one transaction: lock, still PENDING, still an active verified CUSTOMER, then role, profile, status, audit, e-mail", () => {

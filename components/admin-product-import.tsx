@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import VendorImport from "@/components/vendor-import";
+import { adminStatusLabel } from "@/lib/admin-labels";
 
 type StoreOption = { id: string; name: string; vendorName: string; status: string };
 
@@ -48,7 +49,7 @@ export default function AdminProductImport() {
     {stores.length > 0 && <label className="mt-4 grid max-w-xl gap-1 text-sm">Məhsulların aid olacağı mağaza
       <select className={input} value={selected?.id ?? ""} onChange={(event) => setSelected(stores.find((store) => store.id === event.target.value) ?? null)}>
         <option value="">Mağaza seçin</option>
-        {stores.map((store) => <option key={store.id} value={store.id}>{store.name} · {store.vendorName} · {store.status}</option>)}
+        {stores.map((store) => <option key={store.id} value={store.id}>{store.name} · {store.vendorName} · {adminStatusLabel("store", store.status)}</option>)}
       </select>
     </label>}
     {stores.length === 0 && !busy && !error && <p className="mt-3 text-xs text-slate-500">Mağaza tapmaq üçün axtarış edin. Maksimum 25 nəticə göstərilir.</p>}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import test from "node:test";
+import { adminSectionSource } from "./admin-section-source";
 import {
   ADMIN_IDLE_TIMEOUT_MS, ADMIN_SESSION_TTL_SECONDS, DEFAULT_SESSION_TTL_SECONDS, isSessionIdleExpired, sessionTtlSeconds, shouldWriteLastSeen, summarizeUserAgent, tracksSessionActivity,
 } from "../lib/session-policy";
@@ -45,8 +46,8 @@ test("new admin pages require ADMIN", () => {
   for (const path of ["app/admin/security/page.tsx", "app/admin/security/sessions/page.tsx"]) {
     assert.match(read(path), /const admin = await requireRole\("ADMIN"\);\s*if \(!admin\) redirect\("\/admin\/login"\)/, path);
   }
-  assert.doesNotMatch(read("app/admin/[...section]/page.tsx"), /route==="security"/, "old catch-all branch removed");
-  const shell = read("components/admin-shell.tsx");
+  assert.doesNotMatch(adminSectionSource(), /route==="security"/, "old catch-all branch removed");
+  const shell = read("lib/admin-nav.ts");
   assert.match(shell, /\["\/admin\/security\/sessions", "Aktiv sessiyalar", MonitorSmartphone\]/);
   assert.match(shell, /\["\/admin\/security", "Hesab təhlükəsizliyi", ShieldCheck\]/);
 });

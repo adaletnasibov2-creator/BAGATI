@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { adminSectionSource } from "./admin-section-source";
 import {
   ADMIN_MAX_PAGE,
   normalizeAdminEnumFilter,
@@ -12,7 +13,7 @@ import {
 } from "../lib/admin-pagination";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const adminPage = readFileSync(resolve(root, "app/admin/[...section]/page.tsx"), "utf8");
+const adminPage = adminSectionSource();
 const adminShell = readFileSync(resolve(root, "components/admin-shell.tsx"), "utf8");
 const returnRoute = readFileSync(resolve(root, "app/api/admin/returns/route.ts"), "utf8");
 const adminResourceRoute = readFileSync(resolve(root, "app/api/admin/[...resource]/route.ts"), "utf8");

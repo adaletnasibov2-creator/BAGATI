@@ -5,67 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
-import {
-  LayoutDashboard,
-  Store,
-  Users,
-  UserRound,
-  Package,
-  Tags,
-  Map,
-  ShoppingBag,
-  CreditCard,
-  BadgePercent,
-  Star,
-  LifeBuoy,
-  Upload,
-  Bell,
-  FileClock,
-  ChartNoAxesCombined,
-  ShieldCheck,
-  Menu,
-  Search,
-  X,
-  Settings,
-  Images,
-  Activity,
-  MonitorSmartphone,
-  ClipboardCheck,
-  MailCheck,
-} from "lucide-react";
+import { ChevronDown, Menu, Search, X } from "lucide-react";
+import { ADMIN_NAV_GROUPS, activeAdminNavGroup, activeAdminNavHref } from "@/lib/admin-nav";
 
-const items = [
-  ["/admin/security-center", "Təhlükəsizlik mərkəzi", ShieldCheck],
-  ["/admin/security", "Hesab təhlükəsizliyi", ShieldCheck],
-  ["/admin/security/sessions", "Aktiv sessiyalar", MonitorSmartphone],
-  ["/admin", "İcmal", LayoutDashboard],
-  ["/admin/settings", "Sayt parametrləri", Settings],
-  ["/admin/homepage", "Ana səhifə və bannerlər", Images],
-  ["/admin/promotions", "Kampaniyalar", BadgePercent],
-  ["/admin/stores", "Mağazalar", Store],
-  ["/admin/vendors", "Satıcılar", Users],
-  ["/admin/seller-applications", "Satıcı müraciətləri", ClipboardCheck],
-  ["/admin/customers", "Müştərilər", UserRound],
-  ["/admin/verification", "E-poçt təsdiqi gözləyənlər", MailCheck],
-  ["/admin/products", "Məhsullar", Package],
-  ["/admin/categories", "Kateqoriyalar", Tags],
-  ["/admin/brands", "Brendlər", BadgePercent],
-  ["/admin/cities", "Şəhərlər", Map],
-  ["/admin/orders", "Sifarişlər", ShoppingBag],
-  ["/admin/subscriptions", "Abunəliklər", CreditCard],
-  ["/admin/commissions", "Komissiyalar", BadgePercent],
-  ["/admin/payments", "Ödənişlər", CreditCard],
-  ["/admin/returns", "Qaytarılma sorğuları", CreditCard],
-  ["/admin/refunds", "Geri ödənişlər", CreditCard],
-  ["/admin/reviews", "Rəylər", Star],
-  ["/admin/support", "Dəstək", LifeBuoy],
-  ["/admin/imports", "İdxallar", Upload],
-  ["/admin/reports", "Hesabatlar", ChartNoAxesCombined],
-  ["/admin/notifications", "Bildirişlər", Bell],
-  ["/admin/email", "E-poçt çatdırılması", Bell],
-  ["/admin/system", "Sistem vəziyyəti", Activity],
-  ["/admin/audit-log", "Audit jurnalı", FileClock],
-] as const;
+// Menu groups and items: lib/admin-nav.ts (Ödənişlər and Geri ödənişlər are hidden stubs).
 
 type AdminShellProps = { children: ReactNode; email: string };
 
@@ -75,6 +18,16 @@ export default function AdminShell({ children, email }: AdminShellProps) {
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [logoutError, setLogoutError] = useState("");
+  const activeGroup = activeAdminNavGroup(path);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(activeGroup ? [activeGroup] : []));
+  useEffect(() => {
+    if (activeGroup) setOpenGroups((current) => (current.has(activeGroup) ? current : new Set(current).add(activeGroup)));
+  }, [activeGroup]);
+  const toggleGroup = (id: string) => setOpenGroups((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const mobileMenuButton = useRef<HTMLButtonElement>(null);
   const mobileDialog = useRef<HTMLDivElement>(null);
 
@@ -131,16 +84,11 @@ export default function AdminShell({ children, email }: AdminShellProps) {
   }
 
   function navigation(mobile = false) {
-    const visibleItems = items.filter(([, label]) =>
-      label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
-    // Only the most specific matching item is active (e.g. /admin/security/sessions, not also /admin/security).
-    const activeHref = items
-      .map(([href]) => href as string)
-      .filter((href) => path === href || (href !== "/admin" && path.startsWith(`${href}/`)))
-      .sort((a, b) => b.length - a.length)[0];
-
+    const needle = query.trim().toLocaleLowerCase();
+    const activeHref = activeAdminNavHref(path);
+    const prefix = mobile ? "admin-nav-m" : "admin-nav";
     return <nav aria-label="Admin naviqasiyası" className="space-y-1">
-      <label className="mb-3 flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-slate-400">
+      <label className="mb-3 flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-slate-400 focus-within:border-[#C79A52]">
         <Search size={15} aria-hidden="true" />
         <span className="sr-only">Bölmələr üzrə axtarış</span>
         <input
@@ -150,20 +98,40 @@ export default function AdminShell({ children, email }: AdminShellProps) {
           className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
         />
       </label>
-      {visibleItems.map(([href, label, Icon]) => <Link
-        key={href}
-        href={href}
-        onClick={() => mobile && setOpen(false)}
-        aria-current={href === activeHref ? "page" : undefined}
-        className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
-          href === activeHref
-            ? "bg-[#25374a] text-white"
-            : "text-slate-300 hover:bg-white/10 hover:text-white"
-        }`}
-      >
-        <Icon size={17} aria-hidden="true" />
-        <span>{label}</span>
-      </Link>)}
+      {ADMIN_NAV_GROUPS.map((group) => {
+        const items = group.items.filter(([, label]) => !needle || label.toLocaleLowerCase().includes(needle));
+        if (!items.length) return null;
+        // While searching every group with a match is shown open.
+        const expanded = Boolean(needle) || openGroups.has(group.id);
+        const listId = `${prefix}-${group.id}`;
+        return <div key={group.id} className="pt-1">
+          <button
+            type="button"
+            onClick={() => toggleGroup(group.id)}
+            aria-expanded={expanded}
+            aria-controls={listId}
+            className="flex min-h-9 w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[.14em] text-slate-400 transition hover:bg-white/5 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#C79A52]"
+          >
+            <span>{group.label}{group.id === activeGroup && !expanded ? <span className="sr-only"> (cari bölmə burada)</span> : null}</span>
+            <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
+          {expanded && <ul id={listId} className="mt-0.5 space-y-0.5">
+            {items.map(([href, label, Icon]) => <li key={href}><Link
+              href={href}
+              onClick={() => mobile && setOpen(false)}
+              aria-current={href === activeHref ? "page" : undefined}
+              className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#C79A52] ${
+                href === activeHref
+                  ? "bg-[#25374a] font-medium text-white shadow-[inset_3px_0_0_#C79A52]"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Icon size={17} aria-hidden="true" />
+              <span>{label}</span>
+            </Link></li>)}
+          </ul>}
+        </div>;
+      })}
     </nav>;
   }
 

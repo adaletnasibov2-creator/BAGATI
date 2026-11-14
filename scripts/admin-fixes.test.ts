@@ -16,13 +16,15 @@ import {
 } from "../lib/admin-store-profile";
 import { ADMIN_PENDING_ORDER_GROUP, ADMIN_PENDING_ORDER_STATUSES, ADMIN_PENDING_ORDERS_HREF, adminOrderStatusWhere } from "../lib/admin-order-filters";
 import { Filters, FilterSelect } from "../components/admin-list-filters";
+import { adminSectionSource } from "./admin-section-source";
 
 // tsx compiles the components' JSX with the classic runtime, which needs a global React (as in store-public-contact.test.ts).
 (globalThis as { React?: typeof React }).React = React;
 
 const root = join(__dirname, "..");
-const read = (path: string) => readFileSync(join(root, path), "utf8");
-const sectionPage = read("app/admin/[...section]/page.tsx");
+// Line endings normalised: with core.autocrlf=true a checkout has CRLF, and the patterns below use "\n".
+const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
+const sectionPage = adminSectionSource();
 const adminRoute = read("app/api/admin/[...resource]/route.ts");
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -48,7 +50,8 @@ test("the form gets its options from the server with the page (no late client fe
   assert.match(sectionPage, /const vendorOptions=storeProfileOptions\(/);
   assert.match(sectionPage, /const cityOptions=storeProfileOptions\(activeCities,store\.city\?\{id:store\.cityId,name:store\.city\.name\}:null\)/);
   const mutationForm = read("components/admin-mutation-form.tsx");
-  assert.match(mutationForm, /const dynamicConfirm=confirmWhen\?\.\(payload\);if\(dynamicConfirm&&!window\.confirm\(dynamicConfirm\)\)\{setBusy\(false\);return;\}/);
+  // Phase B: the confirmation uses the accessible ConfirmDialog instead of window.confirm (same behaviour).
+  assert.match(mutationForm, /const dynamicConfirm=confirmWhen\?\.\(payload\);\s*if\(dynamicConfirm&&!\(await confirm\(\{message:dynamicConfirm\}\)\)\)\{setBusy\(false\);return;\}/);
 });
 
 test("changing owner or city asks for confirmation naming both values; an unchanged save asks nothing", () => {
@@ -113,8 +116,9 @@ test("the store view passed to the client form holds only plain values (Decimal 
 
 test("dashboard pending orders: count and link use the same status group", () => {
   const dashboard = read("app/admin/page.tsx");
-  assert.match(dashboard, /db\.order\.count\(\{where:\{status:\{in:\[\.\.\.ADMIN_PENDING_ORDER_STATUSES\]\}\}\}\)/);
-  assert.match(dashboard, /\["Gözləyən sifarişlər",pendingOrders,ADMIN_PENDING_ORDERS_HREF\]/);
+  // Phase B: the dashboard uses the typed Prisma client and readable formatting (same query and link).
+  assert.match(dashboard, /prisma\.order\.count\(\{ where: \{ status: \{ in: \[\.\.\.ADMIN_PENDING_ORDER_STATUSES\] \} \} \}\)/);
+  assert.match(dashboard, /\["Gözləyən sifarişlər", pendingOrders, ADMIN_PENDING_ORDERS_HREF\]/);
   assert.doesNotMatch(dashboard, /orders\?status=PENDING"/);
   assert.equal(ADMIN_PENDING_ORDERS_HREF, "/admin/orders?status=pending");
   const statuses = ["PENDING", "NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"];
@@ -124,7 +128,8 @@ test("dashboard pending orders: count and link use the same status group", () =>
   assert.deepEqual(adminOrderStatusWhere("bogus", statuses), {});
   assert.deepEqual(adminOrderStatusWhere(undefined, statuses), {});
   assert.match(sectionPage, /const where:any=\{\.\.\.adminOrderStatusWhere\(sp\.status,orderStatuses\),/);
-  assert.match(sectionPage, /values=\{\[\{id:ADMIN_PENDING_ORDER_GROUP,name:"Gözləyən \(bütün açıq statuslar\)"\},\.\.\.orderStatuses\.map/);
+  // Phase B: the other options show Azerbaijani labels (lib/admin-labels.ts); their values stay the raw statuses.
+  assert.match(sectionPage, /values=\{\[\{id:ADMIN_PENDING_ORDER_GROUP,name:"Gözləyən \(bütün açıq statuslar\)"\},\.\.\.adminStatusOptions\("order",orderStatuses\)\]\}/);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -161,11 +166,12 @@ test("every admin list filter passes its current values", () => {
 
 test("only one subscriptions branch remains (the unreachable duplicate is gone)", () => {
   assert.equal(sectionPage.split('route==="subscriptions"').length - 1, 1);
-  assert.match(sectionPage, /if\(route==="subscriptions"\)\{\n  const statuses=\["PENDING","ACTIVE","PAST_DUE","SUSPENDED","CANCELLED","EXPIRED"\] as const;const status=normalizeAdminEnumFilter\(sp\.status,statuses\);const where:any=status\?\{OR:/, "the live branch is the one kept");
+  // The live branch body (inline in the catch-all or moved to app/admin/_sections/subscriptions.tsx).
+  assert.match(sectionPage, /\n  const statuses=\["PENDING","ACTIVE","PAST_DUE","SUSPENDED","CANCELLED","EXPIRED"\] as const;const status=normalizeAdminEnumFilter\(sp\.status,statuses\);const where:any=status\?\{OR:/, "the live branch is the one kept");
 });
 
 test("/admin/verification is in the admin navigation", () => {
-  const shell = read("components/admin-shell.tsx");
+  const shell = read("lib/admin-nav.ts");
   assert.match(shell, /\["\/admin\/verification", "E-poçt təsdiqi gözləyənlər", MailCheck\]/);
   assert.ok(shell.indexOf('"/admin/customers"') < shell.indexOf('"/admin/verification"'), "next to customers");
 });

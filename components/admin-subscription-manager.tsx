@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
+import { adminStatusLabel } from "@/lib/admin-labels";
+import { formatMoney } from "@/lib/format-money";
 
 type Plan = { id: string; slug: string; name: string; monthlyPrice: number | string };
 type Subscription = {
@@ -30,6 +33,7 @@ function defaultEnd() {
 
 export default function AdminSubscriptionManager({ storeId, plans, subscription }: { storeId: string; plans: Plan[]; subscription: Subscription }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [planId, setPlanId] = useState(subscription?.planId ?? plans.find((plan) => plan.slug === "basic")?.id ?? "");
   const [status, setStatus] = useState(subscription?.status ?? "PENDING");
   const [periodStart, setPeriodStart] = useState(dateInput(subscription?.currentPeriodStart) || dateInput(new Date()));
@@ -42,7 +46,7 @@ export default function AdminSubscriptionManager({ storeId, plans, subscription 
   async function save() {
     if (busy) return;
     if (!reason.trim()) { setError("Əl ilə dəyişiklik üçün səbəb qeyd edin."); return; }
-    if (status === "ACTIVE" && !window.confirm("Bu, ödənişsiz əl ilə aktivləşdirmədir. Heç bir ödəniş qeydə alınmayacaq. Davam edilsin?")) return;
+    if (status === "ACTIVE" && !await confirm("Bu, ödənişsiz əl ilə aktivləşdirmədir. Heç bir ödəniş qeydə alınmayacaq. Davam edilsin?")) return;
     setBusy(true); setError(""); setMessage("");
     try {
       const response = await fetch("/api/admin/subscriptions", {
@@ -59,15 +63,15 @@ export default function AdminSubscriptionManager({ storeId, plans, subscription 
   }
 
   const input = "min-h-10 w-full rounded-lg border border-[#ded9cf] bg-white px-3 py-2 text-sm";
-  return <div className="mt-4 rounded-xl border border-[#e7e3d9] bg-[#fbfaf7] p-4">
+  return <div className="mt-4 rounded-xl border border-[#e7e3d9] bg-[#fbfaf7] p-4">{dialog}
     <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
       <div><h3 className="font-semibold">Abunəliyə əl ilə nəzarət</h3><p className="mt-1 text-xs text-slate-600">Əl ilə verilən giriş ödəniş və ya ödəniş təsdiqi deyil.</p></div>
       {subscription && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">{subscription.accessSource === "PAYMENT_CONFIRMED" ? "Ödəniş təsdiqlənib" : subscription.accessSource === "ADMIN_MANUAL" ? "Admin tərəfindən əl ilə" : "Mənbə məlum deyil"}</span>}
     </div>
     {subscription && <p className="mb-3 text-xs text-slate-600">Son əl ilə səbəb: {subscription.grantReason || "—"}{subscription.grantedByAdmin?.email ? ` · ${subscription.grantedByAdmin.email}` : ""}</p>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      <label className="grid gap-1 text-xs text-slate-600">Plan<select className={input} value={planId} onChange={(event) => setPlanId(event.target.value)}>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {Number(plan.monthlyPrice).toFixed(2)} ₼/ay</option>)}</select></label>
-      <label className="grid gap-1 text-xs text-slate-600">Status<select className={input} value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+      <label className="grid gap-1 text-xs text-slate-600">Plan<select className={input} value={planId} onChange={(event) => setPlanId(event.target.value)}>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatMoney(plan.monthlyPrice)}/ay</option>)}</select></label>
+      <label className="grid gap-1 text-xs text-slate-600">Status<select className={input} value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((value) => <option key={value} value={value}>{adminStatusLabel("subscription", value)}</option>)}</select></label>
       <label className="grid gap-1 text-xs text-slate-600">Dövrün başlanğıcı<input className={input} type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} required /></label>
       <label className="grid gap-1 text-xs text-slate-600">Dövrün sonu<input className={input} type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} required /></label>
       <label className="grid gap-1 text-xs text-slate-600 sm:col-span-2">Dəyişiklik səbəbi<textarea className={input} minLength={8} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} required /></label>

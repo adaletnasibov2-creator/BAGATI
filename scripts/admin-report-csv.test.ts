@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildAdminReportCsv, escapeAdminReportCsvCell, sanitizeCsvText } from "../lib/admin-report-csv";
+import { adminSectionSource } from "./admin-section-source";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -40,7 +41,7 @@ test("CSV retains numeric values and encodes null as an empty cell", () => {
 
 test("CSV export endpoint and admin report UI are connected and protected", () => {
   const route = readFileSync(resolve(root, "app/api/admin/reports/route.ts"), "utf8");
-  const page = readFileSync(resolve(root, "app/admin/[...section]/page.tsx"), "utf8");
+  const page = adminSectionSource();
   assert.match(route, /requireRole\("ADMIN"\)/);
   assert.match(route, /summarizeDeliveredSales/);
   assert.match(route, /summarizeMonthlyStoreSales/);

@@ -72,3 +72,16 @@ test("one VÖEN per seller account: every writer locks and checks inside its tra
   assert.doesNotMatch(review, /confirmDuplicate/);
   assert.match(review, /\(!accountReady \|\| duplicateCount > 0\)/);
 });
+
+test("migration 20261115120000 is additive only: one new table, its indexes, foreign keys and CHECKs", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const sql = readFileSync(join(__dirname, "..", "prisma/migrations/20261115120000_seller_voen_verification/migration.sql"), "utf8").replace(/\r\n/g, "\n");
+  const statements = sql.split(";").map((s) => s.replace(/--.*$/gm, "").trim()).filter(Boolean);
+  for (const statement of statements) {
+    assert.match(statement, /^(CREATE TABLE "SellerVoenVerification"|CREATE (UNIQUE )?INDEX "SellerVoenVerification_[A-Za-z_]+" ON "SellerVoenVerification"|ALTER TABLE "SellerVoenVerification" ADD CONSTRAINT)/, statement.slice(0, 80));
+  }
+  assert.doesNotMatch(sql, /^\s*(DROP|UPDATE|DELETE|INSERT|TRUNCATE)\b|ALTER TABLE "(?!SellerVoenVerification)/m, "no statement touches existing tables or rows");
+  assert.match(sql, /CHECK \("voen" ~ '\^\[0-9\]\{9\}\[12\]\$'\)/);
+  assert.match(sql, /CREATE UNIQUE INDEX "SellerVoenVerification_userId_voen_key"/);
+});

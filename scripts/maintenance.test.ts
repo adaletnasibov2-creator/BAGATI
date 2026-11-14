@@ -133,3 +133,63 @@ test("wiring: middleware checks before CSRF; the state endpoint is public and re
   assert.match(dashboard, /\{maintenanceOn === true && <div role="alert" className="[^"]*bg-red-50/);
   assert.match(dashboard, /href="\/admin\/settings\?tab=maintenance"/);
 });
+
+test("fail-open is visible: last check recorded with a short reason; at most one warning per minute; failures cached 10 s", async () => {
+  const { lastMaintenanceCheck, MAINTENANCE_WARNING_INTERVAL_MS, describeCheckFailure } = await import("../lib/maintenance-state");
+  resetMaintenanceStateCache();
+  assert.equal(lastMaintenanceCheck(), null);
+  const warnings: string[] = [];
+  const warn = (message: string) => { warnings.push(message); };
+  let calls = 0;
+  // What production hit: https://localhost:<port> against Next's plain-HTTP port.
+  const tls: typeof fetch = async () => { calls += 1; throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ERR_SSL_WRONG_VERSION_NUMBER" } }); };
+  let t = 100_000;
+  assert.deepEqual(await maintenanceState("https://localhost:3000", tls, t, { source: "request", warn }), { enabled: false, message: MAINTENANCE_MESSAGE_DEFAULT });
+  assert.deepEqual(lastMaintenanceCheck(), { ok: false, at: t, reason: "bağlantı xətası (ERR_SSL_WRONG_VERSION_NUMBER)", source: "request" });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /\[maintenance\] state check failed via request origin https:\/\/localhost:3000: bağlantı xətası \(ERR_SSL_WRONG_VERSION_NUMBER\)\. Failing open: maintenance treated as OFF\. Set BAGATI_INTERNAL_ORIGIN/);
+  await maintenanceState("https://localhost:3000", tls, t + MAINTENANCE_STATE_TTL_MS - 1, { source: "request", warn });
+  assert.equal(calls, 1, "a failed check is cached too (no retry storm)");
+  for (t += MAINTENANCE_STATE_TTL_MS; t < 100_000 + MAINTENANCE_WARNING_INTERVAL_MS; t += MAINTENANCE_STATE_TTL_MS) await maintenanceState("https://localhost:3000", tls, t, { source: "request", warn });
+  assert.equal(warnings.length, 1, "no second warning within the minute");
+  await maintenanceState("https://localhost:3000", tls, 100_000 + MAINTENANCE_WARNING_INTERVAL_MS, { source: "request", warn });
+  assert.equal(warnings.length, 2, "warned again after a minute");
+  // Recovery is recorded.
+  await maintenanceState("http://127.0.0.1:3000", async () => Response.json({ enabled: true, message: "x" }), 500_000, { source: "internal", warn });
+  assert.deepEqual(lastMaintenanceCheck(), { ok: true, at: 500_000, reason: null, source: "internal" });
+  // Reasons stay short and non-sensitive.
+  resetMaintenanceStateCache();
+  await maintenanceState("http://127.0.0.1:3000", async () => new Response("<html>challenge</html>", { status: 403 }), 1, { warn });
+  assert.equal(lastMaintenanceCheck()?.reason, "HTTP 403");
+  resetMaintenanceStateCache();
+  await maintenanceState("http://127.0.0.1:3000", async () => new Response("not json", { status: 200 }), 1, { warn });
+  assert.equal(lastMaintenanceCheck()?.reason, "cavab formatı yanlışdır");
+  assert.equal(describeCheckFailure(Object.assign(new Error("x"), { name: "TimeoutError" })), "vaxt bitdi (1.5 s)");
+  resetMaintenanceStateCache();
+});
+
+test("middleware: BAGATI_INTERNAL_ORIGIN is used for the state request even when the request origin is https://localhost", async () => {
+  const { middleware } = await import("../middleware");
+  const realFetch = globalThis.fetch; const realEnv = process.env.BAGATI_INTERNAL_ORIGIN;
+  const seen: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => { seen.push(String(input instanceof Request ? input.url : input)); return Response.json({ enabled: true, message: "Bağlıyıq" }); }) as typeof fetch;
+  // Behind the proxy Next gives the middleware "<X-Forwarded-Proto>://localhost:<port>" as the URL.
+  const proxied = (path: string) => new NextRequest(`https://localhost:3000${path}`, { headers: { host: "shopbagati.com", "x-forwarded-proto": "https" } });
+  try {
+    resetMaintenanceStateCache();
+    process.env.BAGATI_INTERNAL_ORIGIN = "http://127.0.0.1:3000";
+    assert.equal((await middleware(proxied("/"))).status, 503);
+    assert.deepEqual(seen, ["http://127.0.0.1:3000/api/maintenance-state"]);
+    resetMaintenanceStateCache(); seen.length = 0;
+    delete process.env.BAGATI_INTERNAL_ORIGIN;
+    await middleware(proxied("/"));
+    assert.deepEqual(seen, ["https://localhost:3000/api/maintenance-state"], "not set: the request origin, as before");
+    resetMaintenanceStateCache(); seen.length = 0;
+    process.env.BAGATI_INTERNAL_ORIGIN = "https://shopbagati.com";
+    await middleware(proxied("/"));
+    assert.deepEqual(seen, ["https://localhost:3000/api/maintenance-state"], "invalid value ignored");
+  } finally {
+    globalThis.fetch = realFetch; resetMaintenanceStateCache();
+    if (realEnv === undefined) delete process.env.BAGATI_INTERNAL_ORIGIN; else process.env.BAGATI_INTERNAL_ORIGIN = realEnv;
+  }
+});

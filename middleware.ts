@@ -4,6 +4,7 @@ import { canonicalHostRedirectUrl } from "@/lib/host-policy";
 import { ADMIN_X_ROBOTS_TAG, isAdminSurface } from "@/lib/admin-surface";
 import { isMaintenanceExempt, maintenanceResponse } from "@/lib/maintenance";
 import { maintenanceState } from "@/lib/maintenance-state";
+import { maintenanceStateOrigin } from "@/lib/maintenance-origin";
 
 export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
@@ -12,7 +13,10 @@ export async function middleware(request: NextRequest) {
   // Maintenance mode (lib/maintenance.ts): customer and seller pages and APIs get 503; the admin panel, payment
   // callbacks, readiness and static files stay reachable. The state is cached 10 s and fails open.
   if (!isMaintenanceExempt(pathname)) {
-    const maintenance = await maintenanceState(request.nextUrl.origin);
+    // BAGATI_INTERNAL_ORIGIN (Node port, e.g. http://127.0.0.1:3000) when set and valid: behind the proxy the request
+    // origin is "https://localhost:<port>", which cannot be fetched (lib/maintenance-origin.ts).
+    const { origin, source } = maintenanceStateOrigin(request.nextUrl.origin, process.env.BAGATI_INTERNAL_ORIGIN);
+    const maintenance = await maintenanceState(origin, undefined, undefined, { source });
     if (maintenance.enabled) return maintenanceResponse(pathname, maintenance.message);
   }
   const adminSurface = isAdminSurface(pathname);

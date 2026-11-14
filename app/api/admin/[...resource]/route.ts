@@ -15,6 +15,7 @@ import { getProductPublicationBlockers } from "@/lib/admin-store-product-publish
 import { supportedSubscriptionPlanSlugs } from "@/lib/subscription-plans";
 import { saveManualSubscription } from "@/lib/admin-manual-subscription";
 import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
+import { planStoreProfileUpdate } from "@/lib/admin-store-profile";
 
 const db: any = prisma;
 const storeStatuses = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "SUSPENDED", "REJECTED"] as const;
@@ -130,14 +131,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     if (section === "stores") {
       if (body && typeof body === "object" && "status" in body) return NextResponse.json({ error: "Mağaza statusu yalnız admin yoxlama workflow-u ilə dəyişdirilə bilər." }, { status: 405 });
-      const parsed = z.object({ id: z.string(), vendorId: z.string().optional(), name: z.string().trim().min(2).max(120).optional(), cityId: z.string().optional(), logoUrl: z.string().url().max(1000).nullable().optional().refine((value) => !value || value.startsWith("https://")), description: z.string().max(3000).nullable().optional(), address: z.string().max(300).nullable().optional(), contactPhone: optionalAzPhoneSchema.optional(), contactEmail: z.string().email().nullable().optional(), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), mapUrl: z.string().url().nullable().optional(), freeDeliveryThreshold: deliveryAmountSchema.optional(), deliveryFee: deliveryAmountSchema.optional() }).safeParse(body);
+      const parsed = z.object({ id: z.string(), vendorId: z.string().optional(), expectedVendorId: z.string().optional(), expectedCityId: z.string().optional(), name: z.string().trim().min(2).max(120).optional(), cityId: z.string().optional(), logoUrl: z.string().url().max(1000).nullable().optional().refine((value) => !value || value.startsWith("https://")), description: z.string().max(3000).nullable().optional(), address: z.string().max(300).nullable().optional(), contactPhone: optionalAzPhoneSchema.optional(), contactEmail: z.string().email().nullable().optional(), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), mapUrl: z.string().url().nullable().optional(), freeDeliveryThreshold: deliveryAmountSchema.optional(), deliveryFee: deliveryAmountSchema.optional() }).safeParse(body);
       if (!parsed.success) return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? "Mağaza məlumatlarını yoxlayın" }, { status: 422 });
-      const { id: storeId, vendorId, ...values } = parsed.data;
+      const { id: storeId, vendorId: requestedVendorId, cityId: requestedCityId, expectedVendorId, expectedCityId, ...values } = parsed.data;
+      // Owner and city change only when the submitted value differs from the stored one (an unchanged value is not
+      // an owner change: no legal re-review, no STORE_OWNER_CHANGE audit). A store changed meanwhile is refused.
+      const currentStore = await db.store.findUnique({ where: { id: storeId }, select: { vendorId: true, cityId: true } });
+      if (!currentStore) return NextResponse.json({ error: "Mağaza tapılmadı" }, { status: 404 });
+      const plan = planStoreProfileUpdate(currentStore, { vendorId: requestedVendorId, cityId: requestedCityId, expectedVendorId, expectedCityId });
+      if (!plan.ok) return NextResponse.json({ error: "Mağazanın sahibi və ya şəhəri başqa admin tərəfindən dəyişdirilib. Səhifəni yeniləyin." }, { status: 409 });
+      const { vendorId, cityId } = plan;
       if ((values.latitude === null) !== (values.longitude === null) && (values.latitude !== undefined || values.longitude !== undefined)) return NextResponse.json({ error: "Koordinatlar birlikdə daxil edilməlidir" }, { status: 422 });
-      if (values.cityId && !await db.city.findFirst({ where: { id: values.cityId, isActive: true }, select: { id: true } })) return NextResponse.json({ error: "Active city not found" }, { status: 422 });
+      if (cityId && !await db.city.findFirst({ where: { id: cityId, isActive: true }, select: { id: true } })) return NextResponse.json({ error: "Active city not found" }, { status: 422 });
       if (vendorId && !await db.vendorProfile.findFirst({ where: { id: vendorId, user: { isActive: true } }, select: { id: true } })) return NextResponse.json({ error: "Active vendor profile not found" }, { status: 422 });
       if (values.mapUrl && !values.mapUrl.startsWith("https://")) return NextResponse.json({ error: "Map URL must use HTTPS" }, { status: 422 });
-      const item = await db.$transaction(async (tx: any) => { const updated = await tx.store.update({ where: { id: storeId }, data: { ...values, ...(vendorId ? { vendorId, legalInfoApproved: false } : {}) }, select: { id: true, name: true, status: true, isActive: true, legalInfoApproved: true } }); await tx.auditLog.create({ data: { actorId: admin.id, action: vendorId ? "STORE_OWNER_CHANGE" : "UPDATE", entityType: "Store", entityId: updated.id, ...(vendorId ? { metadata: { vendorId, legalReviewRequired: true } } : {}) } }); return updated; }); return NextResponse.json({ item });
+      const item = await db.$transaction(async (tx: any) => { const updated = await tx.store.update({ where: { id: storeId, vendorId: currentStore.vendorId, cityId: currentStore.cityId }, data: { ...values, ...(cityId ? { cityId } : {}), ...(vendorId ? { vendorId, legalInfoApproved: false } : {}) }, select: { id: true, name: true, status: true, isActive: true, legalInfoApproved: true } }); await tx.auditLog.create({ data: { actorId: admin.id, action: vendorId ? "STORE_OWNER_CHANGE" : "UPDATE", entityType: "Store", entityId: updated.id, ...(vendorId ? { metadata: { vendorId, previousVendorId: currentStore.vendorId, legalReviewRequired: true } } : cityId ? { metadata: { cityId, previousCityId: currentStore.cityId } } : {}) } }); return updated; }); return NextResponse.json({ item });
     }
     if (section === "commissions") {
       const rateInput = commissionRateInput(body);

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import AdminMutationForm from "@/components/admin-mutation-form";
 import { prisma } from "@/lib/prisma";
 import { type SectionContext, card, Header, Table } from "./shared";
+import { AdminStatusBadge } from "@/components/admin-ui/admin-status-badge";
+import { adminStatusLabel } from "@/lib/admin-labels";
 
 export async function renderVendorDetail({ parts, shell }: SectionContext) {
    const vendorId = parts[1];
@@ -47,8 +49,8 @@ export async function renderVendorDetail({ parts, shell }: SectionContext) {
     <Table rows={vendor.stores} empty="Bu satıcıya aid mağaza yoxdur." columns={[
      {label:"Mağaza",cell:r=><Link href={"/admin/stores/" + r.id} className="font-semibold text-[#173c40]">{r.name}</Link>},
      {label:"Şəhər",cell:r=>r.city?.name || "Şəhər yoxdur"},
-     {label:"Status / görünürlük",cell:r=>r.status + " · " + (r.status === "ACTIVE" && r.isActive ? "ictimai görünür" : "ictimai gizlidir")},
-     {label:"Abunəlik",cell:r=>r.subscription ? (r.subscription.plan?.name || "Plan yoxdur") + " · " + r.subscription.status : "Abunəlik yoxdur"},
+     {label:"Status / görünürlük",cell:r=><span><AdminStatusBadge kind="store" value={r.status}/> · {r.status === "ACTIVE" && r.isActive ? "ictimai görünür" : "ictimai gizlidir"}</span>},
+     {label:"Abunəlik",cell:r=>r.subscription ? (r.subscription.plan?.name || "Plan yoxdur") + " · " + adminStatusLabel("subscription", r.subscription.status) : "Abunəlik yoxdur"},
      {label:"Məhsul / sifariş",cell:r=>r._count.products + " / " + r._count.storeOrders},
     ]}/>
     {vendor._count.stores > vendor.stores.length && <p className="mt-3 text-xs text-slate-500">Siyahıda ən son 50 mağaza göstərilir.</p>}

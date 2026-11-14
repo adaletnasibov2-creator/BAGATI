@@ -127,7 +127,8 @@ test("dashboard pending orders: count and link use the same status group", () =>
   assert.deepEqual(adminOrderStatusWhere("bogus", statuses), {});
   assert.deepEqual(adminOrderStatusWhere(undefined, statuses), {});
   assert.match(sectionPage, /const where:any=\{\.\.\.adminOrderStatusWhere\(sp\.status,orderStatuses\),/);
-  assert.match(sectionPage, /values=\{\[\{id:ADMIN_PENDING_ORDER_GROUP,name:"Gözləyən \(bütün açıq statuslar\)"\},\.\.\.orderStatuses\.map/);
+  // Phase B: the other options show Azerbaijani labels (lib/admin-labels.ts); their values stay the raw statuses.
+  assert.match(sectionPage, /values=\{\[\{id:ADMIN_PENDING_ORDER_GROUP,name:"Gözləyən \(bütün açıq statuslar\)"\},\.\.\.adminStatusOptions\("order",orderStatuses\)\]\}/);
 });
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
+import { adminStatusLabel } from "@/lib/admin-labels";
 
 type Plan = { id: string; slug: string; name: string; monthlyPrice: number | string };
 type Subscription = {
@@ -69,7 +70,7 @@ export default function AdminSubscriptionManager({ storeId, plans, subscription 
     {subscription && <p className="mb-3 text-xs text-slate-600">Son əl ilə səbəb: {subscription.grantReason || "—"}{subscription.grantedByAdmin?.email ? ` · ${subscription.grantedByAdmin.email}` : ""}</p>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <label className="grid gap-1 text-xs text-slate-600">Plan<select className={input} value={planId} onChange={(event) => setPlanId(event.target.value)}>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {Number(plan.monthlyPrice).toFixed(2)} ₼/ay</option>)}</select></label>
-      <label className="grid gap-1 text-xs text-slate-600">Status<select className={input} value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+      <label className="grid gap-1 text-xs text-slate-600">Status<select className={input} value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((value) => <option key={value} value={value}>{adminStatusLabel("subscription", value)}</option>)}</select></label>
       <label className="grid gap-1 text-xs text-slate-600">Dövrün başlanğıcı<input className={input} type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} required /></label>
       <label className="grid gap-1 text-xs text-slate-600">Dövrün sonu<input className={input} type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} required /></label>
       <label className="grid gap-1 text-xs text-slate-600 sm:col-span-2">Dəyişiklik səbəbi<textarea className={input} minLength={8} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} required /></label>

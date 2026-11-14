@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { allowedAdminOrderTransitions } from "@/lib/order-fulfillment";
 import { prisma } from "@/lib/prisma";
 import { type SectionContext, card, Header, StatusForm } from "./shared";
+import { adminStatusLabel } from "@/lib/admin-labels";
 
 export async function renderOrderDetail({ parts, shell }: SectionContext) {
   const order = await prisma.order.findUnique({
@@ -22,7 +23,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
   if (!order) notFound();
   const allowedOrderStatuses = allowedAdminOrderTransitions(order.storeOrders.map((group: any) => group.status));
   return shell(<>
-   <Header title={`Sifariş · ${order.id.slice(-8).toUpperCase()}`} detail={`Yaradılıb ${order.createdAt.toLocaleString("az-AZ")} · Ümumi status ${order.status}`} />
+   <Header title={`Sifariş · ${order.id.slice(-8).toUpperCase()}`} detail={`Yaradılıb ${order.createdAt.toLocaleString("az-AZ")} · Ümumi status ${adminStatusLabel("order", order.status)}`} />
    <div className="grid gap-5 xl:grid-cols-2">
     <section className={card}>
      <h2 className="font-semibold">Müştəri</h2>
@@ -30,7 +31,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
      <pre className="mt-3 whitespace-pre-wrap text-xs text-slate-500">Çatdırılma ünvanı: {JSON.stringify(order.addressSnapshot, null, 2)}</pre>
      <h3 className="mt-5 font-semibold">Ödəniş</h3>
      {order.payments.length
-      ? order.payments.map((payment: any) => <p key={payment.id} className="mt-2 text-sm">{payment.status} · {Number(payment.amount).toFixed(2)} {payment.currency} · {payment.provider || "Provayder təyin edilməyib"}{payment.providerReference && !String(payment.providerReference).startsWith("claim:") ? ` · ${payment.providerReference}` : ""}</p>)
+      ? order.payments.map((payment: any) => <p key={payment.id} className="mt-2 text-sm">{adminStatusLabel("payment", payment.status)} · {Number(payment.amount).toFixed(2)} {payment.currency} · {payment.provider || "Provayder təyin edilməyib"}{payment.providerReference && !String(payment.providerReference).startsWith("claim:") ? ` · ${payment.providerReference}` : ""}</p>)
       : <p className="mt-2 text-sm text-slate-500">Ödəniş qeydi yoxdur.</p>}
     </section>
     <section className={card}>
@@ -44,7 +45,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
    <div className="mt-5"><StatusForm resource="orders" id={order.id} status={order.status} options={allowedOrderStatuses} button="Statusu saxla" /></div>
    <div className="mt-5 grid gap-4">
     {order.storeOrders.map((group: any) => <section key={group.id} className={card}>
-     <h2 className="font-semibold">{group.store.name} · {group.status} · {Number(group.subtotal).toFixed(2)} ₼</h2>
+     <h2 className="font-semibold">{group.store.name} · {adminStatusLabel("order", group.status)} · {Number(group.subtotal).toFixed(2)} ₼</h2>
      <p className="mt-2 text-sm text-slate-600">
       Çatdırılma: {group.deliveryMethod || "Mağaza ilə dəqiqləşdirilir"}
       {group.deliveryCarrier ? ` · ${group.deliveryCarrier}` : ""}

@@ -21,7 +21,8 @@ import { Filters, FilterSelect } from "../components/admin-list-filters";
 (globalThis as { React?: typeof React }).React = React;
 
 const root = join(__dirname, "..");
-const read = (path: string) => readFileSync(join(root, path), "utf8");
+// Line endings normalised: with core.autocrlf=true a checkout has CRLF, and the patterns below use "\n".
+const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const sectionPage = read("app/admin/[...section]/page.tsx");
 const adminRoute = read("app/api/admin/[...resource]/route.ts");
 

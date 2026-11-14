@@ -3,7 +3,7 @@
 import { FormEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { finishAuthNavigation } from "@/lib/auth-client";
-import { isLoginPortal, loginPortalLinkLabel, loginPortalPath, SELLER_APPLY_LOGIN_PATH } from "@/lib/login-portal";
+import { isLoginPortal, publicLoginPortalLink, SELLER_APPLY_LOGIN_PATH } from "@/lib/login-portal";
 import { GoogleOAuthButton } from "@/components/google-oauth-button";
 
 export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: string; notice?: string; portal?: string | null }) {
@@ -69,6 +69,7 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
     }
   }
 
+  const portalLink = publicLoginPortalLink(portalHint);
   return <>
     {notice && <p role="status" className="mt-6 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</p>}
     <GoogleOAuthButton intent="vendor" mode="login" nextPath="/vendor" errorCode={oauthError} portal={portal}/>
@@ -109,7 +110,7 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
           <p>{error}</p>
           {applyHint
             ? <Link href={SELLER_APPLY_LOGIN_PATH} className="mt-2 inline-block font-semibold underline">Satıcı müraciətinə keç</Link>
-            : isLoginPortal(portalHint) && <Link href={loginPortalPath(portalHint) ?? "/login"} className="mt-2 inline-block font-semibold underline">{loginPortalLinkLabel(portalHint)}</Link>}
+            : portalLink && <Link href={portalLink.href} className="mt-2 inline-block font-semibold underline">{portalLink.label}</Link>}
         </div>
       )}
 
@@ -132,7 +133,7 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
       </p>
 
       <p className="text-center text-sm text-[#667085]">
-        Müştəri hesabınıza <Link href="/login" className="font-medium text-[#9A701E]">müştəri girişindən</Link>, admin hesabınıza isə <Link href="/admin/login" className="font-medium text-[#9A701E]">admin girişindən</Link> daxil olun.
+        Müştəri hesabınıza <Link href="/login" className="font-medium text-[#9A701E]">müştəri girişindən</Link> daxil olun.
       </p>
 
       <Link

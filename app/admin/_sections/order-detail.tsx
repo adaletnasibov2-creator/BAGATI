@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { type SectionContext, card, Header, StatusForm } from "./shared";
 import { adminStatusLabel } from "@/lib/admin-labels";
 import { formatAmount, formatMoney } from "@/lib/format-money";
+import { AdminShipmentStatusControl } from "@/components/admin-shipment-status-control";
 
 export async function renderOrderDetail({ parts, shell }: SectionContext) {
   const order = await prisma.order.findUnique({
@@ -54,6 +55,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
      </p>
      {group.deliveryNote && <p className="mt-1 text-sm text-slate-500">{group.deliveryNote}</p>}
      <p className="mt-1 text-xs text-slate-500">Satıcı: {group.store.vendor.displayName} · {group.store.vendor.user.email}</p>
+     <AdminShipmentStatusControl storeOrderId={group.id} shipmentStatus={group.shipmentStatus} orderStatus={group.status} />
      <div className="mt-3 divide-y">
       {group.items.map((item: any) => <div key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm">
        <span>{item.productName}{item.variant ? ` · ${item.variant.name}` : ""} × {item.quantity} {item.sku ? `· SKU ${item.sku}` : ""}</span>

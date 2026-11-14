@@ -152,3 +152,22 @@ test("customer order page: 3-step timeline, no coordinates, owner-only query", (
   assert.doesNotMatch(page, /latitude|longitude|toLocaleString\("az-AZ"\)\}<\/time>/);
   assert.match(page, /group\.shipmentStatus==="DELIVERY_FAILED"/, "the failed-attempt note stays");
 });
+
+test("admin shipment API: same-origin -> ADMIN -> bounded body -> validation -> one audited transaction", () => {
+  const file = "app/api/admin/store-orders/[storeOrderId]/shipment/route.ts";
+  const route = read(file);
+  const order = ["csrfRejection(request)", 'requireRole("ADMIN")', "readJsonBodyLimited(request", "bodySchema.safeParse(body.value)", "setShipmentStatusAsAdmin("].map((needle) => route.indexOf(needle));
+  assert.ok(order.every((position) => position > 0), "every step present");
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "in order");
+  assert.match(route, /z\.object\(\{ shipmentStatus: z\.enum\(SHIPMENT_STATUSES\) \}\)\.strict\(\)/);
+  assert.match(route, /"Cache-Control": "no-store"/);
+  assert.doesNotMatch(route, /^export const (?!dynamic)/m, "only route exports");
+  const lib = read("lib/shipment-admin.ts");
+  assert.match(lib, /SELECT "id" FROM "Order" WHERE "id" = \$\{existing\.orderId\} FOR UPDATE/);
+  assert.match(lib, /action: "SHIPMENT_STATUS_UPDATE", entityType: "StoreOrder"/);
+  const code = lib.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  assert.doesNotMatch(code, /enqueueEmail|tx\.order\.(update|create)|tx\.payment|tx\.inventory|tx\.commission|transitionVendorStoreOrder|transitionAdminOrder/, "no e-mail, no order/payment/stock change");
+  assert.match(code, /data: \{ shipmentStatus: input\.target, \.\.\.shipmentTimestamps\(input\.target, current, new Date\(\)\) \}/, "writes the shipment fields only");
+  const detail = read("app/admin/_sections/order-detail.tsx");
+  assert.match(detail, /<AdminShipmentStatusControl storeOrderId=\{group\.id\} shipmentStatus=\{group\.shipmentStatus\} orderStatus=\{group\.status\} \/>/);
+});

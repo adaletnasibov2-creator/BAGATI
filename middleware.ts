@@ -5,6 +5,7 @@ import { ADMIN_X_ROBOTS_TAG, isAdminSurface } from "@/lib/admin-surface";
 import { isMaintenanceExempt, maintenanceResponse } from "@/lib/maintenance";
 import { encodeMaintenanceCheck, lastMaintenanceCheck, MAINTENANCE_CHECK_HEADER, maintenanceState } from "@/lib/maintenance-state";
 import { maintenanceStateOrigin } from "@/lib/maintenance-origin";
+import { isAdminPreview } from "@/lib/maintenance-preview";
 
 export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
@@ -17,7 +18,11 @@ export async function middleware(request: NextRequest) {
     // origin is "https://localhost:<port>", which cannot be fetched (lib/maintenance-origin.ts).
     const { origin, source } = maintenanceStateOrigin(request.nextUrl.origin, process.env.BAGATI_INTERNAL_ORIGIN);
     const maintenance = await maintenanceState(origin, undefined, undefined, { source });
-    if (maintenance.enabled) return maintenanceResponse(pathname, maintenance.message);
+    // A signed-in admin previews the public pages (never the APIs). Checked only when maintenance is on and a session
+    // cookie is present; any failure shows the maintenance page.
+    const isApi = pathname === "/api" || pathname.startsWith("/api/");
+    const session = request.cookies.get("bagati_session")?.value;
+    if (maintenance.enabled && (isApi || !(await isAdminPreview(session, origin)))) return maintenanceResponse(pathname, maintenance.message);
   }
   const adminSurface = isAdminSurface(pathname);
   if (pathname.startsWith("/api/") && !isCsrfExemptApiPath(pathname)) {

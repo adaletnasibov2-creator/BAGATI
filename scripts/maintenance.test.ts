@@ -228,3 +228,48 @@ test("check header: ASCII round-trip, malformed values rejected; middleware sets
   assert.match(line, /<b>Yoxlama işləyir\.<\/b>/);
   assert.match(line, /<b>Yoxlama işləmir: \{check\.reason\}<\/b>/);
 });
+
+test("admin preview: a signed-in admin sees public pages, never the APIs; others and failures get 503; cached per session", async () => {
+  const { middleware } = await import("../middleware");
+  const { resetMaintenancePreviewCache, isAdminPreview } = await import("../lib/maintenance-preview");
+  assert.equal(isMaintenanceExempt("/api/maintenance-state/viewer"), true);
+  const realFetch = globalThis.fetch;
+  const viewerCalls: { cookie: string | null }[] = [];
+  let viewer: "admin" | "customer" | "error" = "admin";
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.endsWith("/api/maintenance-state")) return Response.json({ enabled: true, message: "Bağlıyıq" });
+    assert.match(url, /\/api\/maintenance-state\/viewer$/);
+    viewerCalls.push({ cookie: new Headers(init?.headers).get("cookie") });
+    if (viewer === "error") throw new Error("down");
+    return Response.json({ admin: viewer === "admin" });
+  }) as typeof fetch;
+  const withCookie = (path: string, token: string, method = "GET") => new NextRequest(`http://localhost:3000${path}`, { method, headers: { host: "localhost:3000", cookie: `bagati_session=${token}; other=secret`, ...(method === "GET" ? {} : { origin: "http://localhost:3000" }) } });
+  try {
+    resetMaintenanceStateCache(); resetMaintenancePreviewCache();
+    viewer = "admin";
+    for (const path of ["/", "/products", "/stores/x"]) assert.notEqual((await middleware(withCookie(path, "admin-token"))).status, 503, `admin preview ${path}`);
+    assert.equal(viewerCalls.length, 1, "one viewer check per session per 10 s");
+    assert.equal(viewerCalls[0].cookie, "bagati_session=admin-token", "only the session cookie is forwarded");
+    for (const [path, method] of [["/api/cart", "POST"], ["/api/orders", "POST"], ["/api/auth/login", "POST"], ["/api/products", "GET"]]) assert.equal((await middleware(withCookie(path, "admin-token", method))).status, 503, `admin, API ${path} still blocked`);
+    assert.equal((await middleware(new NextRequest("http://localhost:3000/", { headers: { host: "localhost:3000" } }))).status, 503, "no cookie: blocked, no viewer call");
+    assert.equal(viewerCalls.length, 1);
+    viewer = "customer";
+    assert.equal((await middleware(withCookie("/", "customer-token"))).status, 503, "customer session: blocked");
+    viewer = "error";
+    assert.equal((await middleware(withCookie("/", "broken-token"))).status, 503, "viewer check fails: blocked (safe side)");
+    // Cache expiry per session.
+    resetMaintenancePreviewCache(); viewerCalls.length = 0; viewer = "admin";
+    assert.equal(await isAdminPreview("t", "http://127.0.0.1:3000", undefined, 1_000), true);
+    assert.equal(await isAdminPreview("t", "http://127.0.0.1:3000", undefined, 10_999), true);
+    assert.equal(viewerCalls.length, 1);
+    await isAdminPreview("t", "http://127.0.0.1:3000", undefined, 11_000);
+    assert.equal(viewerCalls.length, 2, "re-checked after 10 s (a revoked admin session loses the preview within 10 s)");
+    assert.equal(await isAdminPreview(undefined, "http://127.0.0.1:3000"), false);
+  } finally { globalThis.fetch = realFetch; resetMaintenanceStateCache(); resetMaintenancePreviewCache(); }
+  const route = read("app/api/maintenance-state/viewer/route.ts");
+  assert.match(route, /const admin = await requireRole\("ADMIN"\)/);
+  assert.match(route, /NextResponse\.json\(\{ admin: Boolean\(admin\) \}, \{ headers: \{ "Cache-Control": "no-store" \} \}\)/);
+  assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
+  assert.doesNotMatch(read("lib/maintenance-preview.ts"), /cache\.set\(token|console\.(log|warn)\(.*token/, "the token is never a cache key or logged");
+});

@@ -3,14 +3,19 @@ import { Mail, MessageCircle, Phone } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import type { getSiteSettings } from "@/lib/site-settings";
 import { toTelephoneHref, toWhatsAppHref } from "@/lib/public-contact-links";
+import { footerBottomLinks, whatsappNumber, type PublicContact } from "@/lib/public-contact";
 
 type FooterSettings = Pick<
   Awaited<ReturnType<typeof getSiteSettings>>,
   "siteName" | "logoUrl" | "contactPhone" | "contactEmail" | "instagramUrl" | "facebookUrl" | "tiktokUrl"
 >;
 
-export function CustomerFooter({ settings }: { settings: FooterSettings }) {
-  const whatsappHref = toWhatsAppHref(settings.contactPhone);
+/** `contact`: settings-engine values (Phase C1) with fallbacks; without it the footer looks exactly as before. */
+export function CustomerFooter({ settings, contact }: { settings: FooterSettings; contact?: PublicContact }) {
+  // A dedicated WhatsApp number (contact.whatsapp) wins; otherwise the contact phone is used for WhatsApp, as before.
+  const whatsapp = whatsappNumber({ whatsapp: contact?.whatsapp ?? null, whatsappDisplay: contact?.whatsappDisplay ?? null }, settings.contactPhone);
+  const whatsappHref = toWhatsAppHref(whatsapp.number);
+  const bottomLinks = footerBottomLinks(contact?.footerLinks ?? null);
   const telephoneHref = toTelephoneHref(settings.contactPhone);
 
   return (
@@ -20,23 +25,23 @@ export function CustomerFooter({ settings }: { settings: FooterSettings }) {
           <h2 id="footer-brand-title" className="sr-only">{settings.siteName}</h2>
           <BrandLogo variant="full" light siteName={settings.siteName} logoUrl={settings.logoUrl} />
           <p className="mt-4 max-w-xs text-sm leading-6 text-[#E6D8BD]">
-            Azərbaycan mağazalarını və məhsullarını bir məkanda kəşf et.
+            {contact?.tagline ?? "Azərbaycan mağazalarını və məhsullarını bir məkanda kəşf et."}
           </p>
           {(whatsappHref || telephoneHref || settings.contactEmail) ? (
             <div className="mt-5 grid gap-2">
-              {whatsappHref && settings.contactPhone && (
+              {whatsappHref && whatsapp.display && (
                 <a
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={`WhatsApp-da yaz: ${settings.contactPhone}`}
+                  aria-label={`WhatsApp-da yaz: ${whatsapp.display}`}
                   className="inline-flex min-h-11 w-fit max-w-full items-center gap-2.5 rounded-xl border border-white/15 bg-white/[.06] px-3.5 text-sm font-medium text-[#E7EEEA] transition-colors hover:border-[#9BC4AE]/50 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold"
                 >
                   <MessageCircle aria-hidden="true" size={17} className="shrink-0 text-[#9BC4AE]" />
-                  <span className="truncate">WhatsApp · {settings.contactPhone}</span>
+                  <span className="truncate">WhatsApp · {whatsapp.display}</span>
                 </a>
               )}
-              {!whatsappHref && telephoneHref && settings.contactPhone && (
+              {(!whatsappHref || contact?.whatsapp) && telephoneHref && settings.contactPhone && (
                 <a
                   href={telephoneHref}
                   aria-label={`Zəng et: ${settings.contactPhone}`}
@@ -62,6 +67,10 @@ export function CustomerFooter({ settings }: { settings: FooterSettings }) {
               Əlaqə məlumatları mövcud olduqda burada göstəriləcək.
             </p>
           )}
+          {(contact?.address || contact?.workingHours) && <div className="mt-4 grid gap-1 text-sm leading-6 text-white/75">
+            {contact.address && <p><span className="sr-only">Ünvan: </span>{contact.address}</p>}
+            {contact.workingHours && <p><span className="text-white/55">İş saatları: </span>{contact.workingHours}</p>}
+          </div>}
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {settings.instagramUrl && <a className="inline-flex min-h-11 items-center text-white/75 transition-colors hover:text-bagati-cream focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold" href={settings.instagramUrl} target="_blank" rel="noreferrer">Instagram</a>}
             {settings.facebookUrl && <a className="inline-flex min-h-11 items-center text-white/75 transition-colors hover:text-bagati-cream focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold" href={settings.facebookUrl} target="_blank" rel="noreferrer">Facebook</a>}
@@ -96,11 +105,9 @@ export function CustomerFooter({ settings }: { settings: FooterSettings }) {
       <div className="border-t border-white/10">
         <div className="container flex flex-col gap-2 py-4 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
           <span>© {new Date().getFullYear()} {settings.siteName}</span>
-          <div className="flex flex-wrap gap-x-5">
-            <Link href="/privacy" className="inline-flex min-h-11 items-center hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold">Gizlilik</Link>
-            <Link href="/terms" className="inline-flex min-h-11 items-center hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold">İstifadə şərtləri</Link>
-            <Link href="/support" className="inline-flex min-h-11 items-center hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold">Dəstək</Link>
-          </div>
+          <nav aria-label="Footer keçidləri" className="flex flex-wrap gap-x-5">
+            {bottomLinks.map((link) => <Link key={link.href + link.label} href={link.href} className="inline-flex min-h-11 items-center hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold">{link.label}</Link>)}
+          </nav>
         </div>
       </div>
     </footer>

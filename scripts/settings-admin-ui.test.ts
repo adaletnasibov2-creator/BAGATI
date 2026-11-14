@@ -16,16 +16,19 @@ test("/admin/settings: the existing form stays the 'Ümumi' tab; 'Maliyyə' rend
     ["seo", "SEO", "/admin/settings?tab=seo"],
     ["announcement", "Elan zolağı", "/admin/settings?tab=announcement"],
     ["limits", "Limitlər", "/admin/settings?tab=limits"],
+    // Phase C1: maintenance mode tab.
+    ["maintenance", "Texniki iş", "/admin/settings?tab=maintenance"],
   ]);
   const page = adminSectionSource();
   // The settings section lives in app/admin/_sections/settings.tsx (moved out of the catch-all; typed Prisma client).
   const branch = read("app/admin/_sections/settings.tsx").replace(/\r\n/g, "\n");
   // Part 2: one generic branch renders every settings-engine group (finance unchanged in content).
-  assert.match(branch, /const engineTab=\(\["finance","seo","announcement","limits"\] as const\)\.find\(tab=>tab===sp\.tab\);/);
+  assert.match(branch, /const engineTab=\(\["finance","seo","announcement","limits","maintenance"\] as const\)\.find\(tab=>tab===sp\.tab\);/);
   assert.match(branch, /const group=await loadAdminSettingsGroup\(prisma,engineTab\);/);
   assert.match(branch, /<AdminSettingsTabs active=\{engineTab\}\/>[\s\S]*?<AdminSettingField key=\{view\.key\} view=\{view\}\/>/);
   // The general tab is the same form with the same data as before the tabs.
-  assert.match(branch, /const settings=await prisma\.siteSettings\.findUnique\(\{where:\{id:SITE_SETTINGS_DEFAULTS\.id\}\}\);[\s\S]*?<AdminSettingsTabs active="general"\/><AdminSiteSettingsForm initial=\{settings\?\?SITE_SETTINGS_DEFAULTS\}\/>/);
+  // Phase C1: the same form, followed by the contact and footer settings-engine groups.
+  assert.match(branch, /prisma\.siteSettings\.findUnique\(\{where:\{id:SITE_SETTINGS_DEFAULTS\.id\}\}\),\s*loadAdminSettingsGroup\(prisma, "contact"\),\s*loadAdminSettingsGroup\(prisma, "footer"\),[\s\S]*?<AdminSettingsTabs active="general"\/>\s*<AdminSiteSettingsForm initial=\{settings\?\?SITE_SETTINGS_DEFAULTS\}\/>/);
   assert.match(page, /const admin ?= ?await requireRole\("ADMIN"\);\s*if ?\(!admin\) ?redirect\("\/admin\/login"\);/);
 });
 

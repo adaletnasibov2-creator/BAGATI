@@ -31,6 +31,7 @@ import {
   Activity,
   MonitorSmartphone,
   ClipboardCheck,
+  MailCheck,
 } from "lucide-react";
 
 const items = [
@@ -45,6 +46,7 @@ const items = [
   ["/admin/vendors", "Satıcılar", Users],
   ["/admin/seller-applications", "Satıcı müraciətləri", ClipboardCheck],
   ["/admin/customers", "Müştərilər", UserRound],
+  ["/admin/verification", "E-poçt təsdiqi gözləyənlər", MailCheck],
   ["/admin/products", "Məhsullar", Package],
   ["/admin/categories", "Kateqoriyalar", Tags],
   ["/admin/brands", "Brendlər", BadgePercent],

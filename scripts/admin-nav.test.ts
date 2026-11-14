@@ -44,7 +44,8 @@ test("no page disappeared from the menu: every former menu item is still listed 
   const former = ["/admin/security-center", "/admin/security", "/admin/security/sessions", "/admin", "/admin/settings", "/admin/homepage", "/admin/promotions", "/admin/stores", "/admin/vendors", "/admin/seller-applications", "/admin/customers", "/admin/verification", "/admin/products", "/admin/categories", "/admin/brands", "/admin/cities", "/admin/orders", "/admin/subscriptions", "/admin/commissions", "/admin/payments", "/admin/returns", "/admin/refunds", "/admin/reviews", "/admin/support", "/admin/imports", "/admin/reports", "/admin/notifications", "/admin/email", "/admin/system", "/admin/audit-log"];
   const listed = new Set(navItems.map((item) => item.href));
   assert.deepEqual(former.filter((href) => !listed.has(href)), ["/admin/payments", "/admin/refunds"]);
-  assert.deepEqual([...listed].filter((href) => !former.includes(href)), [], "no new, unknown entries");
+  // Phase C1 added Səhifələr (content pages).
+  assert.deepEqual([...listed].filter((href) => !former.includes(href)), ["/admin/pages"], "only the known additions");
 });
 
 test("requested placement", () => {
@@ -89,7 +90,7 @@ test("section split: thin router, typed sections, no admin file keeps the remove
   assert.match(router, /for \(const section of ADMIN_SECTIONS\) if \(section\.match\(\{ route, parts \}\)\) return section\.render\(ctx\);/);
   assert.doesNotMatch(router, /prisma|db:any|function (Header|Table|Pager|StatusForm|Filters)\b/);
   const sectionFiles = readdirSync(join(root, "app/admin/_sections")).filter((name) => name.endsWith(".tsx"));
-  assert.equal(sectionFiles.length, 30, "29 sections + shared.tsx");
+  assert.equal(sectionFiles.length, 32, "29 sections + Phase C1 pages and page-editor + shared.tsx");
   const adminFiles = [...readdirSync(join(root, "app/admin"), { recursive: true }).map(String)].filter((name) => name.endsWith(".tsx")).map((name) => `app/admin/${name.replace(/\\/g, "/")}`);
   for (const file of adminFiles) {
     const source = read(file);

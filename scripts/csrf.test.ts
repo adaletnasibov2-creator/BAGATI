@@ -102,24 +102,29 @@ test("middleware protects unsafe API methods and leaves pages, safe methods, and
   const previous = { nodeEnv: process.env.NODE_ENV, appBaseUrl: process.env.APP_BASE_URL };
   Object.assign(process.env, { NODE_ENV: "production" });
   process.env.APP_BASE_URL = "https://shopbagati.com";
+  const { resetMaintenanceStateCache } = await import("../lib/maintenance-state");
+  resetMaintenanceStateCache();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({ enabled: false, message: "x" })) as typeof fetch;
   try {
     const make = (method: string, path: string, headers: Record<string, string>) => new NextRequest(`https://shopbagati.com${path}`, { method, headers: { host: "shopbagati.com", ...headers } });
-    const blocked = middleware(make("POST", "/api/orders", { origin: "https://evil.example" }));
+    const blocked = (await middleware(make("POST", "/api/orders", { origin: "https://evil.example" })));
     assert.equal(blocked.status, 403);
     assert.equal((await blocked.json()).code, "CROSS_SITE_REQUEST");
-    assert.equal(middleware(make("PUT", "/api/admin/site-settings", { origin: "https://evil.example" })).status, 403);
-    assert.equal(middleware(make("PATCH", "/api/account/profile", { origin: "https://evil.example" })).status, 403);
-    assert.equal(middleware(make("DELETE", "/api/admin/promotions", { origin: "https://evil.example" })).status, 403);
-    assert.equal(middleware(make("POST", "/api/vendor/stores", { origin: "https://shopbagati.com" })).status, 200);
-    assert.equal(middleware(make("GET", "/api/cart", { origin: "https://evil.example" })).status, 200);
-    assert.equal(middleware(make("POST", "/api/security/ingest/apache", { origin: "https://evil.example" })).status, 200);
-    assert.equal(middleware(make("POST", "/api/health", { origin: "https://evil.example" })).status, 200);
-    assert.equal(middleware(make("POST", "/api/payments/epoint/callback", { origin: "https://evil.example" })).status, 200);
-    assert.equal(middleware(make("POST", "/api/payments/epoint/initiate", { origin: "https://evil.example" })).status, 403);
-    assert.equal(middleware(make("POST", "/checkout", { origin: "https://evil.example" })).status, 200);
-    const canonical = middleware(new NextRequest("http://www.shopbagati.com/api/cart", { headers: { host: "www.shopbagati.com" } }));
+    assert.equal((await middleware(make("PUT", "/api/admin/site-settings", { origin: "https://evil.example" }))).status, 403);
+    assert.equal((await middleware(make("PATCH", "/api/account/profile", { origin: "https://evil.example" }))).status, 403);
+    assert.equal((await middleware(make("DELETE", "/api/admin/promotions", { origin: "https://evil.example" }))).status, 403);
+    assert.equal((await middleware(make("POST", "/api/vendor/stores", { origin: "https://shopbagati.com" }))).status, 200);
+    assert.equal((await middleware(make("GET", "/api/cart", { origin: "https://evil.example" }))).status, 200);
+    assert.equal((await middleware(make("POST", "/api/security/ingest/apache", { origin: "https://evil.example" }))).status, 200);
+    assert.equal((await middleware(make("POST", "/api/health", { origin: "https://evil.example" }))).status, 200);
+    assert.equal((await middleware(make("POST", "/api/payments/epoint/callback", { origin: "https://evil.example" }))).status, 200);
+    assert.equal((await middleware(make("POST", "/api/payments/epoint/initiate", { origin: "https://evil.example" }))).status, 403);
+    assert.equal((await middleware(make("POST", "/checkout", { origin: "https://evil.example" }))).status, 200);
+    const canonical = await middleware(new NextRequest("http://www.shopbagati.com/api/cart", { headers: { host: "www.shopbagati.com" } }));
     assert.equal(canonical.status, 308);
   } finally {
+    globalThis.fetch = realFetch;
     Object.assign(process.env, { NODE_ENV: previous.nodeEnv });
     if (previous.appBaseUrl === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = previous.appBaseUrl;
   }

@@ -112,7 +112,7 @@ test("no admin component uses window.confirm any more; each uses the dialog and 
     }
   }
   assert.deepEqual(users.sort(), [
-    "admin-complimentary-manager.tsx", "admin-mutation-form.tsx", "admin-promotion-manager.tsx", "admin-sessions-list.tsx",
+    "admin-complimentary-manager.tsx", "admin-content-page-editor.tsx", "admin-mutation-form.tsx", "admin-promotion-manager.tsx", "admin-sessions-list.tsx",
     "admin-store-activation-action.tsx", "admin-store-review-actions.tsx", "admin-subscription-manager.tsx", "admin-two-factor-settings.tsx",
   ]);
   const twoFactor = read("components/admin-two-factor-settings.tsx");

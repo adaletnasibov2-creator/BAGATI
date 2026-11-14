@@ -1,3 +1,8 @@
-import Link from "next/link";
-const items=[{q:"Səbətimdə müxtəlif mağazalardan məhsul ola bilərmi?",a:"Bəli. Səbət mağazalara görə qruplaşdırılır, sifariş isə mağaza sifarişlərinə bölünür."},{q:"Məhsul stokda yoxdursa nə baş verir?",a:"Stok mövcudluğu məhsul səhifəsində göstərilir. Səbət və sifariş zamanı stok yenidən yoxlanılır."},{q:"Onlayn ödəniş edə bilərəmmi?",a:"Ödəniş provayderi hələ qoşulmayıb. Sifariş qeydi yaradıla bilər, lakin bu sayt onlayn ödəniş tutmur."},{q:"Şəhərimi necə dəyişə bilərəm?",a:"Səhifənin yuxarı hissəsindəki şəhər seçicisindən aktiv şəhəri seçin. Məhsul və mağaza siyahıları həmin şəhərə görə süzülür."}];
-export default function HelpPage(){return <div className="container py-10 md:py-14"><p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald">Məlumat</p><h1 className="mt-2 text-3xl font-semibold">Kömək mərkəzi</h1><p className="mt-3 text-muted">BAGATI alış-verişi ilə bağlı əsas məlumatlar.</p><div className="mt-8 max-w-3xl divide-y divide-line rounded-2xl border border-line bg-white px-5">{items.map(item=><details key={item.q} className="py-5"><summary className="cursor-pointer font-medium">{item.q}</summary><p className="mt-3 text-sm leading-6 text-muted">{item.a}</p></details>)}</div><p className="mt-7 text-sm text-muted">Sualınız cavabsız qaldı? <Link href="/support" className="text-emerald">Dəstək müraciəti göndərin.</Link></p></div>}
+import { ContentPageView } from "@/components/content-page-view";
+
+// Text from /admin/pages (ContentPage "help"); the built-in text when the page was never saved.
+export const dynamic = "force-dynamic";
+
+export default function HelpPage() {
+  return <ContentPageView slug="help" eyebrow="Məlumat" />;
+}

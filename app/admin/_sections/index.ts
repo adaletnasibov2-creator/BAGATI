@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 import type { SectionContext } from "./shared";
 import { renderSettings } from "./settings";
 import { renderHomepage } from "./homepage";
+import { renderPages } from "./pages";
+import { renderPageEditor } from "./page-editor";
 import { renderPromotions } from "./promotions";
 import { renderPayments } from "./payments";
 import { renderStoresNew } from "./stores-new";
@@ -39,6 +41,9 @@ export type AdminSection = { match: (where: { route: string; parts: string[] }) 
 export const ADMIN_SECTIONS: AdminSection[] = [
   { match: ({ route }) => route==="settings", render: renderSettings },
   { match: ({ route }) => route==="homepage", render: renderHomepage },
+  // Phase C1: content pages (list, then the editor of one page).
+  { match: ({ route }) => route==="pages", render: renderPages },
+  { match: ({ parts }) => parts[0]==="pages"&&parts.length===2, render: renderPageEditor },
   { match: ({ route }) => route==="promotions", render: renderPromotions },
   { match: ({ route }) => route==="payments", render: renderPayments },
   { match: ({ route }) => route==="stores/new", render: renderStoresNew },

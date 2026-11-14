@@ -16,22 +16,31 @@ import { z } from "zod";
 import { commissionPercentToRate, commissionRateToPercent } from "@/lib/commission-rules";
 import { isSafeHomepageHref } from "@/lib/site-content";
 import { ANNOUNCEMENT_TONE_LABELS } from "@/lib/announcement";
+import { AZ_PHONE_ERROR, normalizeAzPhone } from "@/lib/az-phone";
+import { MAINTENANCE_MESSAGE_DEFAULT } from "@/lib/maintenance-defaults";
 
 export type SettingPermission = "settings.finance" | "settings.content" | "settings.limits";
-export type SettingGroupId = "finance" | "seo" | "announcement" | "limits";
+export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance";
 
 export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description: string }> = {
   finance: { label: "Maliyyə", description: "Komissiya və digər maliyyə parametrləri." },
   seo: { label: "SEO", description: "Axtarış sistemləri və sosial şəbəkələr üçün standart mətnlər." },
   announcement: { label: "Elan zolağı", description: "Bütün müştəri səhifələrinin yuxarısında göstərilən bir elan." },
   limits: { label: "Limitlər", description: "Mesaj və satıcı müraciəti limitləri. Hədlər kodda qorunur." },
+  contact: { label: "Əlaqə", description: "Footer və əlaqə səhifəsində göstərilən ünvan, iş saatları və WhatsApp nömrəsi." },
+  footer: { label: "Footer", description: "Footer şüarı və footer keçidləri. Boş qalanda indiki mətn və keçidlər göstərilir." },
+  maintenance: { label: "Texniki iş rejimi", description: "Açıq olanda müştəri və satıcı səhifələri müvəqqəti bağlanır; admin paneli və ödəniş bildirişləri işləyir." },
 };
 
 export type SettingInput =
   | { kind: "percent"; min: number; max: number; step: number; unit: "%" }
   | { kind: "integer"; min: number; max: number; unit?: string }
   | { kind: "text"; minLength: number; maxLength: number; multiline?: boolean; placeholder?: string; mustContain?: string }
-  | { kind: "announcement"; textMax: number };
+  | { kind: "announcement"; textMax: number }
+  /** On/off switch (stored as a boolean). */
+  | { kind: "toggle" }
+  /** List of { label, href } rows (footer links). */
+  | { kind: "links"; maxItems: number; labelMax: number };
 
 export type SettingDefinition<T = unknown> = {
   key: string;
@@ -337,6 +346,128 @@ const announcementBar: SettingDefinition<AnnouncementBar> = {
   read: "ttl",
 };
 
+// ---- Contact and footer (shown in the "Ümumi" tab) ---------------------------------------------------------
+
+/** Footer tagline today (components/customer-footer.tsx); the default keeps it. */
+export const FOOTER_TAGLINE_DEFAULT = "Azərbaycan mağazalarını və məhsullarını bir məkanda kəşf et.";
+export const FOOTER_LINKS_MAX = 6;
+export const FOOTER_LINK_LABEL_MAX = 40;
+
+const contactSettings = [
+  textSetting({
+    key: "contact.address", group: "contact", permission: "settings.content",
+    label: "Ünvan",
+    description: "Footer və əlaqə səhifəsində göstərilən ünvan. Boş qalanda göstərilmir.",
+    minLength: 3, maxLength: 200, default: null, placeholder: "Bakı şəhəri, Nizami küç. 1",
+  }),
+  textSetting({
+    key: "contact.workingHours", group: "contact", permission: "settings.content",
+    label: "İş saatları",
+    description: "Footer və əlaqə səhifəsində göstərilən iş saatları. Boş qalanda göstərilmir.",
+    minLength: 3, maxLength: 120, default: null, placeholder: "Hər gün 09:00–21:00",
+  }),
+  textSetting({
+    key: "contact.whatsapp", group: "contact", permission: "settings.content",
+    label: "WhatsApp nömrəsi",
+    description: "Ayrıca WhatsApp nömrəsi. Boş qalanda əvvəlki kimi əlaqə telefonu WhatsApp üçün istifadə olunur.",
+    minLength: 7, maxLength: 40, default: null, placeholder: "+994 55 123 45 67",
+    extra: (value) => (normalizeAzPhone(value) ? null : AZ_PHONE_ERROR),
+  }),
+];
+
+export type FooterLink = { label: string; href: string };
+
+const footerLinkSchema = z.object({
+  label: z.string().min(1).max(FOOTER_LINK_LABEL_MAX).refine((value) => value === value.trim() && !/[\r\n\t]/.test(value), "Bir sətirlik ad yazın."),
+  href: z.string().min(1).max(500).refine(isSafeHomepageHref, "Keçid / ilə başlayan daxili yol və ya HTTPS ünvan olmalıdır."),
+}).strict();
+
+const footerLinks: SettingDefinition<FooterLink[]> = {
+  key: "footer.links",
+  group: "footer",
+  permission: "settings.content",
+  sensitive: false,
+  label: "Footer keçidləri",
+  description: `Footerdə göstərilən ən çox ${FOOTER_LINKS_MAX} keçid (ad və ünvan). Boş qalanda indiki keçidlər göstərilir.`,
+  schema: z.array(footerLinkSchema).min(1).max(FOOTER_LINKS_MAX),
+  // Form rows: label0/href0 … label5/href5; fully empty rows are ignored.
+  inputSchema: z.record(z.union([z.string(), z.boolean()])).transform((raw, context) => {
+    const rows: FooterLink[] = [];
+    for (let index = 0; index < FOOTER_LINKS_MAX; index += 1) {
+      const label = String(raw[`label${index}`] ?? "").replace(/\s+/g, " ").trim();
+      const href = String(raw[`href${index}`] ?? "").trim();
+      if (!label && !href) continue;
+      if (!label || !href) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: [`row${index}`], message: `${index + 1}-ci sətir: həm ad, həm keçid yazın.` });
+        continue;
+      }
+      const checked = footerLinkSchema.safeParse({ label, href });
+      if (!checked.success) {
+        for (const issue of checked.error.issues) context.addIssue({ ...issue, path: [`row${index}`], message: `${index + 1}-ci sətir: ${issue.message}` });
+        continue;
+      }
+      rows.push(checked.data);
+    }
+    if (!rows.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Ən azı bir keçid yazın və ya standart keçidlərə qaytarın." });
+    return rows;
+  }),
+  toInput: (value) => JSON.stringify(value),
+  toForm: (value) => {
+    const form: Record<string, string> = {};
+    for (let index = 0; index < FOOTER_LINKS_MAX; index += 1) {
+      form[`label${index}`] = value?.[index]?.label ?? "";
+      form[`href${index}`] = value?.[index]?.href ?? "";
+    }
+    return form;
+  },
+  objectFields: ["label", "href"],
+  display: (value) => (value === null ? "Standart keçidlər" : value.map((link) => link.label).join(", ")),
+  default: null,
+  input: { kind: "links", maxItems: FOOTER_LINKS_MAX, labelMax: FOOTER_LINK_LABEL_MAX },
+  read: "ttl",
+};
+
+const footerSettings = [
+  textSetting({
+    key: "footer.tagline", group: "footer", permission: "settings.content",
+    label: "Footer şüarı",
+    description: "Footerdə logonun altında göstərilən qısa mətn.",
+    minLength: 3, maxLength: 160, default: FOOTER_TAGLINE_DEFAULT,
+  }),
+  footerLinks,
+];
+
+// ---- Maintenance mode ---------------------------------------------------------------------------------------
+
+export { MAINTENANCE_MESSAGE_DEFAULT };
+
+const maintenanceEnabled: SettingDefinition<boolean> = {
+  key: "maintenance.enabled",
+  group: "maintenance",
+  permission: "settings.content",
+  sensitive: true,
+  sensitiveNotice: "Açıq olanda bütün müştəri və satıcı səhifələri və API-ləri 503 qaytarır: alış-veriş, səbət və sifariş dayanır. Admin paneli və ödəniş bildirişləri işləməyə davam edir.",
+  label: "Texniki iş rejimi",
+  description: "Saytı müvəqqəti bağlayır. Admin paneli, admin girişi, /api/ready və ödəniş bildirişləri açıq qalır.",
+  schema: z.boolean(),
+  inputSchema: z.union([z.boolean(), z.enum(["true", "false"])]).transform((value) => value === true || value === "true"),
+  toInput: (value) => String(value),
+  display: (value) => (value ? "Açıqdır — sayt bağlıdır" : "Söndürülüb"),
+  default: false,
+  input: { kind: "toggle" },
+  read: "ttl",
+};
+
+const maintenanceSettings = [
+  maintenanceEnabled,
+  textSetting({
+    key: "maintenance.message", group: "maintenance", permission: "settings.content",
+    label: "Texniki iş mesajı",
+    description: "Texniki iş rejimində müştərilərə göstərilən mətn.",
+    minLength: 10, maxLength: 300, default: MAINTENANCE_MESSAGE_DEFAULT,
+  }),
+];
+
 // ---- Registry ----------------------------------------------------------------------------------------------
 
 export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
@@ -344,6 +475,9 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
   ...(seoSettings as SettingDefinition[]),
   ...(limitSettings as SettingDefinition[]),
   announcementBar as SettingDefinition,
+  ...(contactSettings as SettingDefinition[]),
+  ...(footerSettings as SettingDefinition[]),
+  ...(maintenanceSettings as SettingDefinition[]),
 ];
 
 /**
@@ -373,4 +507,11 @@ export const SETTING_KEYS = {
   sellerApplicationPerUserPerHour: "limits.sellerApplication.perUserPerHour",
   sellerApplicationPerIpPerHour: "limits.sellerApplication.perIpPerHour",
   announcementBar: "announcement.bar",
+  contactAddress: "contact.address",
+  contactWorkingHours: "contact.workingHours",
+  contactWhatsapp: "contact.whatsapp",
+  footerTagline: "footer.tagline",
+  footerLinks: "footer.links",
+  maintenanceEnabled: "maintenance.enabled",
+  maintenanceMessage: "maintenance.message",
 } as const;

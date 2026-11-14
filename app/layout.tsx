@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import "./globals.css";
-import "leaflet/dist/leaflet.css";
 import { AuthSessionSync } from "@/components/auth-session-sync";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getSetting } from "@/lib/settings/read";

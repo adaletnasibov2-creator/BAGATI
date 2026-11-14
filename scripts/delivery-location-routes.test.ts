@@ -207,3 +207,13 @@ test("privacy: only the order pages, the reveal API and order creation read the 
     for (const call of read(file).match(/enqueueEmail\([^;]*\);/g) ?? []) assert.doesNotMatch(call, /latitude|longitude|addressSnapshot|line1/, `${file}: ${call.slice(0, 60)}`);
   }
 });
+
+test("map tiles: single OSM host, attribution kept, Leaflet CSS only with the map", () => {
+  const surface = read("components/interactive-map-surface.tsx");
+  assert.match(surface, /\|\| "https:\/\/tile\.openstreetmap\.org\/\{z\}\/\{x\}\/\{y\}\.png";/);
+  assert.doesNotMatch(surface, /\{s\}\./);
+  assert.match(surface, /OpenStreetMap<\/a> contributors/);
+  assert.match(surface, /^import "leaflet\/dist\/leaflet\.css";$/m);
+  assert.doesNotMatch(read("app/layout.tsx"), /leaflet/);
+  assert.match(read("components/interactive-map.tsx"), /dynamic\(\(\) => import\("@\/components\/interactive-map-surface"\), \{\n\s*ssr: false,/);
+});

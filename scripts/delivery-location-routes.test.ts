@@ -123,3 +123,24 @@ test("dispatch menu: portal, plain-text brands, no referrer, Bolt copy message a
   assert.match(menu, /event\.key === "Escape"/);
   assert.match(menu, /buttonRef\.current\?\.focus\(\)/);
 });
+
+test("seller shipment API: the shipment status never moves the order status; closed orders refuse shipment changes", () => {
+  const route = read("app/api/vendor/[storeId]/[section]/route.ts");
+  const orders = route.slice(route.indexOf('if(section==="orders"){\n  const s=z.object('), route.indexOf("OrderFulfillmentError){", route.indexOf('if(section==="orders"){\n  const s=z.object(')));
+  assert.match(orders, /const targetOrderStatus=s\.data\.status;/);
+  assert.doesNotMatch(orders, /shipmentStatus==="DELIVERED"\?"DELIVERED"/, "no cascade to the order status");
+  assert.match(orders, /if\(s\.data\.shipmentStatus&&!shipmentChangeAllowedForOrder\(locked\.status\)\)return \{error:"SHIPMENT_ORDER_CLOSED"\};/);
+  assert.match(orders, /Object\.assign\(deliveryData,shipmentTimestamps\(s\.data\.shipmentStatus,locked,new Date\(\)\)\);/);
+  // A shipment-only change writes the store order row only (optimistic on status + shipment status), no order transition.
+  assert.match(orders, /tx\.storeOrder\.updateMany\(\{where:\{id:locked\.id,storeId,status:locked\.status,shipmentStatus:locked\.shipmentStatus\},data:deliveryData\}\)/);
+  assert.match(orders, /if\(targetOrderStatus\)\{\n\s*const transitioned=await transitionVendorStoreOrder\(/);
+});
+
+test("seller UI: three steps (Hazırlanır, Yolda, Çatdırıldı); only the next one is enabled; detailed form kept", () => {
+  const ui = read("components/vendor-order-actions.tsx");
+  assert.match(ui, /SIMPLE_SHIPMENT_STEPS\.map\(/);
+  assert.match(ui, /disabled=\{busy \|\| !isNext\}/);
+  assert.match(ui, /body: JSON\.stringify\(\{ id: props\.storeOrderId, shipmentStatus: value \}\)/, "shipment only; no order status in the body");
+  assert.match(ui, /Ətraflı göndəriş statusu/);
+  assert.doesNotMatch(ui, /\["HANDED_TO_COURIER", "SHIPPED"\]\.includes\(props\.status\)/);
+});

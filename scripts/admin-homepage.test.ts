@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homeBannerSchema, homepageFeaturedSchema, isHomeBannerVisible, isSafeHomepageHref, siteSettingsSchema } from "../lib/site-content";
+import { adminSectionSource } from "./admin-section-source";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const source = (path: string) => readFileSync(resolve(root, path), "utf8");
@@ -114,7 +115,7 @@ test("saved site branding is rendered in the public header, footer, and metadata
 });
 
 test("admin payment route clearly reports that transactions are unavailable", () => {
-  const page = source("app/admin/[...section]/page.tsx");
+  const page = adminSectionSource();
   assert.match(page, /if\(route==="payments"\)/);
   assert.match(page, /Bu səhifə kart məlumatı saxlamır və ödəniş əməliyyatı göndərmir/);
 });

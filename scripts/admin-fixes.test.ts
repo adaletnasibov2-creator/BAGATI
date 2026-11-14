@@ -16,6 +16,7 @@ import {
 } from "../lib/admin-store-profile";
 import { ADMIN_PENDING_ORDER_GROUP, ADMIN_PENDING_ORDER_STATUSES, ADMIN_PENDING_ORDERS_HREF, adminOrderStatusWhere } from "../lib/admin-order-filters";
 import { Filters, FilterSelect } from "../components/admin-list-filters";
+import { adminSectionSource } from "./admin-section-source";
 
 // tsx compiles the components' JSX with the classic runtime, which needs a global React (as in store-public-contact.test.ts).
 (globalThis as { React?: typeof React }).React = React;
@@ -23,7 +24,7 @@ import { Filters, FilterSelect } from "../components/admin-list-filters";
 const root = join(__dirname, "..");
 // Line endings normalised: with core.autocrlf=true a checkout has CRLF, and the patterns below use "\n".
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
-const sectionPage = read("app/admin/[...section]/page.tsx");
+const sectionPage = adminSectionSource();
 const adminRoute = read("app/api/admin/[...resource]/route.ts");
 
 // ---------------------------------------------------------------------------------------------------------------

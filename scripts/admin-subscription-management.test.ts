@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { assertFeature, hasFeature, resolveStoreEntitlements } from "../lib/subscription-entitlements";
+import { adminSectionSource } from "./admin-section-source";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const active = { adminManaged: false, storeStatus: "ACTIVE", storeActive: true, vendorActive: true, cityActive: true, subscriptionStatus: "ACTIVE", planActive: true, periodStart: new Date("2026-10-01T00:00:00Z"), periodEnd: new Date("2026-11-01T00:00:00Z"), complimentary: null };
@@ -27,7 +28,7 @@ test("admin subscription controls are role protected, store scoped, manual-only 
   // The manual save transaction lives in lib/admin-manual-subscription.ts; the route only validates and delegates.
   const save = source("lib/admin-manual-subscription.ts");
   const schema = source("prisma/schema.prisma");
-  const adminPage = source("app/admin/[...section]/page.tsx");
+  const adminPage = adminSectionSource();
   assert.match(api, /export async function PATCH[\s\S]*?requireRole\("ADMIN"\)/);
   assert.match(api, /adminSubscriptionSchema[\s\S]*?storeId:[\s\S]*?planId:[\s\S]*?currentPeriodStart:[\s\S]*?currentPeriodEnd:[\s\S]*?reason:/);
   assert.match(api, /saveManualSubscription\(tx, \{[\s\S]*?storeId: parsed\.data\.storeId[\s\S]*?adminId: admin\.id/);

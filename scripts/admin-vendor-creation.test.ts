@@ -3,10 +3,11 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { adminSectionSource } from "./admin-section-source";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const vendorRoute = readFileSync(resolve(root, "app/api/admin/vendors/route.ts"), "utf8");
-const adminPage = readFileSync(resolve(root, "app/admin/[...section]/page.tsx"), "utf8");
+const adminPage = adminSectionSource();
 const verificationPage = readFileSync(resolve(root, "app/admin/verification/page.tsx"), "utf8");
 const validation = readFileSync(resolve(root, "lib/validation.ts"), "utf8");
 

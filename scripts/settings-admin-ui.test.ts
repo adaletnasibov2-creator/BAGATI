@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { ADMIN_SETTINGS_TABS } from "../components/admin-settings-tabs";
+import { adminSectionSource } from "./admin-section-source";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
@@ -16,7 +17,7 @@ test("/admin/settings: the existing form stays the 'Ümumi' tab; 'Maliyyə' rend
     ["announcement", "Elan zolağı", "/admin/settings?tab=announcement"],
     ["limits", "Limitlər", "/admin/settings?tab=limits"],
   ]);
-  const page = read("app/admin/[...section]/page.tsx");
+  const page = adminSectionSource();
   const branch = page.slice(page.indexOf(' if(route==="settings"){'), page.indexOf(' if(route==="homepage")'));
   // Part 2: one generic branch renders every settings-engine group (finance unchanged in content).
   assert.match(branch, /const engineTab=\(\["finance","seo","announcement","limits"\] as const\)\.find\(tab=>tab===sp\.tab\);/);

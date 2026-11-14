@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
+import { adminSectionSource } from "./admin-section-source";
 import {
   AUDIT_CSV_HEADER,
   AUDIT_EXPORT_MAX_ROWS,
@@ -30,7 +31,7 @@ test("audit page and CSV export require the ADMIN role", () => {
   assert.match(button, /method: "POST"/);
   assert.doesNotMatch(read("app/admin/audit-log/page.tsx"), /href=\{`\/api\/admin\/audit-log\/export/, "no GET link to the export");
   // The old catch-all branch is gone, so the dedicated page is the only audit list.
-  assert.doesNotMatch(read("app/admin/[...section]/page.tsx"), /route==="audit-log"/);
+  assert.doesNotMatch(adminSectionSource(), /route==="audit-log"/);
 });
 
 test("the export writes an AUDIT_EXPORT entry and never selects IP, user agent or tokens", () => {

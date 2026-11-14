@@ -5,10 +5,12 @@
 import type { ReactNode } from "react";
 import type { SectionContext } from "./shared";
 import { renderPayments } from "./payments";
+import { renderRefunds } from "./refunds";
 
 export type AdminSection = { match: (route: string, parts: string[]) => boolean; render: (ctx: SectionContext) => Promise<ReactNode> };
 
 export const ADMIN_SECTIONS: AdminSection[] = [
   { match: (route, parts) => route==="payments", render: renderPayments },
+  { match: (route, parts) => route==="refunds", render: renderRefunds },
 ];
-/* ENTRIES [{"module":"payments","exportName":"renderPayments","matchExpr":"route===\"payments\""}] */
+/* ENTRIES [{"module":"payments","exportName":"renderPayments","matchExpr":"route===\"payments\""},{"module":"refunds","exportName":"renderRefunds","matchExpr":"route===\"refunds\""}] */

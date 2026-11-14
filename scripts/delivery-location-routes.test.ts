@@ -3,7 +3,7 @@
  * covered by delivery-location.test.ts.
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { readOrderCoordinates } from "../lib/delivery-location";
@@ -188,7 +188,6 @@ test("admin order detail: formatted address, coordinates masked in the HTML; rev
 });
 
 test("privacy: only the order pages, the reveal API and order creation read the address snapshot", () => {
-  const { readdirSync } = require("node:fs") as typeof import("node:fs");
   const root = join(__dirname, "..");
   const walk = (dir: string): string[] => readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) =>
     entry.isDirectory() ? walk(`${dir}/${entry.name}`) : /\.(ts|tsx)$/.test(entry.name) ? [`${dir}/${entry.name}`] : []);

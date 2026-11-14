@@ -145,3 +145,19 @@ test("badge: the only renderer is gated on sellerVerified, computed from the adm
   assert.match(lib, /export async function isSellerVoenVerified[\s\S]*?try \{\n\s*return \(await verifiedVoenUserIds\(db, \[input\]\)\)\.has\(input\.userId\);\n\s*\} catch \{\n\s*return false;/);
   assert.match(lib, /where: \{ revokedAt: null, OR: wanted\.map/, "revoked verifications never count");
 });
+
+test("seller-facing VÖEN fields: help text, admin-verification note, same rule in the browser", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const read = (path: string) => readFileSync(join(__dirname, "..", path), "utf8").replace(/\r\n/g, "\n");
+  const { VOEN_ADMIN_NOTE } = await import("../lib/voen");
+  assert.equal(VOEN_ADMIN_NOTE, "VÖEN-i BAGATI admini vergi orqanının rəsmi axtarışında yoxlayıb təsdiqləyir.");
+  const apply = read("components/vendor-apply-form.tsx");
+  assert.match(apply, /<span id="voen-help"[^>]*>\{VOEN_HELP\} \{VOEN_ADMIN_NOTE\}<\/span>/);
+  assert.match(apply, /\{voenTouched && !voenCheck\.ok && <span id="voen-error" role="alert"[^>]*>\{voenCheck\.error\}<\/span>\}/);
+  assert.match(apply, /if \(!voenCheck\.ok\) \{ setVoenTouched\(true\); setError\(voenCheck\.error\); return; \}/, "not sent when the format is wrong");
+  const editor = read("components/vendor-store-profile-editor.tsx");
+  assert.match(editor, /event\.currentTarget\.setCustomValidity\(value\.trim\(\)&&changed&&!parsed\.ok\?parsed\.error:""\)/, "checked only when changed, like the server");
+  assert.match(editor, /\{VOEN_HELP\} \{VOEN_ADMIN_NOTE\} VÖEN dəyişsə, yenidən yoxlanılır\./);
+  assert.match(read("app/admin/_sections/vendors-new.tsx"), /label:"VÖEN \(10 rəqəm, sonuncu 1 və ya 2\)",required:true,placeholder:"1234567891"/);
+});

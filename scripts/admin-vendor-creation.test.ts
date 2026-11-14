@@ -87,7 +87,7 @@ test("admin UI exposes a vendors/new route with the full onboarding form", () =>
   assert.match(adminPage, /name:"email",label:"E-poçt",type:"email"/);
   assert.match(adminPage, /name:"password",label:"İlkin parol/);
   // Label now states the 10-digit rule (follow-up); the field itself is unchanged.
-  assert.match(adminPage, /name:"voen",label:"VÖEN \(10 rəqəm\)",required:true/);
+  assert.match(adminPage, /name:"voen",label:"VÖEN \(10 rəqəm, sonuncu 1 və ya 2\)",required:true/);
   assert.match(adminPage, /name:"legalName"/);
   assert.match(adminPage, /name:"legalAddress"/);
   assert.match(adminPage, /name:"storeAddress"/);

@@ -18,13 +18,14 @@ test("/admin/settings: the existing form stays the 'Ümumi' tab; 'Maliyyə' rend
     ["limits", "Limitlər", "/admin/settings?tab=limits"],
   ]);
   const page = adminSectionSource();
-  const branch = page.slice(page.indexOf(' if(route==="settings"){'), page.indexOf(' if(route==="homepage")'));
+  // The settings section lives in app/admin/_sections/settings.tsx (moved out of the catch-all; typed Prisma client).
+  const branch = read("app/admin/_sections/settings.tsx").replace(/\r\n/g, "\n");
   // Part 2: one generic branch renders every settings-engine group (finance unchanged in content).
   assert.match(branch, /const engineTab=\(\["finance","seo","announcement","limits"\] as const\)\.find\(tab=>tab===sp\.tab\);/);
   assert.match(branch, /const group=await loadAdminSettingsGroup\(prisma,engineTab\);/);
   assert.match(branch, /<AdminSettingsTabs active=\{engineTab\}\/>[\s\S]*?<AdminSettingField key=\{view\.key\} view=\{view\}\/>/);
   // The general tab is the same form with the same data as before the tabs.
-  assert.match(branch, /const settings=await db\.siteSettings\.findUnique\(\{where:\{id:SITE_SETTINGS_DEFAULTS\.id\}\}\);[\s\S]*?<AdminSettingsTabs active="general"\/><AdminSiteSettingsForm initial=\{settings\?\?SITE_SETTINGS_DEFAULTS\}\/>/);
+  assert.match(branch, /const settings=await prisma\.siteSettings\.findUnique\(\{where:\{id:SITE_SETTINGS_DEFAULTS\.id\}\}\);[\s\S]*?<AdminSettingsTabs active="general"\/><AdminSiteSettingsForm initial=\{settings\?\?SITE_SETTINGS_DEFAULTS\}\/>/);
   assert.match(page, /const admin=await requireRole\("ADMIN"\);if\(!admin\)redirect\("\/admin\/login"\);/);
 });
 

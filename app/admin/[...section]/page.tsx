@@ -49,16 +49,6 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
  const ctx:SectionContext={admin,parts,route,sp,q,page,take,skip,pageQuery,shell};
  for(const section of ADMIN_SECTIONS)if(section.match(route,parts))return section.render(ctx);
 
- if(route==="settings"){
-  // Settings-engine tabs (Maliyyə, SEO, Elan zolağı, Limitlər): one generic page per registry group.
-  const engineTab=(["finance","seo","announcement","limits"] as const).find(tab=>tab===sp.tab);
-  if(engineTab){
-   const group=await loadAdminSettingsGroup(prisma,engineTab);
-   return shell(<><Header title="Sayt parametrləri" detail={group.group.description}/><AdminSettingsTabs active={engineTab}/><div className="grid gap-4">{group.settings.map(view=><AdminSettingField key={view.key} view={view}/>)}</div></>);
-  }
-  const settings=await db.siteSettings.findUnique({where:{id:SITE_SETTINGS_DEFAULTS.id}});
-  return shell(<><Header title="Sayt parametrləri" detail="Dəyişikliklər ictimai header, əlaqə məlumatları, qaydalar və ana səhifə təqdimatında görünür."/><AdminSettingsTabs active="general"/><AdminSiteSettingsForm initial={settings??SITE_SETTINGS_DEFAULTS}/></>);
- }
 
  if(route==="stores/new"){
   const [vendors,cities]=await Promise.all([db.vendorProfile.findMany({where:{user:{isActive:true}},include:{user:{select:{email:true}}},orderBy:{displayName:"asc"}}),db.city.findMany({where:{isActive:true},orderBy:{name:"asc"}})]);

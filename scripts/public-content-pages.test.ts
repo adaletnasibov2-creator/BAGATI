@@ -33,18 +33,37 @@ test("view: database row or built-in text (never empty); 'Son yenilənmə' only 
   assert.match(reader, /return \{ slug, \.\.\.CONTENT_PAGE_DEFAULTS\[slug\], updatedAt: null, fromDatabase: false \};/);
 });
 
-test("the built-in texts contain every sentence of the former hard-coded pages (git main)", () => {
-  let gitAvailable = true;
+/**
+ * The last commit before Phase C1 (merge of Phase B), where the four pages still had hard-coded text. Pinned: `main`
+ * stopped working as the reference once Phase C1 was merged (the pages there now render ContentPageView).
+ */
+const PRE_CONTENT_PAGES_COMMIT = "5c7b97d89b2efb14d2411a053ac76407edf00331";
+
+function commitAvailable(sha: string): boolean {
+  try {
+    execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: root, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+test("the built-in texts contain every sentence of the former hard-coded pages (commit 5c7b97d)", (t) => {
+  // A full clone always has the commit; only a shallow clone or an export without .git lacks it.
+  if (!commitAvailable(PRE_CONTENT_PAGES_COMMIT)) {
+    t.skip(`git history without ${PRE_CONTENT_PAGES_COMMIT.slice(0, 7)} (shallow clone or no .git)`);
+    return;
+  }
   const sentencesOf = (slug: string) => {
-    const source = execFileSync("git", ["show", `main:app/(customer)/${slug}/page.tsx`], { cwd: root, encoding: "utf8" });
+    const source = execFileSync("git", ["show", `${PRE_CONTENT_PAGES_COMMIT}:app/(customer)/${slug}/page.tsx`], { cwd: root, encoding: "utf8" });
     // Visible text: JSX text nodes and the help FAQ strings, split into sentences.
     const texts = [...source.matchAll(/>([^<>{}]{12,})</g), ...source.matchAll(/[qa]:"([^"]{12,})"/g)].map((match) => match[1].replace(/\s+/g, " ").trim());
     return texts.flatMap((text) => text.split(/(?<=\.)\s+/)).filter((sentence) => sentence.length > 15);
   };
   let checked = 0;
   for (const slug of ["terms", "privacy", "about", "help"] as const) {
-    let sentences: string[] = [];
-    try { sentences = sentencesOf(slug); } catch { gitAvailable = false; break; }
+    const sentences = sentencesOf(slug);
+    assert.ok(sentences.length > 0, `${slug}: the old page has sentences to compare`);
     const body = CONTENT_PAGE_DEFAULTS[slug].body.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\*\*/g, "").replace(/\s+/g, " ");
     for (const sentence of sentences) {
       if (/^(Hamısı|Platforma haqqında|Məlumat)$/.test(sentence)) continue;
@@ -52,5 +71,6 @@ test("the built-in texts contain every sentence of the former hard-coded pages (
       checked += 1;
     }
   }
-  if (gitAvailable) assert.ok(checked >= 10, `checked ${checked} sentences`);
+  assert.ok(checked > 0, "compared more than 0 sentences");
+  assert.ok(checked >= 10, `checked ${checked} sentences`);
 });

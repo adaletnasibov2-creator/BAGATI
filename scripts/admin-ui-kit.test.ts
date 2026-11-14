@@ -2,6 +2,7 @@
  * Admin UI kit (components/admin-ui/*): rendering, accessibility attributes and the window.confirm replacement.
  * No database.
  */
+/* eslint-disable react/no-children-prop -- createElement in a .ts test: the typed props require children, so they are passed as a prop. */
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,7 +13,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { PageHeader } from "../components/admin-ui/page-header";
 import { Card, Section } from "../components/admin-ui/section";
 import { StatusBadge } from "../components/admin-ui/status-badge";
-import { EmptyState } from "../components/admin-ui/empty-state";
 import { StatCard } from "../components/admin-ui/stat-card";
 import { DataTable } from "../components/admin-ui/data-table";
 import { FormField } from "../components/admin-ui/form-field";

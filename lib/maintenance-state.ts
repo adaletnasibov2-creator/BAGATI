@@ -88,3 +88,19 @@ export async function maintenanceState(
   })();
   return inFlight;
 }
+
+/** Request header the middleware sets on admin page requests (always overwritten, so a client cannot supply it). */
+export const MAINTENANCE_CHECK_HEADER = "x-bagati-maintenance-check";
+
+/** ASCII-only header value: "1|internal|<at>|" or "0|request|<at>|<url-encoded reason>". */
+export function encodeMaintenanceCheck(check: MaintenanceCheck): string {
+  return `${check.ok ? 1 : 0}|${check.source}|${check.at}|${encodeURIComponent(check.reason ?? "")}`;
+}
+
+export function decodeMaintenanceCheck(value: string | null | undefined): MaintenanceCheck | null {
+  const match = /^([01])\|(internal|request)\|(\d{1,15})\|([^|]{0,400})$/.exec(value ?? "");
+  if (!match) return null;
+  let reason: string | null = null;
+  try { reason = match[4] ? decodeURIComponent(match[4]).slice(0, 120) : null; } catch { return null; }
+  return { ok: match[1] === "1", source: match[2] as MaintenanceCheck["source"], at: Number(match[3]), reason: match[1] === "1" ? null : reason ?? "naməlum" };
+}

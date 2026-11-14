@@ -193,3 +193,38 @@ test("middleware: BAGATI_INTERNAL_ORIGIN is used for the state request even when
     if (realEnv === undefined) delete process.env.BAGATI_INTERNAL_ORIGIN; else process.env.BAGATI_INTERNAL_ORIGIN = realEnv;
   }
 });
+
+test("check header: ASCII round-trip, malformed values rejected; middleware sets it only for admin pages and strips client values", async () => {
+  const { decodeMaintenanceCheck, encodeMaintenanceCheck, MAINTENANCE_CHECK_HEADER } = await import("../lib/maintenance-state");
+  const failed = { ok: false, at: 1_731_600_000_000, reason: "bağlantı xətası (ERR_SSL_WRONG_VERSION_NUMBER)", source: "request" as const };
+  const encoded = encodeMaintenanceCheck(failed);
+  assert.match(encoded, /^[\x20-\x7e]+$/, "ASCII only (header-safe)");
+  assert.deepEqual(decodeMaintenanceCheck(encoded), failed);
+  assert.deepEqual(decodeMaintenanceCheck(encodeMaintenanceCheck({ ok: true, at: 5, reason: null, source: "internal" })), { ok: true, at: 5, reason: null, source: "internal" });
+  for (const bad of [null, "", "1|internal", "2|internal|5|", "1|other|5|", "0|request|x|r", "0|request|5|%E0%A4%A", "0|request|5|a|b"]) assert.equal(decodeMaintenanceCheck(bad), null, String(bad));
+
+  const { middleware } = await import("../middleware");
+  const realFetch = globalThis.fetch;
+  let forwarded: Headers | null = null;
+  globalThis.fetch = (async () => Response.json({ enabled: false, message: "x" })) as typeof fetch;
+  try {
+    resetMaintenanceStateCache();
+    const spoof = (path: string) => new NextRequest(`http://localhost:3000${path}`, { headers: { host: "localhost:3000", [MAINTENANCE_CHECK_HEADER]: "1|internal|1|" } });
+    const admin = await middleware(spoof("/admin/settings"));
+    forwarded = new Headers(); admin.headers.forEach((value, key) => { forwarded!.set(key, value); });
+    const overridden = forwarded.get(`x-middleware-request-${MAINTENANCE_CHECK_HEADER}`);
+    assert.ok(overridden && decodeMaintenanceCheck(overridden)?.source === "request", "admin page: set from the middleware's own check");
+    assert.notEqual(overridden, "1|internal|1|", "client value replaced");
+    const shop = await middleware(spoof("/products"));
+    assert.equal(shop.headers.get(`x-middleware-request-${MAINTENANCE_CHECK_HEADER}`), null, "public page: client value stripped, nothing set");
+    assert.match(shop.headers.get("x-middleware-override-headers") ?? "", /x-bagati-pathname/);
+    assert.doesNotMatch(shop.headers.get("x-middleware-override-headers") ?? "", new RegExp(MAINTENANCE_CHECK_HEADER));
+  } finally { globalThis.fetch = realFetch; resetMaintenanceStateCache(); }
+
+  const settings = read("app/admin/_sections/settings.tsx");
+  assert.match(settings, /decodeMaintenanceCheck\(\(await headers\(\)\)\.get\(MAINTENANCE_CHECK_HEADER\)\)/);
+  assert.match(settings, /\{engineTab==="maintenance"&&<AdminMaintenanceCheck check=\{maintenanceCheck\}\/>\}/);
+  const line = read("components/admin-maintenance-check.tsx");
+  assert.match(line, /<b>Yoxlama işləyir\.<\/b>/);
+  assert.match(line, /<b>Yoxlama işləmir: \{check\.reason\}<\/b>/);
+});

@@ -3,7 +3,7 @@ import { csrfRejection, isCsrfExemptApiPath } from "@/lib/csrf";
 import { canonicalHostRedirectUrl } from "@/lib/host-policy";
 import { ADMIN_X_ROBOTS_TAG, isAdminSurface } from "@/lib/admin-surface";
 import { isMaintenanceExempt, maintenanceResponse } from "@/lib/maintenance";
-import { maintenanceState } from "@/lib/maintenance-state";
+import { encodeMaintenanceCheck, lastMaintenanceCheck, MAINTENANCE_CHECK_HEADER, maintenanceState } from "@/lib/maintenance-state";
 import { maintenanceStateOrigin } from "@/lib/maintenance-origin";
 
 export async function middleware(request: NextRequest) {
@@ -31,6 +31,14 @@ export async function middleware(request: NextRequest) {
   // so a client cannot supply its own value.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-bagati-pathname", pathname.slice(0, 300));
+  // Admin pages get the result of the middleware's own maintenance check (shown in "Texniki iş"); never client-supplied.
+  requestHeaders.delete(MAINTENANCE_CHECK_HEADER);
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const { origin, source } = maintenanceStateOrigin(request.nextUrl.origin, process.env.BAGATI_INTERNAL_ORIGIN);
+    await maintenanceState(origin, undefined, undefined, { source });
+    const check = lastMaintenanceCheck();
+    if (check) requestHeaders.set(MAINTENANCE_CHECK_HEADER, encodeMaintenanceCheck(check));
+  }
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   // Header (not robots.txt): noindex without advertising the admin path.
   if (adminSurface) response.headers.set("X-Robots-Tag", ADMIN_X_ROBOTS_TAG);

@@ -43,7 +43,17 @@ test("WhatsApp link uses E.164 digits and a prefilled Azerbaijani text with the 
   const parsed = new URL(url);
   assert.equal(parsed.origin, "https://wa.me");
   assert.equal(parsed.pathname, "/994557614332");
-  assert.equal(parsed.searchParams.get("text"), "Salam! BAGATI-dakı “Qazax Ev Dünyası” mağazanız haqqında yazıram.");
+  assert.equal(parsed.searchParams.get("text"), "Salam, BAGATI-dəki Qazax Ev Dünyası mağazası ilə maraqlanıram.");
+});
+
+test("WhatsApp link: every accepted spelling of a number gives the same 994 digits; text is URL-encoded", () => {
+  for (const input of ["055 761 43 32", "55 761 43 32", "+994 55 761 43 32", "994 55 761 43 32", "00994 55 761 43 32", "(055) 761-43-32", "+994 (55) 761.43.32"]) {
+    assert.match(buildWhatsAppUrl(input, "A & B")!, /^https:\/\/wa\.me\/994557614332\?text=/, input);
+  }
+  const url = buildWhatsAppUrl("055 761 43 32", "A & B #1")!;
+  assert.match(url, /\?text=Salam%2C%20BAGATI-d%C9%99ki%20A%20%26%20B%20%231%20ma%C4%9Fazas%C4%B1/, "& and # are encoded, not URL syntax");
+  assert.doesNotMatch(url, /[+ ]/, "no plus or spaces in the URL");
+  for (const input of ["+7 900 123 45 67", "055 761 43", "012 555 55 55", "", null, undefined]) assert.equal(buildWhatsAppUrl(input, "Mağaza"), null, String(input));
 });
 
 test("no WhatsApp link for invalid or fixed-line numbers; tel link only for valid numbers", () => {
@@ -63,4 +73,14 @@ test("save schema: empty becomes null, valid becomes E.164, invalid fails with a
   const failed = optionalAzPhoneSchema.safeParse("12345");
   assert.equal(failed.success, false);
   assert.equal(failed.success ? "" : failed.error.issues[0]?.message, AZ_PHONE_ERROR);
+});
+
+test("customer WhatsApp (seller order page): 994 digits, order greeting encoded; landline/invalid -> no link", async () => {
+  const { buildCustomerWhatsAppUrl } = await import("../lib/az-phone");
+  const url = buildCustomerWhatsAppUrl("+994 50 123 45 67", "cmorder00abcdef12");
+  assert.ok(url);
+  assert.equal(new URL(url).pathname, "/994501234567");
+  assert.equal(new URL(url).searchParams.get("text"), "Salam! BAGATI-dəki #ABCDEF12 sifarişiniz barədə yazıram.");
+  assert.match(url, /\?text=Salam!%20BAGATI-d%C9%99ki%20%23ABCDEF12/);
+  for (const input of ["012 555 55 55", "12345", "", null]) assert.equal(buildCustomerWhatsAppUrl(input, "x"), null, String(input));
 });

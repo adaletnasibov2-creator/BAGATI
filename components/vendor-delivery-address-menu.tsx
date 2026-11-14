@@ -2,19 +2,24 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Copy, ExternalLink, MapPin } from "lucide-react";
+import { ChevronDown, Copy, ExternalLink, MapPin, MessageCircle, Navigation } from "lucide-react";
+import { boltOpenLink, detectClientPlatform, type ClientPlatform } from "@/lib/bolt-app";
 import type { DispatchLinks } from "@/lib/delivery-location";
 
 /**
- * Seller's "Ünvan əməliyyatları" menu: open the delivery point in Google Maps or OpenStreetMap, start an Uber ride to
- * it (pickup = the seller's current location), or copy the address for Bolt (no verified public deep link) or anywhere
- * else. Links are built on the server (lib/delivery-location.ts); brand names are plain text, no logos. Rendered in a
+ * Seller's "Ünvan əməliyyatları" menu: open the delivery point in Google Maps, OpenStreetMap or Waze, start an Uber ride
+ * to it (pickup = the seller's current location), send the address on WhatsApp (the seller picks the chat), or copy the
+ * address for Bolt and open Bolt's store page (no verified public deep link; see lib/bolt-app.ts) or paste it anywhere. Links are built on the server (lib/delivery-location.ts); brand names are plain text, no logos. Rendered in a
  * portal so no sticky/blurred ancestor can clip it. External links send no referrer (the order URL stays private).
  */
 export function VendorDeliveryAddressMenu({ links }: { links: DispatchLinks }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const [notice, setNotice] = useState<"bolt" | "copied" | "failed" | null>(null);
+  // Platform from the browser only (after mount); the server renders the desktop link.
+  const [platform, setPlatform] = useState<ClientPlatform>("desktop");
+  useEffect(() => { setPlatform(detectClientPlatform(navigator.userAgent, navigator.maxTouchPoints)); }, []);
+  const bolt = boltOpenLink(platform);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +85,7 @@ export function VendorDeliveryAddressMenu({ links }: { links: DispatchLinks }) {
       className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#d9d4c9] bg-white px-4 text-sm font-semibold text-[#173c40] hover:bg-[#f8f7f4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b99a5b]">
       <MapPin aria-hidden="true" size={16} />Ünvan əməliyyatları<ChevronDown aria-hidden="true" size={15} className={open ? "rotate-180" : ""} />
     </button>
-    {notice === "bolt" && <p role="status" className="mt-2 text-sm text-[#28766f]">Ünvan kopyalandı. Bolt tətbiqini açın. <a href="https://bolt.eu/" target="_blank" rel="noopener noreferrer" className="text-xs underline">bolt.eu</a></p>}
+    {notice === "bolt" && <p role="status" className="mt-2 text-sm text-[#28766f]">Ünvan kopyalandı. Bolt tətbiqini açın. <a href={bolt.href} target="_blank" rel="noopener noreferrer" className="text-xs underline">{bolt.label}</a></p>}
     {notice === "copied" && <p role="status" className="mt-2 text-sm text-[#28766f]">Ünvan kopyalandı.</p>}
     {notice === "failed" && <div role="status" className="mt-2 text-sm text-amber-800">Avtomatik kopyalamaq alınmadı. Mətni seçib kopyalayın:<textarea readOnly value={links.copyText} rows={3} className="mt-1 w-full rounded-lg border border-[#ded9cf] p-2 text-xs text-slate-700" /></div>}
     {open && position && typeof document !== "undefined" && createPortal(
@@ -92,7 +97,10 @@ export function VendorDeliveryAddressMenu({ links }: { links: DispatchLinks }) {
         {links.uber
           ? <a role="menuitem" href={links.uber} target="_blank" rel="noopener noreferrer" onClick={() => close(false)} className={item}><ExternalLink aria-hidden="true" size={15} />Uber</a>
           : <p className="px-3 py-2 text-xs text-slate-500">Uber: xəritə nöqtəsi olmadığı üçün əlçatan deyil.</p>}
-        <button role="menuitem" type="button" onClick={() => void copy("bolt")} className={item}><Copy aria-hidden="true" size={15} />Bolt (ünvanı kopyala)</button>
+        {links.waze && <a role="menuitem" href={links.waze} target="_blank" rel="noopener noreferrer" onClick={() => close(false)} className={item}><Navigation aria-hidden="true" size={15} />Waze</a>}
+        <a role="menuitem" href={links.whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => close(false)} className={item}><MessageCircle aria-hidden="true" size={15} />WhatsApp · Ünvanı göndər</a>
+        {/* Copies first (inside the tap), then the link itself opens Bolt's store page for this device. */}
+        <a role="menuitem" href={bolt.href} target="_blank" rel="noopener noreferrer" data-bolt-platform={platform} onClick={() => void copy("bolt")} className={item}><Copy aria-hidden="true" size={15} />Bolt (ünvanı kopyala və aç)</a>
         <button role="menuitem" type="button" onClick={() => void copy("copied")} className={item}><Copy aria-hidden="true" size={15} />Ünvanı kopyala</button>
       </div>,
       document.body,

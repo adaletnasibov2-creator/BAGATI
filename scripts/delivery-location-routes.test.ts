@@ -114,11 +114,18 @@ test("dispatch menu: portal, plain-text brands, no referrer, Bolt copy message a
   const menu = read("components/vendor-delivery-address-menu.tsx");
   assert.match(menu, /createPortal\(/);
   assert.match(menu, /document\.body,\n\s*\)\}/);
-  assert.equal(menu.match(/target="_blank" rel="noopener noreferrer"/g)?.length, 4, "Google, OSM, Uber and bolt.eu");
+  assert.equal(menu.match(/target="_blank" rel="noopener noreferrer"/g)?.length, 7, "Google, OSM, Uber, Waze, WhatsApp, Bolt and the Bolt notice link");
   assert.match(menu, />Google Maps<\/a>/);
   assert.match(menu, />Xəritə \(OpenStreetMap\)<\/a>/);
   assert.match(menu, />Uber<\/a>/);
-  assert.match(menu, /Ünvan kopyalandı\. Bolt tətbiqini açın\. <a href="https:\/\/bolt\.eu\/"/);
+  assert.match(menu, /Ünvan kopyalandı\. Bolt tətbiqini açın\. <a href=\{bolt\.href\}/);
+  // Waze only with a pin; WhatsApp share always (its text has a map link only with a pin); Bolt copies, then opens the store page.
+  assert.match(menu, /\{links\.waze && <a role="menuitem" href=\{links\.waze\}/);
+  assert.match(menu, /<a role="menuitem" href=\{links\.whatsapp\}[^>]*>.*WhatsApp · Ünvanı göndər<\/a>/);
+  assert.match(menu, /<a role="menuitem" href=\{bolt\.href\}[^>]*onClick=\{\(\) => void copy\("bolt"\)\}/);
+  // The platform is detected in the browser only.
+  assert.match(menu, /useEffect\(\(\) => \{ setPlatform\(detectClientPlatform\(navigator\.userAgent, navigator\.maxTouchPoints\)\); \}, \[\]\);/);
+  assert.doesNotMatch(read("lib/bolt-app.ts"), /from "next|headers\(|cookies\(/, "no server logic");
   assert.doesNotMatch(menu, /<img|<svg|<Image|\.(png|svg|jpe?g|webp)"/i, "brand names as text only, no logo images");
   assert.match(menu, /event\.key === "Escape"/);
   assert.match(menu, /buttonRef\.current\?\.focus\(\)/);
@@ -215,4 +222,40 @@ test("map tiles: single OSM host, attribution kept, Leaflet CSS only with the ma
   assert.match(surface, /^import "leaflet\/dist\/leaflet\.css";$/m);
   assert.doesNotMatch(read("app/layout.tsx"), /leaflet/);
   assert.match(read("components/interactive-map.tsx"), /dynamic\(\(\) => import\("@\/components\/interactive-map-surface"\), \{\n\s*ssr: false,/);
+});
+
+test("hidden coordinates produce no Waze/WhatsApp location links: the menu is built only under the 7-day rule", () => {
+  const page = read("app/vendor/[storeId]/orders/[storeOrderId]/page.tsx");
+  // All dispatch links (Waze and WhatsApp included) come from one builder that is only called when the seller may see the pin.
+  assert.match(page, /const dispatchLinks = locationAccess && addressLines\.length \? buildDispatchLinks\(deliveryView, order\.order\.id\) : null;/);
+  assert.equal(page.match(/buildDispatchLinks\(/g)?.length, 1);
+  assert.doesNotMatch(page, /waze\.com|wa\.me\/\?text/, "no link is assembled outside the builder");
+});
+
+test("store page: 'WhatsApp ilə yaz' from the shown store phone (tel: link kept); no new numbers exposed", () => {
+  const page = read("app/(customer)/stores/[storeId]/page.tsx");
+  assert.match(page, /const whatsappUrl = buildWhatsAppUrl\(store\.contactPhone, store\.name\);/);
+  assert.match(page, /telHref: buildTelHref\(store\.contactPhone\)/);
+  const contact = read("components/storefront-contact.tsx");
+  assert.match(contact, />WhatsApp ilə yaz\{info\.phoneDisplay/);
+  assert.match(contact, /<a href=\{info\.telHref\}/, "tel: link kept");
+  assert.match(read("components/storefront-branding.tsx"), /\/>WhatsApp ilə yaz<\/a>/);
+  // The product page shows no store phone today, so it gets no WhatsApp link either.
+  assert.doesNotMatch(read("app/(customer)/products/[productId]/page.tsx"), /contactPhone|wa\.me|buildWhatsAppUrl/);
+});
+
+test("seller order page: the customer's phone (already shown) is a tel: link plus WhatsApp for mobile numbers", () => {
+  const page = read("app/vendor/[storeId]/orders/[storeOrderId]/page.tsx");
+  assert.match(page, /const phoneTel = buildTelHref\(customerPhone\);/);
+  assert.match(page, /const phoneWhatsApp = buildCustomerWhatsAppUrl\(customerPhone, order\.order\.id\);/);
+  assert.match(page, /\{phoneTel \? <a href=\{phoneTel\}/);
+  assert.match(page, /\{phoneWhatsApp && <a href=\{phoneWhatsApp\} target="_blank" rel="noopener noreferrer"[^>]*>WhatsApp ilə yaz<\/a>\}/);
+  // Same source as before: the order snapshot, else the customer profile. Not subject to the pin's 7-day rule.
+  assert.match(page, /const customerPhone = textValue\(address\.phone\) \|\| profile\?\.phone \|\| null;/);
+});
+
+test("store header buttons never break their label (they wrap as whole buttons on narrow screens)", () => {
+  const branding = read("components/storefront-branding.tsx");
+  assert.equal(branding.match(/inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold/g)?.length, 2);
+  assert.match(branding, /<div className="flex flex-wrap gap-2 sm:shrink-0 sm:pt-4">/);
 });

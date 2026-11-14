@@ -83,6 +83,10 @@ export type DispatchLinks = {
   openStreetMap: string;
   /** Only with a pin: Uber needs a drop-off point. Pickup is the seller's current location. */
   uber: string | null;
+  /** Only with a pin. Format from Google's Waze deep-link docs: https://waze.com/ul?ll=LAT,LNG&navigate=yes */
+  waze: string | null;
+  /** "Ünvanı göndər": wa.me with no number (the seller picks the chat), the address text and, with a pin, a Google Maps link. */
+  whatsapp: string;
   /** Clipboard text for Bolt (no verified public deep link) and for "Ünvanı kopyala". */
   copyText: string;
 };
@@ -100,8 +104,10 @@ export function buildDispatchLinks(address: DeliveryAddressView, orderRef: strin
   const uber = point
     ? `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=${point.latitude}&dropoff[longitude]=${point.longitude}&dropoff[nickname]=${nickname}`
     : null;
+  const waze = point ? `https://waze.com/ul?ll=${point.latitude},${point.longitude}&navigate=yes` : null;
+  const whatsapp = `https://wa.me/?text=${encodeURIComponent([addressText, point ? googleMaps : ""].filter(Boolean).join("\n"))}`;
   const copyText = [addressText, point ? formatCoordinates(point) : "", point ? googleMaps : ""].filter(Boolean).join("\n");
-  return { googleMaps, openStreetMap, uber, copyText };
+  return { googleMaps, openStreetMap, uber, waze, whatsapp, copyText };
 }
 
 /** How long the seller keeps the pin and the dispatch menu after the shipment is marked delivered. */

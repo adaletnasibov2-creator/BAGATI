@@ -55,8 +55,8 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
           </p>
         </div>
         <div className="flex flex-wrap gap-2 sm:shrink-0 sm:pt-4">
-          {store.whatsappUrl && <a href={store.whatsappUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white shadow-sm sm:flex-none ${focusRing}`} style={{ backgroundColor: colors.accent }}><MessageCircle size={16} aria-hidden="true"/>WhatsApp</a>}
-          <a href="#store-message" className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold sm:flex-none ${store.whatsappUrl ? "border bg-white" : "text-white shadow-sm"} ${focusRing}`} style={store.whatsappUrl ? { color: colors.accent, borderColor: colors.accent } : { backgroundColor: colors.accent }}><Mail size={16} aria-hidden="true"/>Mesaj yaz</a>
+          {store.whatsappUrl && <a href={store.whatsappUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold text-white shadow-sm sm:flex-none ${focusRing}`} style={{ backgroundColor: colors.accent }}><MessageCircle size={16} aria-hidden="true"/>WhatsApp ilə yaz</a>}
+          <a href="#store-message" className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold sm:flex-none ${store.whatsappUrl ? "border bg-white" : "text-white shadow-sm"} ${focusRing}`} style={store.whatsappUrl ? { color: colors.accent, borderColor: colors.accent } : { backgroundColor: colors.accent }}><Mail size={16} aria-hidden="true"/>Mesaj yaz</a>
         </div>
       </div>
 

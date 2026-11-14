@@ -80,3 +80,33 @@ test("seller access: open orders yes; 7 days after the shipment's delivery time;
   assert.equal(see("RETURNED", "DELIVERED", daysAgo(1)), false);
   assert.equal(see("HANDED_TO_COURIER", "RETURNED"), false);
 });
+
+test("dispatch links: Waze (documented ll + navigate=yes) and WhatsApp share text, URL-encoded", async () => {
+  const { buildDispatchLinks, readAddressSnapshot } = await import("../lib/delivery-location");
+  const withPin = buildDispatchLinks(readAddressSnapshot({ recipientName: "Gizli Ad", phone: "+994501112233", line1: "Nizami küç. 1 & 2", city: "Bakı", latitude: 40.4093, longitude: 49.8671 }), "order-1");
+  assert.equal(withPin.waze, "https://waze.com/ul?ll=40.4093,49.8671&navigate=yes");
+  assert.equal(withPin.whatsapp, `https://wa.me/?text=${encodeURIComponent("Nizami küç. 1 & 2, Bakı\nhttps://www.google.com/maps/search/?api=1&query=40.4093,49.8671")}`);
+  assert.equal(new URL(withPin.whatsapp).searchParams.get("text"), "Nizami küç. 1 & 2, Bakı\nhttps://www.google.com/maps/search/?api=1&query=40.4093,49.8671");
+  assert.doesNotMatch(withPin.whatsapp + withPin.waze, /Gizli|501112233/);
+  const noPin = buildDispatchLinks(readAddressSnapshot({ line1: "Nizami küç. 1", city: "Bakı" }), "order-1");
+  assert.equal(noPin.waze, null, "no pin: no Waze");
+  assert.equal(new URL(noPin.whatsapp).searchParams.get("text"), "Nizami küç. 1, Bakı", "no pin: address text only, no location link");
+  // An old/foreign pin reads as no pin, so it never reaches Waze or WhatsApp either.
+  const foreign = buildDispatchLinks(readAddressSnapshot({ line1: "X", city: "Bakı", latitude: 51.5, longitude: -0.12 }), "o");
+  assert.equal(foreign.waze, null);
+  assert.doesNotMatch(foreign.whatsapp, /google\.com|51\.5/);
+});
+
+test("Bolt: verified store links per platform, detected from the browser only", async () => {
+  const { boltOpenLink, detectClientPlatform, BOLT_PLAY_STORE_URL, BOLT_APP_STORE_URL } = await import("../lib/bolt-app");
+  assert.equal(BOLT_PLAY_STORE_URL, "https://play.google.com/store/apps/details?id=ee.mtakso.client");
+  assert.equal(BOLT_APP_STORE_URL, "https://apps.apple.com/az/app/id675033630");
+  assert.equal(detectClientPlatform("Mozilla/5.0 (Linux; Android 14; SM-A546B) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36"), "android");
+  assert.equal(detectClientPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"), "ios");
+  assert.equal(detectClientPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.1 Safari/605.1.15", 5), "ios", "iPadOS");
+  assert.equal(detectClientPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.1 Safari/605.1.15", 0), "desktop");
+  assert.equal(detectClientPlatform("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0"), "desktop");
+  assert.deepEqual(boltOpenLink("android"), { href: BOLT_PLAY_STORE_URL, label: "Google Play" });
+  assert.deepEqual(boltOpenLink("ios"), { href: BOLT_APP_STORE_URL, label: "App Store" });
+  assert.deepEqual(boltOpenLink("desktop"), { href: "https://bolt.eu/", label: "bolt.eu" });
+});

@@ -291,7 +291,7 @@ export default async function StorefrontPage({
         <h2 className="mt-4 text-xl font-semibold text-ink">Mağaza hələ məhsul yayımlamayıb</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">Satıcı məhsullarını hazırlayır. Axtardığınız məhsul barədə soruşmaq istəyirsinizsə, satıcıya birbaşa yazın.</p>
         <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
-          {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">WhatsApp-da soruş</a>}
+          {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">WhatsApp ilə yaz</a>}
           <a href="#store-message" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Mesaj yaz</a>
           <Link href="/stores" className="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-medium text-emerald hover:underline">Digər mağazalara bax</Link>
         </div>

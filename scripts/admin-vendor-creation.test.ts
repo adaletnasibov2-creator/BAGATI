@@ -80,7 +80,7 @@ test("admin vendor creation records an audit log and an internal admin note", ()
 
 test("admin UI exposes a vendors/new route with the full onboarding form", () => {
   // A catch-all branch, or a section routed from app/admin/_sections/index.ts.
-  assert.match(adminPage, /if\(route==="vendors\/new"\)|match: \(route, parts\) => route==="vendors\/new"/);
+  assert.match(adminPage, /if\(route==="vendors\/new"\)|match: \(\{ route \}\) => route==="vendors\/new"/);
   assert.match(adminPage, /title="Satıcı hesabı yarat"/);
   assert.match(adminPage, /name:"firstName"/);
   assert.match(adminPage, /name:"lastName"/);
@@ -115,7 +115,7 @@ test("admin seller detail uses a bounded, schema-explicit query and handles miss
   let sellerDetail: string;
   if (existsSync(moduleFile)) {
     sellerDetail = readFileSync(moduleFile, "utf8");
-    assert.match(adminPage, /match: \(route, parts\) => parts\[0\] === "vendors" && parts\.length === 2, render: renderVendorDetail/);
+    assert.match(adminPage, /match: \(\{ parts \}\) => parts\[0\] === "vendors" && parts\.length === 2, render: renderVendorDetail/);
   } else {
     const branchStart = adminPage.indexOf('if (parts[0] === "vendors" && parts.length === 2)');
     const nextRoute = adminPage.indexOf("\n if(", branchStart);

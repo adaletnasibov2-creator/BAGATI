@@ -7,7 +7,7 @@ import { FilterSelect } from "@/components/admin-list-filters";
 import { prisma } from "@/lib/prisma";
 import { type SectionContext, card, Header, Table } from "./shared";
 
-export async function renderReports({ sp, q, shell }: SectionContext) {
+export async function renderReports({ sp, shell }: SectionContext) {
   const defaultFrom=new Date(new Date().getFullYear(),new Date().getMonth(),1);
   const fromRange=sp.from?parseLocalDateRange(sp.from):null;
   const toRange=sp.to?parseLocalDateRange(sp.to):null;

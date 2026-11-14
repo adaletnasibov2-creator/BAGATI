@@ -26,7 +26,7 @@ test("/admin/settings: the existing form stays the 'Ümumi' tab; 'Maliyyə' rend
   assert.match(branch, /<AdminSettingsTabs active=\{engineTab\}\/>[\s\S]*?<AdminSettingField key=\{view\.key\} view=\{view\}\/>/);
   // The general tab is the same form with the same data as before the tabs.
   assert.match(branch, /const settings=await prisma\.siteSettings\.findUnique\(\{where:\{id:SITE_SETTINGS_DEFAULTS\.id\}\}\);[\s\S]*?<AdminSettingsTabs active="general"\/><AdminSiteSettingsForm initial=\{settings\?\?SITE_SETTINGS_DEFAULTS\}\/>/);
-  assert.match(page, /const admin=await requireRole\("ADMIN"\);if\(!admin\)redirect\("\/admin\/login"\);/);
+  assert.match(page, /const admin ?= ?await requireRole\("ADMIN"\);\s*if ?\(!admin\) ?redirect\("\/admin\/login"\);/);
 });
 
 test("setting field: confirmation step, sensitive notice and reason, 409 refresh, reset and restore through the API", () => {

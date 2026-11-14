@@ -1,6 +1,6 @@
 /**
- * Admin sections moved out of the catch-all, in the catch-all's original branch order (first match wins; matchers
- * are the original conditions). Generated list; keep the order when editing.
+ * Admin sections, in the original order of the former catch-all branches: the first match renders. Each matcher
+ * is the original route condition. Keep the order when adding a section (e.g. stores/new before stores/:id).
  */
 import type { ReactNode } from "react";
 import type { SectionContext } from "./shared";
@@ -34,37 +34,36 @@ import { renderImports } from "./imports";
 import { renderNotifications } from "./notifications";
 import { renderReports } from "./reports";
 
-export type AdminSection = { match: (route: string, parts: string[]) => boolean; render: (ctx: SectionContext) => Promise<ReactNode> };
+export type AdminSection = { match: (where: { route: string; parts: string[] }) => boolean; render: (ctx: SectionContext) => Promise<ReactNode> };
 
 export const ADMIN_SECTIONS: AdminSection[] = [
-  { match: (route, parts) => route==="settings", render: renderSettings },
-  { match: (route, parts) => route==="homepage", render: renderHomepage },
-  { match: (route, parts) => route==="promotions", render: renderPromotions },
-  { match: (route, parts) => route==="payments", render: renderPayments },
-  { match: (route, parts) => route==="stores/new", render: renderStoresNew },
-  { match: (route, parts) => route==="vendors/new", render: renderVendorsNew },
-  { match: (route, parts) => route==="stores", render: renderStores },
-  { match: (route, parts) => parts[0]==="stores"&&parts.length===2, render: renderStoreDetail },
-  { match: (route, parts) => route==="vendors", render: renderVendors },
-  { match: (route, parts) => parts[0] === "vendors" && parts.length === 2, render: renderVendorDetail },
-  { match: (route, parts) => route==="customers", render: renderCustomers },
-  { match: (route, parts) => parts[0]==="customers"&&parts.length===2, render: renderCustomerDetail },
-  { match: (route, parts) => route==="products", render: renderProducts },
-  { match: (route, parts) => parts[0]==="products"&&parts.length===2, render: renderProductDetail },
-  { match: (route, parts) => route==="categories", render: renderCategories },
-  { match: (route, parts) => route==="brands", render: renderBrands },
-  { match: (route, parts) => route==="cities", render: renderCities },
-  { match: (route, parts) => route==="orders", render: renderOrders },
-  { match: (route, parts) => parts[0] === "orders" && parts.length === 2, render: renderOrderDetail },
-  { match: (route, parts) => route==="subscriptions", render: renderSubscriptions },
-  { match: (route, parts) => route==="commissions", render: renderCommissions },
-  { match: (route, parts) => route==="returns", render: renderReturns },
-  { match: (route, parts) => route==="refunds", render: renderRefunds },
-  { match: (route, parts) => route==="reviews", render: renderReviews },
-  { match: (route, parts) => route==="support", render: renderSupport },
-  { match: (route, parts) => parts[0]==="support"&&parts.length===2, render: renderSupportDetail },
-  { match: (route, parts) => route==="imports", render: renderImports },
-  { match: (route, parts) => route==="notifications", render: renderNotifications },
-  { match: (route, parts) => route==="reports", render: renderReports },
+  { match: ({ route }) => route==="settings", render: renderSettings },
+  { match: ({ route }) => route==="homepage", render: renderHomepage },
+  { match: ({ route }) => route==="promotions", render: renderPromotions },
+  { match: ({ route }) => route==="payments", render: renderPayments },
+  { match: ({ route }) => route==="stores/new", render: renderStoresNew },
+  { match: ({ route }) => route==="vendors/new", render: renderVendorsNew },
+  { match: ({ route }) => route==="stores", render: renderStores },
+  { match: ({ parts }) => parts[0]==="stores"&&parts.length===2, render: renderStoreDetail },
+  { match: ({ route }) => route==="vendors", render: renderVendors },
+  { match: ({ parts }) => parts[0] === "vendors" && parts.length === 2, render: renderVendorDetail },
+  { match: ({ route }) => route==="customers", render: renderCustomers },
+  { match: ({ parts }) => parts[0]==="customers"&&parts.length===2, render: renderCustomerDetail },
+  { match: ({ route }) => route==="products", render: renderProducts },
+  { match: ({ parts }) => parts[0]==="products"&&parts.length===2, render: renderProductDetail },
+  { match: ({ route }) => route==="categories", render: renderCategories },
+  { match: ({ route }) => route==="brands", render: renderBrands },
+  { match: ({ route }) => route==="cities", render: renderCities },
+  { match: ({ route }) => route==="orders", render: renderOrders },
+  { match: ({ parts }) => parts[0] === "orders" && parts.length === 2, render: renderOrderDetail },
+  { match: ({ route }) => route==="subscriptions", render: renderSubscriptions },
+  { match: ({ route }) => route==="commissions", render: renderCommissions },
+  { match: ({ route }) => route==="returns", render: renderReturns },
+  { match: ({ route }) => route==="refunds", render: renderRefunds },
+  { match: ({ route }) => route==="reviews", render: renderReviews },
+  { match: ({ route }) => route==="support", render: renderSupport },
+  { match: ({ parts }) => parts[0]==="support"&&parts.length===2, render: renderSupportDetail },
+  { match: ({ route }) => route==="imports", render: renderImports },
+  { match: ({ route }) => route==="notifications", render: renderNotifications },
+  { match: ({ route }) => route==="reports", render: renderReports },
 ];
-/* ENTRIES [{"module":"settings","exportName":"renderSettings","matchExpr":"route===\"settings\""},{"module":"homepage","exportName":"renderHomepage","matchExpr":"route===\"homepage\""},{"module":"promotions","exportName":"renderPromotions","matchExpr":"route===\"promotions\""},{"module":"payments","exportName":"renderPayments","matchExpr":"route===\"payments\""},{"module":"stores-new","exportName":"renderStoresNew","matchExpr":"route===\"stores/new\""},{"module":"vendors-new","exportName":"renderVendorsNew","matchExpr":"route===\"vendors/new\""},{"module":"stores","exportName":"renderStores","matchExpr":"route===\"stores\""},{"module":"store-detail","exportName":"renderStoreDetail","matchExpr":"parts[0]===\"stores\"&&parts.length===2"},{"module":"vendors","exportName":"renderVendors","matchExpr":"route===\"vendors\""},{"module":"vendor-detail","exportName":"renderVendorDetail","matchExpr":"parts[0] === \"vendors\" && parts.length === 2"},{"module":"customers","exportName":"renderCustomers","matchExpr":"route===\"customers\""},{"module":"customer-detail","exportName":"renderCustomerDetail","matchExpr":"parts[0]===\"customers\"&&parts.length===2"},{"module":"products","exportName":"renderProducts","matchExpr":"route===\"products\""},{"module":"product-detail","exportName":"renderProductDetail","matchExpr":"parts[0]===\"products\"&&parts.length===2"},{"module":"categories","exportName":"renderCategories","matchExpr":"route===\"categories\""},{"module":"brands","exportName":"renderBrands","matchExpr":"route===\"brands\""},{"module":"cities","exportName":"renderCities","matchExpr":"route===\"cities\""},{"module":"orders","exportName":"renderOrders","matchExpr":"route===\"orders\""},{"module":"order-detail","exportName":"renderOrderDetail","matchExpr":"parts[0] === \"orders\" && parts.length === 2"},{"module":"subscriptions","exportName":"renderSubscriptions","matchExpr":"route===\"subscriptions\""},{"module":"commissions","exportName":"renderCommissions","matchExpr":"route===\"commissions\""},{"module":"returns","exportName":"renderReturns","matchExpr":"route===\"returns\""},{"module":"refunds","exportName":"renderRefunds","matchExpr":"route===\"refunds\""},{"module":"reviews","exportName":"renderReviews","matchExpr":"route===\"reviews\""},{"module":"support","exportName":"renderSupport","matchExpr":"route===\"support\""},{"module":"support-detail","exportName":"renderSupportDetail","matchExpr":"parts[0]===\"support\"&&parts.length===2"},{"module":"imports","exportName":"renderImports","matchExpr":"route===\"imports\""},{"module":"notifications","exportName":"renderNotifications","matchExpr":"route===\"notifications\""},{"module":"reports","exportName":"renderReports","matchExpr":"route===\"reports\""}] */

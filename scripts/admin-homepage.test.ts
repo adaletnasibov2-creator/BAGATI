@@ -117,7 +117,7 @@ test("saved site branding is rendered in the public header, footer, and metadata
 test("admin payment route clearly reports that transactions are unavailable", () => {
   const page = adminSectionSource();
   // The payments section is routed from app/admin/_sections/index.ts (moved out of the catch-all).
-  assert.match(page, /match: \(route, parts\) => route==="payments", render: renderPayments/);
+  assert.match(page, /match: \(\{ route \}\) => route==="payments", render: renderPayments/);
   assert.match(page, /Bu səhifə kart məlumatı saxlamır və ödəniş əməliyyatı göndərmir/);
 });
 

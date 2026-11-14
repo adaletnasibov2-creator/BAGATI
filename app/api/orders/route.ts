@@ -6,13 +6,14 @@ import { prisma } from "@/lib/prisma";
 import { resolvePublicProductEligibility } from "@/lib/store-eligibility";
 import { calculateStoreDelivery } from "@/lib/delivery";
 import { createOrderAddressSnapshot } from "@/lib/order-address-snapshot";
+import { readOrderCoordinates } from "@/lib/delivery-location";
 import { calculateVariantEffectivePrice, orderVariantSnapshot, quantityAfterSale, resolveVariantInventory } from "@/lib/product-variants";
 import { enqueueEmail } from "@/lib/email-outbox";
 import { stockAlertCrossing, stockAlertNotification, VENDOR_NOTIFICATION_TITLES } from "@/lib/vendor-notifications";
 import { listCustomerOrderPage, parseCustomerOrderPageSize } from "@/lib/customer-order-pagination";
 import { commissionRatesForNewOrder } from "@/lib/order-commission";
 const db: any = prisma;
-const schema = z.object({ addressId: z.string().min(1), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), expectedPrices: z.array(z.object({ cartItemId: z.string().min(1), unitPrice: z.number().positive() })).max(500).optional() });
+const schema = z.object({ addressId: z.string().min(1), expectedPrices: z.array(z.object({ cartItemId: z.string().min(1), unitPrice: z.number().positive() })).max(500).optional() });
 export async function GET(request: NextRequest) {
  const user=await requireRole("CUSTOMER"); if(!user)return NextResponse.json({error:"Authentication required"},{status:401});
  const pageSize = parseCustomerOrderPageSize(request.nextUrl.searchParams.get("pageSize"));
@@ -31,7 +32,9 @@ export async function POST(request:NextRequest) {
  let raw:unknown;try{raw=await request.json()}catch{return NextResponse.json({error:"Invalid JSON"},{status:400})}
  const parsed=schema.safeParse(raw);if(!parsed.success)return NextResponse.json({error:"A delivery address is required"},{status:400});
  const now=new Date();
- if((parsed.data.latitude==null)!==(parsed.data.longitude==null))return NextResponse.json({error:"Xəritə koordinatları birlikdə daxil edilməlidir"},{status:422});
+ // The map pin is optional and never blocks an order: a missing, half-filled, malformed or out-of-Azerbaijan pin is
+ // dropped here and the order is created from the address text (lib/delivery-location.ts).
+ const coordinatePin=readOrderCoordinates(raw);
  try {
   const order=await db.$transaction(async(transaction:any)=>{
    const tx:any=transaction;
@@ -70,9 +73,7 @@ export async function POST(request:NextRequest) {
     const subtotal=storeOrders.reduce((sum,group)=>sum.add(group.subtotal),new Prisma.Decimal(0));
     const totalDeliveryFee=storeOrders.reduce((sum,group)=>sum.add(group.deliveryFee),new Prisma.Decimal(0));
     const total=subtotal.add(totalDeliveryFee);
-    const hasCoordinates=Object.prototype.hasOwnProperty.call(parsed.data,"latitude");
-    const selectedCoordinates=hasCoordinates?(parsed.data.latitude==null?null:{latitude:parsed.data.latitude,longitude:parsed.data.longitude!}):undefined;
-    const addressSnapshot=createOrderAddressSnapshot(address,selectedCoordinates);
+    const addressSnapshot=createOrderAddressSnapshot(address,coordinatePin.selected);
      const created=await tx.order.create({data:{userId:user.id,status:"PENDING",subtotal,deliveryFee:totalDeliveryFee,total,addressSnapshot,storeOrders:{create:storeOrders.map(group=>({storeId:group.storeId,status:"NEW",createdAt:orderCreatedAt,subtotal:group.subtotal,commissionRateSnapshot:commissionRates.get(group.storeId)??null,deliveryFee:group.deliveryFee,items:{create:group.lines.map((row:any)=>({productId:row.item.productId,variantId:row.item.variantId,...orderVariantSnapshot(row.item.variant),productName:row.item.product.name,sku:row.item.variant?.sku??row.item.product.sku,unitPrice:row.unitPrice,quantity:row.item.quantity,lineTotal:row.lineTotal}))}}))},payments:{create:{amount:total,currency:"AZN",status:"PENDING"}}},include:{storeOrders:{include:{store:{select:{id:true,name:true,vendor:{select:{user:{select:{id:true,email:true}}}}}},items:true}},payments:true}});
    const customer=await tx.user.findUnique({where:{id:user.id},select:{email:true}});
    if(customer)await enqueueEmail(tx,{eventKey:`order-confirmed:${created.id}:${customer.email}`,recipient:customer.email,template:"CUSTOMER_ORDER_CONFIRMED",payload:{orderRef:created.id,total:Number(created.total)}});

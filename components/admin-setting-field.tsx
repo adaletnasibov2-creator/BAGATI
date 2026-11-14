@@ -17,7 +17,9 @@ export type SettingFieldView = {
     | { kind: "percent"; min: number; max: number; step: number; unit: "%" }
     | { kind: "integer"; min: number; max: number; unit?: string }
     | { kind: "text"; minLength: number; maxLength: number; multiline?: boolean; placeholder?: string; mustContain?: string }
-    | { kind: "announcement"; textMax: number };
+    | { kind: "announcement"; textMax: number }
+    | { kind: "toggle" }
+    | { kind: "links"; maxItems: number; labelMax: number };
   currentInput: string;
   currentDisplay: string;
   defaultDisplay: string;
@@ -46,6 +48,54 @@ const TONES = ["info", "success", "warning", "danger"] as const;
 function toAnnouncementForm(form: Record<string, string | boolean> | null): AnnouncementForm {
   const tone = TONES.find((item) => item === form?.tone) ?? "info";
   return { enabled: form?.enabled === true, text: String(form?.text ?? ""), href: String(form?.href ?? ""), tone, startsAt: String(form?.startsAt ?? ""), endsAt: String(form?.endsAt ?? "") };
+}
+
+type LinksForm = Record<string, string>;
+
+function toLinksForm(form: Record<string, string | boolean> | null, maxItems: number): LinksForm {
+  const rows: LinksForm = {};
+  for (let index = 0; index < maxItems; index += 1) {
+    rows[`label${index}`] = String(form?.[`label${index}`] ?? "");
+    rows[`href${index}`] = String(form?.[`href${index}`] ?? "");
+  }
+  return rows;
+}
+
+const SAFE_HREF = /^(\/(?!\/)[^\s\\]*|https:\/\/[^\s@/\\]+(\/[^\s\\]*)?)$/;
+
+/** Client-side mirror of the footer-link rules (the server validates again): both fields or none, safe href, ≥ 1 row. */
+export function linksInputIssue(form: LinksForm, maxItems: number, labelMax: number): string {
+  let rows = 0;
+  for (let index = 0; index < maxItems; index += 1) {
+    const label = (form[`label${index}`] ?? "").replace(/\s+/g, " ").trim();
+    const href = (form[`href${index}`] ?? "").trim();
+    if (!label && !href) continue;
+    if (!label || !href) return `${index + 1}-ci sətir: həm ad, həm keçid yazın.`;
+    if (label.length > labelMax) return `${index + 1}-ci sətir: ad ən çox ${labelMax} simvol ola bilər.`;
+    if (!SAFE_HREF.test(href)) return `${index + 1}-ci sətir: keçid / ilə başlamalı və ya HTTPS ünvanı olmalıdır.`;
+    rows += 1;
+  }
+  return rows ? "" : "Ən azı bir keçid yazın və ya standart keçidlərə qaytarın.";
+}
+
+function LinksEditor({ value, onChange, maxItems, labelMax }: { value: LinksForm; onChange: (next: LinksForm) => void; maxItems: number; labelMax: number }) {
+  return <fieldset className="grid w-full gap-2">
+    <legend className="mb-1 text-sm text-slate-700">Keçidlər (ad və ünvan; boş sətirlər nəzərə alınmır)</legend>
+    {Array.from({ length: maxItems }, (_, index) => <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <label className="grid gap-1 text-xs text-slate-600">{index + 1}. Ad
+        <input value={value[`label${index}`] ?? ""} maxLength={labelMax + 10} onChange={(event) => onChange({ ...value, [`label${index}`]: event.target.value })} className={field} />
+      </label>
+      <label className="grid gap-1 text-xs text-slate-600">{index + 1}. Keçid
+        <input value={value[`href${index}`] ?? ""} placeholder="/terms və ya https://…" onChange={(event) => onChange({ ...value, [`href${index}`]: event.target.value })} className={field} />
+      </label>
+    </div>)}
+  </fieldset>;
+}
+
+/** Text of the confirmation checkbox for a sensitive change (commission keeps its original wording). */
+function sensitiveConfirmText(key: string): string {
+  if (key === "maintenance.enabled") return "Texniki iş rejimində müştəri və satıcı səhifələrinin bağlanacağını başa düşürəm.";
+  return "Dəyişikliyin yalnız yeni sifarişlərə tətbiq olunduğunu başa düşürəm.";
 }
 
 /** Client-side mirror of the server rules, for messages while typing. The server validates again on save. */
@@ -79,6 +129,7 @@ function displayFor(view: SettingFieldView, value: string | AnnouncementForm): s
     const text = value.text.replace(/\s+/g, " ").trim();
     return `Aktiv (${ANNOUNCEMENT_TONE_LABELS[value.tone]}): ${text.length > 60 ? `${text.slice(0, 60)}…` : text}`;
   }
+  if (view.input.kind === "toggle") return value === "true" ? "Açıqdır — sayt bağlıdır" : "Söndürülüb";
   const trimmed = value.replace(/\s+/g, " ").trim().replace(",", ".");
   if (view.input.kind === "percent") return `${trimmed}%`;
   if (view.input.kind === "integer") return `${trimmed}${view.input.unit ? ` ${view.input.unit}` : ""}`;
@@ -129,8 +180,11 @@ function AnnouncementEditor({ value, onChange, textMax }: { value: AnnouncementF
 export default function AdminSettingField({ view }: { view: SettingFieldView }) {
   const router = useRouter();
   const composite = view.input.kind === "announcement";
+  const links = view.input.kind === "links" ? view.input : null;
+  const toggle = view.input.kind === "toggle";
   const [value, setValue] = useState(view.currentInput);
   const [form, setForm] = useState<AnnouncementForm>(toAnnouncementForm(view.currentForm));
+  const [linkForm, setLinkForm] = useState<LinksForm>(toLinksForm(view.currentForm, links?.maxItems ?? 0));
   const [pending, setPending] = useState<Pending | null>(null);
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -140,13 +194,13 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
   const [message, setMessage] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   // After a save the page data refreshes; show the stored value again instead of the last typed text.
-  useEffect(() => { setValue(view.currentInput); setForm(toAnnouncementForm(view.currentForm)); }, [view.version, view.currentInput, view.currentForm]);
+  useEffect(() => { setValue(view.currentInput); setForm(toAnnouncementForm(view.currentForm)); setLinkForm(toLinksForm(view.currentForm, links?.maxItems ?? 0)); }, [view.version, view.currentInput, view.currentForm, links?.maxItems]);
 
   const reasonRequired = view.sensitive;
   const reasonOk = !reasonRequired || (reason.trim().length >= view.reason.min && reason.trim().length <= view.reason.max);
   const confirmOk = !view.sensitive || confirmed;
-  const issue = settingInputIssue(view.input, composite ? form : value);
-  const empty = composite ? false : !value.trim();
+  const issue = links ? linksInputIssue(linkForm, links.maxItems, links.labelMax) : settingInputIssue(view.input, composite ? form : value);
+  const empty = composite || links || toggle ? false : !value.trim();
 
   function start(next: Pending) {
     setPending(next); setReason(""); setConfirmed(false); setError(""); setMessage(""); setConflict(false);
@@ -190,7 +244,10 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
     event.preventDefault();
     if (issue || empty) return;
     if (composite) start({ kind: "update", value: { ...form, text: form.text.replace(/\s+/g, " ").trim() }, toDisplay: displayFor(view, form) });
-    else start({ kind: "update", value: value.trim(), toDisplay: displayFor(view, value) });
+    else if (links) {
+      const labels = Array.from({ length: links.maxItems }, (_, index) => (linkForm[`label${index}`] ?? "").trim()).filter(Boolean);
+      start({ kind: "update", value: linkForm, toDisplay: labels.join(", ") });
+    } else start({ kind: "update", value: value.trim(), toDisplay: displayFor(view, value) });
   }
 
   return <section className="rounded-2xl border border-[#e7e3d9] bg-white p-5" aria-labelledby={`setting-${view.key}`}>
@@ -214,6 +271,11 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
     <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={submit}>
       {composite
         ? <AnnouncementEditor value={form} onChange={setForm} textMax={view.input.kind === "announcement" ? view.input.textMax : 200} />
+        : links ? <LinksEditor value={linkForm} onChange={setLinkForm} maxItems={links.maxItems} labelMax={links.labelMax} />
+        : toggle ? <label className="flex w-full items-center gap-3 text-sm text-slate-800">
+          <input type="checkbox" role="switch" aria-checked={value === "true"} checked={value === "true"} onChange={(event) => setValue(event.target.checked ? "true" : "false")} className="h-5 w-5 accent-red-700" />
+          <span>{value === "true" ? "Açıq (yadda saxladıqda sayt bağlanır)" : "Söndürülüb"}</span>
+        </label>
         : <label className={`grid min-w-0 gap-1 text-sm text-slate-700 ${small ? "" : "w-full"}`}>
           Yeni dəyər{view.input.kind === "percent" ? " (faizlə, məsələn 10)" : ""}
           <span className="flex items-center gap-2">
@@ -248,7 +310,7 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
       </label>
       {view.sensitive && <label className="mt-3 flex items-start gap-2">
         <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} className="mt-1" />
-        <span>Dəyişikliyin yalnız yeni sifarişlərə tətbiq olunduğunu başa düşürəm.</span>
+        <span>{sensitiveConfirmText(view.key)}</span>
       </label>}
       {error && <div role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-red-800">
         <p>{error}</p>

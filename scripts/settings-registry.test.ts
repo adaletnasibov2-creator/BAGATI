@@ -35,6 +35,12 @@ test("every key: format, unique, default valid, Azerbaijani label and descriptio
       assert.ok(Number.isFinite(definition.input.min) && Number.isFinite(definition.input.max) && definition.input.min < definition.input.max, `${where}: numeric bounds`);
     } else if (definition.input.kind === "text") {
       assert.ok(definition.input.maxLength > 0 && definition.input.minLength >= 0, `${where}: text bounds`);
+    } else if (definition.input.kind === "toggle") {
+      // Phase C1: on/off switch; the value is a boolean and the default must be a boolean.
+      assert.equal(typeof definition.default, "boolean", `${where}: toggle default`);
+    } else if (definition.input.kind === "links") {
+      // Phase C1: list of { label, href } rows.
+      assert.ok(definition.input.maxItems > 0 && definition.input.maxItems <= 20 && definition.input.labelMax > 0 && definition.toForm && definition.objectFields?.length, `${where}: links bounds and form`);
     } else {
       assert.ok(definition.input.textMax > 0 && definition.toForm && definition.objectFields?.length, `${where}: composite input bounds and form`);
     }

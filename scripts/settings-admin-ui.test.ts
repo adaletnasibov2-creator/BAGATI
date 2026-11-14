@@ -55,7 +55,8 @@ test("admin view data: uncached database read, Baku times, restorable only when 
   assert.match(admin, /restorable: item\.version !== row\?\.version\s+&& JSON\.stringify\(item\.value \?\? null\) !== JSON\.stringify\(stored\)\s+&& \(item\.value === null \|\| definition\.schema\.safeParse\(item\.value\)\.success\)/);
   // The field shows the stored value again after a save (browser check found the typed text staying).
   // Part 2 also resets the announcement form state on refresh.
-  assert.match(read("components/admin-setting-field.tsx"), /useEffect\(\(\) => \{ setValue\(view\.currentInput\); setForm\(toAnnouncementForm\(view\.currentForm\)\); \}, \[view\.version, view\.currentInput, view\.currentForm\]\);/);
+  // Phase C1 also resets the footer-links form; the stored value is still shown again after every save.
+  assert.match(read("components/admin-setting-field.tsx"), /useEffect\(\(\) => \{ setValue\(view\.currentInput\); setForm\(toAnnouncementForm\(view\.currentForm\)\);( setLinkForm\(toLinksForm\(view\.currentForm, links\?\.maxItems \?\? 0\)\);)? \}, \[view\.version, view\.currentInput, view\.currentForm(, links\?\.maxItems)?\]\);/);
   assert.match(admin, /isDefault: stored === null \|\| storedValueInvalid/);
 });
 

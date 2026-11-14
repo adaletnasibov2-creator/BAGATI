@@ -51,7 +51,7 @@ export default function StorefrontContact({ info }: { info: StorefrontContactInf
       <h2 id="store-contact-title" className="mt-1 text-xl font-semibold text-ink">Mağaza ilə əlaqə</h2>
       <ul className="mt-3 divide-y divide-line">
         {info.whatsappUrl && <Row icon={<MessageCircle size={17}/>} label="WhatsApp">
-          <a href={info.whatsappUrl} target="_blank" rel="noopener noreferrer" className={rowLink}>WhatsApp-da yaz{info.phoneDisplay ? ` · ${info.phoneDisplay}` : ""}</a>
+          <a href={info.whatsappUrl} target="_blank" rel="noopener noreferrer" className={rowLink}>WhatsApp ilə yaz{info.phoneDisplay ? ` · ${info.phoneDisplay}` : ""}</a>
         </Row>}
         {info.telHref && info.phoneDisplay && <Row icon={<Phone size={17}/>} label="Telefon">
           <a href={info.telHref} className="inline-flex min-h-11 items-center text-ink hover:underline">{info.phoneDisplay}</a>

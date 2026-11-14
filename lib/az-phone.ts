@@ -50,12 +50,15 @@ export function normalizeAzPhone(input: string | null | undefined): AzPhone | nu
   };
 }
 
-/** wa.me link with a prefilled Azerbaijani greeting that names the store. Null unless the number is a valid mobile number. */
+/**
+ * wa.me link (international digits, no + or spaces) with a prefilled Azerbaijani greeting that names the store.
+ * Null unless the number is a valid Azerbaijani mobile number (landlines get only the tel: link).
+ */
 export function buildWhatsAppUrl(phone: string | null | undefined, storeName: string): string | null {
   const normalized = normalizeAzPhone(phone);
   if (!normalized?.mobile) return null;
   const name = storeName.replace(/\s+/g, " ").trim().slice(0, 120);
-  const text = `Salam! BAGATI-dakı “${name}” mağazanız haqqında yazıram.`;
+  const text = `Salam, BAGATI-dəki ${name} mağazası ilə maraqlanıram.`;
   return `https://wa.me/${normalized.digits}?text=${encodeURIComponent(text)}`;
 }
 

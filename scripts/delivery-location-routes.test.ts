@@ -231,3 +231,15 @@ test("hidden coordinates produce no Waze/WhatsApp location links: the menu is bu
   assert.equal(page.match(/buildDispatchLinks\(/g)?.length, 1);
   assert.doesNotMatch(page, /waze\.com|wa\.me\/\?text/, "no link is assembled outside the builder");
 });
+
+test("store page: 'WhatsApp ilə yaz' from the shown store phone (tel: link kept); no new numbers exposed", () => {
+  const page = read("app/(customer)/stores/[storeId]/page.tsx");
+  assert.match(page, /const whatsappUrl = buildWhatsAppUrl\(store\.contactPhone, store\.name\);/);
+  assert.match(page, /telHref: buildTelHref\(store\.contactPhone\)/);
+  const contact = read("components/storefront-contact.tsx");
+  assert.match(contact, />WhatsApp ilə yaz\{info\.phoneDisplay/);
+  assert.match(contact, /<a href=\{info\.telHref\}/, "tel: link kept");
+  assert.match(read("components/storefront-branding.tsx"), /\/>WhatsApp ilə yaz<\/a>/);
+  // The product page shows no store phone today, so it gets no WhatsApp link either.
+  assert.doesNotMatch(read("app/(customer)/products/[productId]/page.tsx"), /contactPhone|wa\.me|buildWhatsAppUrl/);
+});

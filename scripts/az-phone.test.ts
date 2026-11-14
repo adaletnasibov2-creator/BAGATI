@@ -43,7 +43,17 @@ test("WhatsApp link uses E.164 digits and a prefilled Azerbaijani text with the 
   const parsed = new URL(url);
   assert.equal(parsed.origin, "https://wa.me");
   assert.equal(parsed.pathname, "/994557614332");
-  assert.equal(parsed.searchParams.get("text"), "Salam! BAGATI-dakı “Qazax Ev Dünyası” mağazanız haqqında yazıram.");
+  assert.equal(parsed.searchParams.get("text"), "Salam, BAGATI-dəki Qazax Ev Dünyası mağazası ilə maraqlanıram.");
+});
+
+test("WhatsApp link: every accepted spelling of a number gives the same 994 digits; text is URL-encoded", () => {
+  for (const input of ["055 761 43 32", "55 761 43 32", "+994 55 761 43 32", "994 55 761 43 32", "00994 55 761 43 32", "(055) 761-43-32", "+994 (55) 761.43.32"]) {
+    assert.match(buildWhatsAppUrl(input, "A & B")!, /^https:\/\/wa\.me\/994557614332\?text=/, input);
+  }
+  const url = buildWhatsAppUrl("055 761 43 32", "A & B #1")!;
+  assert.match(url, /\?text=Salam%2C%20BAGATI-d%C9%99ki%20A%20%26%20B%20%231%20ma%C4%9Fazas%C4%B1/, "& and # are encoded, not URL syntax");
+  assert.doesNotMatch(url, /[+ ]/, "no plus or spaces in the URL");
+  for (const input of ["+7 900 123 45 67", "055 761 43", "012 555 55 55", "", null, undefined]) assert.equal(buildWhatsAppUrl(input, "Mağaza"), null, String(input));
 });
 
 test("no WhatsApp link for invalid or fixed-line numbers; tel link only for valid numbers", () => {

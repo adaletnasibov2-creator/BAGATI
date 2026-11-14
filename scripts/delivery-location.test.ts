@@ -60,3 +60,23 @@ test("dispatch links without a pin: text search, no Uber link, copy text is the 
   assert.equal(links.uber, null);
   assert.equal(links.copyText, "Nizami küç. 1 & 2, Bakı");
 });
+
+test("seller access: open orders yes; 7 days after the shipment's delivery time; cancelled/returned at once", async () => {
+  const { sellerCanSeeDeliveryLocation } = await import("../lib/delivery-location");
+  const now = new Date("2026-11-14T12:00:00Z");
+  const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000);
+  const see = (status: string, shipmentStatus: string | null, deliveredAt: Date | null = null) => sellerCanSeeDeliveryLocation({ status, shipmentStatus, deliveredAt }, now);
+  for (const status of ["NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "SHIPPED"]) assert.equal(see(status, null), true, status);
+  assert.equal(see("HANDED_TO_COURIER", "OUT_FOR_DELIVERY"), true);
+  assert.equal(see("HANDED_TO_COURIER", "DELIVERY_FAILED"), true, "a failed attempt still needs the address");
+  assert.equal(see("HANDED_TO_COURIER", "DELIVERED", daysAgo(6.9)), true);
+  assert.equal(see("HANDED_TO_COURIER", "DELIVERED", daysAgo(7)), true, "exactly 7 days");
+  assert.equal(see("DELIVERED", "DELIVERED", daysAgo(7.01)), false);
+  assert.equal(see("HANDED_TO_COURIER", "DELIVERED", null), false, "delivered without a time");
+  assert.equal(see("DELIVERED", null), false, "order delivered, shipment never marked: no time");
+  assert.equal(see("DELIVERED", "OUT_FOR_DELIVERY"), false);
+  assert.equal(see("CANCELLED", null), false);
+  assert.equal(see("CANCELLED", "OUT_FOR_DELIVERY"), false);
+  assert.equal(see("RETURNED", "DELIVERED", daysAgo(1)), false);
+  assert.equal(see("HANDED_TO_COURIER", "RETURNED"), false);
+});

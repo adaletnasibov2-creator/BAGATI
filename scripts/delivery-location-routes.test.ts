@@ -97,3 +97,29 @@ test("picker: 'Mənim yerim' asks for the location only on tap; a foreign point 
   assert.match(picker, /Nöqtəni sil/);
   assert.doesNotMatch(picker, /fetch\(|nominatim/i, "no network calls (no reverse geocoding)");
 });
+
+test("seller order page: pin and dispatch menu only while the seller may see them; address text always", () => {
+  const page = read("app/vendor/[storeId]/orders/[storeOrderId]/page.tsx");
+  assert.match(page, /where: \{ id: storeOrderId, storeId: access\.storeId \}/, "scoped to the seller's own store");
+  assert.match(page, /const locationAccess = sellerCanSeeDeliveryLocation\(order\);/);
+  assert.match(page, /const pin = locationAccess \? deliveryView\.coordinates : null;/);
+  assert.match(page, /const dispatchLinks = locationAccess && addressLines\.length \? buildDispatchLinks\(deliveryView, order\.order\.id\) : null;/);
+  assert.match(page, /\{pin&&<section className=\{panel\}>/);
+  assert.match(page, /<VendorDeliveryAddressMenu links=\{dispatchLinks\} \/>/);
+  assert.match(page, /addressLines\.join\(", "\)/, "address text stays");
+  assert.doesNotMatch(page, /address\.latitude|address\.longitude/, "the raw snapshot pin is never used directly");
+});
+
+test("dispatch menu: portal, plain-text brands, no referrer, Bolt copy message and link", () => {
+  const menu = read("components/vendor-delivery-address-menu.tsx");
+  assert.match(menu, /createPortal\(/);
+  assert.match(menu, /document\.body,\n\s*\)\}/);
+  assert.equal(menu.match(/target="_blank" rel="noopener noreferrer"/g)?.length, 4, "Google, OSM, Uber and bolt.eu");
+  assert.match(menu, />Google Maps<\/a>/);
+  assert.match(menu, />Xəritə \(OpenStreetMap\)<\/a>/);
+  assert.match(menu, />Uber<\/a>/);
+  assert.match(menu, /Ünvan kopyalandı\. Bolt tətbiqini açın\. <a href="https:\/\/bolt\.eu\/"/);
+  assert.doesNotMatch(menu, /<img|<svg|<Image|\.(png|svg|jpe?g|webp)"/i, "brand names as text only, no logo images");
+  assert.match(menu, /event\.key === "Escape"/);
+  assert.match(menu, /buttonRef\.current\?\.focus\(\)/);
+});

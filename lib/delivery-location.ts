@@ -103,3 +103,24 @@ export function buildDispatchLinks(address: DeliveryAddressView, orderRef: strin
   const copyText = [addressText, point ? formatCoordinates(point) : "", point ? googleMaps : ""].filter(Boolean).join("\n");
   return { googleMaps, openStreetMap, uber, copyText };
 }
+
+/** How long the seller keeps the pin and the dispatch menu after the shipment is marked delivered. */
+export const SELLER_LOCATION_DAYS_AFTER_DELIVERY = 7;
+
+/**
+ * Whether the store may still see the delivery pin and the dispatch menu (the address text stays visible).
+ * The 7 days count from the shipment's "Çatdırıldı" time (`deliveredAt`). A cancelled or returned order, a returned
+ * shipment, or an order marked delivered without a shipment time has no reliable closing time (no column records it),
+ * so it is hidden at once. Admins always see the pin; this rule is for sellers only.
+ */
+export function sellerCanSeeDeliveryLocation(
+  storeOrder: { status: string; shipmentStatus: string | null; deliveredAt: Date | null },
+  now: Date = new Date(),
+): boolean {
+  if (["CANCELLED", "RETURNED"].includes(storeOrder.status) || storeOrder.shipmentStatus === "RETURNED") return false;
+  if (storeOrder.shipmentStatus === "DELIVERED") {
+    if (!storeOrder.deliveredAt) return false;
+    return now.getTime() - storeOrder.deliveredAt.getTime() <= SELLER_LOCATION_DAYS_AFTER_DELIVERY * 24 * 60 * 60 * 1000;
+  }
+  return storeOrder.status !== "DELIVERED";
+}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductPublicationResult } from "@/lib/admin-store-product-publishing";
 import AdminStoreProductPublishingResult from "@/components/admin-store-product-publishing-result";
+import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
 
 export default function AdminStoreActivationAction({
   storeId,
@@ -17,6 +18,7 @@ export default function AdminStoreActivationAction({
   legalInfoApproved: boolean;
 }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -33,7 +35,7 @@ export default function AdminStoreActivationAction({
       setError("Audit üçün ən azı 3 simvolluq səbəb daxil edin.");
       return;
     }
-    if (!window.confirm(next
+    if (!await confirm(next
       ? "Mağazanı ictimai kataloqda göstərmək istəyirsiniz? Satış hüququ ayrıca yoxlanılacaq."
       : "Mağazanı ictimai kataloqdan gizlətmək istəyirsiniz?")) return;
 
@@ -67,7 +69,7 @@ export default function AdminStoreActivationAction({
       setError("Audit üçün ən azı 3 simvolluq səbəb daxil edin.");
       return;
     }
-    if (!window.confirm("Yalnız yayımlanma tələblərinə cavab verən qaralama məhsulları yayımlamaq istəyirsiniz?")) return;
+    if (!await confirm("Yalnız yayımlanma tələblərinə cavab verən qaralama məhsulları yayımlamaq istəyirsiniz?")) return;
 
     setBusy(true);
     setError("");
@@ -95,7 +97,7 @@ export default function AdminStoreActivationAction({
     const prompt = action === "approve"
       ? "Hüquqi məlumatları və satış uyğunluğunu yoxlayıb müraciəti təsdiqləmək istəyirsiniz?"
       : "Hüquqi məlumatları və satış uyğunluğunu yenidən yoxlayıb mağazanı bərpa etmək istəyirsiniz?";
-    if (busy || !window.confirm(prompt)) return;
+    if (busy || !await confirm(prompt)) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -118,7 +120,7 @@ export default function AdminStoreActivationAction({
     }
   }
 
-  return <div className="grid gap-2">
+  return <div className="grid gap-2">{dialog}
     {canToggleVisibility ? <button
       type="button"
       disabled={busy}

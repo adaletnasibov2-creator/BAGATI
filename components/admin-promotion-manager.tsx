@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
 
 type StoreOption = { id: string; name: string };
 type ProductOption = { id: string; storeId: string; name: string; price: string };
@@ -41,6 +42,7 @@ export default function AdminPromotionManager() {
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [items, setItems] = useState<Promotion[]>([]);
   const [form, setForm] = useState<FormValues>(emptyForm);
+  const { confirm, dialog } = useConfirmDialog();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -113,7 +115,7 @@ export default function AdminPromotionManager() {
   }
 
   async function deactivate(id: string) {
-    if (!window.confirm("Kampaniyanı deaktiv etmək istəyirsiniz?")) return;
+    if (!await confirm("Kampaniyanı deaktiv etmək istəyirsiniz?")) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -130,7 +132,7 @@ export default function AdminPromotionManager() {
     }
   }
 
-  return <div className="space-y-5">
+  return <div className="space-y-5">{dialog}
     <section className="rounded-2xl border border-[#e7e3d9] bg-white p-5">
       <h2 className="font-semibold">{form.id ? "Kampaniyanı redaktə et" : "Yeni mağaza kampaniyası"}</h2>
       <p className="mt-1 text-sm text-slate-500">Endirimlər birləşdirilmir. Eyni məhsul üçün üst-üstə düşən aktiv kampaniya rədd edilir.</p>

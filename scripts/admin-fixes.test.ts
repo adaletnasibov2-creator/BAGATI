@@ -49,7 +49,8 @@ test("the form gets its options from the server with the page (no late client fe
   assert.match(sectionPage, /const vendorOptions=storeProfileOptions\(/);
   assert.match(sectionPage, /const cityOptions=storeProfileOptions\(activeCities,store\.city\?\{id:store\.cityId,name:store\.city\.name\}:null\)/);
   const mutationForm = read("components/admin-mutation-form.tsx");
-  assert.match(mutationForm, /const dynamicConfirm=confirmWhen\?\.\(payload\);if\(dynamicConfirm&&!window\.confirm\(dynamicConfirm\)\)\{setBusy\(false\);return;\}/);
+  // Phase B: the confirmation uses the accessible ConfirmDialog instead of window.confirm (same behaviour).
+  assert.match(mutationForm, /const dynamicConfirm=confirmWhen\?\.\(payload\);\s*if\(dynamicConfirm&&!\(await confirm\(\{message:dynamicConfirm\}\)\)\)\{setBusy\(false\);return;\}/);
 });
 
 test("changing owner or city asks for confirmation naming both values; an unchanged save asks nothing", () => {

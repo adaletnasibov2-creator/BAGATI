@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 import AdminTwoFactorEnrollment from "@/components/admin-two-factor-enrollment";
+import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
 
 type Props = {
   enrolled: boolean;
@@ -17,6 +18,7 @@ const field = "rounded-xl border border-[#ded9cf] px-4 py-3 outline-none focus:b
 
 export default function AdminTwoFactorSettings({ enrolled, enrolledAtLabel, remainingRecoveryCodes, required, keyConfigured }: Props) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [enrolling, setEnrolling] = useState(false);
   const [useRecovery, setUseRecovery] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,9 +27,10 @@ export default function AdminTwoFactorSettings({ enrolled, enrolledAtLabel, rema
 
   async function disable(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!window.confirm("İki mərhələli təsdiq söndürülsün? Digər bütün sessiyalar bağlanacaq.")) return;
+    const formElement = event.currentTarget;
+    if (!await confirm("İki mərhələli təsdiq söndürülsün? Digər bütün sessiyalar bağlanacaq.")) return;
     setBusy(true); setError(""); setMessage("");
-    const values = new FormData(event.currentTarget);
+    const values = new FormData(formElement);
     const factor = String(values.get("secondFactor") ?? "");
     try {
       const response = await fetch("/api/admin/2fa/disable", {
@@ -47,7 +50,7 @@ export default function AdminTwoFactorSettings({ enrolled, enrolledAtLabel, rema
   }
 
   if (!enrolled) {
-    return <div className="space-y-4">
+    return <div className="space-y-4">{dialog}
       {!enrolling && <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <ShieldAlert size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
         <p>İki mərhələli təsdiq aktiv deyil. Şifrəniz oğurlansa belə, hesaba giriş üçün telefonunuzdakı kod da tələb olunsun.</p>
@@ -60,7 +63,7 @@ export default function AdminTwoFactorSettings({ enrolled, enrolledAtLabel, rema
     </div>;
   }
 
-  return <div className="space-y-4">
+  return <div className="space-y-4">{dialog}
     <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
       <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
       <div>

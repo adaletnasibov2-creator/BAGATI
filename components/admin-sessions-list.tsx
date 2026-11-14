@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Monitor } from "lucide-react";
+import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
 
 export type AdminSessionRow = {
   id: string;
@@ -16,13 +17,14 @@ export type AdminSessionRow = {
 
 export default function AdminSessionsList({ sessions }: { sessions: AdminSessionRow[] }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirmDialog();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const others = sessions.filter((session) => !session.current).length;
 
   async function act(body: { action: "revoke"; sessionId: string } | { action: "revoke-others" }, confirmText: string) {
-    if (!window.confirm(confirmText)) return;
+    if (!await confirm(confirmText)) return;
     setBusy(body.action === "revoke" ? body.sessionId : "others"); setError(""); setMessage("");
     try {
       const response = await fetch("/api/admin/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -37,7 +39,7 @@ export default function AdminSessionsList({ sessions }: { sessions: AdminSession
     }
   }
 
-  return <div className="space-y-4">
+  return <div className="space-y-4">{dialog}
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-slate-500">{sessions.length} aktiv sessiya{others ? `, ${others} digər cihazda` : ""}.</p>
       <button type="button" disabled={!others || busy !== ""} onClick={() => void act({ action: "revoke-others" }, "Cari sessiyadan başqa bütün sessiyalar bağlansın?")} className="rounded-xl bg-[#142d38] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">

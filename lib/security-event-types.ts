@@ -6,6 +6,7 @@ export const SECURITY_EVENT_TYPES = [
   "ABUSIVE_API",
   "WAF_EVENT",
   "MODSECURITY_EVENT",
+  "IP_HEADER_MISMATCH",
 ] as const;
 export const SECURITY_EVENT_SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export const SECURITY_EVENT_ACTIONS = ["OBSERVED", "DENIED", "CHALLENGED", "BLOCKED", "ALLOWED"] as const;

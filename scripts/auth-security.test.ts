@@ -261,9 +261,13 @@ test("login throttling hashes normalized identities and uses separate recovery l
 });
 
 test("only explicitly trusted Cloudflare ingress supplies a client IP", () => {
-  const headers = new Headers({ "cf-connecting-ip": "2001:0DB8:0:0:0:0:0:1", "x-real-ip": "198.51.100.5" });
+  // Security Center phase 1: X-Real-IP (overwritten by the Cloudways Nginx with the real client IP) must agree with
+  // CF-Connecting-IP; the fixture used to pair it with a different address, which is now treated as untrusted.
+  const headers = new Headers({ "cf-connecting-ip": "2001:0DB8:0:0:0:0:0:1", "x-real-ip": "2001:db8::1" });
   assert.equal(trustedCloudflareClientIp(headers, false), null);
   assert.equal(trustedCloudflareClientIp(headers, true), "2001:db8::1");
+  assert.equal(trustedCloudflareClientIp(new Headers({ "cf-connecting-ip": "2001:db8::1", "x-real-ip": "198.51.100.5" }), true), null, "headers disagree: unknown");
+  assert.equal(trustedCloudflareClientIp(new Headers({ "cf-connecting-ip": "198.51.100.5" }), true), "198.51.100.5", "X-Real-IP absent: CF header alone");
   assert.equal(trustedCloudflareClientIp(new Headers({ "x-real-ip": "198.51.100.5" }), true), null);
   assert.equal(trustedCloudflareClientIp(new Headers({ "cf-connecting-ip": "not-an-ip" }), true), null);
 });

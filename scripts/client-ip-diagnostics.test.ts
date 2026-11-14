@@ -46,7 +46,9 @@ test("diagnostics: flag off never yields an IP; flag on uses CF-Connecting-IP on
   const headers = new Headers({
     "cf-connecting-ip": "203.0.113.57",
     "x-forwarded-for": "203.0.113.57, 162.158.10.20",
-    "x-real-ip": "162.158.10.20",
+    // Phase 1 of the Security Center: in production X-Real-IP carries the real client IP (Nginx overwrites it); a
+    // different value now makes the client IP unknown, so the fixture uses the matching address.
+    "x-real-ip": "203.0.113.57",
   });
   const off = clientIpDiagnostics(headers, false);
   assert.equal(off.flagEnabled, false);
@@ -61,6 +63,10 @@ test("diagnostics: flag off never yields an IP; flag on uses CF-Connecting-IP on
   // Matches the production helper exactly.
   assert.equal(trustedCloudflareClientIp(headers, false), null);
   assert.equal(trustedCloudflareClientIp(headers, true), "203.0.113.57");
+  assert.equal(off.cfRealIpMismatch, false);
+  const mismatch = new Headers({ "cf-connecting-ip": "203.0.113.57", "x-real-ip": "162.158.10.20" });
+  assert.equal(clientIpDiagnostics(mismatch, true).cfRealIpMismatch, true);
+  assert.equal(clientIpDiagnostics(mismatch, true).ipWithFlagOn, null, "mismatch: no trusted IP");
 });
 
 test("diagnostics expose a direct-to-origin request: no Cloudflare hop, spoofable header", () => {

@@ -10,7 +10,11 @@ export function middleware(request: NextRequest) {
     const rejected = csrfRejection(request);
     if (rejected) return rejected;
   }
-  const response = NextResponse.next();
+  // Pathname only (never the query string) for the not-found page's Security Center telemetry. Always overwritten,
+  // so a client cannot supply its own value.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-bagati-pathname", pathname.slice(0, 300));
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   if (personalizedDocument(pathname, request.cookies.has("bagati_session"))) {
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Vary", "Cookie");

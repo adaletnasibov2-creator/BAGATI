@@ -11,9 +11,10 @@ import { captureApplicationSecurityEvent } from "@/lib/security-events";
 import { admin2faKeyStatus } from "@/lib/admin-2fa-crypto";
 import { adminLoginNextStep, isAdmin2faRequired } from "@/lib/admin-2fa-policy";
 import { challengeCookie } from "@/lib/admin-2fa";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 const schema = z.object({ email: z.string().trim().email().max(254), password: z.string().min(1).max(128) });
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = schema.safeParse(body);
@@ -89,3 +90,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Giriş tamamlana bilmədi. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
+
+/** Security Center telemetry: status and duration counted under "admin.login" (never affects the response). */
+export const POST = withSecurityTelemetry("admin.login", handlePOST);

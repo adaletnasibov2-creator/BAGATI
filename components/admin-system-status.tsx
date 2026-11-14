@@ -172,6 +172,7 @@ function ClientIpBody({ data }: { data: SystemStatusData["client-ip"] }) {
       <Row label="İstifadə olunan IP (bayraq aktiv)" tone={data.ipWithFlagOn ? "good" : "bad"}><span className="font-mono text-xs">{data.ipWithFlagOn ?? "yoxdur"}</span></Row>
       <Row label="Son hop Cloudflare-dir">{data.rightmostHopCloudflare === null ? "—" : yesNo(data.rightmostHopCloudflare)}</Row>
       <Row label="CF-Connecting-IP = XFF ilk dəyəri">{data.cfConnectingIpMatchesLeftmostXff === null ? "—" : yesNo(data.cfConnectingIpMatchesLeftmostXff)}</Row>
+      <Row label="CF-Connecting-IP ≠ X-Real-IP (IP etibarsız)" tone={data.cfRealIpMismatch ? "bad" : undefined}>{yesNo(data.cfRealIpMismatch)}</Row>
     </dl>
   </>;
 }

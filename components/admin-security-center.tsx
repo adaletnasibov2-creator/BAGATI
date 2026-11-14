@@ -134,6 +134,7 @@ const eventLabel: Record<string, string> = {
   ABUSIVE_API: "API istifadəsi qaydası",
   WAF_EVENT: "WAF hadisəsi",
   MODSECURITY_EVENT: "ModSecurity hadisəsi",
+  IP_HEADER_MISMATCH: "IP başlıqları uyğun gəlmir",
 };
 const actionLabel: Record<string, string> = {
   OBSERVED: "Müşahidə edilib",
@@ -169,7 +170,7 @@ const navigationItems = [
   { href: "#overview", label: "Ümumi baxış", icon: Shield },
   { href: "#live-events", label: "Təhlükəsizlik hadisələri", icon: Activity },
   { href: "#suspicious-traffic", label: "Şübhəli trafik", icon: Globe2 },
-  { href: "#incidents", label: "İnsidentlər", icon: Siren },
+  { href: "#incidents", label: "Kritik hadisələr", icon: Siren },
   { href: "#analysis", label: "Təhlükə təhlili", icon: BarChart3 },
   { href: "#ip-management", label: "IP idarəetməsi", icon: Ban },
   { href: "#sources", label: "Mənbələr və sistem sağlamlığı", icon: Wifi },
@@ -498,7 +499,7 @@ export default function AdminSecurityCenter() {
   }
 
   return (
-    <main className="min-h-screen rounded-2xl bg-[#07111b] p-4 text-slate-100 sm:p-6 lg:p-8">
+    <div className="rounded-2xl bg-[#07111b] p-4 text-slate-100 sm:p-6 lg:p-8">
       <header className="flex flex-col justify-between gap-5 border-b border-slate-800 pb-6 lg:flex-row lg:items-end">
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.2em] text-emerald-300">
@@ -542,7 +543,7 @@ export default function AdminSecurityCenter() {
         {data && (
           <>
             <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-300">
-              Apache: {data.integrations.apache.receiverConfigured ? "Qəbul sazlanıb" : "Qəbul sazlanmayıb"}
+              Apache / ModSecurity: istifadə olunmur
             </span>
             <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-300">
               Cloudflare: {data.integrations.cloudflare.directApiAdapter === "not_implemented" ? "İzləmə qurulmayıb" : "Məlumat yoxdur"}
@@ -551,8 +552,8 @@ export default function AdminSecurityCenter() {
         )}
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[14rem_minmax(0,1fr)]">
-        <aside className="lg:sticky lg:top-5 lg:self-start">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[14rem_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:sticky lg:top-5 lg:self-start">
           <nav aria-label="Təhlükəsizlik mərkəzi naviqasiyası" className="rounded-xl border border-slate-700 bg-slate-900 p-2">
             <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[.18em] text-slate-500">İş sahəsi</p>
             <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
@@ -978,8 +979,8 @@ export default function AdminSecurityCenter() {
                 <Freshness source={data.integrations.application} now={asOf} configuration="configured" />
               </article>
               <article className={panelClass}>
-                <h3 className="flex items-center gap-2 font-semibold text-white"><Wifi size={17} className="text-orange-200" aria-hidden="true" /> Apache / ModSecurity</h3>
-                <p className="mt-2 text-xs leading-5 text-slate-400">Qəbul sirri yalnız server sazlamasını göstərir; Ubuntu agentinin işlədiyini və ya logun ötürüldüyünü təsdiqləmir.</p>
+                <h3 className="flex items-center gap-2 font-semibold text-white"><Wifi size={17} className="text-orange-200" aria-hidden="true" /> Apache / ModSecurity <span className="rounded-full border border-slate-600 px-2 py-0.5 text-[10px] font-medium text-slate-300">istifadə olunmur</span></h3>
+                <p className="mt-2 text-xs leading-5 text-slate-400">Bu quraşdırmada Apache/ModSecurity mənbəyi istifadə olunmur; qəbul kodu saxlanılıb, lakin agent qoşulmayıb.</p>
                 <Freshness source={data.integrations.apache} now={asOf} configuration={data.integrations.apache.receiverConfigured ? "configured" : "unconfigured"} />
                 <p className="mt-2 text-xs text-slate-400">{data.integrations.apache.receiverConfigured ? "Qəbul sirri: sazlanıb" : "Qəbul sirri: sazlanmayıb"}</p>
               </article>
@@ -1089,7 +1090,7 @@ export default function AdminSecurityCenter() {
               <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Wifi size={16} className="text-emerald-200" aria-hidden="true" /> Mənbə vəziyyəti</h2>
               <ul className="mt-3 space-y-3 text-xs">
                 <li className="flex items-start justify-between gap-2"><span className="text-slate-300">Tətbiq</span><span className="text-right text-slate-400">{data.integrations.application.eventsLast15Minutes > 0 ? "Son məlumat yeni" : "Son 15 dəqiqədə qeyd yoxdur"}</span></li>
-                <li className="flex items-start justify-between gap-2"><span className="text-slate-300">Apache</span><span className="text-right text-slate-400">{!data.integrations.apache.receiverConfigured ? "Qoşulmayıb" : data.integrations.apache.lastReceivedAt ? ageLabel(data.integrations.apache.lastReceivedAt, asOf) : "Hadisə qeydə alınmayıb"}</span></li>
+                <li className="flex items-start justify-between gap-2"><span className="text-slate-300">Apache</span><span className="text-right text-slate-400">İstifadə olunmur</span></li>
                 <li className="flex items-start justify-between gap-2"><span className="text-slate-300">Cloudflare</span><span className="text-right text-amber-200">Birbaşa izləmə qurulmayıb</span></li>
               </ul>
               <p className="mt-3 text-[10px] leading-4 text-slate-500">Son qəbul olunma nəbz siqnalı deyil və fasiləsiz əlaqəni təsdiqləmir.</p>
@@ -1148,6 +1149,6 @@ export default function AdminSecurityCenter() {
           </aside>
         </div>
       )}
-    </main>
+    </div>
   );
 }

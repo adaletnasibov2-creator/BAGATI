@@ -4,6 +4,7 @@ import { readJsonBodyLimited } from "@/lib/request-json";
 import { reapplyRulesFrom, SELLER_APPLICATION_MESSAGES, SELLER_APPLICATION_RULES, sellerApplicationInputSchema, sellerApplicationIssue } from "@/lib/seller-application";
 import { SellerApplicationError, submitSellerApplication } from "@/lib/seller-application-service";
 import { applicantErrorResponse, applicantJson, guardApplicantRequest } from "@/lib/seller-application-http";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
  * A customer applies to become a seller. The role stays CUSTOMER: only an admin approval
  * (lib/seller-application-service.ts approveSellerApplication) changes it to VENDOR.
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const guard = await guardApplicantRequest(request, "/api/vendor/apply");
   if ("response" in guard) return guard.response;
   const body = await readJsonBodyLimited(request, SELLER_APPLICATION_RULES.bodyBytes);
@@ -28,3 +29,6 @@ export async function POST(request: Request) {
     return applicantJson({ error: SELLER_APPLICATION_MESSAGES.unavailable }, 500);
   }
 }
+
+/** Security Center telemetry: status and duration counted under "seller-application" (never affects the response). */
+export const POST = withSecurityTelemetry("seller-application", handlePOST);

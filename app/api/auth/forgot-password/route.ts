@@ -7,13 +7,14 @@ import { authRateLimitKey, consumeAuthRateLimit, PASSWORD_RESET_RATE_LIMIT } fro
 import { prisma } from "@/lib/prisma";
 import { generatePasswordResetToken, getPublicAppUrl, hashPasswordResetToken, PASSWORD_RESET_TTL_MS } from "@/lib/password-reset";
 import { enqueueEmail } from "@/lib/email-outbox";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 const schema = z.object({ email: z.string().trim().email().max(254) });
 const genericResponse = {
   message: "Əgər bu ünvan şifrə ilə qorunan aktiv BAGATI hesabına aiddirsə, bərpa məktubu göndəriləcək. Google ilə yaradılmış və şifrə girişi bağlı olan hesablar Google girişi ilə istifadə olunur.",
 };
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   let body: unknown;
   try { body = await request.json(); }
   catch { return NextResponse.json({ error: "Sorğu məlumatları yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } }); }
@@ -60,3 +61,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Sorğunu emal etmək mümkün olmadı. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
+
+/** Security Center telemetry: status and duration counted under "auth.password-reset" (never affects the response). */
+export const POST = withSecurityTelemetry("auth.password-reset", handlePOST);

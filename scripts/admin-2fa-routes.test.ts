@@ -20,7 +20,9 @@ const STATE_CHANGING_ROUTES = [
 test("every new state-changing route checks the same origin first, then ADMIN authorization", () => {
   for (const path of STATE_CHANGING_ROUTES) {
     const source = read(path);
-    assert.match(source, /export async function POST\(request: NextRequest\) \{\s*const crossSite = csrfRejection\(request\);\s*if \(crossSite\) return crossSite;/, path);
+    // Security Center phase 1: the handler is exported through the telemetry wrapper; its body is unchanged.
+    assert.match(source, /(export async function POST|async function handlePOST)\(request: NextRequest\) \{\s*const crossSite = csrfRejection\(request\);\s*if \(crossSite\) return crossSite;/, path);
+    if (source.includes("async function handlePOST(")) assert.match(source, /export const POST = withSecurityTelemetry\("admin\.(2fa|login)", handlePOST\);/, path);
     assert.doesNotMatch(source, /export async function (GET|PUT|PATCH|DELETE)/, path);
     assert.match(source, /readJsonBodyLimited\(request, 1_024\)|status: 403/, path);
   }

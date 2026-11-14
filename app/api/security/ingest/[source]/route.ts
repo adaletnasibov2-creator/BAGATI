@@ -7,6 +7,7 @@ import {
 } from "@/lib/security-event-ingestion";
 import { persistSecurityEvent, type SecurityEventSource } from "@/lib/security-events";
 import { logSecurityOperationFailure } from "@/lib/security-logging";
+import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ const sourceSecrets: Record<string, { source: ExternalSecurityEventSource; envir
   apache: { source: "APACHE_MODSECURITY", environmentVariable: "BAGATI_APACHE_INGEST_SECRET" },
 };
 
-export async function POST(request: Request, { params }: { params: Promise<{ source: string }> }) {
+async function handlePOST(request: Request, { params }: { params: Promise<{ source: string }> }) {
   const { source: sourceName } = await params;
   const source = sourceSecrets[sourceName];
   if (!source) return NextResponse.json({ error: "Məlumat mənbəyi dəstəklənmir." }, { status: 404 });
@@ -67,3 +68,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ sou
     return NextResponse.json({ error: "Təhlükəsizlik hadisəsini saxlamaq mümkün olmadı." }, { status: 503 });
   }
 }
+
+/** Security Center telemetry: status and duration counted under "security.ingest" (never affects the response). */
+export const POST = withSecurityTelemetry("security.ingest", handlePOST);

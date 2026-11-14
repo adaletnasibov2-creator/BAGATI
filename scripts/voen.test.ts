@@ -52,3 +52,23 @@ test("every server path that accepts a VÖEN uses lib/voen.ts", async () => {
   assert.match(vendor, /const parsedVoen=parseVoen\(d\.voen\);if\(!parsedVoen\.ok\)return NextResponse\.json\(\{error:parsedVoen\.error,field:"voen"\},\{status:422\}\);d\.voen=parsedVoen\.voen;/);
   assert.ok(vendor.indexOf("parseVoen(d.voen)") < vendor.indexOf("const legalPatch="), "checked before anything is written");
 });
+
+test("one VÖEN per seller account: every writer locks and checks inside its transaction; no admin override", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const read = (path: string) => readFileSync(join(__dirname, "..", path), "utf8").replace(/\r\n/g, "\n");
+  const uniqueness = read("lib/voen-uniqueness.ts");
+  assert.match(uniqueness, /pg_advisory_xact_lock\(hashtext\(\$\{`bagati:voen:\$\{voenDigits\}`\}\)\)/);
+  assert.match(uniqueness, /WHERE p\."userId" <> \$\{input\.userId\}[\s\S]*regexp_replace\(p\."voen", '\[\^0-9\]', '', 'g'\) = \$\{input\.voenNormalized\}/, "other users' profiles, older values compared as digits");
+  assert.match(uniqueness, /status: "PENDING", id: \{ not: input\.applicationId \}, userId: \{ not: input\.userId \}/, "other users' open applications");
+  const service = read("lib/seller-application-service.ts");
+  assert.match(service, /if \(voenDigits && !await claimVoenForUser\(tx, \{ voenDigits, userId: input\.userId \}\)\) throw new SellerApplicationError\("DUPLICATE_VOEN"\);/);
+  assert.match(service, /if \(application\.voenNormalized && !await claimVoenForUser\(tx, \{ voenDigits: application\.voenNormalized, userId: user\.id, applicationId: application\.id \}\)\)/);
+  assert.doesNotMatch(service, /confirmDuplicateVoen:|DUPLICATE_VOEN_UNCONFIRMED/, "no override path");
+  assert.match(read("app/api/admin/vendors/route.ts"), /if \(!await claimVoenForUser\(tx, \{ voenDigits: values\.voen, userId: "" \}\)\) throw new VoenInUseError\(\);/);
+  assert.match(read("app/api/vendor/[storeId]/[section]/route.ts"), /if\(typeof legalPatch\.voen==="string"&&legalPatch\.voen!==owned\.vendor\.voen&&!await claimVoenForUser\(tx,\{voenDigits:legalPatch\.voen,userId:access\.user\.id\}\)\)throw new VoenInUseError\(\);/);
+  assert.match(read("lib/seller-application-http.ts"), /case "DUPLICATE_VOEN": return applicantJson\(\{ error: VOEN_IN_USE_MESSAGE, code: error\.code, field: "voen" \}, 409\);/);
+  const review = read("components/admin-seller-application-review.tsx");
+  assert.doesNotMatch(review, /confirmDuplicate/);
+  assert.match(review, /\(!accountReady \|\| duplicateCount > 0\)/);
+});

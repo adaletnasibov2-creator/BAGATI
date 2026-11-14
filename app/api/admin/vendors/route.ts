@@ -8,6 +8,7 @@ import { contactPhoneIssue } from "@/lib/az-phone";
 import { enqueueVerificationEmail } from "@/lib/email-outbox";
 import { isDuplicateEmailError } from "@/lib/registration-errors";
 import { recordAdminCreatedSeller } from "@/lib/seller-application-service";
+import { claimVoenForUser, VoenInUseError, VOEN_IN_USE_MESSAGE } from "@/lib/voen-uniqueness";
 import {
   EMAIL_CODE_TTL_MS,
   generateVerificationCode,
@@ -77,6 +78,8 @@ export async function POST(request: NextRequest) {
   try {
     const created = await prisma.$transaction(
       async (tx) => {
+        // One VÖEN per seller account (lib/voen-uniqueness.ts): refuse a VÖEN another seller or open application uses.
+        if (!await claimVoenForUser(tx, { voenDigits: values.voen, userId: "" })) throw new VoenInUseError();
         const user = await tx.user.create({
           data: {
             email,
@@ -183,6 +186,7 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof VoenInUseError) return NextResponse.json({ error: VOEN_IN_USE_MESSAGE, field: "voen" }, { status: 409 });
     if (isDuplicateEmailError(error)) {
       return NextResponse.json({ error: "Bu e-poçt ünvanı artıq istifadə olunur" }, { status: 409 });
     }

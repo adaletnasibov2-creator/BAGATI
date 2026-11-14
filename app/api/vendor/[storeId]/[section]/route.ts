@@ -29,6 +29,7 @@ import { checkVendorProductActivation, isVendorProductActivation } from "@/lib/v
 import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/stock-quantity";
 import { generateProductCode } from "@/lib/product-code";
 import { parseVoen } from "@/lib/voen";
+import { claimVoenForUser, VoenInUseError, VOEN_IN_USE_MESSAGE } from "@/lib/voen-uniqueness";
 import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-notifications";
 import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
@@ -541,6 +542,8 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
      },
       select:{id:true,name:true,slug:true},
     });
+    // One VÖEN per seller account: a new VÖEN already used by another seller or open application is refused.
+    if(typeof legalPatch.voen==="string"&&legalPatch.voen!==owned.vendor.voen&&!await claimVoenForUser(tx,{voenDigits:legalPatch.voen,userId:access.user.id}))throw new VoenInUseError();
     if(Object.keys(legalPatch).length){
      await tx.vendorProfile.update({where:{id:owned.vendorId},data:legalPatch});
      if(legalChanged){
@@ -566,6 +569,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     message:legalChanged?"Hüquqi məlumatlar yeniləndi. Mağazanın yenidən admin yoxlamasına göndərilməsi tələb olunur.":undefined,
    });
     }catch(error){
+      if(error instanceof VoenInUseError)return NextResponse.json({error:VOEN_IN_USE_MESSAGE,field:"voen"},{status:409});
       if(error&&typeof error==="object"&&"code" in error&&error.code==="P2002"&&d.slug!==undefined&&d.slug!==owned.slug)return NextResponse.json({error:"Mağaza ünvanı artıq istifadə olunur. Başqa ünvan seçin."},{status:409});
      throw error;
     }

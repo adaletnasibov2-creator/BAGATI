@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { GoogleOAuthIntent, GoogleOAuthMode } from "@/lib/google-oauth";
-import { loginPortalPath } from "@/lib/login-portal";
+import { loginPortalPath, publicLoginPortalLink } from "@/lib/login-portal";
 
 export function googleOAuthMessage(code?: string, _intent: GoogleOAuthIntent = "customer", portal?: string | null) {
   const portalPath = loginPortalPath(portal);
@@ -59,22 +59,21 @@ export function GoogleOAuthButton({ intent, mode, nextPath, errorCode, portal }:
   if (nextPath) query.set("next", nextPath);
   const error = googleOAuthMessage(errorCode, intent, portal);
   const portalChoice = errorCode === "account-exists" || errorCode === "wrong-role" || errorCode === "link-pending";
-  const matchedPortal = loginPortalPath(portal);
+  // Public page: link only to the customer or seller login. The admin login is never linked (typed directly).
+  const matchedLink = publicLoginPortalLink(portal);
   return <div className="mt-7 space-y-3">
     {error && <div role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950">
       <p>{error}</p>
       {portalChoice && <>
         <nav aria-label="Hesab növünə uyğun giriş" className="mt-3 flex flex-wrap gap-x-4 gap-y-2 font-semibold underline">
-          {matchedPortal === "/vendor/login" && intent !== "vendor" && <Link href="/vendor/login">Satıcı girişinə keç</Link>}
-          {matchedPortal === "/login" && intent !== "customer" && <Link href="/login">Müştəri girişinə keç</Link>}
-          {matchedPortal === "/admin/login" && <Link href="/admin/login">Admin girişinə keç</Link>}
-          {!matchedPortal && <>
+          {matchedLink?.href === "/vendor/login" && intent !== "vendor" && <Link href="/vendor/login">Satıcı girişinə keç</Link>}
+          {matchedLink?.href === "/login" && intent !== "customer" && <Link href="/login">Müştəri girişinə keç</Link>}
+          {!loginPortalPath(portal) && <>
             <Link href="/login">Müştəri girişi</Link>
             <Link href="/vendor/login">Satıcı girişi</Link>
-            <Link href="/admin/login">Admin girişi</Link>
           </>}
         </nav>
-        <p className="mt-3 text-xs leading-5">Müştəri və satıcı hesablarında Google-ı uyğun təhlükəsizlik bölməsindən bağlayın. Admin hesablarına Google bağlama dəstəklənmir; admin girişi üçün BAGATI şifrəsindən istifadə edin.</p>
+        <p className="mt-3 text-xs leading-5">Müştəri və satıcı hesablarında Google-ı uyğun təhlükəsizlik bölməsindən bağlayın.</p>
       </>}
       {errorCode === "seller-not-found" && <nav aria-label="Satıcı olmaq üçün addımlar" className="mt-3 flex flex-wrap gap-x-4 gap-y-2 font-semibold underline">
         <Link href="/register?next=%2Fvendor%2Fapply">Müştəri kimi qeydiyyatdan keç</Link>

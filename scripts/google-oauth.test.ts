@@ -117,7 +117,8 @@ test("existing-account OAuth conflicts name the matched portal and never merge a
   assert.match(button, /errorCode === "link-pending"/);
   assert.match(button, /href="\/login"/);
   assert.match(button, /href="\/vendor\/login"/);
-  assert.match(button, /href="\/admin\/login"/);
+  // The admin login is never linked from public pages (it works when typed directly).
+  assert.doesNotMatch(button, /\/admin\/login/);
   assert.match(button, /Admin hesablarına Google bağlama dəstəklənmir/);
   const loginForm = await readFile(new URL("../components/login-form.tsx", import.meta.url), "utf8");
   assert.match(loginForm, /\/vendor\/login/);

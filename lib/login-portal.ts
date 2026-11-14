@@ -19,6 +19,15 @@ export function loginPortalLinkLabel(portal: LoginPortal) {
   return "Müştəri girişinə keç";
 }
 
+/**
+ * Link shown on a PUBLIC page (customer/seller login, Google messages) to another portal's login.
+ * The admin entry point is never linked from public pages: /admin/login works only when typed directly.
+ */
+export function publicLoginPortalLink(portal: string | null | undefined): { href: string; label: string } | null {
+  if (portal === "customer" || portal === "vendor") return { href: loginPortalPath(portal)!, label: loginPortalLinkLabel(portal) };
+  return null;
+}
+
 export function loginPortalForRole(role: Role): LoginPortal {
   if (role === "VENDOR") return "vendor";
   if (role === "ADMIN") return "admin";

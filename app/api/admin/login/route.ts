@@ -12,6 +12,7 @@ import { admin2faKeyStatus } from "@/lib/admin-2fa-crypto";
 import { adminLoginNextStep, isAdmin2faRequired } from "@/lib/admin-2fa-policy";
 import { challengeCookie } from "@/lib/admin-2fa";
 import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
+import { adminLoginIpBucket, adminRateLimitedResponseParts } from "@/lib/admin-login-rate-limit";
 
 const schema = z.object({ email: z.string().trim().email().max(254), password: z.string().min(1).max(128) });
 async function handlePOST(request: NextRequest) {
@@ -21,7 +22,15 @@ async function handlePOST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "E-poçt və ya şifrə yanlışdır" }, { status: 400 });
   const email = parsed.data.email.trim().toLowerCase();
   let rateKey: string;
+  const ipBucket = adminLoginIpBucket(request.headers);
   try {
+    // Per client IP first (shared stricter bucket when the IP is unknown), so one IP over its limit does not also
+    // use up the account's attempts. Fixed windows: never a permanent lockout.
+    if (!await consumeAuthRateLimit(ipBucket.key, ipBucket.limit, ipBucket.windowMs)) {
+      await captureApplicationSecurityEvent({ request, eventType: "RATE_LIMIT_VIOLATION", path: "/api/admin/login" });
+      const limited = adminRateLimitedResponseParts(ipBucket.windowMs);
+      return NextResponse.json({ error: limited.error, code: "RATE_LIMITED" }, { status: 429, headers: { "Cache-Control": "no-store", "Retry-After": limited.retryAfterSeconds } });
+    }
     rateKey = authRateLimitKey("login", email);
     if (!await consumeAuthRateLimit(rateKey, LOGIN_RATE_LIMIT.limit, LOGIN_RATE_LIMIT.windowMs)) {
       await captureApplicationSecurityEvent({ request, eventType: "RATE_LIMIT_VIOLATION", path: "/api/admin/login" });
@@ -59,7 +68,11 @@ async function handlePOST(request: NextRequest) {
     catch (error) { logAuthFailure("admin_login_rate_limit_clear", error); }
     return NextResponse.json(wrongPortalBody(user.role), { status: 403, headers: { "Cache-Control": "no-store" } });
   }
-  try { await clearAuthRateLimit(rateKey); }
+  try {
+    await clearAuthRateLimit(rateKey);
+    // A correct ADMIN password also resets this IP's bucket; the shared unknown-IP bucket is left to its window.
+    if (ipBucket.scope === "ip") await clearAuthRateLimit(ipBucket.key);
+  }
   catch (error) { logAuthFailure("admin_login_rate_limit_clear", error); }
   // Second factor: no session is created until it passes. Admins without 2FA keep today's flow unless it is required.
   try {

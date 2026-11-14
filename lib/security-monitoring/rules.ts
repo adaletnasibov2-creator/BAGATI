@@ -7,6 +7,7 @@ import { z } from "zod";
 export type RuleMetric =
   | "events.loginFailure"
   | "events.twoFactorFailure"
+  | "events.adminLoginFailure"
   | "stats.authDenied"
   | "stats.notFound"
   | "stats.status5xx"
@@ -30,6 +31,9 @@ export const RULE_BOUNDS = { threshold: [1, 100_000], windowMinutes: [1, 1440], 
 
 /** Paths of the admin second factor (login code step and disabling 2FA). */
 export const TWO_FACTOR_PATHS = ["/api/admin/login/2fa", "/api/admin/2fa/disable"] as const;
+
+/** Path of the admin password step (failures there are counted under the "admin.login" route group). */
+export const ADMIN_LOGIN_PATHS = ["/api/admin/login"] as const;
 
 export const SECURITY_ALERT_RULES: readonly AlertRuleDefinition[] = [
   {
@@ -72,6 +76,12 @@ export const SECURITY_ALERT_RULES: readonly AlertRuleDefinition[] = [
     key: "two_factor_failures", metric: "events.twoFactorFailure", severity: "CRITICAL",
     label: "Admin 2FA uğursuzluqları",
     description: "Admin iki mərhələli təsdiq kodunun ardıcıl səhv daxil edilməsi.",
+    defaults: { enabled: true, threshold: 5, windowMinutes: 10, cooldownMinutes: 30 },
+  },
+  {
+    key: "admin_login_failure_burst", metric: "events.adminLoginFailure", severity: "CRITICAL",
+    label: "Admin girişində uğursuz cəhdlər",
+    description: "Admin giriş səhifəsində (şifrə mərhələsi) qısa müddətdə çoxlu uğursuz giriş: admin hesabına qarşı hücum əlaməti.",
     defaults: { enabled: true, threshold: 5, windowMinutes: 10, cooldownMinutes: 30 },
   },
 ];

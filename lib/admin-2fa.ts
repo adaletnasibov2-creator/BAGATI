@@ -11,7 +11,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { requestCookieSecure } from "@/lib/cookie-security";
-import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
+import { admin2faIpBucket } from "@/lib/admin-login-rate-limit";
 import { authRateLimitKey, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
 import { admin2faKeyStatus, Admin2faKeyError, decryptTotpSecret, encryptTotpSecret } from "@/lib/admin-2fa-crypto";
@@ -128,9 +128,10 @@ export async function startEnrollment(actor: EnrollmentActor) {
 }
 
 async function consumeCodeRateLimits(request: NextRequest, userId: string) {
-  const ip = trustedCloudflareClientIp(request.headers);
   const userOk = await consumeAuthRateLimit(authRateLimitKey("admin-2fa", `user:${userId}`), ADMIN_2FA_USER_RATE_LIMIT.limit, ADMIN_2FA_USER_RATE_LIMIT.windowMs);
-  const ipOk = ip ? await consumeAuthRateLimit(authRateLimitKey("admin-2fa", `ip:${ip}`), ADMIN_2FA_IP_RATE_LIMIT.limit, ADMIN_2FA_IP_RATE_LIMIT.windowMs) : true;
+  // Per client IP; when the IP is unknown, one shared stricter bucket (fixed window, never permanent).
+  const ipBucket = admin2faIpBucket(request.headers, ADMIN_2FA_IP_RATE_LIMIT);
+  const ipOk = await consumeAuthRateLimit(ipBucket.key, ipBucket.limit, ipBucket.windowMs);
   return userOk && ipOk;
 }
 

@@ -12,6 +12,7 @@ import { renderBrands } from "./brands";
 import { renderCities } from "./cities";
 import { renderRefunds } from "./refunds";
 import { renderReviews } from "./reviews";
+import { renderImports } from "./imports";
 import { renderNotifications } from "./notifications";
 
 export type AdminSection = { match: (route: string, parts: string[]) => boolean; render: (ctx: SectionContext) => Promise<ReactNode> };
@@ -25,6 +26,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { match: (route, parts) => route==="cities", render: renderCities },
   { match: (route, parts) => route==="refunds", render: renderRefunds },
   { match: (route, parts) => route==="reviews", render: renderReviews },
+  { match: (route, parts) => route==="imports", render: renderImports },
   { match: (route, parts) => route==="notifications", render: renderNotifications },
 ];
-/* ENTRIES [{"module":"homepage","exportName":"renderHomepage","matchExpr":"route===\"homepage\""},{"module":"promotions","exportName":"renderPromotions","matchExpr":"route===\"promotions\""},{"module":"payments","exportName":"renderPayments","matchExpr":"route===\"payments\""},{"module":"categories","exportName":"renderCategories","matchExpr":"route===\"categories\""},{"module":"brands","exportName":"renderBrands","matchExpr":"route===\"brands\""},{"module":"cities","exportName":"renderCities","matchExpr":"route===\"cities\""},{"module":"refunds","exportName":"renderRefunds","matchExpr":"route===\"refunds\""},{"module":"reviews","exportName":"renderReviews","matchExpr":"route===\"reviews\""},{"module":"notifications","exportName":"renderNotifications","matchExpr":"route===\"notifications\""}] */
+/* ENTRIES [{"module":"homepage","exportName":"renderHomepage","matchExpr":"route===\"homepage\""},{"module":"promotions","exportName":"renderPromotions","matchExpr":"route===\"promotions\""},{"module":"payments","exportName":"renderPayments","matchExpr":"route===\"payments\""},{"module":"categories","exportName":"renderCategories","matchExpr":"route===\"categories\""},{"module":"brands","exportName":"renderBrands","matchExpr":"route===\"brands\""},{"module":"cities","exportName":"renderCities","matchExpr":"route===\"cities\""},{"module":"refunds","exportName":"renderRefunds","matchExpr":"route===\"refunds\""},{"module":"reviews","exportName":"renderReviews","matchExpr":"route===\"reviews\""},{"module":"imports","exportName":"renderImports","matchExpr":"route===\"imports\""},{"module":"notifications","exportName":"renderNotifications","matchExpr":"route===\"notifications\""}] */

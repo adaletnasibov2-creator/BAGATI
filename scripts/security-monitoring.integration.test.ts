@@ -91,6 +91,30 @@ test("security monitoring on a scratch schema: flush increments, rules with cool
       assert.deepEqual(rules, ["two_factor_failures:CRITICAL"], "5 2FA failures; 5 login failures is below the burst threshold of 30");
     });
 
+    await t.test("admin login failure burst: 5 password failures on the admin login in 10 minutes, then the cooldown", async () => {
+      await prisma.securityIncident.deleteMany({});
+      await prisma.securityAlertRule.deleteMany({});
+      await prisma.securityEvent.deleteMany({});
+      for (let index = 0; index < 4; index += 1) {
+        await prisma.securityEvent.create({ data: { source: "APPLICATION", sourceEventId: `adminpw-${index}`, occurredAt: new Date(now.getTime() - index * 60_000), path: "/api/admin/login", eventType: "LOGIN_FAILURE", severity: "MEDIUM", action: "DENIED" } });
+      }
+      // Outside the 10-minute window, and failures on other login forms, do not count.
+      await prisma.securityEvent.create({ data: { source: "APPLICATION", sourceEventId: "adminpw-old", occurredAt: new Date(now.getTime() - 11 * 60_000), path: "/api/admin/login", eventType: "LOGIN_FAILURE", severity: "MEDIUM", action: "DENIED" } });
+      await prisma.securityEvent.create({ data: { source: "APPLICATION", sourceEventId: "customer-pw", occurredAt: now, path: "/api/auth/login", eventType: "LOGIN_FAILURE", severity: "MEDIUM", action: "DENIED" } });
+      assert.deepEqual(await jobs.evaluateAlertRules(prisma, now), [], "4 admin failures: below the threshold of 5");
+      await prisma.securityEvent.create({ data: { source: "APPLICATION", sourceEventId: "adminpw-4", occurredAt: new Date(now.getTime() - 9 * 60_000), path: "/api/admin/login", eventType: "LOGIN_FAILURE", severity: "MEDIUM", action: "DENIED" } });
+      const opened = await jobs.evaluateAlertRules(prisma, now);
+      const incidents = await prisma.securityIncident.findMany({ where: { id: { in: opened } }, select: { ruleKey: true, severity: true, observedValue: true, threshold: true, windowMinutes: true } });
+      assert.deepEqual(incidents, [{ ruleKey: "admin_login_failure_burst", severity: "CRITICAL", observedValue: 5, threshold: 5, windowMinutes: 10 }]);
+      assert.deepEqual(await jobs.evaluateAlertRules(prisma, new Date(now.getTime() + 29 * 60_000)), [], "inside the 30 minute cooldown");
+      // Editable like the others: an admin override (threshold 10) stops a new incident after the cooldown.
+      await prisma.securityAlertRule.create({ data: { key: "admin_login_failure_burst", enabled: true, threshold: 10, windowMinutes: 10, cooldownMinutes: 30 } });
+      await prisma.securityIncident.deleteMany({});
+      assert.deepEqual(await jobs.evaluateAlertRules(prisma, now), [], "override respected");
+      await prisma.securityAlertRule.deleteMany({});
+      await prisma.securityEvent.deleteMany({});
+    });
+
     await t.test("hourly roll-up is recomputed, not added", async () => {
       await writeMinuteRows([row({ requests: 7, notFound: 3 })]);
       await jobs.rollupHours(prisma, now);

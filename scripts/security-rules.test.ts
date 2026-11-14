@@ -3,8 +3,8 @@ import test from "node:test";
 import { effectiveRuleSettings, getAlertRule, incidentTitle, RULE_BOUNDS, ruleSettingsSchema, SECURITY_ALERT_RULES, shouldOpenIncident } from "../lib/security-monitoring/rules";
 import { RETENTION, retentionCutoffs } from "../lib/security-monitoring/jobs";
 
-test("the seven rules exist with Azerbaijani labels and defaults inside the bounds", () => {
-  assert.deepEqual(SECURITY_ALERT_RULES.map((rule) => rule.key), ["login_failure_burst", "auth_denied_spike", "not_found_scan", "server_error_spike", "rate_limit_spike", "ip_header_mismatch", "two_factor_failures"]);
+test("the eight rules exist with Azerbaijani labels and defaults inside the bounds", () => {
+  assert.deepEqual(SECURITY_ALERT_RULES.map((rule) => rule.key), ["login_failure_burst", "auth_denied_spike", "not_found_scan", "server_error_spike", "rate_limit_spike", "ip_header_mismatch", "two_factor_failures", "admin_login_failure_burst"]);
   for (const rule of SECURITY_ALERT_RULES) {
     assert.match(rule.key, /^[a-z][a-z0-9_]{1,47}$/, "matches the database CHECK");
     assert.match(rule.label + rule.description, /[əğıöşüçİ]/, `${rule.key}: Azerbaijani text`);

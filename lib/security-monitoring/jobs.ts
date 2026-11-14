@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { utcTimestamp } from "@/lib/sql-timestamp";
 import { maskIpAddress } from "@/lib/admin-system-status";
 import {
-  effectiveRuleSettings, incidentTitle, SECURITY_ALERT_RULES, shouldOpenIncident, TWO_FACTOR_PATHS,
+  effectiveRuleSettings, incidentTitle, SECURITY_ALERT_RULES, shouldOpenIncident, TWO_FACTOR_PATHS, ADMIN_LOGIN_PATHS,
   type AlertRuleDefinition, type RuleSettings,
 } from "@/lib/security-monitoring/rules";
 
@@ -47,6 +47,9 @@ export async function measureRule(db: Db, rule: AlertRuleDefinition, settings: R
   }
   if (rule.metric === "events.twoFactorFailure") {
     return db.securityEvent.count({ where: { eventType: "LOGIN_FAILURE", path: { in: [...TWO_FACTOR_PATHS] }, occurredAt: { gte: since, lte: now } } });
+  }
+  if (rule.metric === "events.adminLoginFailure") {
+    return db.securityEvent.count({ where: { eventType: "LOGIN_FAILURE", path: { in: [...ADMIN_LOGIN_PATHS] }, occurredAt: { gte: since, lte: now } } });
   }
   const column = STAT_COLUMN[rule.metric];
   const rows = await db.$queryRaw<{ total: bigint | number | null }[]>`

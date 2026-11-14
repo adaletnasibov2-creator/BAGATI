@@ -85,3 +85,24 @@ test("migration 20261115120000 is additive only: one new table, its indexes, for
   assert.match(sql, /CHECK \("voen" ~ '\^\[0-9\]\{9\}\[12\]\$'\)/);
   assert.match(sql, /CREATE UNIQUE INDEX "SellerVoenVerification_userId_voen_key"/);
 });
+
+test("admin verification API: same-origin -> ADMIN -> bounded body -> strict validation -> service; reset on VÖEN change", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const read = (path: string) => readFileSync(join(__dirname, "..", path), "utf8").replace(/\r\n/g, "\n");
+  const route = read("app/api/admin/voen-verification/route.ts");
+  const order = ["csrfRejection(request)", 'requireRole("ADMIN")', "readJsonBodyLimited(request", "bodySchema.safeParse(body.value)", "verifyVoen(prisma"].map((needle) => route.indexOf(needle));
+  assert.ok(order.every((position) => position > 0));
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "only an admin reaches the service");
+  assert.match(route, /if \(!admin\) return NextResponse\.json\(\{ error: "İcazə yoxdur" \}, \{ status: 403, headers \}\);/);
+  assert.match(route, /\.strict\(\)/);
+  assert.doesNotMatch(route, /^export const (?!dynamic)/m);
+  const service = read("lib/voen-verification.ts");
+  assert.match(service, /if \(await currentVoenOf\(tx, input\.userId\) !== parsed\.voen\) throw new VoenVerificationError\("STALE"\);/);
+  assert.match(service, /action: "SELLER_VOEN_VERIFIED"/);
+  assert.match(service, /action: "SELLER_VOEN_VERIFICATION_REVOKED"/);
+  assert.match(service, /action: "SELLER_VOEN_VERIFICATION_RESET"/);
+  assert.doesNotMatch(service, /fetch\(|e-taxes/i, "the server never calls e-taxes");
+  const vendor = read("app/api/vendor/[storeId]/[section]/route.ts");
+  assert.match(vendor, /if\(legalPatch\.voen!==undefined&&\(legalPatch\.voen\?\?null\)!==owned\.vendor\.voen\)await resetVoenVerificationOnChange\(tx,\{userId:access\.user\.id,actorId:access\.user\.id\}\);/);
+});

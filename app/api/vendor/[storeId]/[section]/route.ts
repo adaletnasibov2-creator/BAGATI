@@ -30,6 +30,7 @@ import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/
 import { generateProductCode } from "@/lib/product-code";
 import { parseVoen } from "@/lib/voen";
 import { claimVoenForUser, VoenInUseError, VOEN_IN_USE_MESSAGE } from "@/lib/voen-uniqueness";
+import { resetVoenVerificationOnChange } from "@/lib/voen-verification";
 import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-notifications";
 import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
@@ -546,6 +547,8 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     if(typeof legalPatch.voen==="string"&&legalPatch.voen!==owned.vendor.voen&&!await claimVoenForUser(tx,{voenDigits:legalPatch.voen,userId:access.user.id}))throw new VoenInUseError();
     if(Object.keys(legalPatch).length){
      await tx.vendorProfile.update({where:{id:owned.vendorId},data:legalPatch});
+     // A changed VÖEN goes back to "Yoxlanmayıb" (admin verification revoked, audited); nothing else is reset here.
+     if(legalPatch.voen!==undefined&&(legalPatch.voen??null)!==owned.vendor.voen)await resetVoenVerificationOnChange(tx,{userId:access.user.id,actorId:access.user.id});
      if(legalChanged){
       await tx.store.updateMany({where:{vendorId:owned.vendorId},data:{legalInfoApproved:false}});
       await tx.auditLog.create({data:{actorId:access.user.id,action:"SELLER_LEGAL_INFORMATION_UPDATE",entityType:"VendorProfile",entityId:owned.vendorId,metadata:{reviewRequired:true,storeStatusesPreserved:true}}});

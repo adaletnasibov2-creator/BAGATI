@@ -33,6 +33,10 @@ test("editor: preview with the same safe renderer, confirm before restore, sends
   assert.match(editor, /expectedUpdatedAt: data\.updatedAt/);
   assert.match(editor, />Bu versiyaya qayıt<\/button>/);
   assert.doesNotMatch(editor, /dangerouslySetInnerHTML|@\/lib\/settings|@\/lib\/prisma/);
+  // Dates are formatted on the server: formatting in the browser can differ (ICU) and break hydration.
+  assert.doesNotMatch(editor, /Intl\.DateTimeFormat|toLocale(Date)?String/);
+  assert.match(editor, /<b>\{revision\.createdAtLabel\}<\/b>/);
+  assert.match(read("lib/content-pages-admin.ts"), /createdAtLabel: formatContentDateTime\(revision\.createdAt\)/);
   const list = read("app/admin/_sections/pages.tsx");
   assert.match(list, /label: "Son yenilənmə"/);
   const index = read("app/admin/_sections/index.ts");

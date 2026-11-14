@@ -5,7 +5,7 @@
  * by deleting: a restore copies an old revision into a NEW revision.
  */
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { CONTENT_PAGE_DEFAULTS, CONTENT_PAGE_META, CONTENT_PAGE_SLUGS, CONTENT_REVISIONS_KEPT, type ContentPageSlug } from "@/lib/content-pages";
+import { CONTENT_PAGE_DEFAULTS, CONTENT_PAGE_META, CONTENT_PAGE_SLUGS, CONTENT_REVISIONS_KEPT, formatContentDateTime, type ContentPageSlug } from "@/lib/content-pages";
 
 export class ContentPageError extends Error {
   constructor(readonly code: "CONFLICT" | "NOT_FOUND") { super(code); this.name = "ContentPageError"; }
@@ -91,9 +91,10 @@ export async function loadContentPageEditor(db: PrismaClient, slug: ContentPageS
     body: row?.body ?? CONTENT_PAGE_DEFAULTS[slug].body,
     fromDatabase: Boolean(row),
     updatedAt: row?.updatedAt.toISOString() ?? null,
+    updatedAtLabel: row ? formatContentDateTime(row.updatedAt) : null,
     updatedBy: row?.updatedBy?.email ?? null,
     revisions: (row?.revisions ?? []).map((revision, index) => ({
-      id: revision.id, title: revision.title, note: revision.note, createdAt: revision.createdAt.toISOString(), createdBy: revision.createdBy?.email ?? null,
+      id: revision.id, title: revision.title, note: revision.note, createdAt: revision.createdAt.toISOString(), createdAtLabel: formatContentDateTime(revision.createdAt), createdBy: revision.createdBy?.email ?? null,
       bodyLength: revision.body.length, current: index === 0 && revision.title === row?.title && revision.body === row?.body,
     })),
   };

@@ -81,6 +81,11 @@ export function formatContentDate(date: Date): string {
   return new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
+/** "14.11.2026 18:06" in Baku time, formatted on the server (client components receive the label, not the date). */
+export function formatContentDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+}
+
 const oneLine = (max: number) => z.string().transform((value) => value.replace(/\s+/g, " ").trim()).pipe(z.string().min(1, "Boş ola bilməz.").max(max, `Ən çox ${max} simvol.`));
 
 export const contentPageSaveSchema = z.object({

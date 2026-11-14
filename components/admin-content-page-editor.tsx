@@ -8,10 +8,10 @@ import { Section } from "@/components/admin-ui/section";
 import { ResultMessage } from "@/components/admin-ui/result-message";
 import { buttonClass, inputClass } from "@/components/admin-ui/styles";
 
-type Revision = { id: string; title: string; note: string | null; createdAt: string; createdBy: string | null; bodyLength: number; current: boolean };
-type EditorData = { slug: string; title: string; body: string; updatedAt: string | null; updatedBy: string | null; fromDatabase: boolean; revisions: Revision[] };
+type Revision = { id: string; title: string; note: string | null; createdAt: string; createdAtLabel: string; createdBy: string | null; bodyLength: number; current: boolean };
+type EditorData = { slug: string; title: string; body: string; updatedAt: string | null; updatedAtLabel: string | null; updatedBy: string | null; fromDatabase: boolean; revisions: Revision[] };
 
-const bakuDateTime = (iso: string) => new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+// Dates arrive formatted by the server (Baku time): formatting them here could differ from the server and break hydration.
 const BODY_MAX = 50_000;
 
 /**
@@ -53,12 +53,12 @@ export default function AdminContentPageEditor({ data }: { data: EditorData }) {
 
   async function restore(revision: Revision) {
     if (busy) return;
-    if (!(await confirm({ title: "Bu versiyaya qayıt", message: `${bakuDateTime(revision.createdAt)} versiyası ("${revision.title}") yeni versiya kimi bərpa ediləcək. Heç bir versiya silinmir.`, confirmLabel: "Bərpa et" }))) return;
+    if (!(await confirm({ title: "Bu versiyaya qayıt", message: `${revision.createdAtLabel} versiyası ("${revision.title}") yeni versiya kimi bərpa ediləcək. Heç bir versiya silinmir.`, confirmLabel: "Bərpa et" }))) return;
     await send(`/api/admin/pages/${data.slug}/restore`, { revisionId: revision.id });
   }
 
   return <div className="grid gap-5 xl:grid-cols-2">
-    <Section title="Redaktə" description={data.updatedAt ? `Son yenilənmə: ${bakuDateTime(data.updatedAt)}${data.updatedBy ? ` · ${data.updatedBy}` : ""}` : "Hələ yadda saxlanmayıb."}>
+    <Section title="Redaktə" description={data.updatedAtLabel ? `Son yenilənmə: ${data.updatedAtLabel}${data.updatedBy ? ` · ${data.updatedBy}` : ""}` : "Hələ yadda saxlanmayıb."}>
       <form onSubmit={save} className="grid gap-4">
         <label className="grid gap-1 text-sm font-medium text-slate-700">Başlıq
           <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required className={inputClass} />
@@ -97,7 +97,7 @@ export default function AdminContentPageEditor({ data }: { data: EditorData }) {
         ? <ol className="divide-y divide-[#eeeae2]">
           {data.revisions.map((revision) => <li key={revision.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
             <span className="min-w-0">
-              <b>{bakuDateTime(revision.createdAt)}</b> · {revision.createdBy ?? "İlkin mətn"}
+              <b>{revision.createdAtLabel}</b> · {revision.createdBy ?? "İlkin mətn"}
               <span className="block text-slate-600">{revision.title} · {revision.bodyLength} simvol{revision.note ? ` · ${revision.note}` : ""}</span>
             </span>
             {revision.current

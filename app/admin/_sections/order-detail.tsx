@@ -6,6 +6,8 @@ import { type SectionContext, card, Header, StatusForm } from "./shared";
 import { adminStatusLabel } from "@/lib/admin-labels";
 import { formatAmount, formatMoney } from "@/lib/format-money";
 import { AdminShipmentStatusControl } from "@/components/admin-shipment-status-control";
+import { AdminCoordinatesReveal } from "@/components/admin-coordinates-reveal";
+import { deliveryAddressText, maskCoordinates, readAddressSnapshot } from "@/lib/delivery-location";
 
 export async function renderOrderDetail({ parts, shell }: SectionContext) {
   const order = await prisma.order.findUnique({
@@ -23,6 +25,8 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
    },
   });
   if (!order) notFound();
+  // Formatted address; the coordinates stay masked (not in the HTML) until revealed, which is audited.
+  const delivery = readAddressSnapshot(order.addressSnapshot);
   const allowedOrderStatuses = allowedAdminOrderTransitions(order.storeOrders.map((group: any) => group.status));
   return shell(<>
    <Header title={`Sifariş · ${order.id.slice(-8).toUpperCase()}`} detail={`Yaradılıb ${order.createdAt.toLocaleString("az-AZ")} · Ümumi status ${adminStatusLabel("order", order.status)}`} />
@@ -30,7 +34,10 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
     <section className={card}>
      <h2 className="font-semibold">Müştəri</h2>
      <p className="mt-3 text-sm">{order.user.customerProfile?.firstName || ""} {order.user.customerProfile?.lastName || ""} · {order.user.email}</p>
-     <pre className="mt-3 whitespace-pre-wrap text-xs text-slate-500">Çatdırılma ünvanı: {JSON.stringify(order.addressSnapshot, null, 2)}</pre>
+     <h3 className="mt-4 text-sm font-semibold">Çatdırılma ünvanı</h3>
+     <p className="mt-1 text-sm">{[delivery.recipientName, delivery.phone].filter(Boolean).join(" · ") || "Alıcı qeyd edilməyib"}</p>
+     <p className="mt-1 text-sm text-slate-600">{deliveryAddressText(delivery) || "Ünvan məlumatı yoxdur"}</p>
+     {delivery.coordinates ? <AdminCoordinatesReveal orderId={order.id} masked={maskCoordinates(delivery.coordinates)} /> : <p className="mt-1 text-xs text-slate-500">Xəritə nöqtəsi yoxdur.</p>}
      <h3 className="mt-5 font-semibold">Ödəniş</h3>
      {order.payments.length
       ? order.payments.map((payment: any) => <p key={payment.id} className="mt-2 text-sm">{adminStatusLabel("payment", payment.status)} · {payment.currency === "AZN" ? formatMoney(payment.amount) : `${formatAmount(payment.amount)} ${payment.currency}`} · {payment.provider || "Provayder təyin edilməyib"}{payment.providerReference && !String(payment.providerReference).startsWith("claim:") ? ` · ${payment.providerReference}` : ""}</p>)

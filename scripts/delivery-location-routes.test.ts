@@ -171,3 +171,39 @@ test("admin shipment API: same-origin -> ADMIN -> bounded body -> validation -> 
   const detail = read("app/admin/_sections/order-detail.tsx");
   assert.match(detail, /<AdminShipmentStatusControl storeOrderId=\{group\.id\} shipmentStatus=\{group\.shipmentStatus\} orderStatus=\{group\.status\} \/>/);
 });
+
+test("admin order detail: formatted address, coordinates masked in the HTML; reveal is audited", () => {
+  const detail = read("app/admin/_sections/order-detail.tsx");
+  assert.doesNotMatch(detail, /JSON\.stringify\(order\.addressSnapshot/);
+  assert.match(detail, /<AdminCoordinatesReveal orderId=\{order\.id\} masked=\{maskCoordinates\(delivery\.coordinates\)\} \/>/, "only the masked text reaches the client");
+  const reveal = read("components/admin-coordinates-reveal.tsx");
+  assert.match(reveal, /fetch\(`\/api\/admin\/order-coordinates\/\$\{encodeURIComponent\(orderId\)\}`, \{ method: "POST" \}\)/);
+  const route = read("app/api/admin/order-coordinates/[orderId]/route.ts");
+  const order = ["csrfRejection(request)", 'requireRole("ADMIN")', "prisma.order.findUnique(", "prisma.auditLog.create(", "NextResponse.json({ latitude:"].map((needle) => route.indexOf(needle));
+  assert.ok(order.every((position) => position > 0));
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "same-origin -> ADMIN -> lookup -> audit -> response");
+  assert.match(route, /prisma\.auditLog\.create\(\{ data: \{ actorId: admin\.id, action: "ORDER_COORDINATES_VIEW", entityType: "Order", entityId: order\.id \} \}\)/, "no coordinates in the audit row");
+  assert.match(route, /"Cache-Control": "no-store"/);
+  assert.doesNotMatch(route, /^export const (?!dynamic)/m);
+});
+
+test("privacy: only the order pages, the reveal API and order creation read the address snapshot", () => {
+  const { readdirSync } = require("node:fs") as typeof import("node:fs");
+  const root = join(__dirname, "..");
+  const walk = (dir: string): string[] => readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? walk(`${dir}/${entry.name}`) : /\.(ts|tsx)$/.test(entry.name) ? [`${dir}/${entry.name}`] : []);
+  const files = ["app", "components", "lib"].flatMap(walk).filter((file) => read(file).includes("addressSnapshot")).sort();
+  assert.deepEqual(files, [
+    "app/(customer)/orders/[orderId]/page.tsx",      // the customer's own order (text only, no coordinates)
+    "app/admin/_sections/order-detail.tsx",          // admin detail (masked)
+    "app/api/admin/order-coordinates/[orderId]/route.ts", // audited reveal
+    "app/api/orders/route.ts",                       // creation
+    "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx", // the store's own order (7-day rule)
+    "lib/delivery-location.ts",
+  ]);
+  // E-mails never carry the address or coordinates.
+  assert.doesNotMatch(read("lib/email-templates.ts"), /latitude|longitude|addressSnapshot|line1/);
+  for (const file of ["app/api/orders/route.ts", "app/api/vendor/[storeId]/[section]/route.ts"]) {
+    for (const call of read(file).match(/enqueueEmail\([^;]*\);/g) ?? []) assert.doesNotMatch(call, /latitude|longitude|addressSnapshot|line1/, `${file}: ${call.slice(0, 60)}`);
+  }
+});

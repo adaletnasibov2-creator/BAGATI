@@ -7,6 +7,7 @@ import type { SectionContext } from "./shared";
 import { renderHomepage } from "./homepage";
 import { renderPromotions } from "./promotions";
 import { renderPayments } from "./payments";
+import { renderBrands } from "./brands";
 import { renderRefunds } from "./refunds";
 import { renderReviews } from "./reviews";
 import { renderNotifications } from "./notifications";
@@ -17,8 +18,9 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { match: (route, parts) => route==="homepage", render: renderHomepage },
   { match: (route, parts) => route==="promotions", render: renderPromotions },
   { match: (route, parts) => route==="payments", render: renderPayments },
+  { match: (route, parts) => route==="brands", render: renderBrands },
   { match: (route, parts) => route==="refunds", render: renderRefunds },
   { match: (route, parts) => route==="reviews", render: renderReviews },
   { match: (route, parts) => route==="notifications", render: renderNotifications },
 ];
-/* ENTRIES [{"module":"homepage","exportName":"renderHomepage","matchExpr":"route===\"homepage\""},{"module":"promotions","exportName":"renderPromotions","matchExpr":"route===\"promotions\""},{"module":"payments","exportName":"renderPayments","matchExpr":"route===\"payments\""},{"module":"refunds","exportName":"renderRefunds","matchExpr":"route===\"refunds\""},{"module":"reviews","exportName":"renderReviews","matchExpr":"route===\"reviews\""},{"module":"notifications","exportName":"renderNotifications","matchExpr":"route===\"notifications\""}] */
+/* ENTRIES [{"module":"homepage","exportName":"renderHomepage","matchExpr":"route===\"homepage\""},{"module":"promotions","exportName":"renderPromotions","matchExpr":"route===\"promotions\""},{"module":"payments","exportName":"renderPayments","matchExpr":"route===\"payments\""},{"module":"brands","exportName":"renderBrands","matchExpr":"route===\"brands\""},{"module":"refunds","exportName":"renderRefunds","matchExpr":"route===\"refunds\""},{"module":"reviews","exportName":"renderReviews","matchExpr":"route===\"reviews\""},{"module":"notifications","exportName":"renderNotifications","matchExpr":"route===\"notifications\""}] */

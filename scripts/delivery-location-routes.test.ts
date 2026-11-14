@@ -243,3 +243,13 @@ test("store page: 'WhatsApp ilə yaz' from the shown store phone (tel: link kept
   // The product page shows no store phone today, so it gets no WhatsApp link either.
   assert.doesNotMatch(read("app/(customer)/products/[productId]/page.tsx"), /contactPhone|wa\.me|buildWhatsAppUrl/);
 });
+
+test("seller order page: the customer's phone (already shown) is a tel: link plus WhatsApp for mobile numbers", () => {
+  const page = read("app/vendor/[storeId]/orders/[storeOrderId]/page.tsx");
+  assert.match(page, /const phoneTel = buildTelHref\(customerPhone\);/);
+  assert.match(page, /const phoneWhatsApp = buildCustomerWhatsAppUrl\(customerPhone, order\.order\.id\);/);
+  assert.match(page, /\{phoneTel \? <a href=\{phoneTel\}/);
+  assert.match(page, /\{phoneWhatsApp && <a href=\{phoneWhatsApp\} target="_blank" rel="noopener noreferrer"[^>]*>WhatsApp ilə yaz<\/a>\}/);
+  // Same source as before: the order snapshot, else the customer profile. Not subject to the pin's 7-day rule.
+  assert.match(page, /const customerPhone = textValue\(address\.phone\) \|\| profile\?\.phone \|\| null;/);
+});

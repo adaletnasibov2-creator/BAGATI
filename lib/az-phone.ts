@@ -87,3 +87,11 @@ export const optionalAzPhoneSchema = z.union([z.string(), z.null()]).transform((
 export function contactPhoneIssue(error: z.ZodError): string | null {
   return error.issues.some((issue) => issue.path.includes("contactPhone")) ? AZ_PHONE_ERROR : null;
 }
+
+/** Seller -> customer wa.me link for one order (mobile numbers only), with a short greeting naming the order. */
+export function buildCustomerWhatsAppUrl(phone: string | null | undefined, orderRef: string): string | null {
+  const normalized = normalizeAzPhone(phone);
+  if (!normalized?.mobile) return null;
+  const text = `Salam! BAGATI-dəki #${orderRef.slice(-8).toUpperCase()} sifarişiniz barədə yazıram.`;
+  return `https://wa.me/${normalized.digits}?text=${encodeURIComponent(text)}`;
+}

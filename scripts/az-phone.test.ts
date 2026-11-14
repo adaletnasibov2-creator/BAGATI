@@ -74,3 +74,13 @@ test("save schema: empty becomes null, valid becomes E.164, invalid fails with a
   assert.equal(failed.success, false);
   assert.equal(failed.success ? "" : failed.error.issues[0]?.message, AZ_PHONE_ERROR);
 });
+
+test("customer WhatsApp (seller order page): 994 digits, order greeting encoded; landline/invalid -> no link", async () => {
+  const { buildCustomerWhatsAppUrl } = await import("../lib/az-phone");
+  const url = buildCustomerWhatsAppUrl("+994 50 123 45 67", "cmorder00abcdef12");
+  assert.ok(url);
+  assert.equal(new URL(url).pathname, "/994501234567");
+  assert.equal(new URL(url).searchParams.get("text"), "Salam! BAGATI-dəki #ABCDEF12 sifarişiniz barədə yazıram.");
+  assert.match(url, /\?text=Salam!%20BAGATI-d%C9%99ki%20%23ABCDEF12/);
+  for (const input of ["012 555 55 55", "12345", "", null]) assert.equal(buildCustomerWhatsAppUrl(input, "x"), null, String(input));
+});

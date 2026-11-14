@@ -40,3 +40,14 @@ test("shipment changes: refused on cancelled/returned orders; timestamps", () =>
   assert.deepEqual(shipmentTimestamps("DELIVERED", { shippedAt: earlier }, now), { deliveredAt: now });
   assert.deepEqual(shipmentTimestamps("PREPARING", { shippedAt: null }, now), {});
 });
+
+test("customer timeline: three steps, reached flags, Baku-time labels formatted on the server", async () => {
+  const { simpleShipmentTimeline } = await import("../lib/shipment-tracking");
+  const out = new Date("2026-11-14T10:05:00Z"); const done = new Date("2026-11-14T14:06:00Z");
+  assert.deepEqual(simpleShipmentTimeline({ shipmentStatus: "DELIVERED", shippedAt: out, outForDeliveryAt: out, deliveredAt: done }).map((step) => [step.label, step.reached, step.current, step.time]), [
+    ["Hazırlanır", true, false, null], ["Yolda", true, false, "14.11.2026 14:05"], ["Çatdırıldı", true, true, "14.11.2026 18:06"],
+  ]);
+  assert.deepEqual(simpleShipmentTimeline({ shipmentStatus: "PREPARING", shippedAt: null, outForDeliveryAt: null, deliveredAt: null }).map((step) => step.reached), [true, false, false]);
+  // Older orders that used the detailed steps still map onto the three.
+  assert.deepEqual(simpleShipmentTimeline({ shipmentStatus: "SHIPPED", shippedAt: out, outForDeliveryAt: null, deliveredAt: null }).map((step) => [step.reached, step.time]), [[true, null], [true, "14.11.2026 14:05"], [false, null]]);
+});

@@ -70,3 +70,21 @@ export function shipmentTimestamps(target: ShipmentStatusValue, current: { shipp
   if (target === "DELIVERED") return { deliveredAt: now };
   return {};
 }
+
+/** "14.11.2026 18:06" in Baku time; formatted on the server (pages pass the label, never the Date, to the browser). */
+export function formatShipmentTime(date: Date): string {
+  // Built from parts so the label is the same on every ICU version ("14.11.2026 18:06", no comma).
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.day}.${parts.month}.${parts.year} ${parts.hour}:${parts.minute}`;
+}
+
+/** The customer's 3-step timeline for one store order: label, reached or not, and the time when one is recorded. */
+export function simpleShipmentTimeline(storeOrder: { shipmentStatus: ShipmentStatusValue | null; shippedAt: Date | null; outForDeliveryAt: Date | null; deliveredAt: Date | null }) {
+  const reached = simpleShipmentStep(storeOrder.shipmentStatus, storeOrder);
+  const times = [null, storeOrder.outForDeliveryAt ?? storeOrder.shippedAt, storeOrder.deliveredAt];
+  return SIMPLE_SHIPMENT_STEPS.map((step, index) => ({
+    status: step.status, label: step.label, reached: index <= reached, current: index === reached,
+    time: index <= reached && times[index] ? formatShipmentTime(times[index]!) : null,
+  }));
+}

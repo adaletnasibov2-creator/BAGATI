@@ -144,3 +144,11 @@ test("seller UI: three steps (Hazırlanır, Yolda, Çatdırıldı); only the nex
   assert.match(ui, /Ətraflı göndəriş statusu/);
   assert.doesNotMatch(ui, /\["HANDED_TO_COURIER", "SHIPPED"\]\.includes\(props\.status\)/);
 });
+
+test("customer order page: 3-step timeline, no coordinates, owner-only query", () => {
+  const page = read("app/(customer)/orders/[orderId]/page.tsx");
+  assert.match(page, /where:\{id:orderId,userId:user\.id\}/);
+  assert.match(page, /\{simpleShipmentTimeline\(group\)\.map\(step=>/);
+  assert.doesNotMatch(page, /latitude|longitude|toLocaleString\("az-AZ"\)\}<\/time>/);
+  assert.match(page, /group\.shipmentStatus==="DELIVERY_FAILED"/, "the failed-attempt note stays");
+});

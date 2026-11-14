@@ -114,11 +114,18 @@ test("dispatch menu: portal, plain-text brands, no referrer, Bolt copy message a
   const menu = read("components/vendor-delivery-address-menu.tsx");
   assert.match(menu, /createPortal\(/);
   assert.match(menu, /document\.body,\n\s*\)\}/);
-  assert.equal(menu.match(/target="_blank" rel="noopener noreferrer"/g)?.length, 4, "Google, OSM, Uber and bolt.eu");
+  assert.equal(menu.match(/target="_blank" rel="noopener noreferrer"/g)?.length, 7, "Google, OSM, Uber, Waze, WhatsApp, Bolt and the Bolt notice link");
   assert.match(menu, />Google Maps<\/a>/);
   assert.match(menu, />Xəritə \(OpenStreetMap\)<\/a>/);
   assert.match(menu, />Uber<\/a>/);
-  assert.match(menu, /Ünvan kopyalandı\. Bolt tətbiqini açın\. <a href="https:\/\/bolt\.eu\/"/);
+  assert.match(menu, /Ünvan kopyalandı\. Bolt tətbiqini açın\. <a href=\{bolt\.href\}/);
+  // Waze only with a pin; WhatsApp share always (its text has a map link only with a pin); Bolt copies, then opens the store page.
+  assert.match(menu, /\{links\.waze && <a role="menuitem" href=\{links\.waze\}/);
+  assert.match(menu, /<a role="menuitem" href=\{links\.whatsapp\}[^>]*>.*WhatsApp · Ünvanı göndər<\/a>/);
+  assert.match(menu, /<a role="menuitem" href=\{bolt\.href\}[^>]*onClick=\{\(\) => void copy\("bolt"\)\}/);
+  // The platform is detected in the browser only.
+  assert.match(menu, /useEffect\(\(\) => \{ setPlatform\(detectClientPlatform\(navigator\.userAgent, navigator\.maxTouchPoints\)\); \}, \[\]\);/);
+  assert.doesNotMatch(read("lib/bolt-app.ts"), /from "next|headers\(|cookies\(/, "no server logic");
   assert.doesNotMatch(menu, /<img|<svg|<Image|\.(png|svg|jpe?g|webp)"/i, "brand names as text only, no logo images");
   assert.match(menu, /event\.key === "Escape"/);
   assert.match(menu, /buttonRef\.current\?\.focus\(\)/);
@@ -215,4 +222,12 @@ test("map tiles: single OSM host, attribution kept, Leaflet CSS only with the ma
   assert.match(surface, /^import "leaflet\/dist\/leaflet\.css";$/m);
   assert.doesNotMatch(read("app/layout.tsx"), /leaflet/);
   assert.match(read("components/interactive-map.tsx"), /dynamic\(\(\) => import\("@\/components\/interactive-map-surface"\), \{\n\s*ssr: false,/);
+});
+
+test("hidden coordinates produce no Waze/WhatsApp location links: the menu is built only under the 7-day rule", () => {
+  const page = read("app/vendor/[storeId]/orders/[storeOrderId]/page.tsx");
+  // All dispatch links (Waze and WhatsApp included) come from one builder that is only called when the seller may see the pin.
+  assert.match(page, /const dispatchLinks = locationAccess && addressLines\.length \? buildDispatchLinks\(deliveryView, order\.order\.id\) : null;/);
+  assert.equal(page.match(/buildDispatchLinks\(/g)?.length, 1);
+  assert.doesNotMatch(page, /waze\.com|wa\.me\/\?text/, "no link is assembled outside the builder");
 });

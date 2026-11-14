@@ -1,20 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { csrfRejection, isCsrfExemptApiPath } from "@/lib/csrf";
 import { canonicalHostRedirectUrl } from "@/lib/host-policy";
+import { ADMIN_X_ROBOTS_TAG, isAdminSurface } from "@/lib/admin-surface";
 
 export function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
   if (canonical) return NextResponse.redirect(canonical, 308);
   const { pathname } = request.nextUrl;
+  const adminSurface = isAdminSurface(pathname);
   if (pathname.startsWith("/api/") && !isCsrfExemptApiPath(pathname)) {
     const rejected = csrfRejection(request);
-    if (rejected) return rejected;
+    if (rejected) {
+      if (adminSurface) rejected.headers.set("X-Robots-Tag", ADMIN_X_ROBOTS_TAG);
+      return rejected;
+    }
   }
   // Pathname only (never the query string) for the not-found page's Security Center telemetry. Always overwritten,
   // so a client cannot supply its own value.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-bagati-pathname", pathname.slice(0, 300));
   const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // Header (not robots.txt): noindex without advertising the admin path.
+  if (adminSurface) response.headers.set("X-Robots-Tag", ADMIN_X_ROBOTS_TAG);
   if (personalizedDocument(pathname, request.cookies.has("bagati_session"))) {
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Vary", "Cookie");

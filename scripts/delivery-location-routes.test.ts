@@ -253,3 +253,9 @@ test("seller order page: the customer's phone (already shown) is a tel: link plu
   // Same source as before: the order snapshot, else the customer profile. Not subject to the pin's 7-day rule.
   assert.match(page, /const customerPhone = textValue\(address\.phone\) \|\| profile\?\.phone \|\| null;/);
 });
+
+test("store header buttons never break their label (they wrap as whole buttons on narrow screens)", () => {
+  const branding = read("components/storefront-branding.tsx");
+  assert.equal(branding.match(/inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold/g)?.length, 2);
+  assert.match(branding, /<div className="flex flex-wrap gap-2 sm:shrink-0 sm:pt-4">/);
+});

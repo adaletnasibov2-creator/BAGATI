@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Heart, Menu, ShoppingBag, UserRound, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { CategoryIcon } from "@/components/category-icon";
@@ -36,7 +37,9 @@ export function MobileMenu({
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
     const panel = panelRef.current;
     const focusable = () => panel?.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -69,6 +72,7 @@ export function MobileMenu({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [closeMenu, open]);
@@ -101,8 +105,10 @@ export function MobileMenu({
       >
         {open ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
       </button>
-      {open && (
-        <div className="fixed inset-0 z-[70] bg-[rgba(23,58,58,.42)]" onClick={(event) => {
+      {/* Portal to <body>: the sticky header has backdrop-filter, which makes it the containing block of any
+          position:fixed descendant, so an overlay rendered inside it was only as tall as the header. */}
+      {open && typeof document !== "undefined" && createPortal(
+        <div data-mobile-menu-overlay className="fixed inset-x-0 top-0 z-[90] h-[100dvh] bg-[rgba(23,58,58,.42)] md:hidden" onClick={(event) => {
           if (event.target === event.currentTarget) closeMenu();
         }}>
           <div
@@ -111,7 +117,7 @@ export function MobileMenu({
             role="dialog"
             aria-modal="true"
             aria-label="Kateqoriyalar və naviqasiya"
-            className="h-full max-h-[100dvh] w-[min(88vw,390px)] overflow-y-auto overscroll-contain bg-white px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 shadow-[0_24px_70px_rgba(23,58,58,.24)]"
+            className="h-[100dvh] w-[min(88vw,390px)] overflow-y-auto overscroll-contain bg-white px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 shadow-[0_24px_70px_rgba(23,58,58,.24)]"
           >
             <div className="flex items-center justify-between border-b border-bagati-border pb-3">
               <BrandLogo variant="compact" />
@@ -164,7 +170,8 @@ export function MobileMenu({
             )}
             {cities.length > 0 && <div className="mt-4 border-t border-bagati-border pt-4"><CitySelector cities={cities} /></div>}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

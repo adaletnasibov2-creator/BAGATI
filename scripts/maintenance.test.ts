@@ -273,3 +273,18 @@ test("admin preview: a signed-in admin sees public pages, never the APIs; others
   assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
   assert.doesNotMatch(read("lib/maintenance-preview.ts"), /cache\.set\(token|console\.(log|warn)\(.*token/, "the token is never a cache key or logged");
 });
+
+test("allow/deny matrix from the spec, plus noindex and Retry-After on every 503", async () => {
+  // Always allowed: admin + admin APIs (incl. login), readiness, the state endpoints, Next assets, favicon, robots.txt, CDN assets.
+  for (const path of ["/admin", "/admin/login", "/api/admin/login", "/api/admin/login/2fa", "/api/admin/settings/maintenance.enabled", "/api/ready", "/api/maintenance-state", "/api/maintenance-state/viewer",
+    "/_next/static/css/app.css", "/_next/image", "/favicon.ico", "/robots.txt", "/uploads/stores/x/banner.webp", "/images/home/slide.jpg"]) assert.equal(isMaintenanceExempt(path), true, path);
+  // Blocked: customer and vendor pages and APIs (checkout, orders, auth).
+  for (const path of ["/", "/checkout", "/orders/abc", "/vendor/x/orders", "/api/orders", "/api/cart/items", "/api/auth/login", "/api/auth/register", "/api/auth/vendor-login", "/api/vendor/x/orders", "/api/account/addresses", "/api/maintenance-state/viewerx"]) assert.equal(isMaintenanceExempt(path), false, path);
+  for (const path of ["/", "/api/orders"]) {
+    const response = maintenanceResponse(path, "x");
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("x-robots-tag"), "noindex");
+    assert.equal(response.headers.get("retry-after"), String(MAINTENANCE_RETRY_AFTER_SECONDS));
+  }
+  assert.match(await maintenanceResponse("/", "x").text(), /<meta name="robots" content="noindex">/);
+});

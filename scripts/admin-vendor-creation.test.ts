@@ -147,9 +147,9 @@ test("admin-created sellers need the same 10-digit VÖEN as customer application
     firstName: "Aysel", lastName: "Satıcı", email: "seller@example.test", password: "x".repeat(16),
     sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Aysel Satıcı", storeName: "Aysel Store", cityId: "city-1",
   };
-  const parsed = adminCreateVendorSchema.parse({ ...base, voen: "12 345-678 90" });
-  assert.equal(parsed.voen, "1234567890", "stored as digits only");
-  for (const voen of ["123", "123456789", "12345678901", "AZ-123", ""]) {
+  const parsed = adminCreateVendorSchema.parse({ ...base, voen: "12 345 678 91" });
+  assert.equal(parsed.voen, "1234567891", "stored as digits only");
+  for (const voen of ["123", "123456789", "12345678901", "AZ-123", "", "12 345-678 91", "1234567890", "1234567893"]) {
     const result = adminCreateVendorSchema.safeParse({ ...base, voen });
     assert.equal(result.success, false, voen);
     assert.ok(result.error?.issues.some((issue) => issue.path.includes("voen")), voen);
@@ -157,5 +157,7 @@ test("admin-created sellers need the same 10-digit VÖEN as customer application
   const validation = readFileSync(resolve(root, "lib/validation.ts"), "utf8");
   assert.match(validation, /voen: newVoenSchema,/);
   assert.doesNotMatch(validation, /voen: z\.string\(\)\.trim\(\)\.min\(3\)\.max\(32\)/);
-  assert.match(vendorRoute, /issue\.path\.includes\("voen"\)\) \? SELLER_APPLICATION_MESSAGES\.voen/);
+  // The admin sees the specific VÖEN reason from lib/voen.ts (length, characters or last digit).
+  assert.match(vendorRoute, /parsed\.error\.issues\.find\(\(issue\) => issue\.path\.includes\("voen"\)\)\?\.message \?\? "Satıcı məlumatlarını yoxlayın"/);
+  assert.equal(adminCreateVendorSchema.safeParse({ ...base, voen: "1234567890" }).error?.issues.find((issue) => issue.path.includes("voen"))?.message, "VÖEN-in sonuncu rəqəmi 1 (hüquqi şəxs) və ya 2 (fiziki şəxs / fərdi sahibkar) olmalıdır.");
 });

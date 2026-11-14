@@ -28,6 +28,7 @@ import { checkStoreSubmission } from "@/lib/store-submission";
 import { checkVendorProductActivation, isVendorProductActivation } from "@/lib/vendor-product-publication";
 import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/stock-quantity";
 import { generateProductCode } from "@/lib/product-code";
+import { parseVoen } from "@/lib/voen";
 import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-notifications";
 import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
@@ -490,6 +491,11 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     },
    });
    if(!owned)return NextResponse.json({error:"Mağaza tapılmadı"},{status:404});
+   // VÖEN (lib/voen.ts) is checked only when it changes, and stored as digits; an unchanged older value is kept as is.
+   if(typeof d.voen==="string"&&d.voen.trim()){
+    if(d.voen.replace(/\s/g,"")===(owned.vendor.voen??"").replace(/\s/g,""))d.voen=owned.vendor.voen;
+    else{const parsedVoen=parseVoen(d.voen);if(!parsedVoen.ok)return NextResponse.json({error:parsedVoen.error,field:"voen"},{status:422});d.voen=parsedVoen.voen;}
+   }
     const branding=await getStorefrontBrandingCompatibility(owned.id);
     if(d.slug!==undefined&&d.slug!==owned.slug){
      const slugInUse=await db.store.findFirst({where:{slug:d.slug,id:{not:owned.id}},select:{id:true}});

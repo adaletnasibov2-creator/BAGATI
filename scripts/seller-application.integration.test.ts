@@ -66,7 +66,8 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       return created;
     };
     const admin = await user("admin", { role: "ADMIN" });
-    const voen = `9${tag.replace(/\D/g, "").padEnd(9, "7").slice(0, 9)}`;
+    // 10 digits ending in 2 (natural person): the lib/voen.ts format.
+    const voen = `9${tag.replace(/\D/g, "").padEnd(8, "7").slice(0, 8)}2`;
     const input = (overrides: Record<string, unknown> = {}) => sellerApplicationInputSchema.parse({
       displayName: "Fixture Seller", phone: "055 123 45 67", sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Fixture Sahibkar", voen, ...overrides,
     });
@@ -129,7 +130,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
 
     await t.test("approval is atomic: a failure inside the transaction leaves everything unchanged", async () => {
       const applicant = await user("atomic");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "1112223330" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "1112223332" }), enqueue });
       const failing = async () => { throw new Error("simulated outbox failure"); };
       await assert.rejects(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: false, adminNote: null, enqueue: failing }), /simulated outbox failure/);
       assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: applicant.id } })).role, "CUSTOMER");
@@ -141,7 +142,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       const account = await prisma.user.findUniqueOrThrow({ where: { id: applicant.id }, include: { vendorProfile: true } });
       assert.equal(account.role, "VENDOR");
       assert.equal(account.vendorProfile?.id, result.vendorProfileId);
-      assert.equal(account.vendorProfile?.voen, "1112223330");
+      assert.equal(account.vendorProfile?.voen, "1112223332");
       assert.equal(account.vendorProfile?.legalName, "Fixture Sahibkar");
       const row = await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } });
       assert.equal(row.status, "APPROVED");
@@ -156,7 +157,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
 
     await t.test("rejection keeps CUSTOMER, stores the reason and queues the e-mail", async () => {
       const applicant = await user("reject");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "2223334440" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "2223334442" }), enqueue });
       await service.rejectSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, reason: "VÖEN sənədi uyğun deyil", adminNote: null, enqueue });
       const row = await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } });
       assert.equal(row.status, "REJECTED");
@@ -169,7 +170,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
 
     await t.test("concurrent approve and reject: exactly one decision wins", async () => {
       const applicant = await user("concurrent");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "3334445550" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "3334445552" }), enqueue });
       const results = await Promise.all([
         code(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: false, adminNote: null, enqueue })),
         code(service.rejectSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, reason: "parallel rejection", adminNote: null, enqueue })),
@@ -181,8 +182,8 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
     });
 
     await t.test("duplicate VÖEN must be confirmed explicitly; the confirmation is recorded", async () => {
-      const shared = "4445556660";
-      const seller = await user("dup-seller", { role: "VENDOR", vendorProfile: { create: { displayName: "Existing", voen: "444 555 6660" } } });
+      const shared = "4445556662";
+      const seller = await user("dup-seller", { role: "VENDOR", vendorProfile: { create: { displayName: "Existing", voen: "444 555 6662" } } });
       assert.ok(seller);
       const applicant = await user("dup");
       const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: shared }), enqueue });
@@ -243,7 +244,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       const empty = await service.applicantState(prisma, applicant.id);
       assert.equal(empty.latest, null);
       assert.deepEqual(empty.decision, { allowed: true });
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "5556667770" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "5556667772" }), enqueue });
       await service.rejectSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, reason: "Məlumat natamamdır", adminNote: null, enqueue });
       const state = await service.applicantState(prisma, applicant.id);
       assert.equal(state.latest?.status, "REJECTED");

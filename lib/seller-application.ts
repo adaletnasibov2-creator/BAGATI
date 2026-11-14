@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { AZ_PHONE_ERROR, normalizeAzPhone } from "@/lib/az-phone";
+import { parseVoen } from "@/lib/voen";
 
 /** Same values as the SellerType enum; kept here so this module stays free of Prisma imports (used by client forms). */
 const sellerTypes = ["INDIVIDUAL_ENTREPRENEUR", "REGISTERED_COMPANY"] as const;
@@ -103,9 +104,9 @@ export function normalizeVoen(value: string | null | undefined): string | null {
   return digits ? digits : null;
 }
 
+/** New or changed VÖEN: the shared format rule (lib/voen.ts). */
 export function isValidNewVoen(value: string | null | undefined): boolean {
-  const digits = normalizeVoen(value);
-  return digits !== null && /^\d{10}$/.test(digits);
+  return parseVoen(value).ok;
 }
 
 /** For lists: only the last three digits. Full VÖEN is shown on the admin detail page only. */
@@ -116,16 +117,16 @@ export function maskVoen(value: string | null | undefined): string {
 }
 
 /**
- * VÖEN for every NEW seller (customer application and admin-created seller): digits only, exactly 10.
- * Spaces and dashes are accepted on input and removed. Older stored values are not re-validated.
+ * VÖEN for every NEW seller (customer application and admin-created seller): lib/voen.ts rules (spaces removed,
+ * exactly 10 digits, last digit 1 or 2), stored as digits. Older stored values are not re-validated.
  */
 export const newVoenSchema = z.string().max(40).transform((value, context) => {
-  const digits = normalizeVoen(value);
-  if (!digits || !/^\d{10}$/.test(digits)) {
-    context.addIssue({ code: z.ZodIssueCode.custom, message: SELLER_APPLICATION_MESSAGES.voen });
+  const parsed = parseVoen(value);
+  if (!parsed.ok) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: parsed.error });
     return z.NEVER;
   }
-  return digits;
+  return parsed.voen;
 });
 
 const optionalText = (max: number) => z.union([z.string(), z.null(), z.undefined()])

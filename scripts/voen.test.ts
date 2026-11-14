@@ -38,3 +38,17 @@ test("masking keeps only the last three digits", () => {
   assert.equal(maskVoenDigits("1234567891"), "•••••••891");
   assert.equal(maskVoenDigits(null), "—");
 });
+
+test("every server path that accepts a VÖEN uses lib/voen.ts", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const read = (path: string) => readFileSync(join(__dirname, "..", path), "utf8").replace(/\r\n/g, "\n");
+  // Customer applications and admin-created sellers share newVoenSchema.
+  assert.match(read("lib/seller-application.ts"), /export const newVoenSchema = z\.string\(\)\.max\(40\)\.transform\(\(value, context\) => \{\n\s*const parsed = parseVoen\(value\);/);
+  assert.match(read("lib/seller-application.ts"), /  voen: newVoenSchema,/);
+  assert.match(read("lib/validation.ts"), /    voen: newVoenSchema,/);
+  // The seller's own profile editor: checked when the VÖEN changes, stored as digits.
+  const vendor = read("app/api/vendor/[storeId]/[section]/route.ts");
+  assert.match(vendor, /const parsedVoen=parseVoen\(d\.voen\);if\(!parsedVoen\.ok\)return NextResponse\.json\(\{error:parsedVoen\.error,field:"voen"\},\{status:422\}\);d\.voen=parsedVoen\.voen;/);
+  assert.ok(vendor.indexOf("parseVoen(d.voen)") < vendor.indexOf("const legalPatch="), "checked before anything is written");
+});

@@ -42,7 +42,7 @@ test("admin subscription controls are role protected, store scoped, manual-only 
   assert.doesNotMatch(api, /payment\.create\(/);
   assert.doesNotMatch(save, /payment\.create\(/);
   assert.match(schema, /enum SubscriptionAccessSource[\s\S]*ADMIN_MANUAL[\s\S]*PAYMENT_CONFIRMED/);
-  assert.match(adminPage, /db\.store\.findMany\(\{where,select:\{[\s\S]*subscription:\{select:\{[\s\S]*plan:\{select:\{name:true,monthlyPrice:true\}\},grantedByAdmin:\{select:\{email:true\}\}/);
+  assert.match(adminPage, /(?:db|prisma)\.store\.findMany\(\{where,select:\{[\s\S]*subscription:\{select:\{[\s\S]*plan:\{select:\{name:true,monthlyPrice:true\}\},grantedByAdmin:\{select:\{email:true\}\}/);
   assert.match(adminPage, /<AdminSubscriptionManager storeId=\{store\.id\}/);
 });
 

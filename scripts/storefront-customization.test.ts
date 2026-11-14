@@ -116,8 +116,8 @@ test("store, product-detail, and checkout queries do not implicitly select pendi
 });
 
 test("admin store queries and activation mutations explicitly select schema-compatible fields", () => {
-  assert.match(adminPage, /db\.store\.findMany\(\{where,select:/);
-  assert.match(adminPage, /db\.store\.findUnique\(\{where:\{id\},select:/);
+  assert.match(adminPage, /(?:db|prisma)\.store\.findMany\(\{where,select:/);
+  assert.match(adminPage, /(?:db|prisma)\.store\.findUnique\(\{where:\{id\},select:/);
   assert.doesNotMatch(adminPage, /store:\s*\{\s*include:\s*\{\s*vendor:/);
   assert.match(activationRoute, /tx\.store\.update\(\{ where: \{ id: store\.id \}, data: visibilityUpdate, select: \{ id: true \} \}\)/);
 });

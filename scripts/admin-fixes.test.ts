@@ -164,7 +164,8 @@ test("every admin list filter passes its current values", () => {
 
 test("only one subscriptions branch remains (the unreachable duplicate is gone)", () => {
   assert.equal(sectionPage.split('route==="subscriptions"').length - 1, 1);
-  assert.match(sectionPage, /if\(route==="subscriptions"\)\{\n  const statuses=\["PENDING","ACTIVE","PAST_DUE","SUSPENDED","CANCELLED","EXPIRED"\] as const;const status=normalizeAdminEnumFilter\(sp\.status,statuses\);const where:any=status\?\{OR:/, "the live branch is the one kept");
+  // The live branch body (inline in the catch-all or moved to app/admin/_sections/subscriptions.tsx).
+  assert.match(sectionPage, /\n  const statuses=\["PENDING","ACTIVE","PAST_DUE","SUSPENDED","CANCELLED","EXPIRED"\] as const;const status=normalizeAdminEnumFilter\(sp\.status,statuses\);const where:any=status\?\{OR:/, "the live branch is the one kept");
 });
 
 test("/admin/verification is in the admin navigation", () => {

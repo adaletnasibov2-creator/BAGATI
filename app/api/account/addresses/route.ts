@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizeDeliveryCoordinates, OUTSIDE_AZERBAIJAN_MESSAGE } from "@/lib/delivery-location";
 
 const schema = z.object({ cityId: z.string().min(1), recipientName: z.string().trim().min(2).max(120), phone: z.string().trim().min(7).max(30), line1: z.string().trim().min(4).max(240), line2: z.string().trim().max(240).optional(), label: z.string().trim().max(60).optional(), postalCode: z.string().trim().max(20).optional(), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), isDefault: z.boolean().optional() });
 export async function GET() {
@@ -18,6 +19,11 @@ export async function POST(request: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Review the address details", details: parsed.error.flatten() }, { status: 400 });
   if ((parsed.data.latitude == null) !== (parsed.data.longitude == null)) return NextResponse.json({ error: "Xəritə koordinatları birlikdə daxil edilməlidir" }, { status: 422 });
+  if (parsed.data.latitude != null) {
+    const pin = normalizeDeliveryCoordinates(parsed.data.latitude, parsed.data.longitude);
+    if (!pin) return NextResponse.json({ error: OUTSIDE_AZERBAIJAN_MESSAGE }, { status: 422 });
+    Object.assign(parsed.data, pin);
+  }
   const city = await prisma.city.findFirst({ where: { id: parsed.data.cityId, isActive: true }, select: { id: true } });
   if (!city) return NextResponse.json({ error: "Active city not found" }, { status: 400 });
   const hasAddress = await prisma.address.count({ where: { userId: user.id } });

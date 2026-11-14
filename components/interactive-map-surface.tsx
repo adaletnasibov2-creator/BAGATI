@@ -3,10 +3,14 @@
 import { useEffect } from "react";
 import { MapContainer, TileLayer, useMap, useMapEvents, CircleMarker, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
+// Only pages that show a map load Leaflet's CSS (this component is loaded with next/dynamic, ssr: false).
+import "leaflet/dist/leaflet.css";
 import type { MapPoint, MapStoreMarker } from "@/components/interactive-map";
 
 const AZERBAIJAN_CENTER: [number, number] = [40.1431, 47.5769];
-const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+// OSM tile usage policy: attribution, no bulk/offline use, and the single host (the a/b/c subdomains are deprecated).
+// Light use only; set NEXT_PUBLIC_MAP_TILE_URL (+ _ATTRIBUTION) to a commercial provider if traffic grows.
+const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION = process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const selectedIcon = L.divIcon({ className: "bagati-map-pin", html: '<span style="display:block;width:20px;height:20px;border:3px solid #173c40;border-radius:50%;background:#d9a441;box-shadow:0 2px 8px #0005"></span>', iconSize: [20, 20], iconAnchor: [10, 10] });
 

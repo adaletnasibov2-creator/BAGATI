@@ -10,7 +10,7 @@ import { allowedVendorOrderTransitions } from "@/lib/order-status";
 import { OrderFulfillmentError, transitionVendorStoreOrder } from "@/lib/order-fulfillment";
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { deliveryAmountSchema } from "@/lib/delivery";
-import { allowedShipmentTransitions, SHIPMENT_STATUSES, type ShipmentStatusValue } from "@/lib/shipment-tracking";
+import { allowedShipmentTransitions, shipmentChangeAllowedForOrder, shipmentTimestamps, SHIPMENT_STATUSES, type ShipmentStatusValue } from "@/lib/shipment-tracking";
 import { hasOverlappingEnabledPromotion } from "@/lib/promotion-pricing";
 import { countProductsWithLowStock } from "@/lib/vendor-inventory";
 import { activeComplimentaryEntitlementSelect, assertFeature, assertProductLimit, complimentaryFromRows, EntitlementError, entitlementErrorResponse, getStoreEntitlements } from "@/lib/subscription-entitlements";
@@ -319,11 +319,12 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     const locked=await tx.storeOrder.findFirst({where:{id:existing.id,storeId}});
     if(!locked)return {error:"NOT_FOUND"};
     if(s.data.shipmentStatus&&!allowedShipmentTransitions(locked.shipmentStatus as ShipmentStatusValue|null).includes(s.data.shipmentStatus))return {error:"INVALID_SHIPMENT_TRANSITION"};
-    const targetOrderStatus=s.data.status||(s.data.shipmentStatus==="DELIVERED"?"DELIVERED":undefined);
+    // The shipment status is independent: it never moves the order status (and so never payment, revenue or finance).
+    const targetOrderStatus=s.data.status;
     if(targetOrderStatus&&!allowedVendorOrderTransitions(locked.status).includes(targetOrderStatus))return {error:"INVALID_TRANSITION"};
-    if(s.data.shipmentStatus==="DELIVERED"&&!(["HANDED_TO_COURIER","SHIPPED"].includes(locked.status)))return {error:"SHIPMENT_ORDER_STATUS_MISMATCH"};
+    if(s.data.shipmentStatus&&!shipmentChangeAllowedForOrder(locked.status))return {error:"SHIPMENT_ORDER_CLOSED"};
     const deliveryData:any={};for(const key of ["deliveryMethod","deliveryNote","deliveryCarrier","deliveryTrackingCode","trackingUrl"] as const)if(s.data[key]!==undefined)deliveryData[key]=s.data[key];
-    if(s.data.shipmentStatus){deliveryData.shipmentStatus=s.data.shipmentStatus;const stampedAt=new Date();if(s.data.shipmentStatus==="SHIPPED")deliveryData.shippedAt=stampedAt;if(s.data.shipmentStatus==="OUT_FOR_DELIVERY")deliveryData.outForDeliveryAt=stampedAt;if(s.data.shipmentStatus==="DELIVERED")deliveryData.deliveredAt=stampedAt;}
+    if(s.data.shipmentStatus){deliveryData.shipmentStatus=s.data.shipmentStatus;Object.assign(deliveryData,shipmentTimestamps(s.data.shipmentStatus,locked,new Date()));}
     let item;
     let warning: string | undefined;
     if(targetOrderStatus){
@@ -353,7 +354,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
    if(result.error==="NOT_FOUND")return NextResponse.json({error:"Sifariş tapılmadı"},{status:404});
    if(result.error==="INVALID_TRANSITION")return NextResponse.json({error:"Bu status keçidi mümkün deyil"},{status:409});
    if(result.error==="INVALID_SHIPMENT_TRANSITION")return NextResponse.json({error:"Bu çatdırılma statusu keçidi mümkün deyil"},{status:409});
-   if(result.error==="SHIPMENT_ORDER_STATUS_MISMATCH")return NextResponse.json({error:"Sifariş kuryerə verilmədən çatdırılmış kimi qeyd edilə bilməz"},{status:409});
+   if(result.error==="SHIPMENT_ORDER_CLOSED")return NextResponse.json({error:"Ləğv edilmiş və ya qaytarılmış sifarişin göndəriş statusu dəyişdirilə bilməz"},{status:409});
    if(result.error)return NextResponse.json({error:"Sifariş paralel olaraq yeniləndi"},{status:409});
    return NextResponse.json(result);
   } catch(error) {

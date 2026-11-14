@@ -47,7 +47,7 @@ test("new admin pages require ADMIN", () => {
     assert.match(read(path), /const admin = await requireRole\("ADMIN"\);\s*if \(!admin\) redirect\("\/admin\/login"\)/, path);
   }
   assert.doesNotMatch(adminSectionSource(), /route==="security"/, "old catch-all branch removed");
-  const shell = read("components/admin-shell.tsx");
+  const shell = read("lib/admin-nav.ts");
   assert.match(shell, /\["\/admin\/security\/sessions", "Aktiv sessiyalar", MonitorSmartphone\]/);
   assert.match(shell, /\["\/admin\/security", "Hesab təhlükəsizliyi", ShieldCheck\]/);
 });

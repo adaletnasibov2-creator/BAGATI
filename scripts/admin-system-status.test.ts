@@ -25,7 +25,7 @@ test("system status page and API require the ADMIN role", () => {
 });
 
 test("system status is linked from the admin menu", () => {
-  assert.match(read("components/admin-shell.tsx"), /\["\/admin\/system", "Sistem vəziyyəti", Activity\]/);
+  assert.match(read("lib/admin-nav.ts"), /\["\/admin\/system", "Sistem vəziyyəti", Activity\]/);
 });
 
 test("system status never exposes secret values or personal data", () => {

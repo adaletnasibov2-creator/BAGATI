@@ -170,7 +170,7 @@ test("only one subscriptions branch remains (the unreachable duplicate is gone)"
 });
 
 test("/admin/verification is in the admin navigation", () => {
-  const shell = read("components/admin-shell.tsx");
+  const shell = read("lib/admin-nav.ts");
   assert.match(shell, /\["\/admin\/verification", "E-poçt təsdiqi gözləyənlər", MailCheck\]/);
   assert.ok(shell.indexOf('"/admin/customers"') < shell.indexOf('"/admin/verification"'), "next to customers");
 });

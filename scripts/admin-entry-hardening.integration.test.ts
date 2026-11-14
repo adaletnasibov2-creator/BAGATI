@@ -2,10 +2,13 @@
  * Admin login per-IP limits against the isolated verification PostgreSQL cluster, through the real route handler.
  *
  * Safety: uses ONLY BAGATI_CATALOG_IMPORT_VERIFY_DATABASE_URL and refuses unless the host is loopback, the port is
- * exactly 5433 and the database name contains "verify". DATABASE_URL is overwritten in-process before lib/prisma is
- * imported; .env is never read. A throwaway SESSION_SECRET makes every rate-limit key unique to this run. Telemetry
- * is intercepted in-process (nothing is flushed). Fixture rows are removed in `finally`. Skips (NOT VERIFIED) when
- * the cluster is unreachable; it never migrates.
+ * exactly 5433 and the database name contains "verify". Runs in a SCRATCH schema named by BAGATI_VERIFY_SCHEMA
+ * (two-letter prefix + "_", e.g. sc_it) that already has the current migrations: the verify `public` schema is behind
+ * (no SecurityEvent.sourceIpMasked), so the route's writes would fail there. Only this run's own rows are written and
+ * removed in `finally`; nothing is wiped. DATABASE_URL is overwritten in-process before lib/prisma is imported; .env is
+ * never read. A throwaway SESSION_SECRET makes every rate-limit key unique to this run. Telemetry is intercepted
+ * in-process (nothing is flushed). Skips (NOT VERIFIED) when the cluster, the schema or the migration is missing; it
+ * never migrates.
  */
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -14,6 +17,8 @@ import { Prisma, PrismaClient } from "@prisma/client";
 
 const VERIFY_URL_ENV = "BAGATI_CATALOG_IMPORT_VERIFY_DATABASE_URL";
 const TEST_IPS = ["203.0.113.71", "203.0.113.72", "203.0.113.73"];
+/** Newest migration the code under test needs (SecurityEvent.sourceIpMasked, Security Center tables). */
+const REQUIRED_MIGRATION = "20261114020000_security_center_live";
 
 function guardedVerifyUrl(): { url: string } | { refuse: string } | { skip: string } {
   const raw = process.env[VERIFY_URL_ENV];
@@ -24,7 +29,11 @@ function guardedVerifyUrl(): { url: string } | { refuse: string } | { skip: stri
   if (!["127.0.0.1", "localhost"].includes(parsed.hostname)) return { refuse: "verify database host must be loopback" };
   if (parsed.port !== "5433") return { refuse: "verify database port must be exactly 5433" };
   if (!database.includes("verify")) return { refuse: "verify database name must contain \"verify\"" };
-  return { url: raw };
+  const schema = process.env.BAGATI_VERIFY_SCHEMA;
+  if (!schema) return { skip: "BAGATI_VERIFY_SCHEMA is not set (needs a migrated scratch schema, e.g. sc_it)" };
+  if (!/^[a-z]{2}_[a-z0-9_]{1,40}$/.test(schema)) return { refuse: "BAGATI_VERIFY_SCHEMA must be a scratch schema such as sc_it (never public)" };
+  parsed.searchParams.set("schema", schema);
+  return { url: parsed.toString() };
 }
 
 test("admin login: per-IP limit, shared stricter unknown-IP limit, per-account limit, window reset, telemetry group", { timeout: 180_000 }, async (t) => {
@@ -46,6 +55,8 @@ test("admin login: per-IP limit, shared stricter unknown-IP limit, per-account l
     const [where] = await prisma.$queryRaw<{ db: string; port: number }[]>`SELECT current_database() AS db, inet_server_port() AS port`;
     assert.ok(where.db.includes("verify"));
     assert.equal(Number(where.port), 5433);
+    const migrated = await prisma.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS n FROM "_prisma_migrations" WHERE migration_name = ${REQUIRED_MIGRATION} AND finished_at IS NOT NULL`.catch(() => [{ n: 0 }]);
+    if (!migrated[0]?.n) return t.skip(`NOT VERIFIED: scratch schema lacks migration ${REQUIRED_MIGRATION} (this test never migrates)`);
 
     const { NextRequest } = await import("next/server");
     const bcrypt = (await import("bcryptjs")).default;
@@ -88,13 +99,21 @@ test("admin login: per-IP limit, shared stricter unknown-IP limit, per-account l
       assert.equal((await attempt(stranger(21), TEST_IPS[1])).status, 401, "a different IP still reaches the password check");
       // Even the right password is refused from the limited IP inside the window...
       assert.equal((await attempt({ email: admin.email, password }, TEST_IPS[0])).status, 429);
-      // ...and accepted once the window has passed: no permanent lockout.
+      // ...and accepted once the window has passed: no permanent lockout. With 2FA required the correct password
+      // answers "enroll" (challenge cookie, no session yet); createSession needs a real Next request (cookies()),
+      // which this in-process harness does not have.
       await expireWindow(bucketKey(TEST_IPS[0]));
+      process.env.BAGATI_ADMIN_2FA_REQUIRED = "true";
+      process.env.BAGATI_ADMIN_2FA_KEY = randomBytes(32).toString("base64");
       const ok = await attempt({ email: admin.email, password }, TEST_IPS[0]);
+      delete process.env.BAGATI_ADMIN_2FA_REQUIRED;
+      delete process.env.BAGATI_ADMIN_2FA_KEY;
       assert.equal(ok.status, 200);
+      assert.deepEqual(await ok.json(), { next: "enroll" });
+      assert.match(ok.headers.get("set-cookie") ?? "", /HttpOnly/i, "challenge cookie for the next step");
       const rows = await prisma.$queryRaw<{ n: number }[]>(Prisma.sql`SELECT count(*)::int AS n FROM "AuthRateLimit" WHERE "keyHash" = ${bucketKey(TEST_IPS[0])}`);
       assert.equal(rows[0].n, 0, "a correct admin password clears this IP's bucket");
-      await prisma.authSession.deleteMany({ where: { userId: admin.id } });
+      assert.equal(await prisma.authSession.count({ where: { userId: admin.id } }), 0, "no session before the second factor");
     });
 
     await t.test("unknown client IP: one shared bucket of 10 (flag off, missing header, header mismatch)", async () => {
@@ -138,6 +157,8 @@ test("admin login: per-IP limit, shared stricter unknown-IP limit, per-account l
     });
   } finally {
     delete process.env.BAGATI_TRUST_CLOUDFLARE_IP;
+    delete process.env.BAGATI_ADMIN_2FA_REQUIRED;
+    delete process.env.BAGATI_ADMIN_2FA_KEY;
     if (keys.length) await prisma.$executeRaw(Prisma.sql`DELETE FROM "AuthRateLimit" WHERE "keyHash" = ANY(${keys})`).catch(() => undefined);
     if (adminId) {
       await prisma.authSession.deleteMany({ where: { userId: adminId } }).catch(() => undefined);

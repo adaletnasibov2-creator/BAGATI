@@ -92,17 +92,22 @@ test("admin surface: /admin and /api/admin with every sub-path, nothing else", (
 
 test("middleware sets X-Robots-Tag on admin pages and APIs (also on a CSRF rejection), and not on public pages", async () => {
   const { middleware } = await import("../middleware");
-  const headerFor = (url: string, init?: ConstructorParameters<typeof NextRequest>[1]) => middleware(new NextRequest(url, init)).headers.get("x-robots-tag");
-  assert.equal(headerFor("http://localhost:3000/admin/login"), ADMIN_X_ROBOTS_TAG);
-  assert.equal(headerFor("http://localhost:3000/admin"), ADMIN_X_ROBOTS_TAG);
-  assert.equal(headerFor("http://localhost:3000/admin/security-center?tab=live"), ADMIN_X_ROBOTS_TAG);
-  assert.equal(headerFor("http://localhost:3000/api/admin/security/live", { headers: { host: "localhost:3000" } }), ADMIN_X_ROBOTS_TAG);
-  const crossSite = middleware(new NextRequest("http://localhost:3000/api/admin/login", { method: "POST", headers: { host: "localhost:3000", origin: "https://evil.example", "sec-fetch-site": "cross-site" } }));
+  const { resetMaintenanceStateCache } = await import("../lib/maintenance-state");
+  resetMaintenanceStateCache();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({ enabled: false, message: "x" })) as typeof fetch;
+  const headerFor = async (url: string, init?: ConstructorParameters<typeof NextRequest>[1]) => (await middleware(new NextRequest(url, init))).headers.get("x-robots-tag");
+  assert.equal(await headerFor("http://localhost:3000/admin/login"), ADMIN_X_ROBOTS_TAG);
+  assert.equal(await headerFor("http://localhost:3000/admin"), ADMIN_X_ROBOTS_TAG);
+  assert.equal(await headerFor("http://localhost:3000/admin/security-center?tab=live"), ADMIN_X_ROBOTS_TAG);
+  assert.equal(await headerFor("http://localhost:3000/api/admin/security/live", { headers: { host: "localhost:3000" } }), ADMIN_X_ROBOTS_TAG);
+  const crossSite = await middleware(new NextRequest("http://localhost:3000/api/admin/login", { method: "POST", headers: { host: "localhost:3000", origin: "https://evil.example", "sec-fetch-site": "cross-site" } }));
   assert.equal(crossSite.status, 403, "cross-site admin POST is rejected by the middleware");
   assert.equal(crossSite.headers.get("x-robots-tag"), ADMIN_X_ROBOTS_TAG);
   for (const url of ["http://localhost:3000/", "http://localhost:3000/login", "http://localhost:3000/vendor/login", "http://localhost:3000/products"]) {
-    assert.equal(headerFor(url), null, url);
+    assert.equal(await headerFor(url), null, url);
   }
+  globalThis.fetch = realFetch;
 });
 
 test("admin layout sets robots metadata noindex/nofollow; no admin page overrides it", async () => {

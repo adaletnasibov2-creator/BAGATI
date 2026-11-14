@@ -17,6 +17,7 @@ import { commissionPercentToRate, commissionRateToPercent } from "@/lib/commissi
 import { isSafeHomepageHref } from "@/lib/site-content";
 import { ANNOUNCEMENT_TONE_LABELS } from "@/lib/announcement";
 import { AZ_PHONE_ERROR, normalizeAzPhone } from "@/lib/az-phone";
+import { MAINTENANCE_MESSAGE_DEFAULT } from "@/lib/maintenance-defaults";
 
 export type SettingPermission = "settings.finance" | "settings.content" | "settings.limits";
 export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance";
@@ -438,7 +439,7 @@ const footerSettings = [
 
 // ---- Maintenance mode ---------------------------------------------------------------------------------------
 
-export const MAINTENANCE_MESSAGE_DEFAULT = "Saytda texniki işlər aparılır. Bir azdan yenidən yoxlayın.";
+export { MAINTENANCE_MESSAGE_DEFAULT };
 
 const maintenanceEnabled: SettingDefinition<boolean> = {
   key: "maintenance.enabled",

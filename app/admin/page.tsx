@@ -12,6 +12,8 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_PENDING_ORDER_STATUSES, ADMIN_PENDING_ORDERS_HREF } from "@/lib/admin-order-filters";
 import { formatMoney } from "@/lib/format-money";
+import { getSetting } from "@/lib/settings/read";
+import { SETTING_KEYS } from "@/lib/settings/registry";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   const admin = await requireRole("ADMIN");
   if (!admin) redirect("/admin/login");
-  const [customers, vendors, stores, activeStores, pendingStores, products, activeProducts, orders, pendingOrders, completedOrders, cancelledOrders, subscriptions, recentOrders, recentStores] = await Promise.all([
+  const [customers, vendors, stores, activeStores, pendingStores, products, activeProducts, orders, pendingOrders, completedOrders, cancelledOrders, subscriptions, recentOrders, recentStores, maintenanceOn] = await Promise.all([
     prisma.user.count({ where: { role: "CUSTOMER" } }),
     prisma.user.count({ where: { role: "VENDOR" } }),
     prisma.store.count(),
@@ -34,6 +36,7 @@ export default async function AdminDashboard() {
     prisma.storeSubscription.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.order.findMany({ take: 6, orderBy: { createdAt: "desc" }, select: { id: true, status: true, total: true, createdAt: true, user: { select: { email: true } } } }),
     prisma.store.findMany({ take: 5, orderBy: { createdAt: "desc" }, select: { id: true, name: true, status: true, city: { select: { name: true } } } }),
+    getSetting<boolean>(SETTING_KEYS.maintenanceEnabled),
   ]);
   const stats = [
     ["Müştərilər", customers, "/admin/customers"],
@@ -50,6 +53,10 @@ export default async function AdminDashboard() {
   ] as const;
   const seeAll = (href: string, label: string) => <Link href={href} className={`rounded text-sm text-[#85621d] ${focusRing}`}>{label} →</Link>;
   return <AdminShell email={admin.email}>
+    {maintenanceOn === true && <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-900">
+      <p><b>Texniki iş rejimi açıqdır.</b> Müştəri və satıcı səhifələri və API-ləri 503 qaytarır; alış-veriş dayanıb. Admin paneli və ödəniş bildirişləri işləyir.</p>
+      <Link href="/admin/settings?tab=maintenance" className={buttonClass("danger")}>Rejimi idarə et</Link>
+    </div>}
     <PageHeader
       eyebrow="BAGATI İDARƏETMƏ"
       title="İcmal"

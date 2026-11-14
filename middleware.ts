@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { csrfRejection, isCsrfExemptApiPath } from "@/lib/csrf";
 import { canonicalHostRedirectUrl } from "@/lib/host-policy";
 import { ADMIN_X_ROBOTS_TAG, isAdminSurface } from "@/lib/admin-surface";
+import { isMaintenanceExempt, maintenanceResponse } from "@/lib/maintenance";
+import { maintenanceState } from "@/lib/maintenance-state";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
   if (canonical) return NextResponse.redirect(canonical, 308);
   const { pathname } = request.nextUrl;
+  // Maintenance mode (lib/maintenance.ts): customer and seller pages and APIs get 503; the admin panel, payment
+  // callbacks, readiness and static files stay reachable. The state is cached 10 s and fails open.
+  if (!isMaintenanceExempt(pathname)) {
+    const maintenance = await maintenanceState(request.nextUrl.origin);
+    if (maintenance.enabled) return maintenanceResponse(pathname, maintenance.message);
+  }
   const adminSurface = isAdminSurface(pathname);
   if (pathname.startsWith("/api/") && !isCsrfExemptApiPath(pathname)) {
     const rejected = csrfRejection(request);

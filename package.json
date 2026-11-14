@@ -69,6 +69,8 @@
     "test:localization": "node scripts/scan-mojibake.mjs --self-test",
     "test:security-center": "tsx --test scripts/security-center.test.ts scripts/client-ip-mismatch.test.ts scripts/security-telemetry.test.ts scripts/security-rules.test.ts scripts/security-admin-api.test.ts",
     "test:security-center:integration": "tsx --test scripts/security-monitoring.integration.test.ts",
+    "test:admin-entry-hardening": "tsx --test scripts/admin-entry-hardening.test.ts",
+    "test:admin-entry-hardening:integration": "tsx --test scripts/admin-entry-hardening.integration.test.ts",
     "test:admin-vendor-creation": "tsx --test scripts/admin-vendor-creation.test.ts",
     "test:admin-sales-report": "tsx --test scripts/admin-sales-report.test.ts",
     "test:admin-homepage": "tsx --test scripts/admin-homepage.test.ts",

@@ -4,6 +4,8 @@ import { createSession } from "@/lib/auth";
 import { readJsonBodyLimited } from "@/lib/request-json";
 import { expiredChallengeCookie, readChallenge, verifySecondFactor } from "@/lib/admin-2fa";
 import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
+import { adminRateLimitedResponseParts } from "@/lib/admin-login-rate-limit";
+import { ADMIN_2FA_IP_RATE_LIMIT } from "@/lib/admin-2fa-policy";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -27,8 +29,11 @@ async function handlePOST(request: NextRequest) {
         const minutes = result.lockedUntil ? Math.max(1, Math.ceil((result.lockedUntil.getTime() - Date.now()) / 60_000)) : 15;
         return NextResponse.json({ error: `Çox sayda yanlış kod daxil edildi. ${minutes} dəqiqə sonra yenidən cəhd edin.`, code: "LOCKED" }, { status: 423, headers });
       }
-      case "rate-limited":
-        return NextResponse.json({ error: "Çox sayda cəhd edildi. Bir müddət sonra yenidən yoxlayın.", code: "RATE_LIMITED" }, { status: 429, headers });
+      case "rate-limited": {
+        // Every 2FA code limit (per account, per IP, unknown-IP) uses the same 15-minute fixed window.
+        const limited = adminRateLimitedResponseParts(ADMIN_2FA_IP_RATE_LIMIT.windowMs);
+        return NextResponse.json({ error: limited.error, code: "RATE_LIMITED" }, { status: 429, headers: { ...headers, "Retry-After": limited.retryAfterSeconds } });
+      }
       case "key-unavailable":
         return NextResponse.json({ error: "Autentifikator kodu hazırda yoxlanıla bilmir. Bərpa kodundan istifadə edin.", code: "TOTP_UNAVAILABLE" }, { status: 503, headers });
       case "not-enrolled":

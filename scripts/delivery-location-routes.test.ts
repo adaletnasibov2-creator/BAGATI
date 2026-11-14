@@ -72,3 +72,28 @@ test("order route: coordinates are read before the transaction and can no longer
   assert.match(route, /const addressSnapshot=createOrderAddressSnapshot\(address,coordinatePin\.selected\);/);
   assert.equal(route.match(/coordinatePin/g)?.length, 2, "the pin is used only for the address snapshot");
 });
+
+test("checkout: the pin is optional and never blocks ordering (no confirm step); text-only body unchanged", () => {
+  const form = read("components/checkout-form.tsx");
+  assert.doesNotMatch(form, /locationConfirmed|Mövqeyi təsdiqlə|xəritə mövqeyini təsdiqləyin/);
+  const placeOrder = form.slice(form.indexOf("async function placeOrder(){"), form.indexOf("return <div"));
+  // Before the order request the only early stop is "no address selected"; nothing about the map can stop the order.
+  const beforeRequest = placeOrder.slice(0, placeOrder.indexOf('await fetch("/api/orders"'));
+  assert.deepEqual(beforeRequest.match(/return/g), ["return"]);
+  assert.match(placeOrder, /if\(!selected\)\{setError\("Çatdırılma ünvanı seçin\."\);return\}/);
+  assert.match(placeOrder, /body:JSON\.stringify\(\{addressId:selected,latitude:location\?\.latitude\?\?null,longitude:location\?\.longitude\?\?null,expectedPrices\}\)/);
+  assert.equal(form.match(/<DeliveryLocationPicker /g)?.length, 2);
+  assert.match(form, /Əlavə məlumat \(bina, mərtəbə, giriş\)<input value=\{line2\}/);
+});
+
+test("picker: 'Mənim yerim' asks for the location only on tap; a foreign point is not kept and the customer is told", () => {
+  const picker = read("components/delivery-location-picker.tsx");
+  assert.match(picker, /^"use client";/);
+  assert.match(picker, /onClick=\{locate\}[^>]*>\{locating \? "Mövqe alınır…" : "Mənim yerim"\}/);
+  assert.equal(picker.match(/navigator\.geolocation\.getCurrentPosition/g)?.length, 1);
+  assert.doesNotMatch(picker.slice(0, picker.indexOf("function locate")), /navigator\.geolocation/, "no location request on render");
+  assert.match(picker, /const pin = normalizeDeliveryCoordinates\(point\.latitude, point\.longitude\);\n\s*if \(!pin\) \{\n\s*onChange\(null\);/);
+  assert.match(picker, /Azərbaycan ərazisindən kənardadır/);
+  assert.match(picker, /Nöqtəni sil/);
+  assert.doesNotMatch(picker, /fetch\(|nominatim/i, "no network calls (no reverse geocoding)");
+});

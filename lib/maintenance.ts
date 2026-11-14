@@ -6,15 +6,16 @@
  *  - /admin and /admin/* (includes the admin login page), /api/admin and /api/admin/* (admin login, 2FA, all admin APIs)
  *  - /api/payments/* (Epoint callback, initiate, reconcile)
  *  - /api/ready, /api/health (deployment and uptime checks)
- *  - /api/maintenance-state (middleware reads the state from it)
+ *  - /api/maintenance-state and /api/maintenance-state/viewer (middleware reads the state and the admin preview from them)
  *  - /api/auth/logout (so an admin can sign out; it only ends a session)
  *  - /api/security/ingest/* (Cloudflare security events keep arriving)
  *  - /_next/* and static files (anything whose last path segment has a file extension, e.g. /favicon.ico, /uploads/x.webp)
- * Everything else (customer and seller pages, their APIs, customer/seller login and registration) gets 503.
+ * Everything else (customer and seller pages, their APIs, customer/seller login and registration) gets 503, except that
+ * a signed-in admin still sees the public PAGES (preview, lib/maintenance-preview.ts); APIs stay blocked for everyone.
  */
 export const MAINTENANCE_RETRY_AFTER_SECONDS = 600;
 
-const EXACT = new Set(["/admin", "/api/admin", "/api/ready", "/api/health", "/api/maintenance-state", "/api/auth/logout"]);
+const EXACT = new Set(["/admin", "/api/admin", "/api/ready", "/api/health", "/api/maintenance-state", "/api/maintenance-state/viewer", "/api/auth/logout"]);
 const PREFIXES = ["/admin/", "/api/admin/", "/api/payments/", "/api/security/ingest/", "/_next/"];
 /** Static asset types only (a dotted dynamic path such as /products/a.b stays blocked). */
 const STATIC_FILE = /^[^/]+\.(?:js|mjs|css|map|png|jpe?g|webp|avif|gif|svg|ico|woff2?|ttf|otf|txt|xml|json|webmanifest)$/i;

@@ -133,3 +133,158 @@ test("wiring: middleware checks before CSRF; the state endpoint is public and re
   assert.match(dashboard, /\{maintenanceOn === true && <div role="alert" className="[^"]*bg-red-50/);
   assert.match(dashboard, /href="\/admin\/settings\?tab=maintenance"/);
 });
+
+test("fail-open is visible: last check recorded with a short reason; at most one warning per minute; failures cached 10 s", async () => {
+  const { lastMaintenanceCheck, MAINTENANCE_WARNING_INTERVAL_MS, describeCheckFailure } = await import("../lib/maintenance-state");
+  resetMaintenanceStateCache();
+  assert.equal(lastMaintenanceCheck(), null);
+  const warnings: string[] = [];
+  const warn = (message: string) => { warnings.push(message); };
+  let calls = 0;
+  // What production hit: https://localhost:<port> against Next's plain-HTTP port.
+  const tls: typeof fetch = async () => { calls += 1; throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ERR_SSL_WRONG_VERSION_NUMBER" } }); };
+  let t = 100_000;
+  assert.deepEqual(await maintenanceState("https://localhost:3000", tls, t, { source: "request", warn }), { enabled: false, message: MAINTENANCE_MESSAGE_DEFAULT });
+  assert.deepEqual(lastMaintenanceCheck(), { ok: false, at: t, reason: "bağlantı xətası (ERR_SSL_WRONG_VERSION_NUMBER)", source: "request" });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /\[maintenance\] state check failed via request origin https:\/\/localhost:3000: bağlantı xətası \(ERR_SSL_WRONG_VERSION_NUMBER\)\. Failing open: maintenance treated as OFF\. Set BAGATI_INTERNAL_ORIGIN/);
+  await maintenanceState("https://localhost:3000", tls, t + MAINTENANCE_STATE_TTL_MS - 1, { source: "request", warn });
+  assert.equal(calls, 1, "a failed check is cached too (no retry storm)");
+  for (t += MAINTENANCE_STATE_TTL_MS; t < 100_000 + MAINTENANCE_WARNING_INTERVAL_MS; t += MAINTENANCE_STATE_TTL_MS) await maintenanceState("https://localhost:3000", tls, t, { source: "request", warn });
+  assert.equal(warnings.length, 1, "no second warning within the minute");
+  await maintenanceState("https://localhost:3000", tls, 100_000 + MAINTENANCE_WARNING_INTERVAL_MS, { source: "request", warn });
+  assert.equal(warnings.length, 2, "warned again after a minute");
+  // Recovery is recorded.
+  await maintenanceState("http://127.0.0.1:3000", async () => Response.json({ enabled: true, message: "x" }), 500_000, { source: "internal", warn });
+  assert.deepEqual(lastMaintenanceCheck(), { ok: true, at: 500_000, reason: null, source: "internal" });
+  // Reasons stay short and non-sensitive.
+  resetMaintenanceStateCache();
+  await maintenanceState("http://127.0.0.1:3000", async () => new Response("<html>challenge</html>", { status: 403 }), 1, { warn });
+  assert.equal(lastMaintenanceCheck()?.reason, "HTTP 403");
+  resetMaintenanceStateCache();
+  await maintenanceState("http://127.0.0.1:3000", async () => new Response("not json", { status: 200 }), 1, { warn });
+  assert.equal(lastMaintenanceCheck()?.reason, "cavab formatı yanlışdır");
+  assert.equal(describeCheckFailure(Object.assign(new Error("x"), { name: "TimeoutError" })), "vaxt bitdi (1.5 s)");
+  resetMaintenanceStateCache();
+});
+
+test("middleware: BAGATI_INTERNAL_ORIGIN is used for the state request even when the request origin is https://localhost", async () => {
+  const { middleware } = await import("../middleware");
+  const realFetch = globalThis.fetch; const realEnv = process.env.BAGATI_INTERNAL_ORIGIN;
+  const seen: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => { seen.push(String(input instanceof Request ? input.url : input)); return Response.json({ enabled: true, message: "Bağlıyıq" }); }) as typeof fetch;
+  // Behind the proxy Next gives the middleware "<X-Forwarded-Proto>://localhost:<port>" as the URL.
+  const proxied = (path: string) => new NextRequest(`https://localhost:3000${path}`, { headers: { host: "shopbagati.com", "x-forwarded-proto": "https" } });
+  try {
+    resetMaintenanceStateCache();
+    process.env.BAGATI_INTERNAL_ORIGIN = "http://127.0.0.1:3000";
+    assert.equal((await middleware(proxied("/"))).status, 503);
+    assert.deepEqual(seen, ["http://127.0.0.1:3000/api/maintenance-state"]);
+    resetMaintenanceStateCache(); seen.length = 0;
+    delete process.env.BAGATI_INTERNAL_ORIGIN;
+    await middleware(proxied("/"));
+    assert.deepEqual(seen, ["https://localhost:3000/api/maintenance-state"], "not set: the request origin, as before");
+    resetMaintenanceStateCache(); seen.length = 0;
+    process.env.BAGATI_INTERNAL_ORIGIN = "https://shopbagati.com";
+    await middleware(proxied("/"));
+    assert.deepEqual(seen, ["https://localhost:3000/api/maintenance-state"], "invalid value ignored");
+  } finally {
+    globalThis.fetch = realFetch; resetMaintenanceStateCache();
+    if (realEnv === undefined) delete process.env.BAGATI_INTERNAL_ORIGIN; else process.env.BAGATI_INTERNAL_ORIGIN = realEnv;
+  }
+});
+
+test("check header: ASCII round-trip, malformed values rejected; middleware sets it only for admin pages and strips client values", async () => {
+  const { decodeMaintenanceCheck, encodeMaintenanceCheck, MAINTENANCE_CHECK_HEADER } = await import("../lib/maintenance-state");
+  const failed = { ok: false, at: 1_731_600_000_000, reason: "bağlantı xətası (ERR_SSL_WRONG_VERSION_NUMBER)", source: "request" as const };
+  const encoded = encodeMaintenanceCheck(failed);
+  assert.match(encoded, /^[\x20-\x7e]+$/, "ASCII only (header-safe)");
+  assert.deepEqual(decodeMaintenanceCheck(encoded), failed);
+  assert.deepEqual(decodeMaintenanceCheck(encodeMaintenanceCheck({ ok: true, at: 5, reason: null, source: "internal" })), { ok: true, at: 5, reason: null, source: "internal" });
+  for (const bad of [null, "", "1|internal", "2|internal|5|", "1|other|5|", "0|request|x|r", "0|request|5|%E0%A4%A", "0|request|5|a|b"]) assert.equal(decodeMaintenanceCheck(bad), null, String(bad));
+
+  const { middleware } = await import("../middleware");
+  const realFetch = globalThis.fetch;
+  let forwarded: Headers | null = null;
+  globalThis.fetch = (async () => Response.json({ enabled: false, message: "x" })) as typeof fetch;
+  try {
+    resetMaintenanceStateCache();
+    const spoof = (path: string) => new NextRequest(`http://localhost:3000${path}`, { headers: { host: "localhost:3000", [MAINTENANCE_CHECK_HEADER]: "1|internal|1|" } });
+    const admin = await middleware(spoof("/admin/settings"));
+    forwarded = new Headers(); admin.headers.forEach((value, key) => { forwarded!.set(key, value); });
+    const overridden = forwarded.get(`x-middleware-request-${MAINTENANCE_CHECK_HEADER}`);
+    assert.ok(overridden && decodeMaintenanceCheck(overridden)?.source === "request", "admin page: set from the middleware's own check");
+    assert.notEqual(overridden, "1|internal|1|", "client value replaced");
+    const shop = await middleware(spoof("/products"));
+    assert.equal(shop.headers.get(`x-middleware-request-${MAINTENANCE_CHECK_HEADER}`), null, "public page: client value stripped, nothing set");
+    assert.match(shop.headers.get("x-middleware-override-headers") ?? "", /x-bagati-pathname/);
+    assert.doesNotMatch(shop.headers.get("x-middleware-override-headers") ?? "", new RegExp(MAINTENANCE_CHECK_HEADER));
+  } finally { globalThis.fetch = realFetch; resetMaintenanceStateCache(); }
+
+  const settings = read("app/admin/_sections/settings.tsx");
+  assert.match(settings, /decodeMaintenanceCheck\(\(await headers\(\)\)\.get\(MAINTENANCE_CHECK_HEADER\)\)/);
+  assert.match(settings, /\{engineTab==="maintenance"&&<AdminMaintenanceCheck check=\{maintenanceCheck\}\/>\}/);
+  const line = read("components/admin-maintenance-check.tsx");
+  assert.match(line, /<b>Yoxlama işləyir\.<\/b>/);
+  assert.match(line, /<b>Yoxlama işləmir: \{check\.reason\}<\/b>/);
+});
+
+test("admin preview: a signed-in admin sees public pages, never the APIs; others and failures get 503; cached per session", async () => {
+  const { middleware } = await import("../middleware");
+  const { resetMaintenancePreviewCache, isAdminPreview } = await import("../lib/maintenance-preview");
+  assert.equal(isMaintenanceExempt("/api/maintenance-state/viewer"), true);
+  const realFetch = globalThis.fetch;
+  const viewerCalls: { cookie: string | null }[] = [];
+  let viewer: "admin" | "customer" | "error" = "admin";
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.endsWith("/api/maintenance-state")) return Response.json({ enabled: true, message: "Bağlıyıq" });
+    assert.match(url, /\/api\/maintenance-state\/viewer$/);
+    viewerCalls.push({ cookie: new Headers(init?.headers).get("cookie") });
+    if (viewer === "error") throw new Error("down");
+    return Response.json({ admin: viewer === "admin" });
+  }) as typeof fetch;
+  const withCookie = (path: string, token: string, method = "GET") => new NextRequest(`http://localhost:3000${path}`, { method, headers: { host: "localhost:3000", cookie: `bagati_session=${token}; other=secret`, ...(method === "GET" ? {} : { origin: "http://localhost:3000" }) } });
+  try {
+    resetMaintenanceStateCache(); resetMaintenancePreviewCache();
+    viewer = "admin";
+    for (const path of ["/", "/products", "/stores/x"]) assert.notEqual((await middleware(withCookie(path, "admin-token"))).status, 503, `admin preview ${path}`);
+    assert.equal(viewerCalls.length, 1, "one viewer check per session per 10 s");
+    assert.equal(viewerCalls[0].cookie, "bagati_session=admin-token", "only the session cookie is forwarded");
+    for (const [path, method] of [["/api/cart", "POST"], ["/api/orders", "POST"], ["/api/auth/login", "POST"], ["/api/products", "GET"]]) assert.equal((await middleware(withCookie(path, "admin-token", method))).status, 503, `admin, API ${path} still blocked`);
+    assert.equal((await middleware(new NextRequest("http://localhost:3000/", { headers: { host: "localhost:3000" } }))).status, 503, "no cookie: blocked, no viewer call");
+    assert.equal(viewerCalls.length, 1);
+    viewer = "customer";
+    assert.equal((await middleware(withCookie("/", "customer-token"))).status, 503, "customer session: blocked");
+    viewer = "error";
+    assert.equal((await middleware(withCookie("/", "broken-token"))).status, 503, "viewer check fails: blocked (safe side)");
+    // Cache expiry per session.
+    resetMaintenancePreviewCache(); viewerCalls.length = 0; viewer = "admin";
+    assert.equal(await isAdminPreview("t", "http://127.0.0.1:3000", undefined, 1_000), true);
+    assert.equal(await isAdminPreview("t", "http://127.0.0.1:3000", undefined, 10_999), true);
+    assert.equal(viewerCalls.length, 1);
+    await isAdminPreview("t", "http://127.0.0.1:3000", undefined, 11_000);
+    assert.equal(viewerCalls.length, 2, "re-checked after 10 s (a revoked admin session loses the preview within 10 s)");
+    assert.equal(await isAdminPreview(undefined, "http://127.0.0.1:3000"), false);
+  } finally { globalThis.fetch = realFetch; resetMaintenanceStateCache(); resetMaintenancePreviewCache(); }
+  const route = read("app/api/maintenance-state/viewer/route.ts");
+  assert.match(route, /const admin = await requireRole\("ADMIN"\)/);
+  assert.match(route, /NextResponse\.json\(\{ admin: Boolean\(admin\) \}, \{ headers: \{ "Cache-Control": "no-store" \} \}\)/);
+  assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
+  assert.doesNotMatch(read("lib/maintenance-preview.ts"), /cache\.set\(token|console\.(log|warn)\(.*token/, "the token is never a cache key or logged");
+});
+
+test("allow/deny matrix from the spec, plus noindex and Retry-After on every 503", async () => {
+  // Always allowed: admin + admin APIs (incl. login), readiness, the state endpoints, Next assets, favicon, robots.txt, CDN assets.
+  for (const path of ["/admin", "/admin/login", "/api/admin/login", "/api/admin/login/2fa", "/api/admin/settings/maintenance.enabled", "/api/ready", "/api/maintenance-state", "/api/maintenance-state/viewer",
+    "/_next/static/css/app.css", "/_next/image", "/favicon.ico", "/robots.txt", "/uploads/stores/x/banner.webp", "/images/home/slide.jpg"]) assert.equal(isMaintenanceExempt(path), true, path);
+  // Blocked: customer and vendor pages and APIs (checkout, orders, auth).
+  for (const path of ["/", "/checkout", "/orders/abc", "/vendor/x/orders", "/api/orders", "/api/cart/items", "/api/auth/login", "/api/auth/register", "/api/auth/vendor-login", "/api/vendor/x/orders", "/api/account/addresses", "/api/maintenance-state/viewerx"]) assert.equal(isMaintenanceExempt(path), false, path);
+  for (const path of ["/", "/api/orders"]) {
+    const response = maintenanceResponse(path, "x");
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get("x-robots-tag"), "noindex");
+    assert.equal(response.headers.get("retry-after"), String(MAINTENANCE_RETRY_AFTER_SECONDS));
+  }
+  assert.match(await maintenanceResponse("/", "x").text(), /<meta name="robots" content="noindex">/);
+});

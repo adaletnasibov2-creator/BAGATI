@@ -1,5 +1,8 @@
 /** Sayt parametrləri (/admin/settings): Ümumi tab (site form + contact and footer settings) and the settings-engine tabs. */
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { AdminMaintenanceCheck } from "@/components/admin-maintenance-check";
+import { decodeMaintenanceCheck, MAINTENANCE_CHECK_HEADER } from "@/lib/maintenance-state";
 import AdminSiteSettingsForm from "@/components/admin-site-settings-form";
 import AdminSettingsTabs from "@/components/admin-settings-tabs";
 import AdminSettingField from "@/components/admin-setting-field";
@@ -13,7 +16,9 @@ export async function renderSettings({ sp, shell }: SectionContext) {
   const engineTab=(["finance","seo","announcement","limits","maintenance"] as const).find(tab=>tab===sp.tab);
   if(engineTab){
    const group=await loadAdminSettingsGroup(prisma,engineTab);
-   return shell(<><PageHeader title="Sayt parametrləri" description={group.group.description}/><AdminSettingsTabs active={engineTab}/><div className="grid gap-4">{group.settings.map(view=><AdminSettingField key={view.key} view={view}/>)}</div></>);
+   // Texniki iş: the middleware's own state check for this request (set by middleware.ts, never client-supplied).
+   const maintenanceCheck=engineTab==="maintenance"?decodeMaintenanceCheck((await headers()).get(MAINTENANCE_CHECK_HEADER)):null;
+   return shell(<><PageHeader title="Sayt parametrləri" description={group.group.description}/><AdminSettingsTabs active={engineTab}/>{engineTab==="maintenance"&&<AdminMaintenanceCheck check={maintenanceCheck}/>}<div className="grid gap-4">{group.settings.map(view=><AdminSettingField key={view.key} view={view}/>)}</div></>);
   }
   const [settings, contact, footer] = await Promise.all([
     prisma.siteSettings.findUnique({where:{id:SITE_SETTINGS_DEFAULTS.id}}),

@@ -3,7 +3,9 @@ import { csrfRejection, isCsrfExemptApiPath } from "@/lib/csrf";
 import { canonicalHostRedirectUrl } from "@/lib/host-policy";
 import { ADMIN_X_ROBOTS_TAG, isAdminSurface } from "@/lib/admin-surface";
 import { isMaintenanceExempt, maintenanceResponse } from "@/lib/maintenance";
-import { maintenanceState } from "@/lib/maintenance-state";
+import { encodeMaintenanceCheck, lastMaintenanceCheck, MAINTENANCE_CHECK_HEADER, maintenanceState } from "@/lib/maintenance-state";
+import { maintenanceStateOrigin } from "@/lib/maintenance-origin";
+import { isAdminPreview } from "@/lib/maintenance-preview";
 
 export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
@@ -12,8 +14,15 @@ export async function middleware(request: NextRequest) {
   // Maintenance mode (lib/maintenance.ts): customer and seller pages and APIs get 503; the admin panel, payment
   // callbacks, readiness and static files stay reachable. The state is cached 10 s and fails open.
   if (!isMaintenanceExempt(pathname)) {
-    const maintenance = await maintenanceState(request.nextUrl.origin);
-    if (maintenance.enabled) return maintenanceResponse(pathname, maintenance.message);
+    // BAGATI_INTERNAL_ORIGIN (Node port, e.g. http://127.0.0.1:3000) when set and valid: behind the proxy the request
+    // origin is "https://localhost:<port>", which cannot be fetched (lib/maintenance-origin.ts).
+    const { origin, source } = maintenanceStateOrigin(request.nextUrl.origin, process.env.BAGATI_INTERNAL_ORIGIN);
+    const maintenance = await maintenanceState(origin, undefined, undefined, { source });
+    // A signed-in admin previews the public pages (never the APIs). Checked only when maintenance is on and a session
+    // cookie is present; any failure shows the maintenance page.
+    const isApi = pathname === "/api" || pathname.startsWith("/api/");
+    const session = request.cookies.get("bagati_session")?.value;
+    if (maintenance.enabled && (isApi || !(await isAdminPreview(session, origin)))) return maintenanceResponse(pathname, maintenance.message);
   }
   const adminSurface = isAdminSurface(pathname);
   if (pathname.startsWith("/api/") && !isCsrfExemptApiPath(pathname)) {
@@ -27,6 +36,14 @@ export async function middleware(request: NextRequest) {
   // so a client cannot supply its own value.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-bagati-pathname", pathname.slice(0, 300));
+  // Admin pages get the result of the middleware's own maintenance check (shown in "Texniki iş"); never client-supplied.
+  requestHeaders.delete(MAINTENANCE_CHECK_HEADER);
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const { origin, source } = maintenanceStateOrigin(request.nextUrl.origin, process.env.BAGATI_INTERNAL_ORIGIN);
+    await maintenanceState(origin, undefined, undefined, { source });
+    const check = lastMaintenanceCheck();
+    if (check) requestHeaders.set(MAINTENANCE_CHECK_HEADER, encodeMaintenanceCheck(check));
+  }
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   // Header (not robots.txt): noindex without advertising the admin path.
   if (adminSurface) response.headers.set("X-Robots-Tag", ADMIN_X_ROBOTS_TAG);

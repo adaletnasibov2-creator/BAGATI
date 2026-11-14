@@ -116,8 +116,9 @@ test("the store view passed to the client form holds only plain values (Decimal 
 
 test("dashboard pending orders: count and link use the same status group", () => {
   const dashboard = read("app/admin/page.tsx");
-  assert.match(dashboard, /db\.order\.count\(\{where:\{status:\{in:\[\.\.\.ADMIN_PENDING_ORDER_STATUSES\]\}\}\}\)/);
-  assert.match(dashboard, /\["Gözləyən sifarişlər",pendingOrders,ADMIN_PENDING_ORDERS_HREF\]/);
+  // Phase B: the dashboard uses the typed Prisma client and readable formatting (same query and link).
+  assert.match(dashboard, /prisma\.order\.count\(\{ where: \{ status: \{ in: \[\.\.\.ADMIN_PENDING_ORDER_STATUSES\] \} \} \}\)/);
+  assert.match(dashboard, /\["Gözləyən sifarişlər", pendingOrders, ADMIN_PENDING_ORDERS_HREF\]/);
   assert.doesNotMatch(dashboard, /orders\?status=PENDING"/);
   assert.equal(ADMIN_PENDING_ORDERS_HREF, "/admin/orders?status=pending");
   const statuses = ["PENDING", "NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"];

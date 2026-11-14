@@ -121,3 +121,24 @@ test("no admin component uses window.confirm any more; each uses the dialog and 
   const mutation = read("components/admin-mutation-form.tsx");
   assert.match(mutation, /const formElement=event\.currentTarget;\s*if\(confirmMessage&&!\(await confirm\(\{message:confirmMessage,danger:method==="DELETE"\}\)\)\)return;/);
 });
+
+test("the kit is applied to the dashboard and the stores, products, orders, customers and subscriptions lists", () => {
+  const lists: Record<string, string> = { stores: "Mağaza tapılmadı.", products: "Məhsul tapılmadı.", orders: "Sifariş tapılmadı.", customers: "Müştəri tapılmadı." };
+  for (const [name, empty] of Object.entries(lists)) {
+    const source = read(`app/admin/_sections/${name}.tsx`);
+    assert.match(source, /<PageHeader title=/, `${name}: PageHeader`);
+    assert.match(source, new RegExp(`<DataTable rows=\\{rows\\} rowKey=\\{r=>r\\.id\\} empty="${empty}" emptyDescription=\\{`), `${name}: responsive DataTable with an empty state`);
+    assert.doesNotMatch(source, /<Header |<Table /, `${name}: old helpers not used`);
+    assert.match(source, /<Pager path=/, `${name}: pagination unchanged`);
+  }
+  assert.match(read("app/admin/_sections/customers.tsx"), /<StatusBadge tone=\{r\.isActive\?"success":"neutral"\}>/);
+  const subscriptions = read("app/admin/_sections/subscriptions.tsx");
+  assert.match(subscriptions, /<PageHeader title="Abunəliklər"/);
+  assert.match(subscriptions, /stores\.length===0&&<EmptyState title="Mağaza tapılmadı\."/);
+  const dashboard = read("app/admin/page.tsx");
+  assert.match(dashboard, /<PageHeader[\s\S]*title="İcmal"/);
+  assert.match(dashboard, /<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">\s*\{stats\.map\(\(\[label, value, href\]\) => <StatCard /, "compact two-column counters on phones");
+  assert.equal((dashboard.match(/<Section /g) ?? []).length, 3);
+  assert.equal((dashboard.match(/<EmptyState /g) ?? []).length, 3);
+  assert.doesNotMatch(dashboard, /: ?any\b/, "typed: no any");
+});

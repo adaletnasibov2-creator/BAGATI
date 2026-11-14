@@ -94,7 +94,7 @@ test("section split: thin router, typed sections, no admin file keeps the remove
   for (const file of adminFiles) {
     const source = read(file);
     assert.doesNotMatch(source, /from ["'][^"']*\[\.\.\.section\][^"']*["']/, `${file}: nothing imports from the catch-all`);
-    if (file.startsWith("app/admin/_sections/") || file.startsWith("app/admin/[...section]/")) assert.doesNotMatch(source, /const db: ?any ?= ?prisma/, `${file}: db:any removed`);
+    if (file.startsWith("app/admin/_sections/") || file.startsWith("app/admin/[...section]/") || file === "app/admin/page.tsx") assert.doesNotMatch(source, /const db: ?any ?= ?prisma/, `${file}: db:any removed`);
     // Scope: the split code. (app/admin/audit-log has its own, older Pager with a different signature.)
     const splitCode = file.startsWith("app/admin/_sections/") || file.startsWith("app/admin/[...section]/");
     if (splitCode && file !== "app/admin/_sections/shared.tsx") assert.doesNotMatch(source, /^(export )?function (Header|Table|Pager|StatusForm|formatSubscriptionSummary)\(/m, `${file}: helper defined once, in shared.tsx`);

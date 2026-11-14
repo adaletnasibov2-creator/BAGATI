@@ -79,7 +79,8 @@ test("admin vendor creation records an audit log and an internal admin note", ()
 });
 
 test("admin UI exposes a vendors/new route with the full onboarding form", () => {
-  assert.match(adminPage, /if\(route==="vendors\/new"\)/);
+  // A catch-all branch, or a section routed from app/admin/_sections/index.ts.
+  assert.match(adminPage, /if\(route==="vendors\/new"\)|match: \(route, parts\) => route==="vendors\/new"/);
   assert.match(adminPage, /title="Satıcı hesabı yarat"/);
   assert.match(adminPage, /name:"firstName"/);
   assert.match(adminPage, /name:"lastName"/);

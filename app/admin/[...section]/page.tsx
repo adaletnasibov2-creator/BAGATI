@@ -35,7 +35,8 @@ import { storeProfileOptions, toAdminStoreProfileView } from "@/lib/admin-store-
 import { Filters, FilterSelect } from "@/components/admin-list-filters";
 import { adminOrderStatusWhere, ADMIN_PENDING_ORDER_GROUP } from "@/lib/admin-order-filters";
 
-import { card, storeStatuses, orderStatuses, productStatuses, Header, formatStoreCityName, formatSubscriptionSummary, Table, Pager, StatusForm } from "../_sections/shared";
+import { type SectionContext, card, storeStatuses, orderStatuses, productStatuses, Header, formatStoreCityName, formatSubscriptionSummary, Table, Pager, StatusForm } from "../_sections/shared";
+import { ADMIN_SECTIONS } from "../_sections";
 
 export const dynamic="force-dynamic";
 const db:any=prisma;
@@ -44,6 +45,9 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
  const admin=await requireRole("ADMIN");if(!admin)redirect("/admin/login");
  const [{section:parts},rawSearchParams]=await Promise.all([params,searchParams]);const sp=normalizeAdminSearchParams(rawSearchParams);const route=parts.join("/");const q=normalizeAdminSearch(sp.q);const page=normalizeAdminPage(sp.page);const take=25,skip=(page-1)*take;const pageQuery=new URLSearchParams(Object.entries(sp).filter(([k,v])=>k!=="page"&&Boolean(v)) as [string,string][]).toString();
  const shell=(content:React.ReactNode)=><AdminShell email={admin.email}>{content}</AdminShell>;
+ // Sections moved to app/admin/_sections/* (original order); the branches below are not moved yet.
+ const ctx:SectionContext={admin,parts,route,sp,q,page,take,skip,pageQuery,shell};
+ for(const section of ADMIN_SECTIONS)if(section.match(route,parts))return section.render(ctx);
 
  if(route==="settings"){
   // Settings-engine tabs (Maliyyə, SEO, Elan zolağı, Limitlər): one generic page per registry group.
@@ -57,7 +61,6 @@ export default async function AdminSectionPage({params,searchParams}:{params:Pro
  }
  if(route==="homepage")return shell(<><Header title="Ana səhifə və bannerlər" detail="Bannerlər yalnız aktiv və təyin olunmuş tarix aralığında göstərilir. Mağaza kampaniyaları mövcud satıcı kampaniya axınından idarə olunur."/><AdminHomepageManager/></>);
  if(route==="promotions")return shell(<><Header title="Kampaniyalar" detail="Mağaza məhsullarına tarix və status əsasında endirim kampaniyaları təyin edin."/><AdminPromotionManager/></>);
- if(route==="payments")return shell(<><Header title="Ödənişlər" detail="Epoint yalnız server konfiqurasiyası tam olduqda aktiv olur. Bu səhifə kart məlumatı saxlamır və ödəniş əməliyyatı göndərmir."/><section className={card}><p className="font-medium">Ödəniş statusu sifarişin daxilində görünür.</p><p className="mt-2 text-sm text-slate-600">Məbləğ və status bankın imzalanmış callback-i və status sorğusu təsdiqləndikdən sonra dəyişir. Brauzerin qayıtması ödənişi təsdiqləmir.</p></section></>);
 
  if(route==="stores/new"){
   const [vendors,cities]=await Promise.all([db.vendorProfile.findMany({where:{user:{isActive:true}},include:{user:{select:{email:true}}},orderBy:{displayName:"asc"}}),db.city.findMany({where:{isActive:true},orderBy:{name:"asc"}})]);

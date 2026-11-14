@@ -192,3 +192,15 @@ export async function listSellersForVoenReview(db: Pick<PrismaClient, "$queryRaw
   const [count] = await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS "n" ${from}`;
   return { rows, total: count?.n ?? 0 };
 }
+
+/**
+ * Public "Təsdiqlənmiş satıcı" badge: true only while the seller's CURRENT VÖEN is admin-verified. Fails closed
+ * (false) on any error, e.g. before migration 20261115120000 is applied, so the page never breaks or over-claims.
+ */
+export async function isSellerVoenVerified(db: Pick<PrismaClient, "sellerVoenVerification">, input: { userId: string; voen: string | null }): Promise<boolean> {
+  try {
+    return (await verifiedVoenUserIds(db, [input])).has(input.userId);
+  } catch {
+    return false;
+  }
+}

@@ -126,3 +126,22 @@ test("admin UI: VÖEN panel on the application review and the store page; bulk p
   assert.match(bulk, /const admin = await requireRole\("ADMIN"\);\n\s*if \(!admin\) redirect\("\/admin\/login"\);/);
   assert.match(read("components/admin-voen-bulk.tsx"), /const canSelect = !row\.verified && row\.formatValid && !row\.duplicate;/);
 });
+
+test("badge: the only renderer is gated on sellerVerified, computed from the admin verification (fails closed)", async () => {
+  const { readFileSync, readdirSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const root = join(__dirname, "..");
+  const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
+  const walk = (dir: string): string[] => readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? walk(`${dir}/${entry.name}`) : /\.tsx?$/.test(entry.name) ? [`${dir}/${entry.name}`] : []);
+  // Rendered as a badge = the text right after a JSX element (not comments or admin help text).
+  const renderers = ["app", "components"].flatMap(walk).filter((file) => /\/>Təsdiqlənmiş satıcı<|>Təsdiqlənmiş satıcı<\/span>/.test(read(file)));
+  assert.deepEqual(renderers, ["components/storefront-branding.tsx"], "one place renders the badge");
+  assert.match(read("components/storefront-branding.tsx"), /\{store\.sellerVerified && <>\n\s*<span data-seller-verified/);
+  const page = read("app/(customer)/stores/[storeId]/page.tsx");
+  assert.match(page, /const sellerVerified = await isSellerVoenVerified\(prisma, \{ userId: store\.vendor\.user\.id, voen: store\.vendor\.voen \}\);/);
+  assert.match(page, /      sellerVerified,\n/);
+  const lib = read("lib/voen-verification.ts");
+  assert.match(lib, /export async function isSellerVoenVerified[\s\S]*?try \{\n\s*return \(await verifiedVoenUserIds\(db, \[input\]\)\)\.has\(input\.userId\);\n\s*\} catch \{\n\s*return false;/);
+  assert.match(lib, /where: \{ revokedAt: null, OR: wanted\.map/, "revoked verifications never count");
+});

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { adminSectionSource } from "./admin-section-source";
@@ -108,12 +108,21 @@ test("admin verification links use the identifier expected by each account detai
 
 
 test("admin seller detail uses a bounded, schema-explicit query and handles missing optional data", () => {
-  const branchStart = adminPage.indexOf('if (parts[0] === "vendors" && parts.length === 2)');
-  const nextRoute = adminPage.indexOf('if(route==="customers")', branchStart);
-  assert.ok(branchStart >= 0 && nextRoute > branchStart, "seller detail route should be present");
-  const sellerDetail = adminPage.slice(branchStart, nextRoute);
-
-  assert.match(adminPage.slice(0, branchStart), /requireRole\("ADMIN"\)/);
+  // The seller detail is either still a branch of the catch-all or its own module in app/admin/_sections
+  // (the split moves sections one at a time); either way the catch-all requires ADMIN before routing to it.
+  const moduleFile = resolve(root, "app/admin/_sections/vendor-detail.tsx");
+  let sellerDetail: string;
+  if (existsSync(moduleFile)) {
+    sellerDetail = readFileSync(moduleFile, "utf8");
+    assert.match(adminPage, /match: \(route, parts\) => parts\[0\] === "vendors" && parts\.length === 2, render: renderVendorDetail/);
+  } else {
+    const branchStart = adminPage.indexOf('if (parts[0] === "vendors" && parts.length === 2)');
+    const nextRoute = adminPage.indexOf("\n if(", branchStart);
+    assert.ok(branchStart >= 0 && nextRoute > branchStart, "seller detail route should be present");
+    sellerDetail = adminPage.slice(branchStart, nextRoute);
+  }
+  const catchAll = readFileSync(resolve(root, "app/admin/[...section]/page.tsx"), "utf8");
+  assert.ok(catchAll.indexOf('requireRole("ADMIN")') < catchAll.indexOf("ADMIN_SECTIONS)"), "ADMIN is required before any section renders");
   assert.match(sellerDetail, /prisma\.vendorProfile\.findUnique/);
   assert.match(sellerDetail, /where:\s*\{ id: vendorId \}/);
   assert.match(sellerDetail, /if \(!vendor\) notFound\(\)/);

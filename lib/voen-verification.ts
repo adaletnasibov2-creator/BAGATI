@@ -7,7 +7,7 @@
  * Every decision is in one transaction with an AuditLog row. When the seller changes the VÖEN, their active
  * verifications are revoked automatically (resetVoenVerificationOnChange), so the status goes back to "Yoxlanmayıb".
  */
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { maskVoenDigits, parseVoen } from "@/lib/voen";
 import { normalizeVoen } from "@/lib/seller-application";
 
@@ -123,4 +123,72 @@ export async function resetVoenVerificationOnChange(tx: Tx, input: { userId: str
     } });
   }
   return changed.count;
+}
+
+export type AdminVoenView = {
+  userId: string;
+  /** Digits of the current VÖEN (null when none). */
+  voen: string | null;
+  formatValid: boolean;
+  kindLabel: string | null;
+  status: VoenStatus;
+  statusLabel: string;
+  verifiedLabel: string | null;
+  revokedLabel: string | null;
+};
+
+/** Serializable view for AdminVoenPanel; dates are formatted on the server (Baku time). */
+export async function adminVoenView(
+  db: Pick<PrismaClient, "sellerVoenVerification">,
+  userId: string,
+  rawVoen: string | null,
+  formatDate: (date: Date) => string,
+): Promise<AdminVoenView> {
+  const digits = normalizeVoen(rawVoen);
+  const parsed = parseVoen(digits ?? "");
+  const status = await voenStatusOf(db, userId, digits);
+  return {
+    userId, voen: digits, formatValid: parsed.ok, kindLabel: parsed.ok ? (parsed.kind === "LEGAL_ENTITY" ? "Hüquqi şəxs" : "Fiziki şəxs / fərdi sahibkar") : null,
+    status: status.status, statusLabel: VOEN_STATUS_LABELS[status.status],
+    verifiedLabel: status.status === "VERIFIED" && status.verifiedAt ? `${formatDate(status.verifiedAt)} · ${status.verifiedBy ?? "silinmiş admin"} · ${status.note}` : null,
+    revokedLabel: status.status === "UNVERIFIED" && status.revokedAt ? `Təsdiq geri götürülüb: ${formatDate(status.revokedAt)} · ${status.revokedNote ?? ""}` : null,
+  };
+}
+
+export const VOEN_LIST_PAGE_SIZE = 50;
+export type VoenListFilter = "UNVERIFIED" | "VERIFIED" | "ALL";
+export type VoenListRow = {
+  userId: string; displayName: string; email: string; voen: string | null; digits: string;
+  verified: boolean; duplicate: boolean; stores: number; storeNames: string | null; firstStoreId: string | null;
+};
+
+/** Sellers (VendorProfile) for the bulk VÖEN check page: status filter, search by name, e-mail or VÖEN digits. */
+export async function listSellersForVoenReview(db: Pick<PrismaClient, "$queryRaw">, input: { filter: VoenListFilter; q: string; page: number }) {
+  const P = Prisma;
+  const digitsExpr = P.sql`regexp_replace(coalesce(p."voen", ''), '[^0-9]', '', 'g')`;
+  const statusWhere = input.filter === "UNVERIFIED" ? P.sql`v."id" IS NULL` : input.filter === "VERIFIED" ? P.sql`v."id" IS NOT NULL` : P.sql`TRUE`;
+  const q = input.q.trim().slice(0, 100);
+  const searchDigits = q.replace(/\D/g, "");
+  const searchWhere = q
+    ? P.sql`(p."displayName" ILIKE ${`%${q}%`} OR u."email" ILIKE ${`%${q}%`}${searchDigits.length >= 3 ? P.sql` OR ${digitsExpr} LIKE ${`%${searchDigits}%`}` : P.empty})`
+    : P.sql`TRUE`;
+  const from = P.sql`
+    FROM "VendorProfile" p
+    JOIN "User" u ON u."id" = p."userId"
+    LEFT JOIN "SellerVoenVerification" v ON v."userId" = p."userId" AND v."voen" = ${digitsExpr} AND v."revokedAt" IS NULL
+    WHERE ${statusWhere} AND ${searchWhere}`;
+  const offset = (Math.max(1, input.page) - 1) * VOEN_LIST_PAGE_SIZE;
+  const rows = await db.$queryRaw<VoenListRow[]>`
+    SELECT p."userId", p."displayName", u."email", p."voen", ${digitsExpr} AS "digits", (v."id" IS NOT NULL) AS "verified",
+      (${digitsExpr} <> '' AND EXISTS (
+        SELECT 1 FROM "VendorProfile" o WHERE o."userId" <> p."userId" AND o."voen" IS NOT NULL
+          AND regexp_replace(o."voen", '[^0-9]', '', 'g') = ${digitsExpr})) AS "duplicate",
+      (SELECT count(*)::int FROM "Store" s WHERE s."vendorId" = p."id") AS "stores",
+      (SELECT string_agg(x."name", ', ') FROM (SELECT s."name" FROM "Store" s WHERE s."vendorId" = p."id" ORDER BY s."createdAt" LIMIT 3) x) AS "storeNames",
+      (SELECT s."id" FROM "Store" s WHERE s."vendorId" = p."id" ORDER BY s."createdAt" LIMIT 1) AS "firstStoreId"
+    ${from}
+    ORDER BY (v."id" IS NOT NULL), p."displayName", p."userId"
+    LIMIT ${VOEN_LIST_PAGE_SIZE} OFFSET ${offset}`;
+  const [count] = await db.$queryRaw<{ n: number }[]>`SELECT count(*)::int AS "n" ${from}`;
+  return { rows, total: count?.n ?? 0 };
 }

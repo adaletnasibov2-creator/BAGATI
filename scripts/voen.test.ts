@@ -106,3 +106,23 @@ test("admin verification API: same-origin -> ADMIN -> bounded body -> strict val
   const vendor = read("app/api/vendor/[storeId]/[section]/route.ts");
   assert.match(vendor, /if\(legalPatch\.voen!==undefined&&\(legalPatch\.voen\?\?null\)!==owned\.vendor\.voen\)await resetVoenVerificationOnChange\(tx,\{userId:access\.user\.id,actorId:access\.user\.id\}\);/);
 });
+
+test("admin UI: VÖEN panel on the application review and the store page; bulk page; official link in a new tab", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const read = (path: string) => readFileSync(join(__dirname, "..", path), "utf8").replace(/\r\n/g, "\n");
+  const panel = read("components/admin-voen-panel.tsx");
+  assert.match(panel, /<a href=\{VOEN_LOOKUP_URL\} target="_blank" rel="noopener noreferrer"[^>]*>.*e-taxes-də yoxla<\/a>/);
+  assert.match(panel, /navigator\.clipboard\.writeText\(view\.voen\)/);
+  assert.match(panel, />\{busy \? "Gözləyin…" : "VÖEN təsdiqləndi"\}</);
+  assert.match(panel, />\{busy \? "Gözləyin…" : "Təsdiqi geri götür"\}</);
+  assert.match(panel, /const noteOk = note\.trim\(\)\.length >= 3;/);
+  assert.match(panel, /disabled=\{busy \|\| !noteOk\}/, "both actions need a note");
+  assert.match(read("lib/voen.ts"), /export const VOEN_LOOKUP_URL = "https:\/\/new\.e-taxes\.gov\.az\/etaxes\/services\/taxpayer-info";/);
+  assert.match(read("lib/voen-verification.ts"), /VOEN_STATUS_LABELS: Record<VoenStatus, string> = \{ VERIFIED: "Təsdiqlənib", UNVERIFIED: "Yoxlanmayıb" \}/);
+  assert.match(read("app/admin/seller-applications/[id]/page.tsx"), /<AdminVoenPanel view=\{voenView\} \/>/);
+  assert.match(read("app/admin/_sections/store-detail.tsx"), /\{voenView&&<div className="mb-5"><AdminVoenPanel view=\{voenView\}\/><\/div>\}/);
+  const bulk = read("app/admin/voen/page.tsx");
+  assert.match(bulk, /const admin = await requireRole\("ADMIN"\);\n\s*if \(!admin\) redirect\("\/admin\/login"\);/);
+  assert.match(read("components/admin-voen-bulk.tsx"), /const canSelect = !row\.verified && row\.formatValid && !row\.duplicate;/);
+});

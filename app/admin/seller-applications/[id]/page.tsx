@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { formatBakuDateTime } from "@/lib/admin-audit-log";
 import { SELLER_APPLICATION_SOURCE_LABELS, SELLER_TYPE_LABELS } from "@/lib/seller-application";
 import { findDuplicateVoen } from "@/lib/seller-application-service";
+import { AdminVoenPanel } from "@/components/admin-voen-panel";
+import { adminVoenView, currentVoenOf } from "@/lib/voen-verification";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,8 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
     findDuplicateVoen(prisma, { applicationId: application.id, userId: application.userId, voenNormalized: application.voenNormalized }),
   ]);
   const duplicateCount = duplicates.profiles.length + duplicates.applications.length;
+  // The user's CURRENT VÖEN (seller profile, else this open application): the only one that can be verified.
+  const voenView = await adminVoenView(prisma, application.userId, (await currentVoenOf(prisma, application.userId)) ?? application.voenNormalized ?? application.voen, formatBakuDateTime);
   const accountReady = application.user.role === "CUSTOMER" && application.user.isActive && Boolean(application.user.emailVerifiedAt);
 
   return <AdminShell email={admin.email}>
@@ -104,6 +108,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
             <Field label="Aktivdir">{application.user.isActive ? "Bəli" : "Xeyr"}</Field>
           </dl>
         </section>
+        <AdminVoenPanel view={voenView} />
         {application.status === "PENDING" && <AdminSellerApplicationReview applicationId={application.id} duplicateCount={duplicateCount} accountReady={accountReady} />}
         {history.length > 0 && <section className={card}>
           <h2 className="font-semibold text-[#0d1b2a]">Əvvəlki müraciətlər</h2>

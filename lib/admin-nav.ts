@@ -7,7 +7,7 @@
  * Sistem vəziyyəti, Aktiv sessiyalar → Sistem). "Bannerlər" and "Ana səhifə" are one page (/admin/homepage).
  */
 import {
-  Activity, BadgePercent, Bell, FileText, ChartNoAxesCombined, ClipboardCheck, CreditCard, FileClock, Images, LayoutDashboard,
+  Activity, BadgeCheck, BadgePercent, Bell, FileText, ChartNoAxesCombined, ClipboardCheck, CreditCard, FileClock, Images, LayoutDashboard,
   LifeBuoy, MailCheck, Map, MonitorSmartphone, Package, Percent, RotateCcw, Send, Settings, ShieldCheck, ShoppingBag,
   Star, Store, Tags, Upload, UserRound, Users, type LucideIcon,
 } from "lucide-react";
@@ -38,6 +38,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       ["/admin/stores", "Mağazalar", Store],
       ["/admin/vendors", "Satıcılar", Users],
       ["/admin/seller-applications", "Satıcı müraciətləri", ClipboardCheck],
+      ["/admin/voen", "VÖEN yoxlaması", BadgeCheck],
       ["/admin/subscriptions", "Abunəliklər", CreditCard],
       ["/admin/commissions", "Komissiyalar", Percent],
       ["/admin/cities", "Şəhərlər", Map],

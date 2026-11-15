@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PRODUCT_GRID_WITH_SIDEBAR_CLASS } from "@/components/product-layout";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/header";
 import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
@@ -70,7 +71,7 @@ export default async function CategoryPreviewPage({ searchParams }: { searchPara
       <details className="mt-5 lg:hidden"><summary className="flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-white px-4 text-sm font-medium">Kateqoriyalar{found ? `: ${found.category.name}` : ""}</summary><div className="mt-2"><CategoryFilterTree tree={previewCategoryTree} selectedSlug={found?.category.slug ?? null} href={href} /></div></details>
       <div className="lg:mt-8 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6">
         <aside className="hidden lg:block" data-preview="filter-tree"><CategoryFilterTree tree={previewCategoryTree} selectedSlug={found?.category.slug ?? null} href={href} /></aside>
-        <div className="mt-8 grid min-w-0 grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:mt-0">
+        <div className={`mt-8 min-w-0 lg:mt-0 ${PRODUCT_GRID_WITH_SIDEBAR_CLASS}`}>
           {sampleProducts.map((product) => <ProductCard key={product.id} id={product.id} name={product.name} price={product.price} store={product.store} storeHref="#" image={product.image} stock={3} />)}
         </div>
       </div>

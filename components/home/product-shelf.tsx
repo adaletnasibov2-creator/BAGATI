@@ -1,5 +1,6 @@
 "use client";
 
+import { PRODUCT_SHELF_TRACK_CLASS } from "@/components/product-layout";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
@@ -49,7 +50,7 @@ export function ProductShelf({ id, eyebrow, title, href, actionLabel, children }
         role="region"
         aria-label={`${title} məhsulları`}
         tabIndex={0}
-        className="grid auto-cols-[minmax(0,60%)] grid-flow-col gap-3 overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory pb-3 outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2 sm:auto-cols-[minmax(0,36%)] sm:gap-4 xl:auto-cols-[minmax(0,24%)]"
+        className={`${PRODUCT_SHELF_TRACK_CLASS} overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory pb-3 outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2`}
       >
         {children}
       </div>

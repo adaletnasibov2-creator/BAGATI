@@ -16,6 +16,7 @@ import { SETTING_KEYS } from "@/lib/settings/registry";
 import { storeMetaDescription } from "@/lib/seo";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
 import StorefrontBranding, { type StorefrontBrand } from "@/components/storefront-branding";
+import { isSellerVoenVerified } from "@/lib/voen-verification";
 import StorefrontContact from "@/components/storefront-contact";
 import { buildTelHref, buildWhatsAppUrl, normalizeAzPhone } from "@/lib/az-phone";
 import { formatStoreAddress, openStreetMapUrl, safePublicMapUrl } from "@/lib/store-public-contact";
@@ -56,7 +57,7 @@ const storeSelect = {
       legalName: true,
       voen: true,
       legalAddress: true,
-      user: { select: { isActive: true } },
+      user: { select: { id: true, isActive: true } },
     },
   },
   subscription: {
@@ -148,6 +149,8 @@ export default async function StorefrontPage({
   const publicBanner = branding.bannerUrl && isOwnedStoreAssetUrl(store.id, branding.bannerUrl) ? branding.bannerUrl : null;
   const phone = normalizeAzPhone(store.contactPhone);
   const whatsappUrl = buildWhatsAppUrl(store.contactPhone, store.name);
+  // "Təsdiqlənmiş satıcı" only when an admin verified the seller's current VÖEN (fails closed).
+  const sellerVerified = await isSellerVoenVerified(prisma, { userId: store.vendor.user.id, voen: store.vendor.voen });
   const description = store.description?.trim() || null;
   const coordinates = store.latitude !== null && store.longitude !== null ? { latitude: store.latitude, longitude: store.longitude } : null;
 
@@ -283,6 +286,7 @@ export default async function StorefrontPage({
       theme: branding.theme ?? "forest",
       cityName: store.city.name,
       whatsappUrl,
+      sellerVerified,
       hasAbout: Boolean(description),
       productCount: storeProductCount,
     } satisfies StorefrontBrand}/>

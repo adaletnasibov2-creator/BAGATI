@@ -21,7 +21,9 @@ test("admin review route: same-origin check, then ADMIN, then a bounded JSON bod
   assert.ok(csrf > 0 && auth > csrf && body > auth, "csrf → auth → body");
   assert.doesNotMatch(route, /export async function (GET|PUT|PATCH|DELETE)/);
   assert.match(route, /sellerApplicationReviewSchema\.safeParse/);
-  assert.match(route, /code === "DUPLICATE_VOEN_UNCONFIRMED"[\s\S]*?409/);
+  // One VÖEN per seller account: a duplicate is refused (409); there is no override any more.
+  assert.match(route, /code === "DUPLICATE_VOEN"[\s\S]*?409/);
+  assert.doesNotMatch(route, /confirmDuplicateVoen|DUPLICATE_VOEN_UNCONFIRMED/);
   assert.match(route, /code === "NOT_PENDING"[\s\S]*?409/);
   assert.doesNotMatch(route, /role: "VENDOR"/, "the route itself never writes a role");
 });
@@ -45,7 +47,7 @@ test("approval runs in one transaction: lock, still PENDING, still an active ver
     "await lockApplication(tx, input.applicationId);",
     'if (application.status !== "PENDING") throw new SellerApplicationError("NOT_PENDING"',
     'if (user.role !== "CUSTOMER" || !user.isActive || !user.emailVerifiedAt) throw new SellerApplicationError("ACCOUNT_CHANGED")',
-    'if (duplicate && !input.confirmDuplicateVoen)',
+    'if (application.voenNormalized && !await claimVoenForUser(tx, { voenDigits: application.voenNormalized, userId: user.id, applicationId: application.id }))',
     'tx.user.updateMany({ where: { id: user.id, role: "CUSTOMER", isActive: true }, data: { role: "VENDOR" } })',
     "tx.vendorProfile.create({ data: { userId: user.id, ...profileData }",
     'status: "APPROVED",',
@@ -59,7 +61,8 @@ test("approval runs in one transaction: lock, still PENDING, still an active ver
   });
   assert.deepEqual([...order].sort((a, b) => a - b), order, "steps happen in this order");
   assert.match(service, /SELECT "id" FROM "VendorApplication" WHERE "id" = \$\{applicationId\} FOR UPDATE/);
-  assert.match(approve, /duplicateVoenConfirmed: duplicate/);
+  // A duplicate VÖEN can no longer be approved, so nothing is ever "confirmed" as a duplicate.
+  assert.match(approve, /duplicateVoenConfirmed: false/);
   // Audit metadata: ids and flags only, never personal data.
   const metadata = between(approve, "metadata: {", "},");
   assert.doesNotMatch(metadata, /voen:|phone|legalAddress|legalName|adminNote|applicantNote|email/);

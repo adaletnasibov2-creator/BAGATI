@@ -73,6 +73,7 @@
     "test:category-tree": "tsx --test scripts/category-tree.test.ts scripts/category-icons.test.ts scripts/public-category-tree.test.ts scripts/product-category-choice.test.ts scripts/product-import-category.test.ts scripts/admin-category-service.test.ts",
     "test:category-tree:integration": "tsx --test scripts/category-tree.integration.test.ts",
     "release:category-sql": "tsx scripts/generate-category-release-sql.ts",
+    "test:voen:integration": "tsx --test scripts/voen-verification.integration.test.ts",
     "test:shipment:integration": "tsx --test scripts/shipment-admin.integration.test.ts",
     "content:seed": "tsx scripts/seed-content-pages.ts",
     "test:admin-entry-hardening": "tsx --test scripts/admin-entry-hardening.test.ts",

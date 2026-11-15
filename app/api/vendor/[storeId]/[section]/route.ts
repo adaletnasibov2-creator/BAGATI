@@ -29,6 +29,9 @@ import { checkStoreSubmission } from "@/lib/store-submission";
 import { checkVendorProductActivation, isVendorProductActivation } from "@/lib/vendor-product-publication";
 import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/stock-quantity";
 import { generateProductCode } from "@/lib/product-code";
+import { parseVoen } from "@/lib/voen";
+import { claimVoenForUser, VoenInUseError, VOEN_IN_USE_MESSAGE } from "@/lib/voen-uniqueness";
+import { resetVoenVerificationOnChange } from "@/lib/voen-verification";
 import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-notifications";
 import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
@@ -493,6 +496,11 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     },
    });
    if(!owned)return NextResponse.json({error:"Mağaza tapılmadı"},{status:404});
+   // VÖEN (lib/voen.ts) is checked only when it changes, and stored as digits; an unchanged older value is kept as is.
+   if(typeof d.voen==="string"&&d.voen.trim()){
+    if(d.voen.replace(/\s/g,"")===(owned.vendor.voen??"").replace(/\s/g,""))d.voen=owned.vendor.voen;
+    else{const parsedVoen=parseVoen(d.voen);if(!parsedVoen.ok)return NextResponse.json({error:parsedVoen.error,field:"voen"},{status:422});d.voen=parsedVoen.voen;}
+   }
     const branding=await getStorefrontBrandingCompatibility(owned.id);
     if(d.slug!==undefined&&d.slug!==owned.slug){
      const slugInUse=await db.store.findFirst({where:{slug:d.slug,id:{not:owned.id}},select:{id:true}});
@@ -538,8 +546,12 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
      },
       select:{id:true,name:true,slug:true},
     });
+    // One VÖEN per seller account: a new VÖEN already used by another seller or open application is refused.
+    if(typeof legalPatch.voen==="string"&&legalPatch.voen!==owned.vendor.voen&&!await claimVoenForUser(tx,{voenDigits:legalPatch.voen,userId:access.user.id}))throw new VoenInUseError();
     if(Object.keys(legalPatch).length){
      await tx.vendorProfile.update({where:{id:owned.vendorId},data:legalPatch});
+     // A changed VÖEN goes back to "Yoxlanmayıb" (admin verification revoked, audited); nothing else is reset here.
+     if(legalPatch.voen!==undefined&&(legalPatch.voen??null)!==owned.vendor.voen)await resetVoenVerificationOnChange(tx,{userId:access.user.id,actorId:access.user.id});
      if(legalChanged){
       await tx.store.updateMany({where:{vendorId:owned.vendorId},data:{legalInfoApproved:false}});
       await tx.auditLog.create({data:{actorId:access.user.id,action:"SELLER_LEGAL_INFORMATION_UPDATE",entityType:"VendorProfile",entityId:owned.vendorId,metadata:{reviewRequired:true,storeStatusesPreserved:true}}});
@@ -563,6 +575,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     message:legalChanged?"Hüquqi məlumatlar yeniləndi. Mağazanın yenidən admin yoxlamasına göndərilməsi tələb olunur.":undefined,
    });
     }catch(error){
+      if(error instanceof VoenInUseError)return NextResponse.json({error:VOEN_IN_USE_MESSAGE,field:"voen"},{status:409});
       if(error&&typeof error==="object"&&"code" in error&&error.code==="P2002"&&d.slug!==undefined&&d.slug!==owned.slug)return NextResponse.json({error:"Mağaza ünvanı artıq istifadə olunur. Başqa ünvan seçin."},{status:409});
      throw error;
     }

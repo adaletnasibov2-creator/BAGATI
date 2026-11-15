@@ -199,6 +199,9 @@ model User {
   securityIncidentNotes         SecurityIncidentNote[]
   contentPageUpdates            ContentPage[]                   @relation("ContentPageUpdatedBy")
   contentPageRevisions          ContentPageRevision[]           @relation("ContentPageRevisionCreatedBy")
+  voenVerifications             SellerVoenVerification[]        @relation("SellerVoenVerificationSeller")
+  voenVerificationsGiven        SellerVoenVerification[]        @relation("SellerVoenVerificationVerifiedBy")
+  voenVerificationsRevoked      SellerVoenVerification[]        @relation("SellerVoenVerificationRevokedBy")
 
   @@index([role, isActive])
 }
@@ -413,6 +416,31 @@ model VendorApplication {
   @@index([status, createdAt])
   @@index([userId, createdAt])
   @@index([voenNormalized])
+}
+
+/// An admin's manual check of a seller's VÖEN on the official taxpayer search (there is no public API).
+/// Keyed on (user, VÖEN): the seller's VendorProfile or open application VÖEN is "Təsdiqlənib" only while a row with
+/// that exact VÖEN exists and revokedAt is NULL. Changing the VÖEN revokes the user's rows; history is in AuditLog.
+model SellerVoenVerification {
+  id           String    @id @default(cuid())
+  userId       String
+  /// 10 digits (lib/voen.ts format).
+  voen         String
+  verifiedAt   DateTime
+  verifiedById String?
+  /// Required short admin note (what was checked), at most 300 characters (app-level).
+  verifiedNote String
+  revokedAt    DateTime?
+  revokedById  String?
+  revokedNote  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation("SellerVoenVerificationSeller", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy   User?     @relation("SellerVoenVerificationVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  revokedBy    User?     @relation("SellerVoenVerificationRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, voen])
+  @@index([voen])
 }
 
 model City {

@@ -84,8 +84,19 @@ test("public store page never selects or passes the store email", () => {
 test("WhatsApp button is hidden when the number cannot be normalized", async () => {
   const { StorefrontBranding } = await loadComponents();
   const html = renderToStaticMarkup(createElement(StorefrontBranding, { store: {
-    id: "s1", name: "Mağaza", logoUrl: null, bannerUrl: null, theme: "forest", cityName: "Bakı", whatsappUrl: null, hasAbout: false, productCount: 3,
+    id: "s1", name: "Mağaza", logoUrl: null, bannerUrl: null, theme: "forest", cityName: "Bakı", whatsappUrl: null, sellerVerified: false, hasAbout: false, productCount: 3,
   } }));
   assert.doesNotMatch(html, /wa\.me|>WhatsApp</);
   assert.match(html, /Mesaj yaz/);
+});
+
+test("'Təsdiqlənmiş satıcı' shows only for an admin-verified VÖEN; otherwise nothing is claimed", async () => {
+  const { StorefrontBranding } = await loadComponents();
+  const base = { id: "s1", name: "Mağaza", logoUrl: null, bannerUrl: null, theme: "forest", cityName: "Bakı", whatsappUrl: null, hasAbout: false, productCount: 3 };
+  const verified = renderToStaticMarkup(createElement(StorefrontBranding, { store: { ...base, sellerVerified: true } }));
+  assert.match(verified, /Təsdiqlənmiş satıcı/);
+  assert.match(verified, /data-seller-verified/);
+  const unverified = renderToStaticMarkup(createElement(StorefrontBranding, { store: { ...base, sellerVerified: false } }));
+  assert.doesNotMatch(unverified, /Təsdiqlənmiş|təsdiqlən|verified/i);
+  assert.match(unverified, /Bakı/, "the city still shows");
 });

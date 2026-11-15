@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { categoryScopeWhere } from "@/lib/category-where";
 import Link from "next/link";
 import { cache } from "react";
 import { notFound } from "next/navigation";
@@ -162,7 +163,8 @@ export default async function StorefrontPage({
   };
   const catalogWhere = {
     ...productWhere,
-    ...(category ? { category: { slug: category, isActive: true } } : {}),
+    // A top-level slug includes its subcategories (same rule as /products).
+    ...(category ? { category: categoryScopeWhere(category) } : {}),
     ...(query ? {
       OR: [
         { name: { contains: query, mode: "insensitive" as const } },
@@ -174,7 +176,7 @@ export default async function StorefrontPage({
   const hasFilters = Boolean(query || category);
   const [categoryResult, catalogCount, unfilteredCount] = await Promise.all([
     prisma.product.findMany({
-      where: { ...productWhere, categoryId: { not: null }, category: { isActive: true } },
+      where: { ...productWhere, categoryId: { not: null }, category: { isActive: true, OR: [{ parentId: null }, { parent: { is: { isActive: true } } }] } },
       select: { category: { select: { id: true, name: true, slug: true } } },
       distinct: ["categoryId"],
     }),

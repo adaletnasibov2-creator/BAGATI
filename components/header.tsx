@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Heart, ShoppingBag } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
-import { CategoryMegaMenu } from "@/components/category-mega-menu";
+import { CategoryMegaMenu, type MegaMenuCategory } from "@/components/category-mega-menu";
 import { CitySelector } from "@/components/city-selector";
 import { CustomerAccountMenu } from "@/components/customer-account-menu";
 import { MobileMenu } from "@/components/mobile-menu";
@@ -9,7 +9,7 @@ import { SearchForm } from "@/components/search-form";
 import { StickyHeader } from "@/components/sticky-header";
 
 type HeaderUser = { email: string; displayName: string; role: "CUSTOMER" | "VENDOR" | "ADMIN" } | null;
-type HeaderCategory = { id: string; name: string; slug: string };
+type HeaderCategory = MegaMenuCategory;
 type HeaderCity = { id: string; name: string; slug: string };
 
 export function Header({

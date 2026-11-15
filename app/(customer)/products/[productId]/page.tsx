@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { categoryHref } from "@/lib/category-tree";
 import { notFound } from "next/navigation";
 import { ChevronRight, MapPin, Store } from "lucide-react";
 import { Prisma } from "@prisma/client";
@@ -31,7 +32,7 @@ type ProductRecord = {
     freeDeliveryThreshold: Prisma.Decimal;
     city: { name: string };
   };
-  category: { name: string; slug: string } | null;
+  category: { name: string; slug: string; parent: { name: string; slug: string } | null } | null;
   inventory: { variantId: string | null; quantity: number; reserved: number }[];
   variants: {
     id: string;
@@ -67,7 +68,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
             city: { select: { name: true } },
           },
         },
-        category: { select: { name: true, slug: true } },
+        category: { select: { name: true, slug: true, parent: { select: { name: true, slug: true } } } },
         variants: { include: { inventory: true } },
         inventory: true,
         promotionProducts: { include: { promotion: true } },
@@ -117,11 +118,18 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
 
   return (
     <div className="container py-6 md:py-10">
-      <nav aria-label="Breadcrumb" className="mb-6 flex min-w-0 items-center gap-2 text-sm text-muted">
-        <Link href="/products" className="shrink-0 hover:text-emerald">Məhsullar</Link>
-        {product.category && <>
+      <nav aria-label="Breadcrumb" className="mb-6 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+        <Link href="/" className="shrink-0 hover:text-emerald">Ana səhifə</Link>
+        {product.category?.parent && <>
           <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
-          <Link href={`/categories?category=${product.category.slug}`} className="shrink-0 hover:text-emerald">{product.category.name}</Link>
+          <Link href={categoryHref(product.category.parent.slug)} className="shrink-0 hover:text-emerald">{product.category.parent.name}</Link>
+        </>}
+        {product.category ? <>
+          <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
+          <Link href={categoryHref(product.category.slug)} className="shrink-0 hover:text-emerald">{product.category.name}</Link>
+        </> : <>
+          <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
+          <Link href="/products" className="shrink-0 hover:text-emerald">Məhsullar</Link>
         </>}
         <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
         <span aria-current="page" className="min-w-0 truncate text-ink">{product.name}</span>
@@ -146,7 +154,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         }}
         category={product.category ? {
           name: product.category.name,
-          href: `/categories?category=${product.category.slug}`,
+          href: categoryHref(product.category.slug),
         } : null}
         sku={product.sku}
       />
@@ -159,7 +167,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
             {product.description || "Satıcı bu məhsul üçün əlavə təsvir təqdim etməyib."}
           </p>
           {product.category && <p className="mt-5 border-t border-line pt-4 text-sm text-muted">
-            Kateqoriya: <Link href={`/categories?category=${product.category.slug}`} className="font-medium text-ink hover:text-emerald">{product.category.name}</Link>
+            Kateqoriya: {product.category.parent && <><Link href={categoryHref(product.category.parent.slug)} className="font-medium text-ink hover:text-emerald">{product.category.parent.name}</Link>{" › "}</>}<Link href={categoryHref(product.category.slug)} className="font-medium text-ink hover:text-emerald">{product.category.name}</Link>
           </p>}
         </section>
 

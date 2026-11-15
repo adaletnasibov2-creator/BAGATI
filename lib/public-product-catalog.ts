@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { isPublicStoreEligible, type PublicStoreCandidate } from "@/lib/public-store-eligibility";
 import { publicStoreEligibilityBaseWhere } from "@/lib/seller-legal-policy";
+import { categoryScopeWhere } from "@/lib/category-where";
 import { activeComplimentaryEntitlementSelect } from "@/lib/subscription-entitlements";
 import { productCatalogOrderBy, type ProductCatalogSort } from "@/lib/catalog-sort";
 
@@ -111,7 +112,8 @@ export function publicProductCatalogCandidateWhere(
     store: { is: { AND: storeFilters } },
   };
   if (filters.categorySlug) {
-    where.category = { slug: filters.categorySlug, isActive: true };
+    // A top-level slug includes its subcategories; a subcategory slug only itself (lib/category-where.ts).
+    where.category = categoryScopeWhere(filters.categorySlug);
   }
   if (filters.query) {
     const textFields = filters.searchFields === "catalog"

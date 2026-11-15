@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Heart, Menu, ShoppingBag, UserRound, X } from "lucide-react";
+import { ChevronDown, Heart, Menu, ShoppingBag, UserRound, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
-import { CategoryIcon } from "@/components/category-icon";
+import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
+import { categoryHref } from "@/lib/category-tree";
 import { CitySelector } from "@/components/city-selector";
 import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
 
 const links = [["/stores", "Mağazalar"], ["/deals", "Endirimlər"], ["/new-products", "Yeni məhsullar"], ["/vendor/apply", "Satıcı ol"]] as const;
 type MenuIdentity = { email: string; displayName: string; role: "CUSTOMER" | "VENDOR" | "ADMIN" };
-type MenuCategory = { id: string; name: string; slug: string };
+type MenuSubcategory = { id: string; name: string; slug: string; iconKey?: string | null; imageUrl?: string | null; parentIconKey?: string | null; count?: number };
+type MenuCategory = MenuSubcategory & { parentId?: string | null; children?: MenuSubcategory[] };
 
 export function MobileMenu({
   cities,
@@ -25,6 +27,7 @@ export function MobileMenu({
   const [open, setOpen] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const submitting = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -128,15 +131,51 @@ export function MobileMenu({
 
             <section aria-labelledby="mobile-categories-title" className="border-b border-bagati-border py-4">
               <h2 id="mobile-categories-title" className="text-sm font-semibold text-bagati-deep">Kateqoriyalar</h2>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {categories.map((category) => (
-                  <Link key={category.id} onClick={closeMenu} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group flex min-h-[72px] items-center gap-2 rounded-2xl border border-bagati-border/80 bg-bagati-page/70 p-2 text-[.78rem] font-medium text-bagati-text transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
-                    <CategoryIcon category={category} size="small" />
-                    <span className="line-clamp-2 min-w-0">{category.name}</span>
-                  </Link>
-                ))}
-                {!categories.length && <Link onClick={closeMenu} href="/categories" className="col-span-2 flex min-h-11 items-center text-sm text-bagati-text">Bütün kateqoriyalara bax</Link>}
-              </div>
+              {/* Accordion: a top-level row links to its page; the chevron shows its subcategories. */}
+              <ul className="mt-2 grid gap-1.5">
+                {categories.map((category) => {
+                  const children = category.children ?? [];
+                  const expanded = expandedId === category.id;
+                  const panelId = `mobile-subcategories-${category.id}`;
+                  return (
+                    <li key={category.id} className="rounded-2xl border border-bagati-border/80 bg-bagati-page/70">
+                      <div className="flex min-w-0 items-center">
+                        <Link onClick={closeMenu} href={categoryHref(category.slug)} className="group flex min-h-[60px] min-w-0 flex-1 items-center gap-2 rounded-2xl p-2 text-[.82rem] font-medium text-bagati-text transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
+                          <CategoryIcon category={category} size="small" />
+                          <span className="line-clamp-2 min-w-0">{category.name}</span>
+                        </Link>
+                        {children.length > 0 && (
+                          <button
+                            type="button"
+                            aria-expanded={expanded}
+                            aria-controls={panelId}
+                            aria-label={`${category.name}: alt kateqoriyalar`}
+                            onClick={() => setExpandedId(expanded ? null : category.id)}
+                            className="mr-1 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-bagati-muted hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold"
+                          >
+                            <ChevronDown aria-hidden="true" size={18} className={`transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} />
+                          </button>
+                        )}
+                      </div>
+                      {children.length > 0 && expanded && (
+                        <ul id={panelId} className="grid gap-0.5 border-t border-bagati-border/70 px-2 pb-2 pt-1">
+                          <li><Link onClick={closeMenu} href={categoryHref(category.slug)} className="flex min-h-11 items-center rounded-lg px-2 text-[.8rem] font-semibold text-bagati-deep hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">Bütün {category.name}</Link></li>
+                          {children.map((child) => (
+                            <li key={child.id} className="min-w-0">
+                              <Link onClick={closeMenu} href={categoryHref(child.slug)} className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-[.8rem] text-bagati-text hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
+                                <CategoryGlyph category={child} size={17} className="text-[#1f5a4f]" />
+                                <span className="min-w-0 truncate">{child.name}</span>
+                                {typeof child.count === "number" && <span className="ml-auto shrink-0 text-xs text-bagati-muted">{child.count}</span>}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+                {!categories.length && <li><Link onClick={closeMenu} href="/categories" className="flex min-h-11 items-center text-sm text-bagati-text">Bütün kateqoriyalara bax</Link></li>}
+              </ul>
             </section>
 
             <nav aria-label="Mağaza bölmələri" className="grid border-b border-bagati-border py-2">

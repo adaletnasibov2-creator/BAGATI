@@ -12,7 +12,7 @@ import { publicProductVisibilityWhere, publicStoreVisibilityWhere } from "@/lib/
 import { calculateEffectivePrice } from "@/lib/promotion-pricing";
 import { productPromotions } from "@/lib/promotion-pricing";
 import { getSiteSettings } from "@/lib/site-settings";
-import { categoriesWithOtherLast } from "@/lib/category-order";
+import { getPublicCategoryData, type PublicCategoryNode } from "@/lib/public-category-tree";
 import { selectHomepageCampaignProducts, type HomepageCampaign } from "@/lib/homepage-campaign-products";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { resolveActiveCity } from "@/lib/city-resolution";
@@ -20,7 +20,7 @@ import { resolveActiveCity } from "@/lib/city-resolution";
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ city?: string }> };
-type HomeCategory = { id: string; name: string; slug: string };
+type HomeCategory = PublicCategoryNode;
 type HomeStore = {
   id: string;
   name: string;
@@ -60,12 +60,8 @@ export default async function HomePage({ searchParams }: Props) {
   const productFilter = publicProductVisibilityWhere(storeFilter);
 
   const [categories, stores, newest, popularRows, discountCandidates, campaigns, promotionalCampaigns, settings, banners, featuredProductLinks, featuredStoreLinks] = await Promise.all([
-    prisma.category.findMany({
-      where: { isActive: true, parentId: null },
-      select: { id: true, name: true, slug: true },
-      orderBy: { name: "asc" },
-      take: 10,
-    }),
+    // Top-levels with visible products, in sortOrder (hidden when empty; owner decision 2026-11-15).
+    getPublicCategoryData().then((data) => data.tree),
     prisma.store.findMany({
       where: storeFilter,
       take: 4,
@@ -151,7 +147,7 @@ export default async function HomePage({ searchParams }: Props) {
     prisma.homepageFeaturedProduct.findMany({ orderBy: { position: "asc" }, select: { productId: true }, take: 12 }),
     prisma.homepageFeaturedStore.findMany({ orderBy: { position: "asc" }, select: { storeId: true }, take: 12 }),
   ]) as [HomeCategory[], HomeStore[], HomeProduct[], PopularOrderRow[], HomeProduct[], HomepageCampaign[], HomepageCampaign[], Awaited<ReturnType<typeof getSiteSettings>>, { id: string; title: string; description: string; imageUrl: string; buttonLabel: string; href: string; startsAt: Date; endsAt: Date; isActive: boolean; sortOrder: number }[], { productId: string }[], { storeId: string }[]];
-  const orderedCategories = categoriesWithOtherLast(categories);
+  const orderedCategories = categories;
 
   const campaignProductsByPromotion = await Promise.all(promotionalCampaigns.map((campaign) => prisma.promotionProduct.findMany({
     where: { promotionId: campaign.id, product: { status: "ACTIVE", storeId: campaign.storeId!, store: storeFilter, OR: [

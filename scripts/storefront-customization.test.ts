@@ -72,7 +72,9 @@ test("public storefront is dynamic, uses shared eligibility, and keeps draft pro
   assert.match(storefrontPage, /Hazırda yayımlanmış məhsul yoxdur/);
   assert.match(storefrontPage, /isOwnedStoreAssetUrl\(store\.id,\s*store\.logoUrl\)/);
   assert.match(storefrontPage, /isOwnedStoreAssetUrl\(store\.id,\s*branding\.bannerUrl\)/);
-  assert.match(storefrontPage, /category: \{ isActive: true \}/);
+  // Store category chips: active category whose parent (for a subcategory) is active too.
+  assert.match(storefrontPage, /category: \{ isActive: true, OR: \[\{ parentId: null \}, \{ parent: \{ is: \{ isActive: true \} \} \}\] \}/);
+  assert.match(storefrontPage, /category: categoryScopeWhere\(category\)/);
   assert.match(storefrontPage, /productCatalogOrderBy\(sort\)/);
   assert.match(storefrontPage, /skip,\s*take: STOREFRONT_PAGE_SIZE/);
   assert.match(storefrontPage, /storefrontPageHref\(store\.id,\s*currentPage \+ 1,\s*filterParams\)/);

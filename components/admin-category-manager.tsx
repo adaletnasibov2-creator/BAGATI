@@ -47,6 +47,9 @@ export default function AdminCategoryManager({ tree }: { tree: AdminCategoryNode
   const [editor, setEditor] = useState<Editor | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  // Optimistic Aktiv/Deaktiv: the switch flips at once; reverted if the server refuses. Cleared after refresh.
+  const [activeOverride, setActiveOverride] = useState<Record<string, boolean>>({});
+  const [switching, setSwitching] = useState<string | null>(null);
 
   async function run(action: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     setBusy(true);
@@ -59,16 +62,25 @@ export default function AdminCategoryManager({ tree }: { tree: AdminCategoryNode
   }
 
   async function toggleActive(category: AdminCategoryRow) {
-    if (category.isActive) {
-      const ok = await confirm({
-        title: "Kateqoriyanı deaktiv et",
-        message: `“${category.name}” mağazada və menyularda görünməyəcək${category.childCount ? ", alt kateqoriyaları da" : ""}. Məhsullar silinmir və kateqoriyaları dəyişmir. Satıcılar onu yeni məhsul üçün seçə bilməz.`,
-        confirmLabel: "Deaktiv et",
-        danger: true,
-      });
+    const current = activeOverride[category.id] ?? category.isActive;
+    const next = !current;
+    // Confirm only when deactivating something that has products or subcategories.
+    if (!next && (category.totalCount > 0 || category.childCount > 0)) {
+      const ok = await confirm({ title: "Kateqoriyanı deaktiv et", message: deactivateMessage(category), confirmLabel: "Deaktiv et", danger: true });
       if (!ok) return;
     }
-    await run(() => send(`${API}/${category.id}`, "PATCH", { isActive: !category.isActive }), category.isActive ? "Kateqoriya deaktiv edildi." : "Kateqoriya aktiv edildi.");
+    setSwitching(category.id);
+    setFeedback(null);
+    setActiveOverride((map) => ({ ...map, [category.id]: next }));
+    const result = await send(`${API}/${category.id}`, "PATCH", { isActive: next });
+    setSwitching(null);
+    if (!result.ok) {
+      setActiveOverride((map) => { const copy = { ...map }; delete copy[category.id]; return copy; });
+      setFeedback({ tone: "error", text: result.error ?? "Əməliyyat uğursuz oldu." });
+      return;
+    }
+    setFeedback({ tone: "success", text: next ? `“${category.name}” aktiv edildi və mağazada yenidən görünür.` : `“${category.name}” deaktiv edildi və mağazada gizləndi.` });
+    router.refresh();
   }
 
   async function remove(category: AdminCategoryRow) {
@@ -94,6 +106,8 @@ export default function AdminCategoryManager({ tree }: { tree: AdminCategoryNode
     addChild: (category) => { setFeedback(null); setEditor({ mode: "create", parentId: category.id }); },
     toggleActive,
     remove,
+    switching,
+    activeOf: (category) => activeOverride[category.id] ?? category.isActive,
   };
 
 
@@ -124,25 +138,45 @@ export default function AdminCategoryManager({ tree }: { tree: AdminCategoryNode
   );
 }
 
+/**
+ * What deactivating means, in the confirm. Checked in code (2026-11-15): products are never deleted or moved; cart,
+ * checkout, the product page, search, the unfiltered product list, store pages and the seller list do not depend on
+ * the category being active. Only publishing a DRAFT product in an inactive category is blocked until it is active.
+ */
+export function deactivateMessage(category: Pick<AdminCategoryRow, "name" | "parentId" | "totalCount" | "childCount">): string {
+  const lines = [`“${category.name}” mağazada (menyular, kateqoriyalar, filtrlər, axtarış seçimi) gizlənəcək.`];
+  if (category.childCount > 0) lines.push(`${category.childCount} alt kateqoriyası da mağazada gizlənəcək; onların öz statusu dəyişmir və üst kateqoriya yenidən aktiv olanda əvvəlki kimi qayıdır.`);
+  if (category.totalCount > 0) {
+    lines.push(`${category.totalCount} məhsul silinmir və köçürülmür: məhsul səhifəsi, axtarış, mağaza səhifəsi, səbət və sifariş əvvəlki kimi işləyir; yalnız bu kateqoriyanın səhifəsində görünmür.`);
+    lines.push("Bu kateqoriyadakı qaralama məhsullar kateqoriya yenidən aktiv olunana və ya başqa kateqoriyaya köçürülənə qədər yayımlana bilməz.");
+  }
+  return lines.join("\n");
+}
+
 type RowActions = {
   busy: boolean;
   reorder: (category: AdminCategoryRow, direction: "up" | "down") => unknown;
   edit: (category: AdminCategoryRow) => void;
   addChild: (category: AdminCategoryRow) => void;
   toggleActive: (category: AdminCategoryRow) => unknown;
+  switching: string | null;
+  activeOf: (category: AdminCategoryRow) => boolean;
   remove: (category: AdminCategoryRow) => unknown;
 };
 
 const iconButton = "grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#e7e3d9] bg-white text-[#173c40] hover:bg-[#f8f7f4] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#173c40]";
 
 function CategoryRow({ category, siblings, index, parent, actions }: { category: AdminCategoryRow; siblings: AdminCategoryRow[]; index: number; parent: AdminCategoryRow | null; actions: RowActions }) {
-const { busy, reorder, edit, addChild, toggleActive, remove } = actions;
+const { busy, reorder, edit, addChild, toggleActive, remove, switching, activeOf } = actions;
+  const active = activeOf(category);
+  const parentInactive = Boolean(parent && !activeOf(parent));
+  const shownPublicly = active && !parentInactive;
   const isOther = category.name.trim().toLocaleLowerCase("az-AZ") === "digər";
   const lastMovable = siblings.filter((row) => row.name.trim().toLocaleLowerCase("az-AZ") !== "digər").length - 1;
   const directOnTopWithChildren = !parent && category.childCount > 0 ? category.productCount : 0;
   return (
-    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+    <div className={`flex min-w-0 flex-col gap-3 rounded-xl sm:flex-row sm:items-center ${shownPublicly ? "" : "bg-slate-50 p-2 -m-2"}`} data-category-active={active ? "true" : "false"}>
+      <div className={`flex min-w-0 flex-1 items-center gap-3 ${shownPublicly ? "" : "opacity-60 grayscale"}`}>
         {parent ? (
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#f1f6f3] text-[#1f5a4f]"><CategoryGlyph category={{ ...category, parentIconKey: parent.iconKey }} size={18} /></span>
         ) : (
@@ -151,7 +185,8 @@ const { busy, reorder, edit, addChild, toggleActive, remove } = actions;
         <div className="min-w-0">
           <p className="flex min-w-0 flex-wrap items-center gap-2 font-semibold text-[#0d1b2a]">
             <span className="min-w-0 truncate">{category.name}</span>
-            {!category.isActive && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Deaktiv</span>}
+            {!active && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">Deaktiv</span>}
+            {active && parentInactive && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">Üst kateqoriya deaktivdir</span>}
           </p>
           <p className="truncate text-xs text-slate-500">/{category.slug} · {category.totalCount} məhsul · mağazada {category.visibleCount}</p>
           {directOnTopWithChildren > 0 && (
@@ -167,7 +202,20 @@ const { busy, reorder, edit, addChild, toggleActive, remove } = actions;
         <button type="button" className={iconButton} disabled={busy} aria-label={`${category.name}: redaktə et`} onClick={() => edit(category)}><Pencil aria-hidden="true" size={16} /></button>
         {!parent && <button type="button" className={buttonClass("ghost", "min-h-10 px-2.5")} disabled={busy} onClick={() => addChild(category)}><Plus aria-hidden="true" size={16} />Alt</button>}
         {category.productCount > 0 && <Link href={`/admin/categories/move?from=${encodeURIComponent(category.id)}`} className={buttonClass("ghost", "min-h-10 px-2.5")} aria-label={`${category.name}: məhsulları köçür`}><FolderInput aria-hidden="true" size={16} />Köçür</Link>}
-        <button type="button" className={buttonClass("ghost", "min-h-10 px-2.5")} disabled={busy} onClick={() => toggleActive(category)}>{category.isActive ? "Deaktiv et" : "Aktiv et"}</button>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={active}
+          aria-label={`${category.name}: ${active ? "aktivdir, deaktiv et" : "deaktivdir, aktiv et"}`}
+          disabled={busy || switching === category.id}
+          onClick={() => toggleActive(category)}
+          className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-[#173c40] hover:bg-[#f8f7f4] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#173c40]"
+        >
+          <span aria-hidden="true" className={`relative inline-block h-6 w-11 shrink-0 rounded-full transition-colors motion-reduce:transition-none ${active ? "bg-[#1f6f5c]" : "bg-slate-300"}`}>
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] motion-reduce:transition-none ${active ? "left-[22px]" : "left-0.5"}`} />
+          </span>
+          {active ? "Aktiv" : "Deaktiv"}
+        </button>
         <button type="button" className={iconButton} disabled={busy} aria-label={`${category.name}: sil`} title={category.productCount || category.childCount ? "Məhsulu və ya alt kateqoriyası olan kateqoriya silinmir" : "Sil"} onClick={() => remove(category)}><Trash2 aria-hidden="true" size={16} className={category.productCount || category.childCount ? "text-slate-400" : "text-red-700"} /></button>
       </div>
     </div>

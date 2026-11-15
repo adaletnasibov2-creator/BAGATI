@@ -198,3 +198,44 @@ test("admin routes: admin role and same-origin check on every category-tree endp
   assert.match(legacy, /deleteCategory\(db, admin\.id, parsed\.data\.id\)/);
   assert.doesNotMatch(legacy, /audit\(admin\.id, "UPDATE", "Category", id\)/);
 });
+
+test("Aktiv/Deaktiv switch: one audited change per click, products never touched", async () => {
+  const t1 = new Date("2026-11-15T10:00:00.000Z");
+  const { db, state, audits } = fakeDb(base(), [{ id: "p1", categoryId: "tel", updatedAt: t1 }, { id: "p2", categoryId: "el", updatedAt: t1 }]);
+  const productsBefore = JSON.stringify(state.products);
+  await updateCategory(db, "admin", "tel", { isActive: false });
+  assert.equal(state.rows.find((r) => r.id === "tel")?.isActive, false);
+  assert.deepEqual(audits.map((a) => [a.action, a.entityId]), [["CATEGORY_DEACTIVATE", "tel"]]);
+  assert.deepEqual((audits[0].metadata as { before: unknown; after: unknown }), { before: { isActive: true }, after: { isActive: false } });
+  await updateCategory(db, "admin", "tel", { isActive: true });
+  assert.deepEqual(audits.map((a) => a.action), ["CATEGORY_DEACTIVATE", "CATEGORY_ACTIVATE"]);
+  assert.equal(JSON.stringify(state.products), productsBefore, "no product row changed");
+  const row = state.rows.find((r) => r.id === "tel")!;
+  assert.deepEqual([row.parentId, row.sortOrder, row.iconKey, row.slug], ["el", 10, null, "telefonlar"], "parent, order, icon and slug unchanged");
+});
+
+test("parent off keeps each child's own state; parent on restores exactly the previously active children", async () => {
+  const { db, state, audits } = fakeDb(base());
+  await updateCategory(db, "admin", "pla", { isActive: false }); // a child that was already off
+  await updateCategory(db, "admin", "el", { isActive: false });
+  assert.deepEqual(state.rows.filter((r) => r.parentId === "el").map((r) => [r.id, r.isActive]), [["tel", true], ["pla", false]], "children untouched");
+  assert.equal(audits.filter((a) => a.entityId === "tel").length, 0, "no write on the child");
+  await updateCategory(db, "admin", "el", { isActive: true });
+  assert.deepEqual(state.rows.filter((r) => r.parentId === "el").map((r) => [r.id, r.isActive]), [["tel", true], ["pla", false]]);
+  assert.deepEqual(audits.map((a) => [a.action, a.entityId]), [["CATEGORY_DEACTIVATE", "pla"], ["CATEGORY_DEACTIVATE", "el"], ["CATEGORY_ACTIVATE", "el"]]);
+});
+
+test("the deactivate confirm explains children and what happens to products", async () => {
+  const { deactivateMessage } = await import("../components/admin-category-manager");
+  const withAll = deactivateMessage({ name: "Elektronika", parentId: null, totalCount: 5, childCount: 2 });
+  assert.match(withAll, /2 alt kateqoriyası da mağazada gizlənəcək; onların öz statusu dəyişmir/);
+  assert.match(withAll, /5 məhsul silinmir və köçürülmür: məhsul səhifəsi, axtarış, mağaza səhifəsi, səbət və sifariş əvvəlki kimi işləyir/);
+  assert.match(withAll, /qaralama məhsullar .* yayımlana bilməz/);
+  const empty = deactivateMessage({ name: "Keramika", parentId: "x", totalCount: 0, childCount: 0 });
+  assert.doesNotMatch(empty, /məhsul|alt kateqoriya/);
+  const source = readFileSync(resolve(process.cwd(), "components/admin-category-manager.tsx"), "utf8");
+  assert.match(source, /if \(!next && \(category\.totalCount > 0 \|\| category\.childCount > 0\)\)/, "confirm only with products or subcategories");
+  assert.match(source, /role="switch"/);
+  assert.match(source, /aria-checked=\{active\}/);
+  assert.match(source, /Üst kateqoriya deaktivdir/);
+});

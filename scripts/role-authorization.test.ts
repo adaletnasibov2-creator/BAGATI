@@ -90,4 +90,5 @@ test("a signed-out phone user can reach the seller login from the mobile menu", 
 
 test("sample-data preview pages are not served in production", () => {
   assert.match(read("app/storefront-preview/page.tsx"), /NODE_ENV === "production" && process\.env\.BAGATI_ENABLE_PREVIEW_ROUTES !== "true"\) notFound\(\)/);
+  assert.match(read("app/storefront-preview/categories/page.tsx"), /NODE_ENV === "production" && process\.env\.BAGATI_ENABLE_PREVIEW_ROUTES !== "true"\) notFound\(\)/);
 });

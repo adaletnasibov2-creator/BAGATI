@@ -21,6 +21,7 @@ import { renderCustomerDetail } from "./customer-detail";
 import { renderProducts } from "./products";
 import { renderProductDetail } from "./product-detail";
 import { renderCategories } from "./categories";
+import { renderCategoryProductMove } from "./category-move";
 import { renderBrands } from "./brands";
 import { renderCities } from "./cities";
 import { renderOrders } from "./orders";
@@ -57,6 +58,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { match: ({ route }) => route==="products", render: renderProducts },
   { match: ({ parts }) => parts[0]==="products"&&parts.length===2, render: renderProductDetail },
   { match: ({ route }) => route==="categories", render: renderCategories },
+  { match: ({ route }) => route==="categories/move", render: renderCategoryProductMove },
   { match: ({ route }) => route==="brands", render: renderBrands },
   { match: ({ route }) => route==="cities", render: renderCities },
   { match: ({ route }) => route==="orders", render: renderOrders },

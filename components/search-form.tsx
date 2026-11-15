@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
-type SearchCategory = { id: string; name: string; slug: string };
+type SearchCategory = { id: string; name: string; slug: string; children?: { id: string; name: string; slug: string }[] };
 
 export function SearchForm({ mobile = false, categories = [] }: { mobile?: boolean; categories?: SearchCategory[] }) {
   const params = useSearchParams();
@@ -27,7 +27,10 @@ export function SearchForm({ mobile = false, categories = [] }: { mobile?: boole
             className={`w-full cursor-pointer truncate bg-transparent font-medium text-bagati-text outline-none ${mobile ? "text-[.68rem]" : "text-xs"}`}
           >
             <option value="">Bütün bölmələr</option>
-            {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
+            {categories.flatMap((category) => [
+              <option key={category.id} value={category.slug}>{category.name}</option>,
+              ...(category.children ?? []).map((child) => <option key={child.id} value={child.slug}>{"  " + child.name}</option>),
+            ])}
           </select>
         </label>
       )}

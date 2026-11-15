@@ -16,6 +16,8 @@ import { supportedSubscriptionPlanSlugs } from "@/lib/subscription-plans";
 import { saveManualSubscription } from "@/lib/admin-manual-subscription";
 import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { planStoreProfileUpdate } from "@/lib/admin-store-profile";
+import { createCategory, deleteCategory, updateCategory } from "@/lib/admin-category-service";
+import { categoryAdminFailure } from "@/lib/admin-category-route";
 
 const db: any = prisma;
 const storeStatuses = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "SUSPENDED", "REJECTED"] as const;
@@ -73,14 +75,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
   }
   if (section === "categories") {
-    const parsed = z.object({ name: z.string().trim().min(2).max(100), slug: z.string().trim().min(2).max(120).optional(), parentId: z.string().nullable().optional() }).safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: "Kateqoriya məlumatlarını yoxlayın" }, { status: 422 });
-    if (parsed.data.parentId && !(await db.category.findUnique({ where: { id: parsed.data.parentId }, select: { id: true } }))) {
-      return NextResponse.json({ error: "Üst kateqoriya tapılmadı" }, { status: 422 });
-    }
-    try { const item = await db.$transaction(async (tx: any) => { const created = await tx.category.create({ data: { name: parsed.data.name, slug: parsed.data.slug ? slug(parsed.data.slug) : slug(parsed.data.name), parentId: parsed.data.parentId || null } }); await tx.auditLog.create({ data: { actorId: admin.id, action: "CREATE", entityType: "Category", entityId: created.id } }); return created; }); return NextResponse.json({ item }, { status: 201 }); }
-    catch (error) { return createFailure(error, "admin_category_create", "Kateqoriya adı və ya slug artıq mövcuddur"); }
+    // Same service as /api/admin/category-tree: two-level depth check, slug, icon/photo allowlists, audit.
+    try { return NextResponse.json({ item: await createCategory(db, admin.id, body) }, { status: 201 }); }
+    catch (error) { return categoryAdminFailure(error, "admin_category_create"); }
   }
+
   if (section === "brands") {
     const parsed = z.object({ name: z.string().trim().min(2).max(100) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Brend adını yoxlayın" }, { status: 422 });
     try { const item = await db.$transaction(async (tx: any) => { const created = await tx.brand.create({ data: { name: parsed.data.name } }); await tx.auditLog.create({ data: { actorId: admin.id, action: "CREATE", entityType: "Brand", entityId: created.id } }); return created; }); return NextResponse.json({ item }, { status: 201 }); } catch (error) { return createFailure(error, "admin_brand_create", "Bu adda brend artıq mövcuddur"); }
@@ -234,8 +233,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const item = await db.user.update({ where: { id, role: { in: ["CUSTOMER", "VENDOR"] } }, data: { isActive: parsed.data.isActive }, select: { id: true, isActive: true, role: true } }); await audit(admin.id, parsed.data.isActive ? "USER_ACTIVATE" : "USER_DEACTIVATE", "User", id); return NextResponse.json({ item });
     }
     if (section === "categories") {
-      const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100).optional(), slug: z.string().trim().min(2).max(120).optional(), isActive: z.boolean().optional() }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Kateqoriya məlumatlarını yoxlayın" }, { status: 422 }); const { id: categoryId, ...values } = parsed.data;
-      const item = await db.category.update({ where: { id: categoryId }, data: { ...values, ...(values.slug ? { slug: slug(values.slug) } : {}) } }); await audit(admin.id, "UPDATE", "Category", id); return NextResponse.json({ item });
+      // Audited with the category's own id (the old code logged the wrong variable) through the shared service.
+      const parsed = z.object({ id: z.string().min(1) }).passthrough().safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Kateqoriya məlumatlarını yoxlayın" }, { status: 422 });
+      const { id: categoryId, ...values } = parsed.data;
+      try { return NextResponse.json({ item: await updateCategory(db, admin.id, categoryId, values) }); }
+      catch (error) { return categoryAdminFailure(error, "admin_category_update"); }
     }
     if (section === "brands") {
       const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Brend məlumatını yoxlayın" }, { status: 422 }); const item = await db.brand.update({ where: { id }, data: { name: parsed.data.name } }); await audit(admin.id, "UPDATE", "Brand", id); return NextResponse.json({ item });
@@ -287,23 +289,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = z.object({ id: z.string().min(1) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Rəy identifikatoru yanlışdır" }, { status: 422 });
   if (section === "categories") {
-    try {
-      const deleted = await db.$transaction(async (tx: any) => {
-        const category = await tx.category.findUnique({ where: { id: parsed.data.id }, select: { id: true, _count: { select: { products: true, children: true } } } });
-        if (!category) return "NOT_FOUND";
-        if (category._count.products || category._count.children) return "IN_USE";
-        await tx.category.delete({ where: { id: category.id } });
-        await tx.auditLog.create({ data: { actorId: admin.id, action: "CATEGORY_DELETE", entityType: "Category", entityId: category.id } });
-        return "DELETED";
-      });
-      if (deleted === "NOT_FOUND") return NextResponse.json({ error: "Kateqoriya tapılmadı" }, { status: 404 });
-      if (deleted === "IN_USE") return NextResponse.json({ error: "Məhsulu və ya alt kateqoriyası olan kateqoriya silinmir; onu deaktiv edin." }, { status: 409 });
-      return NextResponse.json({ deleted: true });
-    } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "P2003") return NextResponse.json({ error: "Kateqoriya əlaqəli qeydlər səbəbindən silinmədi; onu deaktiv edin." }, { status: 409 });
-      logSecurityOperationFailure("admin_category_delete", error);
-      return NextResponse.json({ error: "Kateqoriyanı silmək mümkün olmadı" }, { status: 500 });
-    }
+    try { return NextResponse.json(await deleteCategory(db, admin.id, parsed.data.id)); }
+    catch (error) { return categoryAdminFailure(error, "admin_category_delete"); }
   }
   if (section !== "reviews") return NextResponse.json({ error: "Tarixçə və əlaqəli qeydlər qorunur; silmə dəstəklənmir" }, { status: 405 });
   try {

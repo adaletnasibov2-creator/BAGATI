@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import type { Prisma } from "@prisma/client";
 import { requireStoreAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +18,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const product = await db.product.findFirst({ where: { id: productId, storeId: access.storeId }, include: { category: true, brand: true, variants: { include: { inventory: true } }, inventory: true } });
   if (!product) return NextResponse.json({ error: "Məhsul tapılmadı" }, { status: 404 });
   const [categories, brands] = await Promise.all([
-    db.category.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    // Active categories, plus the product's own (even if inactive now) so the picker can show it.
+    db.category.findMany({ where: { OR: [{ isActive: true }, ...(product?.categoryId ? [{ id: product.categoryId }, { children: { some: { id: product.categoryId } } }] : [])] }, select: { id: true, name: true, slug: true, parentId: true, sortOrder: true, iconKey: true, imageUrl: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     db.brand.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   return NextResponse.json({ product, categories: categoriesWithOtherLast(categories), brands });
@@ -40,8 +42,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Seçimin endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
   }
   if (values.discountPrice !== null && values.discountPrice >= values.price) return NextResponse.json({ error: "Endirimli qiymət əsas qiymətdən aşağı olmalıdır" }, { status: 422 });
-  if (values.categoryId && !await db.category.findFirst({ where: { id: values.categoryId, isActive: true }, select: { id: true } })) {
-    return NextResponse.json({ error: "Kateqoriya tapılmadı" }, { status: 422 });
+  if (values.categoryId) {
+    // An old product that keeps its category is never blocked; a changed category follows the new-product rule.
+    const existing = await db.product.findFirst({ where: { id: productId, storeId }, select: { categoryId: true } });
+    const categoryError = await productCategoryChoiceError(db, { categoryId: values.categoryId, previousCategoryId: existing ? existing.categoryId : undefined, expectedParentId: readCategoryParentId(body) });
+    if (categoryError) return NextResponse.json({ error: categoryError }, { status: 422 });
   }
   if (values.brandId && !await db.brand.findUnique({ where: { id: values.brandId }, select: { id: true } })) {
     return NextResponse.json({ error: "Brend tapılmadı" }, { status: 422 });

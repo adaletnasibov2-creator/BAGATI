@@ -55,7 +55,13 @@ test("admin enum filters ignore unsupported values before ORM queries", () => {
 test("admin mutations distinguish conflicts from service failures and preserve audit atomicity", () => {
   assert.match(adminResourceRoute, /error\.code === "P2002"[\s\S]*status: 409/);
   assert.match(adminResourceRoute, /logSecurityOperationFailure\(operation, error\)/);
-  for (const resource of ["category", "brand", "city"]) {
+  // Categories go through the shared service: one transaction with the audit row, P2002 -> 409, other errors logged.
+  assert.match(adminResourceRoute, /createCategory\(db, admin\.id, body\)/);
+  const categoryService = readFileSync(resolve(process.cwd(), "lib/admin-category-service.ts"), "utf8");
+  assert.match(categoryService, /db\.\$transaction\(async \(tx\) => \{[\s\S]*?tx\.category\.create[\s\S]*?await audit\(tx, actorId, "CATEGORY_CREATE"/);
+  assert.match(categoryService, /error\.code === "P2002"\) throw new CategoryAdminError\(409/);
+  assert.match(readFileSync(resolve(process.cwd(), "lib/admin-category-route.ts"), "utf8"), /logSecurityOperationFailure\(operation, error\)/);
+  for (const resource of ["brand", "city"]) {
     assert.match(adminResourceRoute, new RegExp(`db\\.\\$transaction\\(async \\(tx: any\\) => \\{ const created = await tx\\.${resource}\\.create`));
   }
   assert.match(adminResourceRoute, /tx\.review\.deleteMany[\s\S]*tx\.auditLog\.create/);

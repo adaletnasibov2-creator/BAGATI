@@ -3,6 +3,7 @@ import { Header } from "@/components/header";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPublicCategoryData } from "@/lib/public-category-tree";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getPublicContact } from "@/lib/public-contact";
 import AnnouncementBar from "@/components/announcement-bar";
@@ -18,12 +19,9 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
       select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },
     }),
-    prisma.category.findMany({
-      where: { isActive: true, parentId: null },
-      select: { id: true, name: true, slug: true },
-      orderBy: { name: "asc" },
-      take: 10,
-    }),
+    // All top-levels with visible products, in sortOrder (no count limit, so no top-level is cut off), each with its
+    // visible subcategories. Hidden when empty (owner decision 2026-11-15).
+    getPublicCategoryData().then((data) => data.tree),
     getPublicContact(),
   ]);
   const publicUser = user ? { email: user.email, displayName: user.displayName, role: user.role } : null;

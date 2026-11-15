@@ -8,23 +8,12 @@ import { CategoryNavigation } from "@/components/category-navigation";
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { MobileMenu } from "@/components/mobile-menu";
 import { ProductCard } from "@/components/product-card";
-import { categoriesWithOtherLast } from "@/lib/category-order";
+import { previewCategoryTree } from "@/lib/category-preview-data";
 
-// Database-free visual check of the storefront. The list mirrors the marketplace taxonomy in
-// prisma/seed.ts (same names and slugs) so every tile below goes through the same shared
-// name/slug mapping as the live pages. Nothing here is written to or read from the database.
-const categories = categoriesWithOtherLast([
-  { id: "elektronika", name: "Elektronika", slug: "elektronika" },
-  { id: "geyim", name: "Geyim", slug: "geyim" },
-  { id: "ev-ve-mesiet", name: "Ev və məişət", slug: "ev-ve-mesiet" },
-  { id: "eylence", name: "Əyləncə", slug: "eylence" },
-  { id: "idman", name: "İdman", slug: "idman" },
-  { id: "usaq", name: "Uşaq", slug: "usaq" },
-  { id: "gozellik", name: "Gözəllik", slug: "gozellik" },
-  { id: "aksesuarlar", name: "Aksesuarlar", slug: "aksesuarlar" },
-  { id: "supermarket", name: "Supermarket", slug: "supermarket" },
-  { id: "diger", name: "Digər", slug: "diger" },
-]);
+// Database-free visual check of the storefront. The tree is the reviewed category seed (lib/category-seed.ts, same
+// names, slugs, icons and order as production after prod-categories-seed.sql) with made-up counts, so the mega menu
+// and the mobile accordion show subcategories. Nothing here is written to or read from the database.
+const categories = previewCategoryTree;
 
 // Kinds the shared mapping also recognises. They are not part of the seeded taxonomy and are
 // shown only so their photographs can be checked if such a category is ever created.

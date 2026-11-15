@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryPicker, type PickerCategory } from "@/components/category-picker";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import VendorImageUploader from "@/components/vendor-image-uploader";
@@ -10,7 +11,7 @@ import { presentStockQuantity } from "@/lib/stock-quantity";
 type Option = { id: string; name: string };
 const input = "mt-1 w-full rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
 
-export default function VendorProductCreateForm({ storeId, categories, brands, canSell }: { storeId: string; categories: Option[]; brands: Option[]; canSell: boolean }) {
+export default function VendorProductCreateForm({ storeId, categories, brands, canSell }: { storeId: string; categories: PickerCategory[]; brands: Option[]; canSell: boolean }) {
   const router = useRouter();
   const [publish, setPublish] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,7 +36,7 @@ export default function VendorProductCreateForm({ storeId, categories, brands, c
     if (quantity === null || lowStockThreshold === null) { setError("İlkin stok və az stok həddi tam ədəd olmalıdır. Boş sahə 0 kimi saxlanmır; sıfır yazıla bilər."); setBusy(false); return; }
     const payload = {
       name: form.get("name"), sku: form.get("sku") || null, description: form.get("description") || null,
-      categoryId: form.get("categoryId") || null, brandId: form.get("brandId") || null,
+      categoryId: form.get("categoryId") || null, categoryParentId: form.get("categoryParentId") || null, brandId: form.get("brandId") || null,
       price: Number(form.get("price")), discountPrice: form.get("discountPrice") ? Number(form.get("discountPrice")) : null,
       quantity, lowStockThreshold,
       images: String(form.get("images") || "").split(/\n|,/).map(value => value.trim()).filter(Boolean),
@@ -57,7 +58,7 @@ export default function VendorProductCreateForm({ storeId, categories, brands, c
     <section className="grid gap-4 rounded-2xl border border-[#e9e4da] bg-white p-5 sm:grid-cols-2 sm:p-7"><div className="sm:col-span-2"><p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Məhsul kartı</p><h2 className="mt-1 text-lg font-semibold">Ümumi məlumat</h2></div>
       <label className="grid gap-1 text-sm sm:col-span-2">Məhsul adı<input name="name" required minLength={2} maxLength={160} className={input}/></label>
       <label className="grid gap-1 text-sm">Məhsul kodu <span className="text-xs text-slate-500">(istəyə bağlı)</span><input name="sku" maxLength={80} className={input} placeholder="Boş saxlaya bilərsiniz"/><span className="text-xs leading-5 text-slate-500">Bu kod mağazanızdakı məhsulları ayırmağa kömək edir; barkod deyil. Boş qoysanız sistem avtomatik yaradacaq.</span></label>
-      <label className="grid gap-1 text-sm">Kateqoriya<select name="categoryId" value={categoryId} onChange={event => setCategoryId(event.target.value)} className={input}><option value="">Kateqoriya seçin</option>{categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <CategoryPicker categories={categories} name onChange={(choice) => setCategoryId(choice.categoryId ?? "")} />
       <VendorBrandSelector brands={brands} value={brandId} onChange={setBrandId}/>
       <label className="grid gap-1 text-sm sm:col-span-2">Təsvir<textarea name="description" maxLength={5000} rows={4} className={input}/></label>
       {!categories.length && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">Aktiv kateqoriya yoxdur. Kateqoriya yaratmaq üçün adminlə əlaqə saxlayın. Məhsulu qaralama kimi saxlaya bilərsiniz.</p>}

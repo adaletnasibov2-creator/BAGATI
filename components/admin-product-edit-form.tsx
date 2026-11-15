@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryPicker, type PickerCategory } from "@/components/category-picker";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { presentStockQuantity } from "@/lib/stock-quantity";
@@ -32,10 +33,11 @@ type Option = { id: string; name: string };
 export default function AdminProductEditForm({ productId, initial, categories, brands }: {
   productId: string;
   initial: ProductEditValues;
-  categories: Option[];
+  categories: PickerCategory[];
   brands: Option[];
 }) {
   const [values, setValues] = useState(initial);
+  const [categoryParentId, setCategoryParentId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -57,6 +59,7 @@ export default function AdminProductEditForm({ productId, initial, categories, b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...values,
+          categoryParentId,
           images: values.images,
           price: Number(values.price),
           discountPrice: values.discountPrice === null || values.discountPrice === "" ? null : Number(values.discountPrice),
@@ -84,7 +87,7 @@ export default function AdminProductEditForm({ productId, initial, categories, b
     <form onSubmit={submit} className="mt-4 grid gap-4 sm:grid-cols-2">
       <label className="grid gap-1 text-sm">Məhsul adı<input className={input} required maxLength={160} value={values.name} onChange={(event) => update("name", event.target.value)} /></label>
       <label className="grid gap-1 text-sm">SKU<input className={input} maxLength={80} value={values.sku ?? ""} onChange={(event) => update("sku", event.target.value || null)} /></label>
-      <label className="grid gap-1 text-sm">Kateqoriya<select className={input} value={values.categoryId ?? ""} onChange={(event) => update("categoryId", event.target.value || null)}><option value="">Seçilməyib</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <CategoryPicker categories={categories} initialId={initial.categoryId} onChange={(choice) => { update("categoryId", choice.categoryId); setCategoryParentId(choice.parentId); }} />
       <label className="grid gap-1 text-sm">Brend<select className={input} value={values.brandId ?? ""} onChange={(event) => update("brandId", event.target.value || null)}><option value="">Seçilməyib</option>{brands.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <label className="grid gap-1 text-sm">Qiymət (AZN)<input className={input} type="number" min="0.01" step="0.01" required value={values.price} onChange={(event) => update("price", event.target.value)} /></label>
       <label className="grid gap-1 text-sm">Endirim qiyməti (AZN)<input className={input} type="number" min="0.01" step="0.01" value={values.discountPrice ?? ""} onChange={(event) => update("discountPrice", event.target.value || null)} /></label>

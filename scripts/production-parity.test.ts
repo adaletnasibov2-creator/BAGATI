@@ -140,7 +140,11 @@ test("readiness reports missing reference data and Google configuration without 
 test("category menu shows an honest empty state instead of a link to an empty page", () => {
   const menu = read("components/category-mega-menu.tsx");
   assert.match(menu, /Kateqoriyalar hələ əlavə edilməyib\./);
-  assert.match(read("app/(customer)/layout.tsx"), /prisma\.category\.findMany\(\{\s*where: \{ isActive: true, parentId: null \}/);
+  // The menu tree comes from the public category data: active categories with visible products only, all top-levels
+  // (no `take` limit), subcategories nested under their parent.
+  assert.match(read("app/(customer)/layout.tsx"), /getPublicCategoryData\(\)\.then\(\(data\) => data\.tree\)/);
+  assert.doesNotMatch(read("app/(customer)/layout.tsx"), /take: 10/);
+  assert.match(read("lib/category-tree.ts"), /const active = rows\.filter\(\(row\) => row\.isActive\)/);
 });
 
 test("footer contact details come only from the SiteSettings row, never from hardcoded values", () => {

@@ -546,14 +546,24 @@ model Address {
 }
 
 model Category {
-  id       String     @id @default(cuid())
-  name     String
-  slug     String     @unique
-  parentId String?
-  isActive Boolean    @default(true)
-  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryTree")
-  products Product[]
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  /// At most two levels: a subcategory's parent is always a top-level category. Enforced in
+  /// lib/category-tree.ts and by the "category_tree_guard" trigger (migration 20261116010000).
+  parentId  String?
+  isActive  Boolean    @default(true)
+  /// Ascending display order among siblings (top-levels: 10, 20, ...; "Digər" 1000).
+  sortOrder Int        @default(0)
+  /// Key from the allowlist in lib/category-icons.ts; an unknown key renders no icon.
+  iconKey   String?
+  /// Admin-uploaded photo (same storage and URL rules as homepage images).
+  imageUrl  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+
+  @@index([parentId, sortOrder])
 }
 
 model Brand {

@@ -369,9 +369,12 @@ test("delete removes history-free stores and archives stores with history instea
 });
 
 test("category deletion is limited to unused leaf categories and records an audit event", () => {
-  assert.match(adminRoute, /if \(section === "categories"\)[\s\S]*?_count: \{ select: \{ products: true, children: true \} \}/);
-  assert.match(adminRoute, /if \(category\._count\.products \|\| category\._count\.children\) return "IN_USE"/);
-  assert.match(adminRoute, /CATEGORY_DELETE/);
+  // The DELETE branch delegates to the shared service, which refuses while products or subcategories exist.
+  assert.match(adminRoute, /if \(section === "categories"\) \{\s*try \{ return NextResponse\.json\(await deleteCategory\(db, admin\.id, parsed\.data\.id\)\); \}/);
+  const categoryService = readFileSync(resolve(root, "lib/admin-category-service.ts"), "utf8");
+  assert.match(categoryService, /_count: \{ select: \{ products: true, children: true \} \}/);
+  assert.match(categoryService, /if \(category\._count\.products \|\| category\._count\.children\) \{/);
+  assert.match(categoryService, /"CATEGORY_DELETE"/);
 });
 
 test("admin mutations and store review/archive routes enforce the ADMIN role", () => {

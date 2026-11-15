@@ -1,9 +1,41 @@
-/** Kateqoriyalar (/admin/categories). Moved unchanged from app/admin/[...section]/page.tsx. */
-import AdminMutationForm from "@/components/admin-mutation-form";
-import { Filters } from "@/components/admin-list-filters";
+/** Kateqoriyalar (/admin/categories): two-level tree with counts, create/edit/move/reorder/activate/delete. */
 import { prisma } from "@/lib/prisma";
-import { type SectionContext, card, Header, Table, Pager } from "./shared";
+import { PageHeader } from "@/components/admin-ui/page-header";
+import { EmptyState } from "@/components/admin-ui/empty-state";
+import { Filters } from "@/components/admin-list-filters";
+import AdminCategoryManager, { type AdminCategoryNode } from "@/components/admin-category-manager";
+import { buildCategoryTree, rollUpCategoryCounts, type CategoryRow } from "@/lib/category-tree";
+import { countVisibleProductsByCategory } from "@/lib/public-category-tree";
+import type { SectionContext } from "./shared";
 
-export async function renderCategories({ q, page, take, skip, pageQuery, shell }: SectionContext) {
-  const where:any=q?{name:{contains:q,mode:"insensitive"}}:{};const [rows,total]=await Promise.all([prisma.category.findMany({where,include:{_count:{select:{products:true,children:true}},parent:{select:{name:true}}},orderBy:{name:"asc"},skip,take}),prisma.category.count({where})]);return shell(<><Header title="Kateqoriyalar"/><section className={`${card} mb-5`}><h2 className="mb-3 font-semibold">Kateqoriya əlavə et</h2><AdminMutationForm resource="categories" fields={[{name:"name",label:"Ad",required:true},{name:"slug",label:"Slug (istəyə görə)"}]}/></section><Filters path="/admin/categories" q={q}/><Table rows={rows} columns={[{label:"Kateqoriya",cell:r=>r.name},{label:"Slug",cell:r=>r.slug},{label:"Redaktə",cell:r=><AdminMutationForm resource="categories" method="PATCH" className="min-w-52" fields={[{name:"id",label:"",type:"hidden",value:r.id},{name:"name",label:"Ad",value:r.name,required:true},{name:"slug",label:"Slug",value:r.slug,required:true}]}/>},{label:"Ana kateqoriya",cell:r=>r.parent?.name||"—"},{label:"Məhsullar / alt kateqoriyalar",cell:r=>`${r._count.products} / ${r._count.children}`},{label:"Status / silmə",cell:r=><div><span>{r.isActive?"Aktiv":"Deaktiv"}</span><AdminMutationForm resource="categories" method="PATCH" className="mt-2" fields={[{name:"id",label:"",type:"hidden",value:r.id},{name:"isActive",label:r.isActive?"Deaktiv et":"Aktiv et",type:"checkbox",value:!r.isActive}]}/><AdminMutationForm resource="categories" method="DELETE" className="mt-2" fields={[{name:"id",label:"",type:"hidden",value:r.id}]} button="Sil" confirmMessage="Yalnız məhsulu və alt kateqoriyası olmayan kateqoriya silinə bilər. Davam edilsin?"/></div>} ]}/><Pager path="/admin/categories" page={page} total={total} query={pageQuery}/></>);
+export async function renderCategories({ q, shell }: SectionContext) {
+  const [rows, visible] = await Promise.all([
+    prisma.category.findMany({
+      select: { id: true, name: true, slug: true, parentId: true, isActive: true, sortOrder: true, iconKey: true, imageUrl: true, _count: { select: { products: true, children: true } } },
+    }),
+    countVisibleProductsByCategory(prisma),
+  ]);
+  const visibleTotals = rollUpCategoryCounts(rows, visible);
+  const productTotals = rollUpCategoryCounts(rows, new Map(rows.map((row) => [row.id, row._count.products])));
+  const withCounts = rows.map(({ _count, ...row }) => ({
+    ...row,
+    productCount: _count.products,
+    totalCount: productTotals.get(row.id) ?? 0,
+    childCount: _count.children,
+    visibleCount: visibleTotals.get(row.id) ?? 0,
+  }));
+  const tree = buildCategoryTree(withCounts as (CategoryRow & Omit<AdminCategoryNode, "children" | keyof CategoryRow>)[]) as AdminCategoryNode[];
+  const todo = tree.reduce((sum, top) => sum + (top.children.length ? top.productCount : 0), 0);
+  // Search by name or slug: a top-level is shown with all its subcategories when it or any of them matches.
+  const needle = q.trim().toLocaleLowerCase("az-AZ");
+  const hit = (row: { name: string; slug: string }) => row.name.toLocaleLowerCase("az-AZ").includes(needle) || row.slug.includes(needle);
+  const shown = needle ? tree.filter((top) => hit(top) || top.children.some(hit)) : tree;
+  return shell(<>
+    <PageHeader
+      title="Kateqoriyalar"
+      description={<>İki səviyyə: üst kateqoriya və alt kateqoriya. Mağazada yalnız aktiv və görünən məhsulu olan kateqoriyalar göstərilir; satıcılar hamısını seçə bilər.{todo > 0 && <> Alt kateqoriyası olan üst kateqoriyalarda hələ <b>{todo}</b> məhsul alt kateqoriyasızdır.</>}</>}
+    />
+    <Filters path="/admin/categories" q={q} />
+    {shown.length ? <AdminCategoryManager tree={shown} /> : <EmptyState title="Kateqoriya tapılmadı" description="Axtarışı dəyişin və ya təmizləyin." />}
+  </>);
 }

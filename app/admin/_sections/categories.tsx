@@ -38,7 +38,7 @@ export async function renderCategories({ q, shell }: SectionContext) {
   return shell(<>
     <PageHeader
       title="Kateqoriyalar"
-      description={<>İki səviyyə: üst kateqoriya və alt kateqoriya. Mağazada yalnız aktiv və görünən məhsulu olan kateqoriyalar göstərilir; satıcılar hamısını seçə bilər.{todo > 0 && <> Alt kateqoriyası olan üst kateqoriyalarda hələ <b>{todo}</b> məhsul alt kateqoriyasızdır.</>}</>}
+      description={<>İki səviyyə: üst kateqoriya və alt kateqoriya. Mağazada yalnız aktiv kateqoriyalar göstərilir{showEmpty ? " (məhsulu olmayanlar da)" : " (yalnız görünən məhsulu olanlar)"}; satıcılar bütün aktiv kateqoriyaları seçə bilər.{todo > 0 && <> Alt kateqoriyası olan üst kateqoriyalarda hələ <b>{todo}</b> məhsul alt kateqoriyasızdır.</>}</>}
     />
     <p className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[#e7e3d9] bg-white px-4 py-3 text-sm text-slate-600">
       <span>Boş kateqoriyaları göstər: <b className="text-[#0d1b2a]">{showEmpty ? "Açıqdır — məhsulu olmayan aktiv kateqoriyalar da mağazada görünür" : "Söndürülüb — yalnız məhsulu olanlar görünür"}</b>.</span>

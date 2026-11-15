@@ -20,7 +20,7 @@ import { AZ_PHONE_ERROR, normalizeAzPhone } from "@/lib/az-phone";
 import { MAINTENANCE_MESSAGE_DEFAULT } from "@/lib/maintenance-defaults";
 
 export type SettingPermission = "settings.finance" | "settings.content" | "settings.limits";
-export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance";
+export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance" | "catalog";
 
 export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description: string }> = {
   finance: { label: "Maliyyə", description: "Komissiya və digər maliyyə parametrləri." },
@@ -30,6 +30,7 @@ export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description
   contact: { label: "Əlaqə", description: "Footer və əlaqə səhifəsində göstərilən ünvan, iş saatları və WhatsApp nömrəsi." },
   footer: { label: "Footer", description: "Footer şüarı və footer keçidləri. Boş qalanda indiki mətn və keçidlər göstərilir." },
   maintenance: { label: "Texniki iş rejimi", description: "Açıq olanda müştəri və satıcı səhifələri müvəqqəti bağlanır; admin paneli və ödəniş bildirişləri işləyir." },
+  catalog: { label: "Kataloq", description: "Kateqoriyaların mağazada necə göstərildiyi." },
 };
 
 export type SettingInput =
@@ -437,6 +438,31 @@ const footerSettings = [
   footerLinks,
 ];
 
+// ---- Catalog ------------------------------------------------------------------------------------------------
+
+/**
+ * ON (default): every active category and subcategory is shown publicly, also with no products yet.
+ * OFF: only categories with at least one visible product (the behaviour before 2026-11-15).
+ * Deactivated categories are hidden in both states. Read by lib/public-category-tree.ts.
+ */
+const catalogShowEmptyCategories: SettingDefinition<boolean> = {
+  key: "catalog.showEmptyCategories",
+  group: "catalog",
+  permission: "settings.content",
+  sensitive: false,
+  label: "Boş kateqoriyaları göstər",
+  description: "Açıq olanda məhsulu olmayan kateqoriya və alt kateqoriyalar da menyularda və kataloqda görünür. Deaktiv kateqoriyalar hər halda gizlidir.",
+  schema: z.boolean(),
+  inputSchema: z.union([z.boolean(), z.enum(["true", "false"])]).transform((value) => value === true || value === "true"),
+  toInput: (value) => String(value),
+  display: (value) => (value ? "Açıqdır — bütün kateqoriyalar görünür" : "Söndürülüb — yalnız məhsulu olanlar görünür"),
+  default: true,
+  input: { kind: "toggle" },
+  read: "ttl",
+};
+
+const catalogSettings = [catalogShowEmptyCategories];
+
 // ---- Maintenance mode ---------------------------------------------------------------------------------------
 
 export { MAINTENANCE_MESSAGE_DEFAULT };
@@ -478,6 +504,7 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
   ...(contactSettings as SettingDefinition[]),
   ...(footerSettings as SettingDefinition[]),
   ...(maintenanceSettings as SettingDefinition[]),
+  ...(catalogSettings as SettingDefinition[]),
 ];
 
 /**
@@ -514,4 +541,5 @@ export const SETTING_KEYS = {
   footerLinks: "footer.links",
   maintenanceEnabled: "maintenance.enabled",
   maintenanceMessage: "maintenance.message",
+  catalogShowEmptyCategories: "catalog.showEmptyCategories",
 } as const;

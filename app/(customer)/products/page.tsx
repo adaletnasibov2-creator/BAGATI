@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PRODUCT_GRID_WITH_SIDEBAR_CLASS } from "@/components/product-layout";
 import { CategoryEmptyState } from "@/components/category-empty-state";
 import { prisma } from "@/lib/prisma";
 import { createPrismaPublicProductCatalogClient, decodeProductCatalogCursor, findPublicProductCatalogPage } from "@/lib/public-product-catalog";
@@ -122,7 +123,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     <aside className="hidden lg:block">{filterTree}</aside>
     <div className="min-w-0">
     {products.items.length ? <>
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:mt-0 lg:grid-cols-3 xl:grid-cols-4">{products.items.map((product) => {
+      <div className={`mt-8 lg:mt-0 ${PRODUCT_GRID_WITH_SIDEBAR_CLASS}`}>{products.items.map((product) => {
       const effective = calculateEffectivePrice(
         product.price,
         product.discountPrice,

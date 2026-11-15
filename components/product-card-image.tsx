@@ -45,7 +45,7 @@ export default function ProductCardImage({
         placeholder="blur"
         blurDataURL={blurPlaceholder}
         onError={() => setFailedSources((current) => [...current, primarySrc])}
-        className={`object-contain p-3 transition-[opacity,transform] duration-300 motion-reduce:transition-none sm:p-5 ${hoverSrc ? "group-hover:scale-[1.025] group-hover:opacity-0 group-focus-within:opacity-0" : "motion-safe:group-hover:scale-[1.025]"}`}
+        className={`object-contain p-2 transition-[opacity,transform] duration-300 motion-reduce:transition-none sm:p-3 ${hoverSrc ? "group-hover:scale-[1.025] group-hover:opacity-0 group-focus-within:opacity-0" : "motion-safe:group-hover:scale-[1.025]"}`}
       />
       {hoverSrc && (
         <Image
@@ -58,7 +58,7 @@ export default function ProductCardImage({
           placeholder="blur"
           blurDataURL={blurPlaceholder}
           onError={() => setFailedSources((current) => [...current, hoverSrc])}
-          className="pointer-events-none object-contain p-3 opacity-0 transition-[opacity,transform] duration-300 group-hover:scale-[1.025] group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none sm:p-5"
+          className="pointer-events-none object-contain p-2 opacity-0 transition-[opacity,transform] duration-300 group-hover:scale-[1.025] group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none sm:p-3"
         />
       )}
     </>

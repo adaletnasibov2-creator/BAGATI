@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { categoryIconComponent, effectiveIconKey } from "@/lib/category-icons";
 
 export type CategoryKind =
   | "accessories"
@@ -15,7 +16,16 @@ export type CategoryKind =
   | "pets"
   | "other";
 
-export type CategoryInfo = { name: string; slug?: string | null };
+export type CategoryInfo = {
+  name: string;
+  slug?: string | null;
+  /** Undefined/null = top-level (older callers pass only name and slug). */
+  parentId?: string | null;
+  iconKey?: string | null;
+  imageUrl?: string | null;
+  /** A subcategory without its own icon uses its parent's. */
+  parentIconKey?: string | null;
+};
 
 // Tint shown only while the photograph is decoding.
 const categoryStyles: Record<CategoryKind, string> = {
@@ -110,6 +120,49 @@ export function categoryKind({ name, slug }: CategoryInfo): CategoryKind {
   return "other";
 }
 
+/**
+ * Top-levels with a seeded iconKey get a shipped photograph only through this explicit slug list (the 10 launch
+ * categories plus Avtomobil and Ev heyvanları, owner decision 2026-11-15); every other top-level shows its icon
+ * until an admin uploads a photo. A top-level without an iconKey (before the seed runs) keeps the name-based photo
+ * exactly as before.
+ */
+export const SEEDED_PHOTO_SLUGS: Readonly<Record<string, CategoryKind>> = {
+  aksesuarlar: "accessories",
+  diger: "other",
+  elektronika: "electronics",
+  "ev-ve-mesiet": "home",
+  eylence: "entertainment",
+  geyim: "clothing",
+  gozellik: "beauty",
+  idman: "sports",
+  supermarket: "market",
+  usaq: "children",
+  avtomobil: "automotive",
+  "ev-heyvanlari": "pets",
+};
+
+export type CategoryVisual =
+  | { kind: "upload"; src: string }
+  | { kind: "photo"; photo: CategoryKind }
+  | { kind: "icon"; iconKey: string | null };
+
+export function categoryVisual(category: CategoryInfo): CategoryVisual {
+  if (category.imageUrl) return { kind: "upload", src: category.imageUrl };
+  const isTopLevel = !category.parentId;
+  if (isTopLevel && !category.iconKey) return { kind: "photo", photo: categoryKind(category) };
+  if (isTopLevel && category.slug && Object.prototype.hasOwnProperty.call(SEEDED_PHOTO_SLUGS, category.slug)) {
+    return { kind: "photo", photo: SEEDED_PHOTO_SLUGS[category.slug] };
+  }
+  return { kind: "icon", iconKey: effectiveIconKey({ iconKey: category.iconKey ?? null }, { iconKey: category.parentIconKey ?? null }) };
+}
+
+/** Inline icon for lists (subcategory rows, pickers). Decorative; renders nothing for an unknown key. */
+export function CategoryGlyph({ category, size = 18, className = "" }: { category: CategoryInfo; size?: number; className?: string }) {
+  const Icon = categoryIconComponent(effectiveIconKey({ iconKey: category.iconKey ?? null }, { iconKey: category.parentIconKey ?? null }));
+  if (!Icon) return <span aria-hidden="true" className={`inline-block shrink-0 ${className}`} style={{ width: size, height: size }} />;
+  return <Icon aria-hidden="true" size={size} strokeWidth={1.8} className={`shrink-0 ${className}`} />;
+}
+
 export function CategoryIcon({
   category,
   size = "medium",
@@ -119,7 +172,8 @@ export function CategoryIcon({
   size?: "small" | "medium" | "large";
   className?: string;
 }) {
-  const kind = categoryKind(category);
+  const visual = categoryVisual(category);
+  const kind = visual.kind === "photo" ? visual.photo : categoryKind(category);
   const dimensions =
     size === "small" ? "h-11 w-11 rounded-[15px]" : size === "large" ? "h-[76px] w-[76px] rounded-[22px]" : "h-16 w-16 rounded-[19px]";
 
@@ -128,11 +182,14 @@ export function CategoryIcon({
   return (
     <span
       aria-hidden="true"
-      data-category-kind={kind}
+      data-category-kind={visual.kind === "icon" ? "icon" : kind}
       className={`group relative block shrink-0 overflow-hidden border border-white/80 bg-gradient-to-br ${categoryStyles[kind]} ${dimensions} shadow-[0_5px_13px_rgba(23,58,58,.09)] transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_9px_20px_rgba(23,58,58,.14)] motion-reduce:transition-none ${className}`}
     >
+      {visual.kind === "icon" ? (
+        <CategoryTileIcon iconKey={visual.iconKey} size={size} />
+      ) : (
       <Image
-        src={categoryPhotoMap[kind].src}
+        src={visual.kind === "upload" ? visual.src : categoryPhotoMap[kind].src}
         alt=""
         width={320}
         height={320}
@@ -142,7 +199,18 @@ export function CategoryIcon({
         draggable={false}
         className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none"
       />
+      )}
       <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#173A3A]/10 via-transparent to-transparent" />
+    </span>
+  );
+}
+
+function CategoryTileIcon({ iconKey, size }: { iconKey: string | null; size: "small" | "medium" | "large" }) {
+  const Icon = categoryIconComponent(iconKey);
+  const pixels = size === "small" ? 20 : size === "large" ? 32 : 26;
+  return (
+    <span className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#e6efe9] to-[#f6f3ec] text-[#1f5a4f]">
+      {Icon ? <Icon aria-hidden="true" size={pixels} strokeWidth={1.7} /> : null}
     </span>
   );
 }

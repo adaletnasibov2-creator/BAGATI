@@ -1,4 +1,5 @@
 import { assertUniqueVariantCombinations } from "@/lib/product-variants";
+import { parseCategoryPath } from "@/lib/category-tree";
 import { isWellFormedSku, normalizeSku } from "@/lib/sku-normalization";
 
 export type ImportMode = "create" | "update" | "mixed";
@@ -39,7 +40,47 @@ export type ImportRowCheck = {
   existingId?: string;
 };
 
-export type ImportCategory = { id: string; name: string; slug: string };
+/** parentId: null/undefined = top-level. Pass parentId so "Üst > Alt" paths and the subcategory warning work. */
+export type ImportCategory = { id: string; name: string; slug: string; parentId?: string | null };
+
+export type ImportCategoryResolution =
+  | { category: ImportCategory; warning: string | null }
+  | { category: null; error: string };
+
+/**
+ * Maps the CSV category cell to a category (active categories only are passed in):
+ * - "Üst > Alt" path (names or slugs on either side), or a single slug or name (slug first; slugs are unique).
+ * - A name used by two categories is ambiguous and must be written as a path.
+ * - A top-level that has subcategories is accepted with a warning (owner decision 2026-11-15).
+ * - Unknown stays an error, as before.
+ */
+export function resolveImportCategory(categories: readonly ImportCategory[], value: string): ImportCategoryResolution {
+  const raw = value.trim();
+  const parts = parseCategoryPath(raw);
+  if (!parts) return { category: null, error: `Kateqoriya yolu yanlışdır: ${raw} ("Üst > Alt" yazın)` };
+  const matches = (item: ImportCategory, key: string) => AZ_LOWER(item.slug) === AZ_LOWER(key) || AZ_LOWER(item.name) === AZ_LOWER(key);
+  const tops = categories.filter((item) => !item.parentId);
+  let category: ImportCategory | null = null;
+  if (parts.length === 2) {
+    const parent = tops.find((item) => AZ_LOWER(item.slug) === AZ_LOWER(parts[0])) ?? tops.find((item) => matches(item, parts[0]));
+    const children = parent ? categories.filter((item) => item.parentId === parent.id) : [];
+    category = children.find((item) => AZ_LOWER(item.slug) === AZ_LOWER(parts[1])) ?? children.find((item) => matches(item, parts[1])) ?? null;
+  } else {
+    const bySlug = categories.find((item) => AZ_LOWER(item.slug) === AZ_LOWER(parts[0]));
+    if (bySlug) category = bySlug;
+    else {
+      const byName = categories.filter((item) => AZ_LOWER(item.name) === AZ_LOWER(parts[0]));
+      if (byName.length > 1) return { category: null, error: `Kateqoriya adı birmənalı deyil: ${raw} ("Üst > Alt" yazın)` };
+      category = byName[0] ?? null;
+    }
+  }
+  if (!category) return { category: null, error: `Kateqoriya tapılmadı: ${raw}` };
+  const hasChildren = !category.parentId && categories.some((item) => item.parentId === category!.id);
+  return {
+    category,
+    warning: hasChildren ? `Alt kateqoriya seçilməyib: ${category.name}. Məhsul üst kateqoriyada qalacaq; "${category.name} > Alt" yazmaq tövsiyə olunur.` : null,
+  };
+}
 export type ImportBrand = { id: string; name: string };
 export type ImportExistingProduct = { id: string; sku: string | null; inventory?: { quantity: number; reserved: number } | null };
 
@@ -123,11 +164,6 @@ export function checkImportRows(input: {
 }): ImportRowCheck[] {
   const { rows, mapping, mode, categories, brands, existing } = input;
   const isImageUrlAllowed = input.isImageUrlAllowed ?? isSafeImportImageUrl;
-  const categoryMap = new Map<string, ImportCategory>();
-  for (const item of categories) {
-    categoryMap.set(AZ_LOWER(item.name), item);
-    categoryMap.set(AZ_LOWER(item.slug), item);
-  }
   const brandMap = new Map<string, ImportBrand>(brands.map((item) => [AZ_LOWER(item.name), item]));
   const existingBySku = new Map<string, ImportExistingProduct>();
   for (const product of existing) {
@@ -165,7 +201,8 @@ export function checkImportRows(input: {
     const { variants, error: variantsError } = parseImportVariants(get("variants"));
     if (variantsError) errors.push(variantsError);
 
-    const category = categoryName ? categoryMap.get(AZ_LOWER(categoryName)) ?? null : null;
+    const categoryResult = categoryName ? resolveImportCategory(categories, categoryName) : null;
+    const category = categoryResult?.category ?? null;
     const brand = brandName ? brandMap.get(AZ_LOWER(brandName)) ?? null : null;
 
     if (!name) errors.push("Məhsul adı yoxdur");
@@ -178,7 +215,8 @@ export function checkImportRows(input: {
       errors.push("Endirimli qiymət əsas qiymətdən aşağı olmalıdır");
     }
     if (!categoryName) errors.push("Kateqoriya göstərilməyib");
-    else if (!category) errors.push(`Kateqoriya tapılmadı: ${categoryName}`);
+    else if (categoryResult && "error" in categoryResult) errors.push(categoryResult.error);
+    else if (categoryResult?.warning) warnings.push(categoryResult.warning);
     if (brandName && !brand) errors.push(`Brend tapılmadı: ${brandName}`);
     if (parsedQuantity !== null && (!Number.isInteger(parsedQuantity) || parsedQuantity < 0 || parsedQuantity > 1_000_000)) errors.push("Stok sıfır və ya müsbət tam ədəd olmalıdır");
     if (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {

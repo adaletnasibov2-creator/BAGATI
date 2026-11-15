@@ -240,7 +240,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:str
     catch(error){return NextResponse.json({error:error instanceof ImportParseError?error.message:"Fayl oxunmadı"},{status:422})}
    }
    if(!effectiveMapping.name||!effectiveMapping.price||!effectiveMapping.category)return NextResponse.json({error:"Məhsul adı, qiymət və kateqoriya sütunlarını uyğunlaşdırın"},{status:422});
-    const [categoryRows,brands,existing]=await Promise.all([db.category.findMany({where:{isActive:true},select:{id:true,name:true,slug:true}}),db.brand.findMany({select:{id:true,name:true}}),db.product.findMany({where:{storeId},select:{id:true,sku:true,inventory:{where:{variantId:null},select:{quantity:true,reserved:true},take:1}}})]);
+    const [categoryRows,brands,existing]=await Promise.all([db.category.findMany({where:{isActive:true,OR:[{parentId:null},{parent:{is:{isActive:true}}}]},select:{id:true,name:true,slug:true,parentId:true}}),db.brand.findMany({select:{id:true,name:true}}),db.product.findMany({where:{storeId},select:{id:true,sku:true,inventory:{where:{variantId:null},select:{quantity:true,reserved:true},take:1}}})]);
    const categories=categoriesWithOtherLast(categoryRows as {id:string;name:string;slug:string}[]);
     const variantSkuValues=effectiveMapping.variants?effectiveRows.flatMap((row)=>parseImportVariants(String(row[effectiveMapping.variants]??"")).variants.flatMap((variant)=>variant.sku?[variant.sku]:[])):[];
     const existingVariantSkuKeys=await findExistingVariantSkuKeys(db,variantSkuValues);

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const [categoryRows, brands, existing] = await Promise.all([
-    prisma.category.findMany({ where: { isActive: true }, select: { id: true, name: true, slug: true } }),
+    prisma.category.findMany({ where: { isActive: true, OR: [{ parentId: null }, { parent: { is: { isActive: true } } }] }, select: { id: true, name: true, slug: true, parentId: true } }),
     prisma.brand.findMany({ select: { id: true, name: true } }),
     prisma.product.findMany({ where: { storeId }, select: { id: true, sku: true } }),
   ]);

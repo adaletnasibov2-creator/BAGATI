@@ -116,7 +116,7 @@ export async function POST(
         `);
       }
       const [categoryRows, brands, existing] = await Promise.all([
-        tx.category.findMany({ where: { isActive: true }, select: { id: true, name: true, slug: true } }),
+        tx.category.findMany({ where: { isActive: true, OR: [{ parentId: null }, { parent: { is: { isActive: true } } }] }, select: { id: true, name: true, slug: true, parentId: true } }),
         tx.brand.findMany({ select: { id: true, name: true } }),
         productIds.length
           ? tx.product.findMany({

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CategoryEmptyState } from "@/components/category-empty-state";
 import { prisma } from "@/lib/prisma";
 import { createPrismaPublicProductCatalogClient, decodeProductCatalogCursor, findPublicProductCatalogPage } from "@/lib/public-product-catalog";
 import { createPrismaPublicStoreDiscoveryClient, findPublicStoreDiscoveryCursorPage } from "@/lib/public-store-discovery";
@@ -9,7 +10,7 @@ import { EmptyState } from "@/components/state-panel";
 import { calculateEffectivePrice, productPromotions } from "@/lib/promotion-pricing";
 import { normalizeProductCatalogSort } from "@/lib/catalog-sort";
 import { getPublicCategoryData } from "@/lib/public-category-tree";
-import { categoryBreadcrumbs, findCategoryBySlug } from "@/lib/category-tree";
+import { categoryBreadcrumbs, categorySiblingLinks, findCategoryBySlug, isPublicCategory } from "@/lib/category-tree";
 import { categoryPageMetadata } from "@/lib/category-seo";
 import { CategoryFilterTree } from "@/components/category-filter-tree";
 import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
@@ -26,7 +27,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   if (!params.category) return { title: "Məhsullar" };
   const data = await getPublicCategoryData();
-  const found = findCategoryBySlug(data.rows, params.category);
+  const lookup = findCategoryBySlug(data.rows, params.category);
+  // A deactivated category is "not found" publicly: its name never appears in the title.
+  const found = lookup && isPublicCategory(data.rows, lookup.category.id) ? lookup : null;
   const visibleCount = found ? data.tree.flatMap((top) => [top, ...top.children]).find((node) => node.id === found.category.id)?.count ?? 0 : 0;
   return categoryPageMetadata({ category: found?.category ?? null, parent: found?.parent ?? null, visibleCount });
 }
@@ -72,7 +75,10 @@ export default async function ProductsPage({ searchParams }: Props) {
     ? await resolvePublicStoreEligibility([selectedStore.id], prisma, now)
     : new Set<string>();
   const visibleSelectedStore = selectedStore && eligibleSelectedStoreIds.has(selectedStore.id) ? selectedStore : null;
-  const selectedCategory = findCategoryBySlug(categoryData.rows, params.category);
+  // A deactivated category (or one under a deactivated parent) is not shown as selected: no name, no breadcrumb.
+  const requestedCategory = findCategoryBySlug(categoryData.rows, params.category);
+  const selectedCategory = requestedCategory && isPublicCategory(categoryData.rows, requestedCategory.category.id) ? requestedCategory : null;
+  const categoryUnavailable = Boolean(params.category) && !selectedCategory;
   const storeOptions = storePage.items.map(({ id, name }) => ({ id, name }));
   if (visibleSelectedStore && !storeOptions.some(({ id }) => id === visibleSelectedStore.id)) storeOptions.unshift(visibleSelectedStore);
   const catalogHref = (value: string | null) => {
@@ -150,7 +156,11 @@ export default async function ProductsPage({ searchParams }: Props) {
         {products.hasPrevious && products.previousCursor ? <Link rel="prev" href={catalogHref(products.previousCursor)} className="min-h-11 rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium">← Əvvəlki məhsullar</Link> : <span/>}
         {products.hasNext && products.nextCursor ? <Link rel="next" href={catalogHref(products.nextCursor)} className="min-h-11 rounded-xl bg-ink px-4 py-3 text-sm font-medium text-white">Daha çox məhsul →</Link> : <span className="self-center text-xs text-muted">Bütün uyğun məhsullar göstərildi</span>}
       </nav>
-    </> : <div className="mt-8 lg:mt-0"><EmptyState title="Məhsul tapılmadı" detail="Axtarış və filtrləri dəyişərək yenidən yoxlayın."/>{products.hasPrevious && products.previousCursor && <Link rel="prev" href={catalogHref(products.previousCursor)} className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium">← Əvvəlki məhsullar</Link>}{products.hasNext && products.nextCursor && <Link rel="next" href={catalogHref(products.nextCursor)} className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-ink px-4 py-3 text-sm font-medium text-white">{"N\u00f6vb\u0259ti n\u0259tic\u0259l\u0259ri yoxla \u2192"}</Link>}</div>}
+    </> : <div className="mt-8 lg:mt-0">{selectedCategory && !searchQuery && !params.store && !products.hasPrevious
+      ? <CategoryEmptyState links={categorySiblingLinks(categoryData.tree, selectedCategory.category.id)} />
+      : categoryUnavailable && !searchQuery
+        ? <CategoryEmptyState title="Bu kateqoriya hazırda mövcud deyil." detail="Bütün məhsullara və ya digər kateqoriyalara baxa bilərsiniz." links={categorySiblingLinks(categoryData.tree, "")} />
+        : <EmptyState title="Məhsul tapılmadı" detail="Axtarış və filtrləri dəyişərək yenidən yoxlayın."/>}{products.hasPrevious && products.previousCursor && <Link rel="prev" href={catalogHref(products.previousCursor)} className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium">← Əvvəlki məhsullar</Link>}{products.hasNext && products.nextCursor && <Link rel="next" href={catalogHref(products.nextCursor)} className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-ink px-4 py-3 text-sm font-medium text-white">{"N\u00f6vb\u0259ti n\u0259tic\u0259l\u0259ri yoxla \u2192"}</Link>}</div>}
     </div>
     </div>
   </div>;

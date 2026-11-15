@@ -168,19 +168,47 @@ export function rollUpCategoryCounts(rows: readonly Pick<CategoryRow, "id" | "pa
 export type CountedNode<T extends CategoryRow = CategoryRow> = T & { count: number; children: (T & { count: number })[] };
 
 /**
- * Public tree: only active categories (a subcategory also needs an active parent) with at least one visible product
- * in their scope. Counts are the rolled-up totals.
+ * Public tree: only active categories (a subcategory also needs an active parent; deactivating a parent hides its
+ * subcategories without changing their own isActive). Counts are the rolled-up totals.
+ * - showEmpty false: only categories with at least one visible product in their scope.
+ * - showEmpty true (setting catalog.showEmptyCategories, default ON): every active category, also with count 0.
  */
-export function publicCategoryTree<T extends CategoryRow>(rows: readonly T[], direct: ReadonlyMap<string, number>): CountedNode<T>[] {
+export function publicCategoryTree<T extends CategoryRow>(rows: readonly T[], direct: ReadonlyMap<string, number>, options: { showEmpty?: boolean } = {}): CountedNode<T>[] {
+  const showEmpty = options.showEmpty ?? false;
   const active = rows.filter((row) => row.isActive);
   const totals = rollUpCategoryCounts(active, direct);
   return buildCategoryTree(active)
     .map((top) => ({
       ...top,
       count: totals.get(top.id) ?? 0,
-      children: top.children.map((child) => ({ ...child, count: totals.get(child.id) ?? 0 })).filter((child) => child.count > 0),
+      children: top.children.map((child) => ({ ...child, count: totals.get(child.id) ?? 0 })).filter((child) => showEmpty || child.count > 0),
     }))
-    .filter((top) => top.count > 0);
+    .filter((top) => showEmpty || top.count > 0);
+}
+
+/** Is this category shown publicly at all (active, and for a subcategory an active parent)? Empty or not. */
+export function isPublicCategory(rows: readonly Pick<CategoryRow, "id" | "parentId" | "isActive">[], categoryId: string): boolean {
+  const category = rows.find((row) => row.id === categoryId);
+  if (!category || !category.isActive) return false;
+  if (category.parentId === null) return true;
+  return rows.find((row) => row.id === category.parentId)?.isActive === true;
+}
+
+/**
+ * Links for an empty category page (max 8, from the public tree only): for a subcategory its parent and the other
+ * subcategories; for a top-level its subcategories, or the other top-levels when it has none.
+ */
+export function categorySiblingLinks(
+  tree: readonly { id: string; name: string; slug: string; children: readonly { id: string; name: string; slug: string }[] }[],
+  categoryId: string,
+  limit = 8,
+): { name: string; slug: string }[] {
+  const pick = (items: readonly { id: string; name: string; slug: string }[]) => items.filter((item) => item.id !== categoryId).map(({ name, slug }) => ({ name, slug }));
+  const top = tree.find((node) => node.id === categoryId);
+  if (top) return (top.children.length ? pick(top.children) : pick(tree)).slice(0, limit);
+  const parent = tree.find((node) => node.children.some((child) => child.id === categoryId));
+  if (parent) return [{ name: parent.name, slug: parent.slug }, ...pick(parent.children)].slice(0, limit);
+  return pick(tree).slice(0, limit);
 }
 
 export type CategoryChoiceError = "NOT_FOUND" | "INACTIVE" | "PARENT_INACTIVE" | "PARENT_MISMATCH" | "SUBCATEGORY_REQUIRED";

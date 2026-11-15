@@ -5,7 +5,7 @@ import type { PublicCategoryNode } from "@/lib/public-category-tree";
 
 /**
  * Product list category filter: expand/collapse per top-level (native <details>, works without JavaScript),
- * counts of visible products, plain links so every filter state is a shareable URL.
+ * counts of visible products (zero counts are not shown), plain links so every filter state is a shareable URL.
  */
 export function CategoryFilterTree({
   tree,
@@ -34,7 +34,7 @@ export function CategoryFilterTree({
               <Link href={href(top.slug)} aria-current={current(top.slug) ? "page" : undefined} className={`${link} ${top.children.length ? "mr-10" : ""} ${current(top.slug) ? "bg-[#f0f4f0] font-semibold text-ink" : "text-ink hover:bg-paper"}`}>
                 <CategoryIcon category={top} size="small" className="!h-7 !w-7 !rounded-lg" />
                 <span className="min-w-0 truncate">{top.name}</span>
-                <span className="ml-auto shrink-0 text-xs text-muted">{top.count}</span>
+                {top.count ? <span className="ml-auto shrink-0 text-xs text-muted">{top.count}</span> : null}
               </Link>
               {top.children.length > 0 && (
                 // The chevron is the <summary> itself (beside the link, not wrapping it), so no interactive element is nested.
@@ -48,7 +48,7 @@ export function CategoryFilterTree({
                         <Link href={href(child.slug)} aria-current={current(child.slug) ? "page" : undefined} className={`${link} ${current(child.slug) ? "bg-[#f0f4f0] font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`}>
                           <CategoryGlyph category={child} size={16} className="text-emerald" />
                           <span className="min-w-0 truncate">{child.name}</span>
-                          <span className="ml-auto shrink-0 text-xs">{child.count}</span>
+                          {child.count ? <span className="ml-auto shrink-0 text-xs">{child.count}</span> : null}
                         </Link>
                       </li>
                     ))}

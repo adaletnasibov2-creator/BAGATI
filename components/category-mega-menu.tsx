@@ -90,7 +90,7 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
                         <Link href={categoryHref(child.slug)} className="flex min-h-10 min-w-0 items-center gap-2 rounded-xl px-2 text-[.82rem] text-bagati-text hover:bg-white hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
                           <CategoryGlyph category={child} size={17} className="text-[#1f5a4f]" />
                           <span className="min-w-0 truncate">{child.name}</span>
-                          {typeof child.count === "number" && <span className="ml-auto shrink-0 text-xs text-bagati-muted">{child.count}</span>}
+                          {child.count ? <span className="ml-auto shrink-0 text-xs text-bagati-muted">{child.count}</span> : null}
                         </Link>
                       </li>
                     ))}

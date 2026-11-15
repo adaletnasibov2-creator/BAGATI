@@ -90,7 +90,7 @@ test("section split: thin router, typed sections, no admin file keeps the remove
   assert.match(router, /for \(const section of ADMIN_SECTIONS\) if \(section\.match\(\{ route, parts \}\)\) return section\.render\(ctx\);/);
   assert.doesNotMatch(router, /prisma|db:any|function (Header|Table|Pager|StatusForm|Filters)\b/);
   const sectionFiles = readdirSync(join(root, "app/admin/_sections")).filter((name) => name.endsWith(".tsx"));
-  assert.equal(sectionFiles.length, 32, "29 sections + Phase C1 pages and page-editor + shared.tsx");
+  assert.equal(sectionFiles.length, 33, "29 sections + Phase C1 pages and page-editor + category-move + shared.tsx");
   const adminFiles = [...readdirSync(join(root, "app/admin"), { recursive: true }).map(String)].filter((name) => name.endsWith(".tsx")).map((name) => `app/admin/${name.replace(/\\/g, "/")}`);
   for (const file of adminFiles) {
     const source = read(file);

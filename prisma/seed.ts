@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { citySlug, INITIAL_CATEGORIES, INITIAL_CITY_NAMES } from "../lib/reference-data";
+import { CATEGORY_SEED } from "../lib/category-seed";
 
 const prisma = new PrismaClient();
 
@@ -47,6 +48,25 @@ async function main() {
       update: {},
       create: category,
     });
+  }
+
+  // Two-level tree (same reviewed list as release-output/prod-categories-seed.sql): icon and order are set on a
+  // top-level only while it has no icon yet; new rows are created by slug and never overwrite admin edits.
+  for (const top of CATEGORY_SEED) {
+    const existing = await prisma.category.findUnique({ where: { slug: top.slug }, select: { id: true, iconKey: true, parentId: true } });
+    const parent = existing
+      ? existing.iconKey === null && existing.parentId === null
+        ? await prisma.category.update({ where: { id: existing.id }, data: { iconKey: top.iconKey, sortOrder: top.sortOrder } })
+        : existing
+      : await prisma.category.create({ data: { name: top.name, slug: top.slug, iconKey: top.iconKey, sortOrder: top.sortOrder } });
+    if (existing && existing.parentId !== null) continue;
+    for (const child of top.children) {
+      await prisma.category.upsert({
+        where: { slug: child.slug },
+        update: {},
+        create: { name: child.name, slug: child.slug, sortOrder: child.sortOrder, parentId: parent.id },
+      });
+    }
   }
 
   // Basic subscription plan

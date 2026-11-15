@@ -8,6 +8,8 @@ export const adminProductUpdateSchema = z.object({
   description: z.string().max(5000).nullable(),
   sku: nullableSkuSchema,
   categoryId: z.string().nullable(),
+  /** Top-level picked in step 1 of the category picker; checked against the subcategory's parent. */
+  categoryParentId: z.string().max(64).nullable().optional(),
   brandId: z.string().nullable(),
   price: positiveMoney,
   discountPrice: positiveMoney.nullable(),

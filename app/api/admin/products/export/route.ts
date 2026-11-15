@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   const where: Prisma.ProductWhereInput = {
     ...(status ? { status } : {}),
     ...(storeId ? { storeId } : {}),
-    ...(categoryId ? { categoryId } : {}),
+    ...(categoryId ? { category: { OR: [{ id: categoryId }, { parentId: categoryId }] } } : {}),
     ...(q ? { OR: [
       { name: { contains: q, mode: "insensitive" } },
       { sku: { contains: q, mode: "insensitive" } },

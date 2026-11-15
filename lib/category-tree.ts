@@ -66,6 +66,16 @@ export function buildCategoryTree<T extends CategoryRow>(rows: readonly T[]): Ca
   return sortCategories(tops).map((top) => ({ ...top, children: sortCategories(childrenByParent.get(top.id) ?? []) }));
 }
 
+/** Tree order as a flat list (each top-level followed by its subcategories), e.g. for <select> options. */
+export function flattenCategoryTree<T extends CategoryRow>(rows: readonly T[]): T[] {
+  return buildCategoryTree(rows).flatMap(({ children, ...top }) => [top as unknown as T, ...children]);
+}
+
+/** Option label for flat selects: subcategories are indented under their parent. */
+export function categoryOptionLabel(row: { name: string; parentId: string | null }): string {
+  return row.parentId ? `  — ${row.name}` : row.name;
+}
+
 export type PlacementError = "PARENT_NOT_FOUND" | "PARENT_IS_SUBCATEGORY" | "HAS_CHILDREN" | "SELF_PARENT";
 
 export const placementErrorMessages: Record<PlacementError, string> = {

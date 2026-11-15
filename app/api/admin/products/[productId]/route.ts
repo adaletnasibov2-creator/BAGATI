@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import { csrfRejection } from "@/lib/csrf";
 import { Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/auth";
@@ -28,9 +29,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!product) return NextResponse.json({ error: "Məhsul tapılmadı" }, { status: 404 });
 
   const values = parsed.data;
-  if (values.categoryId && !await prisma.category.findFirst({ where: { id: values.categoryId, isActive: true }, select: { id: true } })) {
-    return NextResponse.json({ error: "Aktiv kateqoriya tapılmadı" }, { status: 422 });
-  }
+  // Same rule as the seller forms: unchanged category is kept; a changed one must be active (subcategory if any).
+  const categoryError = await productCategoryChoiceError(prisma, { categoryId: values.categoryId, previousCategoryId: product.categoryId, expectedParentId: readCategoryParentId(body) });
+  if (categoryError) return NextResponse.json({ error: categoryError }, { status: 422 });
   if (values.brandId && !await prisma.brand.findUnique({ where: { id: values.brandId }, select: { id: true } })) {
     return NextResponse.json({ error: "Brend tapılmadı" }, { status: 422 });
   }

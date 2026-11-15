@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireStoreAccess } from "@/lib/auth";
@@ -58,7 +59,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
   const items=rows.map((row:any)=>{const {payments,...order}=row.order;return {...row,order,payment:summarizePaymentStatus(payments.map((p:any)=>p.status))};});
   return NextResponse.json({items,page,pageSize,total,totalPages});
  }
- if(section==="products"){const [items,categories,brands]=await Promise.all([db.product.findMany({where:{storeId},include:{category:true,brand:true,variants:{include:{inventory:true}},inventory:true},orderBy:{updatedAt:"desc"}}),db.category.findMany({where:{isActive:true},select:{id:true,name:true},orderBy:{name:"asc"}}),db.brand.findMany({select:{id:true,name:true},orderBy:{name:"asc"}})]);return NextResponse.json({items,categories:categoriesWithOtherLast(categories),brands});}
+ if(section==="products"){const [items,categories,brands]=await Promise.all([db.product.findMany({where:{storeId},include:{category:true,brand:true,variants:{include:{inventory:true}},inventory:true},orderBy:{updatedAt:"desc"}}),db.category.findMany({where:{isActive:true},select:{id:true,name:true,slug:true,parentId:true,sortOrder:true,iconKey:true,imageUrl:true},orderBy:[{sortOrder:"asc"},{name:"asc"}]}),db.brand.findMany({select:{id:true,name:true},orderBy:{name:"asc"}})]);return NextResponse.json({items,categories:categoriesWithOtherLast(categories),brands});}
   if(section==="inventory")return NextResponse.json({items:await db.inventory.findMany({where:{product:{storeId}},include:{product:{select:{name:true,sku:true}},variant:{select:{id:true,name:true,sku:true,options:true,isActive:true}},adjustments:{orderBy:{createdAt:"desc"},take:5}},orderBy:{updatedAt:"desc"}})});
  if(section==="campaigns"){
   const q=req.nextUrl.searchParams.get("q")?.trim()||"";
@@ -156,6 +157,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:str
   if(section==="products"){
    const parsed=legacyVendorProductSchema.safeParse(body); if(!parsed.success)return NextResponse.json({error:"Məhsul məlumatları yanlışdır"},{status:422});
    const d=parsed.data;
+   const categoryError=await productCategoryChoiceError(db,{categoryId:parsed.data.categoryId,expectedParentId:readCategoryParentId(body)});if(categoryError)return NextResponse.json({error:categoryError},{status:422});
    const entitlement=await getStoreEntitlements(storeId,db);
     const publish=parsed.data.status==="ACTIVE";if(publish){if(!entitlement.eligible||!entitlement.plan)return entitlementErrorResponse(new EntitlementError("SUBSCRIPTION_REQUIRED",null));try{await assertProductLimit(db,storeId,entitlement.plan);}catch(error){if(error instanceof EntitlementError)return entitlementErrorResponse(error);throw error}}
    if(hasDuplicateNormalizedSkus(parsed.data.variants.map((variant:any)=>variant.sku)))return NextResponse.json({error:"Seçimlərin məhsul kodları təkrarlana bilməz"},{status:409});
@@ -370,6 +372,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
   const s=legacyVendorProductPatchSchema.safeParse(b);
   if(!s.success)return NextResponse.json({error:"Məhsul məlumatlarını yoxlayın"},{status:422});
   const {id,...v}=s.data;
+  if(v.categoryId){const existing=await db.product.findFirst({where:{id,storeId},select:{categoryId:true}});const categoryError=await productCategoryChoiceError(db,{categoryId:v.categoryId,previousCategoryId:existing?existing.categoryId:undefined,expectedParentId:readCategoryParentId(b)});if(categoryError)return NextResponse.json({error:categoryError},{status:422});}
   if(v.price!==undefined&&v.discountPrice!==undefined&&v.discountPrice!==null&&v.discountPrice>=v.price)return NextResponse.json({error:"Endirimli qiymət əsas qiymətdən az olmalıdır"},{status:422});
   const updateData={...v,...(v.price!==undefined?{price:new Prisma.Decimal(v.price)}:{}),...(v.discountPrice!==undefined?{discountPrice:v.discountPrice===null?null:new Prisma.Decimal(v.discountPrice)}:{})};
   if(v.status==="ACTIVE"){

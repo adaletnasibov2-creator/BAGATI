@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { flattenCategoryTree, type CategoryRow } from "@/lib/category-tree";
+import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import { Prisma } from "@prisma/client";
 import { requireStoreAccess } from "@/lib/auth";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
@@ -6,7 +8,6 @@ import { prisma } from "@/lib/prisma";
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { assertUniqueVariantCombinations } from "@/lib/product-variants";
 import { matchesProductStockFilter } from "@/lib/vendor-inventory";
-import { categoriesWithOtherLast } from "@/lib/category-order";
 import { assertProductLimit, assertVariantLimit, EntitlementError, entitlementErrorResponse, lockStoreEntitlement } from "@/lib/subscription-entitlements";
 import { collectStockFilteredPage, type StockPageCursor } from "@/lib/vendor-product-stock-page";
 import { findExistingProductSkuMatches, findExistingVariantSkuKeys, CatalogSkuConflictError, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
@@ -56,12 +57,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const take = 24;
   const where: Prisma.ProductWhereInput = {
     storeId: access.storeId,
-    ...(categoryId ? { categoryId } : {}),
+    // Filtering by a top-level also lists products in its subcategories.
+    ...(categoryId ? { category: { OR: [{ id: categoryId }, { parentId: categoryId }] } } : {}),
     ...(status ? { status } : {}),
     ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { sku: { contains: q, mode: "insensitive" } }] } : {}),
   };
   const [categories, brands] = await Promise.all([
-    db.category.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    // Pickers show every active category (also empty ones), with parentId and icon for the two-step picker.
+    db.category.findMany({ where: { isActive: true }, select: { id: true, name: true, slug: true, parentId: true, sortOrder: true, iconKey: true, imageUrl: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     db.brand.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   let total = 0;
@@ -132,7 +135,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
   const eligibleStoreIds = await resolvePublicStoreEligibility([access.storeId], db);
   const withStock = items.map((product: any) => { const rows = product.variants.length ? product.variants.filter((variant: any) => variant.isActive).flatMap((variant: any) => variant.inventory) : product.inventory.filter((inventory: any) => inventory.variantId === null); const stockQuantity = rows.reduce((sum: number, row: any) => sum + row.quantity, 0), stockReserved = rows.reduce((sum: number, row: any) => sum + row.reserved, 0); return { ...product, stockQuantity, stockReserved, availableStock: Math.max(0, stockQuantity - stockReserved), lowStockThreshold: Math.max(0, ...rows.map((row: any) => row.lowStockThreshold)), activeVariantCount: product.variants.filter((variant: any) => variant.isActive).length }; });
-  return NextResponse.json({ items: withStock, total, page, pages: Math.max(1, Math.ceil(total / take)), categories: categoriesWithOtherLast(categories), brands, canSell: eligibleStoreIds.has(access.storeId) });
+  return NextResponse.json({ items: withStock, total, page, pages: Math.max(1, Math.ceil(total / take)), categories: flattenCategoryTree(categories.map((category: Omit<CategoryRow, "isActive">) => ({ ...category, isActive: true }))), brands, canSell: eligibleStoreIds.has(access.storeId) });
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ storeId: string }> }) {
@@ -155,7 +158,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (value.images.some(url => !isOwnedStoreAssetUrl(access.storeId, url))) return NextResponse.json({ error: "Yalnız bu mağazaya yüklənmiş şəkillərdən istifadə edin" }, { status: 422 });
   if (value.variants.some(variant => variant.images.some(url => !isOwnedStoreAssetUrl(access.storeId, url)))) return NextResponse.json({ error: "Seçim şəkillərini bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });
   if (value.variants.some(variant => variant.discountPrice != null && variant.discountPrice >= (variant.price ?? value.price))) return NextResponse.json({ error: "Seçimin endirimli qiyməti onun əsas qiymətindən aşağı olmalıdır" }, { status: 422 });
-  if (value.categoryId && !await db.category.findFirst({ where: { id: value.categoryId, isActive: true }, select: { id: true } })) return NextResponse.json({ error: "Aktiv kateqoriya tapılmadı" }, { status: 422 });
+  // New product: the category must be active, and a top-level with subcategories needs a subcategory.
+  const categoryError = await productCategoryChoiceError(db, { categoryId: value.categoryId, expectedParentId: readCategoryParentId(body) });
+  if (categoryError) return NextResponse.json({ error: categoryError }, { status: 422 });
   if (value.brandId && !await db.brand.findUnique({ where: { id: value.brandId }, select: { id: true } })) return NextResponse.json({ error: "Brend tapılmadı" }, { status: 422 });
   if (value.status === "ACTIVE") {
     if (!value.categoryId) return NextResponse.json({ error: "Məhsulu yayımlamaq üçün kateqoriya seçin" }, { status: 422 });

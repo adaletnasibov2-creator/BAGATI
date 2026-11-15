@@ -80,6 +80,8 @@ function normalizeSlug(value: string | null | undefined, name: string): string {
 export function mapCategoryDbError(error: unknown): never {
   if (error instanceof CategoryAdminError) throw error;
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new CategoryAdminError(409, "Bu slug artıq başqa kateqoriyada istifadə olunur.");
+  // Safety net: a foreign-key style error from the DB (e.g. a concurrent write) is reported as a conflict, not a 503.
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") throw new CategoryAdminError(409, "Kateqoriya bu arada dəyişib (məhsul və ya alt kateqoriya əlaqəsi). Səhifəni yeniləyin.");
   const message = error instanceof Error ? error.message : "";
   if (message.includes("CATEGORY_DEPTH")) throw new CategoryAdminError(422, "Kateqoriyalar yalnız iki səviyyəli ola bilər (üst > alt).");
   if (message.includes("CATEGORY_IN_USE")) throw new CategoryAdminError(409, "Məhsulu və ya alt kateqoriyası olan kateqoriya silinmir; onu deaktiv edin.");

@@ -153,3 +153,10 @@ test("category path parsing for the importer", () => {
   assert.equal(parseCategoryPath("a > b > c"), null);
   assert.equal(parseCategoryPath("a > "), null);
 });
+
+test("DB guard errors use check_violation so the CATEGORY_* text reaches the app (Prisma maps 23503 to a generic P2003)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync("prisma/migrations/20261116010000_category_tree/migration.sql", "utf8");
+  assert.doesNotMatch(sql, /foreign_key_violation/);
+  assert.equal(sql.match(/USING ERRCODE = 'check_violation'/g)?.length, 5);
+});

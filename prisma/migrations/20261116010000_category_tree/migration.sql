@@ -27,7 +27,7 @@ BEGIN
   END IF;
   SELECT c."parentId" INTO grandparent FROM "Category" c WHERE c."id" = NEW."parentId" FOR SHARE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'CATEGORY_DEPTH: parent category % does not exist', NEW."parentId" USING ERRCODE = 'foreign_key_violation';
+    RAISE EXCEPTION 'CATEGORY_DEPTH: parent category % does not exist', NEW."parentId" USING ERRCODE = 'check_violation';
   END IF;
   IF grandparent IS NOT NULL THEN
     RAISE EXCEPTION 'CATEGORY_DEPTH: parent category % is itself a subcategory', NEW."parentId" USING ERRCODE = 'check_violation';
@@ -48,10 +48,10 @@ CREATE TRIGGER "Category_tree_guard"
 CREATE FUNCTION "category_delete_guard"() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF EXISTS (SELECT 1 FROM "Category" c WHERE c."parentId" = OLD."id") THEN
-    RAISE EXCEPTION 'CATEGORY_IN_USE: category % has subcategories', OLD."id" USING ERRCODE = 'foreign_key_violation';
+    RAISE EXCEPTION 'CATEGORY_IN_USE: category % has subcategories', OLD."id" USING ERRCODE = 'check_violation';
   END IF;
   IF EXISTS (SELECT 1 FROM "Product" p WHERE p."categoryId" = OLD."id") THEN
-    RAISE EXCEPTION 'CATEGORY_IN_USE: category % has products', OLD."id" USING ERRCODE = 'foreign_key_violation';
+    RAISE EXCEPTION 'CATEGORY_IN_USE: category % has products', OLD."id" USING ERRCODE = 'check_violation';
   END IF;
   RETURN OLD;
 END

@@ -178,6 +178,7 @@ test("bulk move: version-checked, all-or-nothing, max 100, active subcategory ta
 test("DB guard errors are mapped to admin messages", () => {
   assert.throws(() => mapCategoryDbError(new Error("CATEGORY_DEPTH: parent x is itself a subcategory")), (error: unknown) => error instanceof CategoryAdminError && error.status === 422);
   assert.throws(() => mapCategoryDbError(new Error("CATEGORY_IN_USE: category x has products")), (error: unknown) => error instanceof CategoryAdminError && error.status === 409);
+  assert.throws(() => mapCategoryDbError(new Prisma.PrismaClientKnownRequestError("fk", { code: "P2003", clientVersion: "test" })), (error: unknown) => error instanceof CategoryAdminError && error.status === 409);
   assert.throws(() => mapCategoryDbError(new Error("other")), /other/);
 });
 

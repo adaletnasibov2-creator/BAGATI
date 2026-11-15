@@ -99,6 +99,23 @@ test("category tree: DB guards, admin service, scope query and counts on Postgre
       assert.equal(await prisma.auditLog.count({ where: { actorId: ids.admin, action: "PRODUCTS_CATEGORY_MOVE" } }), 1);
     });
 
+    await t.test("Aktiv/Deaktiv: parent off hides an active child publicly without changing it; products untouched; audited", async () => {
+      const { loadAllCategoryRows, toPublicTree } = await import("../lib/public-category-tree");
+      const productsBefore = await prisma.product.findMany({ where: { storeId: ids.store }, orderBy: { id: "asc" } });
+      await service.updateCategory(prisma, ids.admin, top!.id, { isActive: false });
+      const childAfter = await prisma.category.findUniqueOrThrow({ where: { id: sub!.id } });
+      assert.equal(childAfter.isActive, true, "child keeps its own state");
+      let tree = toPublicTree(await loadAllCategoryRows(prisma), new Map(), { showEmpty: true });
+      assert.ok(!tree.some((node) => node.id === top!.id) && !tree.flatMap((node) => node.children).some((child) => child.id === sub!.id), "hidden publicly");
+      await service.updateCategory(prisma, ids.admin, top!.id, { isActive: true });
+      tree = toPublicTree(await loadAllCategoryRows(prisma), new Map(), { showEmpty: true });
+      assert.ok(tree.find((node) => node.id === top!.id)?.children.some((child) => child.id === sub!.id), "restored with its child");
+      const productsAfter = await prisma.product.findMany({ where: { storeId: ids.store }, orderBy: { id: "asc" } });
+      assert.deepEqual(productsAfter, productsBefore, "no product row changed");
+      const toggles = await prisma.auditLog.findMany({ where: { actorId: ids.admin, entityId: top!.id, action: { in: ["CATEGORY_DEACTIVATE", "CATEGORY_ACTIVATE"] } }, orderBy: { createdAt: "asc" }, select: { action: true } });
+      assert.deepEqual(toggles.map((row) => row.action), ["CATEGORY_DEACTIVATE", "CATEGORY_ACTIVATE"]);
+    });
+
     await t.test("delete: refused while in use, allowed when empty", async () => {
       await assert.rejects(service.deleteCategory(prisma, ids.admin, sub!.id), (error: unknown) => error instanceof service.CategoryAdminError && error.status === 409);
       const empty = await service.createCategory(prisma, ids.admin, { name: `Boş ${tag}`, slug: `${tag}-bos`, parentId: other!.id });

@@ -32,7 +32,7 @@ type ProductRecord = {
     freeDeliveryThreshold: Prisma.Decimal;
     city: { name: string };
   };
-  category: { name: string; slug: string; parent: { name: string; slug: string } | null } | null;
+  category: { name: string; slug: string; isActive: boolean; parent: { name: string; slug: string; isActive: boolean } | null } | null;
   inventory: { variantId: string | null; quantity: number; reserved: number }[];
   variants: {
     id: string;
@@ -68,7 +68,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
             city: { select: { name: true } },
           },
         },
-        category: { select: { name: true, slug: true, parent: { select: { name: true, slug: true } } } },
+        category: { select: { name: true, slug: true, isActive: true, parent: { select: { name: true, slug: true, isActive: true } } } },
         variants: { include: { inventory: true } },
         inventory: true,
         promotionProducts: { include: { promotion: true } },
@@ -116,17 +116,21 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
     };
   });
 
+  // A deactivated category (or a subcategory under a deactivated parent) is hidden publicly: the product stays
+  // reachable and purchasable, but its breadcrumb and "Kateqoriya" line do not link to the hidden category.
+  const publicCategory = product.category && product.category.isActive && (!product.category.parent || product.category.parent.isActive) ? product.category : null;
+
   return (
     <div className="container py-6 md:py-10">
       <nav aria-label="Breadcrumb" className="mb-6 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
         <Link href="/" className="shrink-0 hover:text-emerald">Ana səhifə</Link>
-        {product.category?.parent && <>
+        {publicCategory?.parent && <>
           <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
-          <Link href={categoryHref(product.category.parent.slug)} className="shrink-0 hover:text-emerald">{product.category.parent.name}</Link>
+          <Link href={categoryHref(publicCategory.parent.slug)} className="shrink-0 hover:text-emerald">{publicCategory.parent.name}</Link>
         </>}
-        {product.category ? <>
+        {publicCategory ? <>
           <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
-          <Link href={categoryHref(product.category.slug)} className="shrink-0 hover:text-emerald">{product.category.name}</Link>
+          <Link href={categoryHref(publicCategory.slug)} className="shrink-0 hover:text-emerald">{publicCategory.name}</Link>
         </> : <>
           <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
           <Link href="/products" className="shrink-0 hover:text-emerald">Məhsullar</Link>
@@ -152,9 +156,9 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           deliveryFee: product.store.deliveryFee.toFixed(2),
           freeDeliveryThreshold: product.store.freeDeliveryThreshold.toFixed(2),
         }}
-        category={product.category ? {
-          name: product.category.name,
-          href: categoryHref(product.category.slug),
+        category={publicCategory ? {
+          name: publicCategory.name,
+          href: categoryHref(publicCategory.slug),
         } : null}
         sku={product.sku}
       />
@@ -166,8 +170,8 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-muted">
             {product.description || "Satıcı bu məhsul üçün əlavə təsvir təqdim etməyib."}
           </p>
-          {product.category && <p className="mt-5 border-t border-line pt-4 text-sm text-muted">
-            Kateqoriya: {product.category.parent && <><Link href={categoryHref(product.category.parent.slug)} className="font-medium text-ink hover:text-emerald">{product.category.parent.name}</Link>{" › "}</>}<Link href={categoryHref(product.category.slug)} className="font-medium text-ink hover:text-emerald">{product.category.name}</Link>
+          {publicCategory && <p className="mt-5 border-t border-line pt-4 text-sm text-muted">
+            Kateqoriya: {publicCategory.parent && <><Link href={categoryHref(publicCategory.parent.slug)} className="font-medium text-ink hover:text-emerald">{publicCategory.parent.name}</Link>{" › "}</>}<Link href={categoryHref(publicCategory.slug)} className="font-medium text-ink hover:text-emerald">{publicCategory.name}</Link>
           </p>}
         </section>
 

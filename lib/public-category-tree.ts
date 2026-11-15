@@ -15,6 +15,8 @@ import { publicProductCatalogCandidateWhere } from "@/lib/public-product-catalog
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import type { PublicStoreEligibilityClient } from "@/lib/public-store-eligibility";
 import { publicCategoryTree, type CategoryRow } from "@/lib/category-tree";
+import { getSetting } from "@/lib/settings/read";
+import { SETTING_KEYS } from "@/lib/settings/registry";
 
 export const categoryRowSelect = {
   id: true, name: true, slug: true, parentId: true, isActive: true, sortOrder: true, iconKey: true, imageUrl: true,
@@ -55,8 +57,8 @@ export async function countVisibleProductsByCategory(db: CountReader = prisma, n
   return counts;
 }
 
-export function toPublicTree(rows: readonly CategoryRow[], counts: ReadonlyMap<string, number>): PublicCategoryNode[] {
-  return publicCategoryTree(rows, counts).map((top) => ({
+export function toPublicTree(rows: readonly CategoryRow[], counts: ReadonlyMap<string, number>, options: { showEmpty?: boolean } = {}): PublicCategoryNode[] {
+  return publicCategoryTree(rows, counts, options).map((top) => ({
     id: top.id, name: top.name, slug: top.slug, parentId: null, iconKey: top.iconKey, imageUrl: top.imageUrl, parentIconKey: null, count: top.count,
     children: top.children.map((child) => ({
       id: child.id, name: child.name, slug: child.slug, parentId: top.id, iconKey: child.iconKey, imageUrl: child.imageUrl, parentIconKey: top.iconKey, count: child.count,
@@ -64,11 +66,21 @@ export function toPublicTree(rows: readonly CategoryRow[], counts: ReadonlyMap<s
   }));
 }
 
-export type PublicCategoryData = { rows: CategoryRow[]; counts: Map<string, number>; tree: PublicCategoryNode[] };
+export type PublicCategoryData = { rows: CategoryRow[]; counts: Map<string, number>; showEmpty: boolean; tree: PublicCategoryNode[] };
 
 /** One query pair per request (React cache): layout, page and metadata share it. */
+/**
+ * One query pair per request (React cache): layout, page and metadata share it. Category rows are read per request
+ * (no cross-request cache), so an admin activate/deactivate is visible on the next page load. The setting
+ * catalog.showEmptyCategories is a cached settings read (fail-safe: its default ON when the read fails).
+ */
 export const getPublicCategoryData = cache(async (citySlug?: string | null): Promise<PublicCategoryData> => {
   const now = new Date();
-  const [rows, counts] = await Promise.all([loadAllCategoryRows(), countVisibleProductsByCategory(prisma, now, citySlug)]);
-  return { rows, counts, tree: toPublicTree(rows, counts) };
+  const [rows, counts, setting] = await Promise.all([
+    loadAllCategoryRows(),
+    countVisibleProductsByCategory(prisma, now, citySlug),
+    getSetting<boolean>(SETTING_KEYS.catalogShowEmptyCategories),
+  ]);
+  const showEmpty = setting !== false; // null (no value) = the default, ON
+  return { rows, counts, showEmpty, tree: toPublicTree(rows, counts, { showEmpty }) };
 });

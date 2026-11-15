@@ -14,7 +14,7 @@ export async function renderVendorsNew({ shell }: SectionContext) {
      {name:"phone",label:"Telefon"},
      {name:"sellerType",label:"Satıcı növü",type:"select",required:true,options:[{value:"INDIVIDUAL_ENTREPRENEUR",label:"Fərdi sahibkar"},{value:"REGISTERED_COMPANY",label:"Qeydiyyatda olan şirkət"}]},
      {name:"legalName",label:"Biznesin rəsmi adı",required:true},
-     {name:"voen",label:"VÖEN (10 rəqəm)",required:true,placeholder:"1234567890"},
+     {name:"voen",label:"VÖEN (10 rəqəm, sonuncu 1 və ya 2)",required:true,placeholder:"1234567891"},
      {name:"legalAddress",label:"Hüquqi ünvan (qeydiyyatda olan şirkət üçün məcburi)",type:"textarea"},
      {name:"storeName",label:"Mağaza adı",required:true},
      {name:"storeDescription",label:"Mağaza təsviri",type:"textarea"},

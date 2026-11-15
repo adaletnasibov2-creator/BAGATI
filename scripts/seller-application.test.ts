@@ -30,24 +30,27 @@ const valid = {
   phone: "055 123 45 67",
   sellerType: "INDIVIDUAL_ENTREPRENEUR",
   legalName: "Aysel Məmmədova",
-  voen: "1234 567 890",
+  voen: "1234 567 892",
 };
 
-test("VÖEN is normalized to digits and must have exactly 10 digits for new applications", () => {
+test("VÖEN: stored values are compared as digits; new VÖENs follow lib/voen.ts (10 digits, last digit 1 or 2, spaces only)", () => {
   assert.equal(normalizeVoen(" 12 345-678 90 "), "1234567890");
   assert.equal(normalizeVoen("abc"), null);
   assert.equal(normalizeVoen(null), null);
-  assert.equal(isValidNewVoen("1234567890"), true);
+  assert.equal(isValidNewVoen("1234567891"), true);
+  assert.equal(isValidNewVoen("1234 567 892"), true);
+  assert.equal(isValidNewVoen("1234567890"), false, "last digit must be 1 or 2");
   assert.equal(isValidNewVoen("123456789"), false);
   assert.equal(isValidNewVoen("12345678901"), false);
-  assert.equal(isValidNewVoen("AZ1234567890"), true, "letters are dropped, 10 digits remain");
+  assert.equal(isValidNewVoen("AZ1234567891"), false, "letters are rejected, not dropped");
+  assert.equal(isValidNewVoen("12-345-678-91"), false, "dashes are rejected");
   assert.equal(maskVoen("1234567890"), "•••••••890");
   assert.equal(maskVoen(null), "—");
 });
 
 test("application input: valid data is normalized; VÖEN, phone and company address are enforced", () => {
   const parsed = sellerApplicationInputSchema.parse({ ...valid, applicantNote: "  ", plannedStoreName: " Aysel " });
-  assert.equal(parsed.voen, "1234567890");
+  assert.equal(parsed.voen, "1234567892");
   assert.equal(parsed.phone, "+994551234567");
   assert.equal(parsed.applicantNote, null);
   assert.equal(parsed.plannedStoreName, "Aysel");

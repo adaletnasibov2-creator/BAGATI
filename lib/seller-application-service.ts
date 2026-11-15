@@ -3,6 +3,7 @@
  * exercised against the isolated verify database. Routes stay thin: CSRF, auth, body, then one call here.
  */
 import type { Prisma, SellerType } from "@prisma/client";
+import { claimVoenForUser, findDuplicateVoen } from "@/lib/voen-uniqueness";
 import { normalizeVoen, reapplyDecision, type ReapplyRules, type SellerApplicationInput } from "@/lib/seller-application";
 
 /**
@@ -48,7 +49,7 @@ export type SellerApplicationErrorCode =
   | "NOT_FOUND"
   | "NOT_PENDING"
   | "ACCOUNT_CHANGED"
-  | "DUPLICATE_VOEN_UNCONFIRMED"
+  | "DUPLICATE_VOEN"
   | "OPEN"
   | "APPROVED"
   | "WAIT"
@@ -61,38 +62,8 @@ export class SellerApplicationError extends Error {
   }
 }
 
-export type DuplicateVoenMatches = {
-  profiles: { vendorProfileId: string; displayName: string; email: string; role: string }[];
-  applications: { applicationId: string; displayName: string; email: string }[];
-};
-
-/**
- * Other sellers and other open applications with the same VÖEN digits. The applicant's own profile and
- * the application itself are excluded. A match is a warning for the admin, never a silent block or pass.
- */
-export async function findDuplicateVoen(db: Prisma.TransactionClient, input: { applicationId: string; userId: string; voenNormalized: string | null }): Promise<DuplicateVoenMatches> {
-  if (!input.voenNormalized) return { profiles: [], applications: [] };
-  const profiles = await db.$queryRaw<{ vendorProfileId: string; displayName: string; email: string; role: string }[]>`
-    SELECT p."id" AS "vendorProfileId", p."displayName", u."email", u."role"::text AS "role"
-    FROM "VendorProfile" p JOIN "User" u ON u."id" = p."userId"
-    WHERE p."userId" <> ${input.userId}
-      AND p."voen" IS NOT NULL
-      AND regexp_replace(p."voen", '[^0-9]', '', 'g') = ${input.voenNormalized}
-    ORDER BY p."displayName"
-    LIMIT 20`;
-  const applications = await db.vendorApplication.findMany({
-    where: { voenNormalized: input.voenNormalized, status: "PENDING", id: { not: input.applicationId }, userId: { not: input.userId } },
-    select: { id: true, displayName: true, user: { select: { email: true } } },
-    orderBy: { createdAt: "asc" },
-    take: 20,
-  });
-  return {
-    profiles,
-    applications: applications.map((row) => ({ applicationId: row.id, displayName: row.displayName, email: row.user.email })),
-  };
-}
-
-export const hasDuplicateVoen = (matches: DuplicateVoenMatches) => matches.profiles.length + matches.applications.length > 0;
+// The VÖEN duplicate lookup lives in lib/voen-uniqueness.ts (one VÖEN per seller account); re-exported for callers.
+export { findDuplicateVoen, hasDuplicateVoen, type DuplicateVoenMatches } from "@/lib/voen-uniqueness";
 
 export type TransactionRunner = { $transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> };
 export type OutboxEnqueue = (tx: Prisma.TransactionClient, email: { eventKey: string; recipient: string; template: "SELLER_APPLICATION_SUBMITTED" | "SELLER_APPLICATION_APPROVED" | "SELLER_APPLICATION_REJECTED"; payload: Record<string, string> }) => Promise<void>;
@@ -111,7 +82,6 @@ async function lockApplication(tx: Prisma.TransactionClient, applicationId: stri
 export async function approveSellerApplication(db: TransactionRunner, input: {
   applicationId: string;
   adminId: string;
-  confirmDuplicateVoen: boolean;
   adminNote: string | null;
   enqueue: OutboxEnqueue;
   now?: Date;
@@ -127,10 +97,10 @@ export async function approveSellerApplication(db: TransactionRunner, input: {
     const { user } = application;
     if (user.role !== "CUSTOMER" || !user.isActive || !user.emailVerifiedAt) throw new SellerApplicationError("ACCOUNT_CHANGED");
 
-    const duplicates = await findDuplicateVoen(tx, { applicationId: application.id, userId: user.id, voenNormalized: application.voenNormalized });
-    const duplicate = hasDuplicateVoen(duplicates);
-    if (duplicate && !input.confirmDuplicateVoen) {
-      throw new SellerApplicationError("DUPLICATE_VOEN_UNCONFIRMED", { profiles: duplicates.profiles.length, applications: duplicates.applications.length });
+    // One VÖEN per seller account: a VÖEN already used by another seller or another open application blocks approval.
+    if (application.voenNormalized && !await claimVoenForUser(tx, { voenDigits: application.voenNormalized, userId: user.id, applicationId: application.id })) {
+      const duplicates = await findDuplicateVoen(tx, { applicationId: application.id, userId: user.id, voenNormalized: application.voenNormalized });
+      throw new SellerApplicationError("DUPLICATE_VOEN", { profiles: duplicates.profiles.length, applications: duplicates.applications.length });
     }
 
     // The only self-service path to the VENDOR role. Guarded by the current role so a stale request cannot re-promote.
@@ -161,7 +131,7 @@ export async function approveSellerApplication(db: TransactionRunner, input: {
         reviewedAt: now,
         vendorProfileId: profile.id,
         adminNote: input.adminNote,
-        duplicateVoenConfirmed: duplicate,
+        duplicateVoenConfirmed: false,
       },
     });
     await tx.auditLog.create({
@@ -176,8 +146,8 @@ export async function approveSellerApplication(db: TransactionRunner, input: {
           vendorProfileId: profile.id,
           profileExisted: Boolean(existing),
           sellerType: application.sellerType,
-          hasDuplicateVoen: duplicate,
-          duplicateVoenConfirmed: duplicate,
+          hasDuplicateVoen: false,
+          duplicateVoenConfirmed: false,
         },
       },
     });
@@ -187,7 +157,7 @@ export async function approveSellerApplication(db: TransactionRunner, input: {
       template: "SELLER_APPLICATION_APPROVED",
       payload: { displayName: application.displayName },
     });
-    return { applicationId: application.id, userId: user.id, vendorProfileId: profile.id, duplicateVoenConfirmed: duplicate };
+    return { applicationId: application.id, userId: user.id, vendorProfileId: profile.id, duplicateVoenConfirmed: false };
   });
 }
 
@@ -321,6 +291,8 @@ export async function submitSellerApplication(db: TransactionRunner, input: { us
       if (!decision.allowed) {
         throw new SellerApplicationError(decision.reason, "nextAllowedAt" in decision ? { nextAllowedAt: decision.nextAllowedAt.toISOString() } : {});
       }
+      const voenDigits = normalizeVoen(input.data.voen);
+      if (voenDigits && !await claimVoenForUser(tx, { voenDigits, userId: input.userId })) throw new SellerApplicationError("DUPLICATE_VOEN");
       const application = await tx.vendorApplication.create({
         data: {
           userId: input.userId,

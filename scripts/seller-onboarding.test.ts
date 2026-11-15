@@ -199,9 +199,9 @@ test("customer seller application keeps the CUSTOMER role and collects legal det
   const rules = source("lib/seller-application.ts");
   assert.match(guard, /user\.role !== "CUSTOMER"/);
   assert.match(rules, /sellerType: z\.enum\(sellerTypes\)/);
-  // The 10-digit rule moved into newVoenSchema (shared with admin-created sellers since the follow-up).
+  // The VÖEN rule lives in lib/voen.ts (10 digits, last digit 1 or 2), used by newVoenSchema for applications and admin-created sellers.
   assert.match(rules, /voen: newVoenSchema,/);
-  assert.match(rules, /export const newVoenSchema = z\.string\(\)[\s\S]*?\/\^\\d\{10\}\$\//);
+  assert.match(rules, /export const newVoenSchema = z\.string\(\)[\s\S]*?const parsed = parseVoen\(value\);/);
   assert.match(application, /submitSellerApplication\(prisma/);
   assert.doesNotMatch(application, /role: "VENDOR"|vendorProfile/);
   assert.doesNotMatch(application, /\.delete\(/);

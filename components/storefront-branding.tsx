@@ -16,6 +16,8 @@ export type StorefrontBrand = {
   cityName: string;
   /** wa.me link, only when the stored phone normalizes to an Azerbaijani mobile number. */
   whatsappUrl: string | null;
+  /** Admin-verified VÖEN (lib/voen-verification.ts). Without it no "verified" claim is shown. */
+  sellerVerified: boolean;
   hasAbout: boolean;
   productCount: number;
 };
@@ -49,8 +51,10 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
         <div className="min-w-0 flex-1 sm:pt-4">
           <h1 className="break-words text-2xl font-semibold leading-tight text-ink sm:text-3xl">{store.name}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-            <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: colors.accent }}><BadgeCheck size={16} aria-hidden="true"/>Təsdiqlənmiş satıcı</span>
-            <span aria-hidden="true" className="text-line">•</span>
+            {store.sellerVerified && <>
+              <span data-seller-verified className="inline-flex items-center gap-1.5 font-medium" style={{ color: colors.accent }}><BadgeCheck size={16} aria-hidden="true"/>Təsdiqlənmiş satıcı</span>
+              <span aria-hidden="true" className="text-line">•</span>
+            </>}
             <span className="inline-flex items-center gap-1.5"><MapPin size={15} aria-hidden="true"/>{store.cityName}</span>
           </p>
         </div>

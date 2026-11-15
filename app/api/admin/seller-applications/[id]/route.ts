@@ -29,7 +29,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const result = await approveSellerApplication(prisma, {
         applicationId: id,
         adminId: admin.id,
-        confirmDuplicateVoen: parsed.data.confirmDuplicateVoen,
         adminNote: parsed.data.adminNote,
         enqueue: (tx, email) => enqueueEmail(tx, email),
       });
@@ -48,8 +47,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       if (error.code === "NOT_FOUND") return json({ error: SELLER_APPLICATION_MESSAGES.notFound, code: error.code }, 404);
       if (error.code === "NOT_PENDING") return json({ error: SELLER_APPLICATION_MESSAGES.notPending, code: error.code }, 409);
       if (error.code === "ACCOUNT_CHANGED") return json({ error: "Müraciətçinin hesabı artıq aktiv, təsdiqlənmiş müştəri hesabı deyil.", code: error.code }, 409);
-      if (error.code === "DUPLICATE_VOEN_UNCONFIRMED") {
-        return json({ error: "Bu VÖEN başqa satıcıda və ya açıq müraciətdə var. Təsdiq üçün bunu ayrıca qəbul edin.", code: error.code, ...error.detail }, 409);
+      if (error.code === "DUPLICATE_VOEN") {
+        return json({ error: "Bu VÖEN başqa satıcı hesabında və ya açıq müraciətdə istifadə olunur; müraciət təsdiqlənə bilməz. Təkrarı aradan qaldırın və ya müraciəti rədd edin.", code: error.code, ...error.detail }, 409);
       }
     }
     console.error(JSON.stringify({ event: "seller_application.review.failed", name: error instanceof Error ? error.name : "unknown" }));

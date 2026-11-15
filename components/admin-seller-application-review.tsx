@@ -6,11 +6,10 @@ import { SELLER_APPLICATION_RULES } from "@/lib/seller-application";
 
 const field = "mt-1 w-full rounded-lg border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
 
-/** Approve or reject one PENDING application. A duplicate VÖEN must be accepted explicitly before approval. */
+/** Approve or reject one PENDING application. A VÖEN used by another seller or open application blocks approval. */
 export default function AdminSellerApplicationReview({ applicationId, duplicateCount, accountReady }: { applicationId: string; duplicateCount: number; accountReady: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<"approve" | "reject">("approve");
-  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
   const [reason, setReason] = useState("");
   const [adminNote, setAdminNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -22,7 +21,7 @@ export default function AdminSellerApplicationReview({ applicationId, duplicateC
     if (busy) return;
     setBusy(true); setError(""); setMessage("");
     const body = mode === "approve"
-      ? { action: "approve", confirmDuplicateVoen: confirmDuplicate, adminNote }
+      ? { action: "approve", adminNote }
       : { action: "reject", reason, adminNote };
     try {
       const response = await fetch(`/api/admin/seller-applications/${encodeURIComponent(applicationId)}`, {
@@ -41,7 +40,7 @@ export default function AdminSellerApplicationReview({ applicationId, duplicateC
     }
   }
 
-  const approveBlocked = mode === "approve" && (!accountReady || (duplicateCount > 0 && !confirmDuplicate));
+  const approveBlocked = mode === "approve" && (!accountReady || duplicateCount > 0);
   const rejectBlocked = mode === "reject" && reason.trim().length < SELLER_APPLICATION_RULES.rejectionReasonMin;
 
   return <form onSubmit={submit} className="rounded-2xl border border-[#e7e3d9] bg-white p-5">
@@ -56,10 +55,7 @@ export default function AdminSellerApplicationReview({ applicationId, duplicateC
     {mode === "approve" && <div className="mt-4 grid gap-3 text-sm">
       {!accountReady && <p className="rounded-lg bg-red-50 p-3 text-red-800">Hesab aktiv, e-poçtu təsdiqlənmiş müştəri hesabı deyil. Təsdiq mümkün deyil.</p>}
       <p className="text-slate-600">Təsdiqdən sonra hesab satıcı hesabına çevrilir və satıcı profili bu müraciətin məlumatları ilə yaradılır. Mağaza ictimai satış üçün ayrıca yoxlanılır.</p>
-      {duplicateCount > 0 && <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
-        <input type="checkbox" checked={confirmDuplicate} onChange={(event) => setConfirmDuplicate(event.target.checked)} className="mt-1" />
-        <span>VÖEN-in başqa satıcıda və ya müraciətdə olduğunu yoxladım və təsdiqləyirəm.</span>
-      </label>}
+      {duplicateCount > 0 && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">Bu VÖEN başqa satıcı hesabında və ya açıq müraciətdə istifadə olunur. Bir VÖEN yalnız bir satıcı hesabına aid ola bilər, ona görə təsdiq mümkün deyil. Müraciəti rədd edin və ya təkrarı aradan qaldırın.</p>}
     </div>}
 
     {mode === "reject" && <label className="mt-4 grid gap-1 text-sm">Səbəb (müraciətçi görəcək)

@@ -1,3 +1,4 @@
+import { VOEN_IN_USE_MESSAGE } from "@/lib/voen-uniqueness";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { authRateLimitKey, consumeAuthProcessRateLimit, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
@@ -47,6 +48,7 @@ export function applicantErrorResponse(error: SellerApplicationError) {
     case "LIMIT": return applicantJson({ error: SELLER_APPLICATION_MESSAGES.limit, code: error.code, nextAllowedAt }, 429);
     case "NOT_FOUND": return applicantJson({ error: SELLER_APPLICATION_MESSAGES.notFound, code: error.code }, 404);
     case "NOT_PENDING": return applicantJson({ error: SELLER_APPLICATION_MESSAGES.notPending, code: error.code }, 409);
+    case "DUPLICATE_VOEN": return applicantJson({ error: VOEN_IN_USE_MESSAGE, code: error.code, field: "voen" }, 409);
     default: return applicantJson({ error: SELLER_APPLICATION_MESSAGES.accountChanged, code: error.code }, 409);
   }
 }

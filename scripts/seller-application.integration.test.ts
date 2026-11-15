@@ -66,25 +66,29 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       return created;
     };
     const admin = await user("admin", { role: "ADMIN" });
-    const voen = `9${tag.replace(/\D/g, "").padEnd(9, "7").slice(0, 9)}`;
+    // 10 digits ending in 2 (natural person): the lib/voen.ts format. A fresh VÖEN per input() call, because one
+    // VÖEN may belong to one seller account only (lib/voen-uniqueness.ts).
+    let voenCounter = 0;
+    const nextVoen = () => `9${tag.replace(/\D/g, "").padEnd(6, "7").slice(0, 6)}${String(++voenCounter).padStart(2, "0")}2`;
     const input = (overrides: Record<string, unknown> = {}) => sellerApplicationInputSchema.parse({
-      displayName: "Fixture Seller", phone: "055 123 45 67", sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Fixture Sahibkar", voen, ...overrides,
+      displayName: "Fixture Seller", phone: "055 123 45 67", sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Fixture Sahibkar", voen: nextVoen(), ...overrides,
     });
 
     await t.test("submit keeps CUSTOMER, writes PENDING + audit + outbox; a second open application is refused", async () => {
       const applicant = await user("submit");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input(), enqueue });
+      const data = input();
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data, enqueue });
       const row = await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } });
       assert.equal(row.status, "PENDING");
       assert.equal(row.openUserId, applicant.id);
-      assert.equal(row.voenNormalized, voen);
+      assert.equal(row.voenNormalized, data.voen);
       assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: applicant.id } })).role, "CUSTOMER");
       assert.equal(await prisma.vendorProfile.count({ where: { userId: applicant.id } }), 0);
       assert.equal(await prisma.auditLog.count({ where: { entityId: application.id, action: "SELLER_APPLICATION_SUBMITTED" } }), 1);
       assert.equal(await prisma.emailOutbox.count({ where: { recipient: applicant.email, template: "SELLER_APPLICATION_SUBMITTED" } }), 1);
       assert.equal(await code(service.submitSellerApplication(prisma, { userId: applicant.id, data: input(), enqueue })), "OPEN");
       // The database itself refuses a second open row, even bypassing the service.
-      await assert.rejects(prisma.vendorApplication.create({ data: { userId: applicant.id, openUserId: applicant.id, displayName: "x", voenNormalized: voen } }), /Unique constraint/);
+      await assert.rejects(prisma.vendorApplication.create({ data: { userId: applicant.id, openUserId: applicant.id, displayName: "x", voenNormalized: nextVoen() } }), /Unique constraint/);
       // Two simultaneous submissions by another user: exactly one succeeds.
       const racer = await user("race");
       const results = await Promise.all([1, 2].map(() => code(service.submitSellerApplication(prisma, { userId: racer.id, data: input(), enqueue }))));
@@ -119,7 +123,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       const day = 24 * 60 * 60 * 1000;
       for (const daysAgo of [20, 10, 5]) {
         await prisma.vendorApplication.create({ data: {
-          userId: applicant.id, status: "REJECTED", source: "SELF", displayName: "x", voenNormalized: voen,
+          userId: applicant.id, status: "REJECTED", source: "SELF", displayName: "x", voenNormalized: nextVoen(),
           rejectionReason: "fixture reason", reviewedAt: new Date(Date.now() - (daysAgo - 1) * day), createdAt: new Date(Date.now() - daysAgo * day),
         } });
       }
@@ -129,19 +133,19 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
 
     await t.test("approval is atomic: a failure inside the transaction leaves everything unchanged", async () => {
       const applicant = await user("atomic");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "1112223330" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "1112223332" }), enqueue });
       const failing = async () => { throw new Error("simulated outbox failure"); };
-      await assert.rejects(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: false, adminNote: null, enqueue: failing }), /simulated outbox failure/);
+      await assert.rejects(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, adminNote: null, enqueue: failing }), /simulated outbox failure/);
       assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: applicant.id } })).role, "CUSTOMER");
       assert.equal(await prisma.vendorProfile.count({ where: { userId: applicant.id } }), 0);
       assert.equal((await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } })).status, "PENDING");
       assert.equal(await prisma.auditLog.count({ where: { entityId: application.id, action: "SELLER_APPLICATION_APPROVED" } }), 0);
 
-      const result = await service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: false, adminNote: "ok", enqueue });
+      const result = await service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, adminNote: "ok", enqueue });
       const account = await prisma.user.findUniqueOrThrow({ where: { id: applicant.id }, include: { vendorProfile: true } });
       assert.equal(account.role, "VENDOR");
       assert.equal(account.vendorProfile?.id, result.vendorProfileId);
-      assert.equal(account.vendorProfile?.voen, "1112223330");
+      assert.equal(account.vendorProfile?.voen, "1112223332");
       assert.equal(account.vendorProfile?.legalName, "Fixture Sahibkar");
       const row = await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } });
       assert.equal(row.status, "APPROVED");
@@ -151,12 +155,12 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       const audit = await prisma.auditLog.findFirstOrThrow({ where: { entityId: application.id, action: "SELLER_APPLICATION_APPROVED" } });
       assert.doesNotMatch(JSON.stringify(audit.metadata), /1112223330|Fixture Sahibkar/, "no personal data in audit metadata");
       assert.equal(await prisma.emailOutbox.count({ where: { recipient: applicant.email, template: "SELLER_APPLICATION_APPROVED" } }), 1);
-      assert.equal(await code(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: false, adminNote: null, enqueue })), "NOT_PENDING");
+      assert.equal(await code(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, adminNote: null, enqueue })), "NOT_PENDING");
     });
 
     await t.test("rejection keeps CUSTOMER, stores the reason and queues the e-mail", async () => {
       const applicant = await user("reject");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "2223334440" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "2223334442" }), enqueue });
       await service.rejectSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, reason: "VÖEN sənədi uyğun deyil", adminNote: null, enqueue });
       const row = await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } });
       assert.equal(row.status, "REJECTED");
@@ -169,9 +173,9 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
 
     await t.test("concurrent approve and reject: exactly one decision wins", async () => {
       const applicant = await user("concurrent");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "3334445550" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "3334445552" }), enqueue });
       const results = await Promise.all([
-        code(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: false, adminNote: null, enqueue })),
+        code(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, adminNote: null, enqueue })),
         code(service.rejectSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, reason: "parallel rejection", adminNote: null, enqueue })),
       ]);
       assert.deepEqual([...results].sort(), ["NOT_PENDING", "OK"]);
@@ -180,23 +184,34 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       assert.equal(role, row.status === "APPROVED" ? "VENDOR" : "CUSTOMER");
     });
 
-    await t.test("duplicate VÖEN must be confirmed explicitly; the confirmation is recorded", async () => {
-      const shared = "4445556660";
-      const seller = await user("dup-seller", { role: "VENDOR", vendorProfile: { create: { displayName: "Existing", voen: "444 555 6660" } } });
+    await t.test("one VÖEN per seller account: refused at submit (other seller / other open application) and at approval", async () => {
+      const shared = "4445556662";
+      const seller = await user("dup-seller", { role: "VENDOR", vendorProfile: { create: { displayName: "Existing", voen: "444 555 6662" } } });
       assert.ok(seller);
+      // Another seller already has it (an older value with spaces still counts).
       const applicant = await user("dup");
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: shared }), enqueue });
-      const matches = await service.findDuplicateVoen(prisma, { applicationId: application.id, userId: applicant.id, voenNormalized: shared });
-      assert.equal(matches.profiles.length, 1);
-      assert.equal(await code(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: false, adminNote: null, enqueue })), "DUPLICATE_VOEN_UNCONFIRMED");
+      assert.equal(await code(service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: shared }), enqueue })), "DUPLICATE_VOEN");
+      assert.equal(await prisma.vendorApplication.count({ where: { userId: applicant.id } }), 0, "nothing written");
       assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: applicant.id } })).role, "CUSTOMER");
-      const flags = await service.duplicateVoenFlags(prisma, [{ id: application.id, userId: applicant.id, voenNormalized: shared }]);
-      assert.ok(flags.has(application.id));
-      await service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, confirmDuplicateVoen: true, adminNote: null, enqueue });
-      const row = await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } });
-      assert.equal(row.duplicateVoenConfirmed, true);
-      const audit = await prisma.auditLog.findFirstOrThrow({ where: { entityId: application.id, action: "SELLER_APPLICATION_APPROVED" } });
-      assert.equal((audit.metadata as Record<string, unknown>).duplicateVoenConfirmed, true);
+      // Another user's OPEN application has it.
+      const openVoen = "4445556671";
+      const first = await user("dup-open-a");
+      const second = await user("dup-open-b");
+      await service.submitSellerApplication(prisma, { userId: first.id, data: input({ voen: openVoen }), enqueue });
+      assert.equal(await code(service.submitSellerApplication(prisma, { userId: second.id, data: input({ voen: openVoen }), enqueue })), "DUPLICATE_VOEN");
+      // Concurrent submissions of the same new VÖEN by two users: exactly one wins (advisory lock).
+      const raceVoen = "4445556681";
+      const [ra, rb] = [await user("dup-race-a"), await user("dup-race-b")];
+      const results = await Promise.all([ra, rb].map((u) => code(service.submitSellerApplication(prisma, { userId: u.id, data: input({ voen: raceVoen }), enqueue }))));
+      assert.deepEqual(results.sort(), ["DUPLICATE_VOEN", "OK"]);
+      // The VÖEN went to another seller after submission: approval is refused, no override.
+      const late = await user("dup-late");
+      const lateVoen = "4445556692";
+      const application = await service.submitSellerApplication(prisma, { userId: late.id, data: input({ voen: lateVoen }), enqueue });
+      await user("dup-late-seller", { role: "VENDOR", vendorProfile: { create: { displayName: "Later", voen: lateVoen } } });
+      assert.equal(await code(service.approveSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, adminNote: null, enqueue })), "DUPLICATE_VOEN");
+      assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: late.id } })).role, "CUSTOMER");
+      assert.equal((await prisma.vendorApplication.findUniqueOrThrow({ where: { id: application.id } })).status, "PENDING");
     });
 
     await t.test("admin-created sellers get an APPROVED/ADMIN row; the database still exempts ADMIN rows from the VÖEN CHECK (older values)", async () => {
@@ -243,7 +258,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
       const empty = await service.applicantState(prisma, applicant.id);
       assert.equal(empty.latest, null);
       assert.deepEqual(empty.decision, { allowed: true });
-      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "5556667770" }), enqueue });
+      const application = await service.submitSellerApplication(prisma, { userId: applicant.id, data: input({ voen: "5556667772" }), enqueue });
       await service.rejectSellerApplication(prisma, { applicationId: application.id, adminId: admin.id, reason: "Məlumat natamamdır", adminNote: null, enqueue });
       const state = await service.applicantState(prisma, applicant.id);
       assert.equal(state.latest?.status, "REJECTED");

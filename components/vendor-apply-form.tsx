@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { parseVoen, VOEN_ADMIN_NOTE, VOEN_HELP } from "@/lib/voen";
 import { useRouter } from "next/navigation";
 import { SELLER_APPLICATION_RULES } from "@/lib/seller-application";
 
@@ -24,10 +25,15 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
   const [error, setError] = useState("");
   const [sellerType, setSellerType] = useState(defaults.sellerType);
   const [note, setNote] = useState("");
+  const [voen, setVoen] = useState(defaults.voen);
+  const [voenTouched, setVoenTouched] = useState(false);
+  const voenCheck = parseVoen(voen);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
+    // Same rule as the server (lib/voen.ts); the server checks again.
+    if (!voenCheck.ok) { setVoenTouched(true); setError(voenCheck.error); return; }
     setBusy(true); setError("");
     const values = Object.fromEntries(new FormData(event.currentTarget).entries());
     try {
@@ -49,7 +55,10 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
       <option value="REGISTERED_COMPANY">Qeydiyyatdan keçmiş şirkət</option>
     </select></label>
     <label className={label}>{sellerType === "REGISTERED_COMPANY" ? "Şirkətin hüquqi adı" : "Sahibkarın adı və soyadı"}<input name="legalName" required minLength={2} maxLength={200} defaultValue={defaults.legalName} className={field}/></label>
-    <label className={label}>VÖEN<input name="voen" required inputMode="numeric" maxLength={40} defaultValue={defaults.voen} placeholder="10 rəqəm" className={field}/></label>
+    <label className={label}>VÖEN<input name="voen" required inputMode="numeric" maxLength={40} value={voen} onChange={(event) => setVoen(event.target.value)} onBlur={() => setVoenTouched(true)} placeholder="10 rəqəm" aria-invalid={voenTouched && !voenCheck.ok} aria-describedby="voen-help voen-error" className={field}/>
+      <span id="voen-help" className="text-xs font-normal text-[#5f6b6a]">{VOEN_HELP} {VOEN_ADMIN_NOTE}</span>
+      {voenTouched && !voenCheck.ok && <span id="voen-error" role="alert" className="text-xs font-medium text-red-700">{voenCheck.error}</span>}
+    </label>
     <label className={label}>Hüquqi ünvan{sellerType === "REGISTERED_COMPANY" ? "" : " (istəyə bağlı)"}<input name="legalAddress" required={sellerType === "REGISTERED_COMPANY"} maxLength={300} defaultValue={defaults.legalAddress} className={field}/></label>
     <label className={label}>Planlaşdırdığınız mağaza adı (istəyə bağlı)<input name="plannedStoreName" maxLength={120} defaultValue={defaults.plannedStoreName} className={field}/></label>
     <label className={label}>Admin üçün qeyd (istəyə bağlı)

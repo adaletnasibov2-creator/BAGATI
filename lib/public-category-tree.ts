@@ -17,6 +17,7 @@ import type { PublicStoreEligibilityClient } from "@/lib/public-store-eligibilit
 import { publicCategoryTree, type CategoryRow } from "@/lib/category-tree";
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
+import { createKeyedTtlCache } from "@/lib/keyed-ttl-cache";
 
 export const categoryRowSelect = {
   id: true, name: true, slug: true, parentId: true, isActive: true, sortOrder: true, iconKey: true, imageUrl: true,
@@ -68,19 +69,81 @@ export function toPublicTree(rows: readonly CategoryRow[], counts: ReadonlyMap<s
 
 export type PublicCategoryData = { rows: CategoryRow[]; counts: Map<string, number>; showEmpty: boolean; tree: PublicCategoryNode[] };
 
-/** One query pair per request (React cache): layout, page and metadata share it. */
+export const PUBLIC_CATEGORY_CACHE_TTL_MS = 30_000;
+export const PUBLIC_CATEGORY_CACHE_MAX_KEYS = 32;
+
+/** undefined, null and "" all mean "every city" and share one cache key. Other values are used as given. */
+export function normalizePublicCategoryCityKey(citySlug?: string | null): string | null {
+  return citySlug || null;
+}
+
+type CachedCategoryBase = { rows: CategoryRow[]; counts: Map<string, number> };
+export type PublicCategoryDataReaderDeps = {
+  loadRows: () => Promise<CategoryRow[]>;
+  loadCounts: (citySlug: string | null, now: Date) => Promise<Map<string, number>>;
+  readShowEmptySetting: () => Promise<boolean | null>;
+  clock?: () => number;
+};
+
 /**
- * One query pair per request (React cache): layout, page and metadata share it. Category rows are read per request
- * (no cross-request cache), so an admin activate/deactivate is visible on the next page load. The setting
- * catalog.showEmptyCategories is a cached settings read (fail-safe: its default ON when the read fails).
+ * Category rows and visible-product counts, cached across requests for 30 s per city key (at most 32 keys: the city
+ * comes from the query string). catalog.showEmptyCategories is not part of the cached value: it is read on every call
+ * through the settings cache, which is invalidated when the setting is saved. The tree is rebuilt per call.
  */
-export const getPublicCategoryData = cache(async (citySlug?: string | null): Promise<PublicCategoryData> => {
-  const now = new Date();
-  const [rows, counts, setting] = await Promise.all([
-    loadAllCategoryRows(),
-    countVisibleProductsByCategory(prisma, now, citySlug),
-    getSetting<boolean>(SETTING_KEYS.catalogShowEmptyCategories),
-  ]);
-  const showEmpty = setting !== false; // null (no value) = the default, ON
-  return { rows, counts, showEmpty, tree: toPublicTree(rows, counts, { showEmpty }) };
+export function createPublicCategoryDataReader(deps: PublicCategoryDataReaderDeps) {
+  const clock = deps.clock ?? Date.now;
+  const shared = createKeyedTtlCache<string | null, CachedCategoryBase>({ ttlMs: PUBLIC_CATEGORY_CACHE_TTL_MS, maxKeys: PUBLIC_CATEGORY_CACHE_MAX_KEYS, clock });
+  return {
+    async read(citySlug?: string | null): Promise<PublicCategoryData> {
+      const key = normalizePublicCategoryCityKey(citySlug);
+      const [base, setting] = await Promise.all([
+        shared.get(key, async () => {
+          const now = new Date(clock());
+          const [rows, counts] = await Promise.all([deps.loadRows(), deps.loadCounts(key, now)]);
+          return { rows, counts };
+        }),
+        deps.readShowEmptySetting(),
+      ]);
+      // Each caller gets its own array and map; the cached ones are never handed out.
+      const rows = [...base.rows];
+      const counts = new Map(base.counts);
+      const showEmpty = setting !== false; // null (no value) = the default, ON
+      return { rows, counts, showEmpty, tree: toPublicTree(rows, counts, { showEmpty }) };
+    },
+    invalidate: () => shared.invalidate(),
+    size: () => shared.size(),
+  };
+}
+
+/**
+ * Deployment assumption: BAGATI runs as ONE PM2 process (owner, 2026-11-16; not recorded in this repo). The cache lives
+ * in that process's memory, so invalidatePublicCategoryCache() after an admin or seller write is seen by the next
+ * request. If the app ever runs as more processes (PM2 cluster mode, several servers), each process has its own cache
+ * and an invalidation reaches only the process that handled the write; the others catch up within the 30 s TTL. To keep
+ * writes visible at once in that setup, move the invalidation (or the cache) to a shared channel such as Redis or
+ * Postgres LISTEN/NOTIFY.
+ *
+ * Kept on globalThis so route handlers and pages share one instance even if the bundler duplicates this module.
+ */
+const globalForCategoryCache = globalThis as unknown as { bagatiPublicCategoryReader?: ReturnType<typeof createPublicCategoryDataReader> };
+const publicCategoryReader = globalForCategoryCache.bagatiPublicCategoryReader ??= createPublicCategoryDataReader({
+  loadRows: () => loadAllCategoryRows(),
+  loadCounts: (citySlug, now) => countVisibleProductsByCategory(prisma, now, citySlug),
+  readShowEmptySetting: () => getSetting<boolean>(SETTING_KEYS.catalogShowEmptyCategories),
 });
+
+/**
+ * Call after a committed write that can change the public category tree or its counts: category create, edit,
+ * activate/deactivate, delete or reorder; product create, status or category change. Other eligibility changes
+ * (store, subscription, city, user) are picked up by the 30 s TTL.
+ */
+export function invalidatePublicCategoryCache(): void {
+  publicCategoryReader.invalidate();
+}
+
+/** Per request (React cache, on the normalised key) on top of the 30 s cross-request cache. */
+const getPublicCategoryDataForKey = cache((key: string | null) => publicCategoryReader.read(key));
+
+export function getPublicCategoryData(citySlug?: string | null): Promise<PublicCategoryData> {
+  return getPublicCategoryDataForKey(normalizePublicCategoryCityKey(citySlug));
+}

@@ -18,6 +18,7 @@ import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { planStoreProfileUpdate } from "@/lib/admin-store-profile";
 import { createCategory, deleteCategory, updateCategory } from "@/lib/admin-category-service";
 import { categoryAdminFailure } from "@/lib/admin-category-route";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 
 const db: any = prisma;
 const storeStatuses = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "SUSPENDED", "REJECTED"] as const;
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (section === "categories") {
     // Same service as /api/admin/category-tree: two-level depth check, slug, icon/photo allowlists, audit.
-    try { return NextResponse.json({ item: await createCategory(db, admin.id, body) }, { status: 201 }); }
+    try { const item = await createCategory(db, admin.id, body); invalidatePublicCategoryCache(); return NextResponse.json({ item }, { status: 201 }); }
     catch (error) { return categoryAdminFailure(error, "admin_category_create"); }
   }
 
@@ -226,6 +227,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (outcome.kind === "NOT_FOUND") return NextResponse.json({ error: "Məhsul tapılmadı" }, { status: 404 });
       if (outcome.kind === "PRODUCT_BLOCKED") return NextResponse.json({ error: "Məhsul yayımlanmaq üçün hazır deyil.", reasons: outcome.reasons }, { status: 422 });
       if (outcome.kind === "STORE_INELIGIBLE") return NextResponse.json({ error: "Məhsul yalnız təsdiqlənmiş, aktiv və satışa uyğun mağazada yayımlana bilər" }, { status: 409 });
+      invalidatePublicCategoryCache();
       return NextResponse.json({ item: outcome.item });
     }
     if (section === "users") {
@@ -236,7 +238,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // Audited with the category's own id (the old code logged the wrong variable) through the shared service.
       const parsed = z.object({ id: z.string().min(1) }).passthrough().safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Kateqoriya məlumatlarını yoxlayın" }, { status: 422 });
       const { id: categoryId, ...values } = parsed.data;
-      try { return NextResponse.json({ item: await updateCategory(db, admin.id, categoryId, values) }); }
+      try { const item = await updateCategory(db, admin.id, categoryId, values); invalidatePublicCategoryCache(); return NextResponse.json({ item }); }
       catch (error) { return categoryAdminFailure(error, "admin_category_update"); }
     }
     if (section === "brands") {
@@ -289,7 +291,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = z.object({ id: z.string().min(1) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Rəy identifikatoru yanlışdır" }, { status: 422 });
   if (section === "categories") {
-    try { return NextResponse.json(await deleteCategory(db, admin.id, parsed.data.id)); }
+    try { const result = await deleteCategory(db, admin.id, parsed.data.id); invalidatePublicCategoryCache(); return NextResponse.json(result); }
     catch (error) { return categoryAdminFailure(error, "admin_category_delete"); }
   }
   if (section !== "reviews") return NextResponse.json({ error: "Tarixçə və əlaqəli qeydlər qorunur; silmə dəstəklənmir" }, { status: 405 });

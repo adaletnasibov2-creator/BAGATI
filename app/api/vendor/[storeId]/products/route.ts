@@ -14,6 +14,7 @@ import { findExistingProductSkuMatches, findExistingVariantSkuKeys, CatalogSkuCo
 import { hasDuplicateNormalizedSkus } from "@/lib/sku-normalization";
 import { vendorProductCreateSchema } from "@/lib/vendor-product-schemas";
 import { generateProductCode } from "@/lib/product-code";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 
 const db: any = prisma;
 class StoreNotEligibleError extends Error {}
@@ -200,6 +201,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
       return item;
     });
+    invalidatePublicCategoryCache();
     return NextResponse.json({ product }, { status: 201 });
   } catch (error) {
     if (error instanceof StoreNotEligibleError) return NextResponse.json({ error: "Məhsul yalnız aktiv mağaza, satıcı hesabı və abunəlik olduqda yayımlana bilər" }, { status: 409 });

@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { readBoundedRequestBytes } from "@/lib/request-body";
 import { CatalogSkuConflictError, findExistingProductSkuMatches, findExistingVariantSkuKeys, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 
 export const dynamic = "force-dynamic";
 const MAX_REQUEST_BYTES = 12 * 1024 * 1024;
@@ -245,6 +246,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       });
       return { created, updated, errors };
     }, { maxWait: 10_000, timeout: 60_000 });
+    invalidatePublicCategoryCache();
 
     return NextResponse.json({
       created: result.created,

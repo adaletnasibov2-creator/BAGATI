@@ -8,6 +8,7 @@ import { adminProductUpdateSchema, inventoryQuantityAllowed } from "@/lib/admin-
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { findExistingProductSkuMatches, findExistingVariantSkuKeys } from "@/lib/catalog-import-persistence";
 import { hasDuplicateNormalizedSkus } from "@/lib/sku-normalization";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 
 export const dynamic = "force-dynamic";
 
@@ -135,6 +136,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return saved;
     });
     if ("skuConflict" in updated) return NextResponse.json({ error: "Məhsul və ya variant SKU-su həmin unikal sahədə artıq istifadə olunur" }, { status: 409 });
+    invalidatePublicCategoryCache();
     return NextResponse.json({ item: updated, message: "Məhsul məlumatları yadda saxlanıldı." });
   } catch (error) {
     if (error instanceof Error && error.message === "STOCK_CHANGED") {

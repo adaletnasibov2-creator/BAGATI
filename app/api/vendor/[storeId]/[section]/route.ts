@@ -18,6 +18,7 @@ import { activeComplimentaryEntitlementSelect, assertFeature, assertProductLimit
 import { enqueueEmail } from "@/lib/email-outbox";
 import { checkImportRows, ImportInventoryReservationError, isSafeImportImageUrl, parseImportVariants } from "@/lib/product-import";
 import { CatalogSkuConflictError, findExistingProductSkuMatches, findExistingVariantSkuKeys, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 import { hasDuplicateNormalizedSkus } from "@/lib/sku-normalization";
 import { legacyVendorProductPatchSchema, legacyVendorProductSchema } from "@/lib/vendor-product-schemas";
 import { assertUniqueVariantCombinations } from "@/lib/product-variants";
@@ -291,6 +292,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:str
      await tx.productImport.update({where:{id:record.id},data:{status:"COMPLETED",completedAt:new Date(),result:{rowCount:checked.length,successCount:created+updated,created,updated,errorCount:errors.length,errors,mode}}});
      return {created,updated,errors};
     });
+    invalidatePublicCategoryCache();
     return NextResponse.json({created:result.created,updated:result.updated,successCount:result.created+result.updated,errorCount:result.errors.length,rows:checked,mode},{status:result.errors.length?207:201});
     }catch(error){const reservationConflict=error instanceof ImportInventoryReservationError;const skuConflict=error instanceof CatalogSkuConflictError||isSkuUniqueViolation(error);const summary=reservationConflict?"Yeni stok miqdarı rezerv edilmiş stokdan az ola bilməz":skuConflict?"Məhsul və ya seçim kodu artıq istifadə olunur":"Məhsulları saxlamaq mümkün olmadı";await db.productImport.update({where:{id:record.id},data:{status:"FAILED",completedAt:new Date(),result:{rowCount:checked.length,successCount:0,errorCount:checked.length,errors:[summary],mode}}});return NextResponse.json({error:reservationConflict||skuConflict?summary:"Məhsullar saxlanmadı. İdxal tarixçəsində nəticəni yoxlayın."},{status:reservationConflict||skuConflict?409:500})}
   }

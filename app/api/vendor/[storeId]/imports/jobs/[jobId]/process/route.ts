@@ -19,6 +19,7 @@ import {
 } from "@/lib/catalog-import-persistence";
 import { checkImportRows, isSafeImportImageUrl, parseImportVariants, type ImportMode } from "@/lib/product-import";
 import { categoriesWithOtherLast } from "@/lib/category-order";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import {
   assertFeature,
@@ -251,6 +252,7 @@ export async function POST(
 
     if (result.error === "NOT_FOUND") return NextResponse.json({ error: "İdxal işi tapılmadı" }, { status: 404 });
     if (result.error === "INVALID_STATE") return NextResponse.json({ error: "İdxal işi emala hazır deyil" }, { status: 409 });
+    invalidatePublicCategoryCache();
     return NextResponse.json(result);
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

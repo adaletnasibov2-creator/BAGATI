@@ -18,8 +18,11 @@ import test from "node:test";
 const root = join(__dirname, "..");
 const SOURCE_DIRS = ["app", "lib", "components", "prisma", "scripts"];
 const EXTENSIONS = /\.(ts|tsx|mts|js|mjs|cjs)$/;
-/** Test files and isolated test harnesses create fixture users with any role on the verify database only. */
-const EXCLUDED = [/\.test\.(ts|mjs)$/, /\.integration\.test\.ts$/, /^scripts\/auth-switch-browser-server\.ts$/];
+/**
+ * Test files and isolated test harnesses create fixture users with any role on the verify database only.
+ * scripts/scale-audit/base.sql seeds ten fixture vendors into the scratch schema `scale_audit` on the verify cluster.
+ */
+const EXCLUDED = [/\.test\.(ts|mjs)$/, /\.integration\.test\.ts$/, /^scripts\/auth-switch-browser-server\.ts$/, /^scripts\/scale-audit\/base\.sql$/];
 
 const ALLOWED_VENDOR_WRITES = new Map<string, number>([
   ["lib/seller-application-service.ts", 1],

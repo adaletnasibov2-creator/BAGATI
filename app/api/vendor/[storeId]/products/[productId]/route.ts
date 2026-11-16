@@ -8,6 +8,7 @@ import { EntitlementError, entitlementErrorResponse } from "@/lib/subscription-e
 import { categoriesWithOtherLast } from "@/lib/category-order";
 import { vendorProductPatchSchema, VendorProductPatchError, hasVendorProductStoreAccess, runVendorProductPatch } from "@/lib/vendor-product-patch";
 import { isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 
 const db = prisma;
 
@@ -60,6 +61,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       isOwnedImage: isOwnedStoreAssetUrl,
       actorUserId: access.user.id,
     });
+    invalidatePublicCategoryCache();
     return NextResponse.json({ product });
   } catch (error) {
     if (error instanceof EntitlementError) return entitlementErrorResponse(error);
@@ -117,6 +119,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return changed.count === 1;
     }, { isolationLevel: "Serializable" });
     if (!archived) return NextResponse.json({ error: "Məhsul tapılmadı" }, { status: 404 });
+    invalidatePublicCategoryCache();
     return NextResponse.json({ archived: true });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "P2034") {

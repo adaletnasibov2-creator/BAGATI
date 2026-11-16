@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { adminStoreVisibilityMutation, type StoreWorkflowStatus } from "@/lib/store-visibility";
 import { getStorePublicationBlockers, publishEligibleDraftProducts } from "@/lib/admin-store-product-publishing";
 import { activeComplimentaryEntitlementSelect, complimentaryFromRows, resolveStoreEntitlements } from "@/lib/subscription-entitlements";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 
 const requestSchema = z.object({ isActive: z.boolean(), reason: z.string().trim().min(3).max(500) });
 
@@ -142,6 +143,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ st
     if (result.kind === "NOT_FOUND") return NextResponse.json({ error: "Mağaza tapılmadı" }, { status: 404 });
     if (result.kind === "NOT_APPROVED") return NextResponse.json({ error: "İctimai görünürlükdən əvvəl mağaza admin yoxlamasından keçməli və ACTIVE statusu almalıdır." }, { status: 409 });
     if (result.kind === "UNCHANGED" && !result.products) return NextResponse.json({ item: { isActive: result.isActive }, message: "Mağaza statusu dəyişməyib." });
+    // Store visibility and published drafts both change the public category counts.
+    invalidatePublicCategoryCache();
     const published = result.products?.published.length ?? 0;
     const skipped = result.products?.skipped.length ?? 0;
     return NextResponse.json({

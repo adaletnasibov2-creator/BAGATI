@@ -55,3 +55,19 @@ function availableStock(product: HomepageCampaignProduct) {
     : product.inventory.filter((row) => row.variantId == null);
   return rows.reduce((total, row) => total + Math.max(0, row.quantity - row.reserved), 0);
 }
+
+/**
+ * Splits the rows of ONE promotionProduct query over all campaigns (ordered by product name, then product id) into one
+ * batch per campaign, in campaign order, keeping the first `limit` rows of each. Each campaign's rows are an ordered
+ * subset of the global order, so the result equals one query per campaign with `take: limit` and the same ordering.
+ * Rows whose promotionId is not in `campaignIds` are ignored.
+ */
+export function groupCampaignProductRows<T extends { promotionId: string }>(campaignIds: readonly string[], rows: readonly T[], limit = 10): T[][] {
+  if (!Number.isInteger(limit) || limit < 1) throw new RangeError("HOMEPAGE_CAMPAIGN_PRODUCT_LIMIT_INVALID");
+  const batches = new Map<string, T[]>(campaignIds.map((id) => [id, []]));
+  for (const row of rows) {
+    const batch = batches.get(row.promotionId);
+    if (batch && batch.length < limit) batch.push(row);
+  }
+  return campaignIds.map((id) => batches.get(id) ?? []);
+}

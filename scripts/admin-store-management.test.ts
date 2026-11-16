@@ -370,7 +370,8 @@ test("delete removes history-free stores and archives stores with history instea
 
 test("category deletion is limited to unused leaf categories and records an audit event", () => {
   // The DELETE branch delegates to the shared service, which refuses while products or subcategories exist.
-  assert.match(adminRoute, /if \(section === "categories"\) \{\s*try \{ return NextResponse\.json\(await deleteCategory\(db, admin\.id, parsed\.data\.id\)\); \}/);
+  // Since scale-fixes-1 the route invalidates the public category cache after the delete has committed.
+  assert.match(adminRoute, /if \(section === "categories"\) \{\s*try \{ const result = await deleteCategory\(db, admin\.id, parsed\.data\.id\); invalidatePublicCategoryCache\(\); return NextResponse\.json\(result\); \}/);
   const categoryService = readFileSync(resolve(root, "lib/admin-category-service.ts"), "utf8");
   assert.match(categoryService, /_count: \{ select: \{ products: true, children: true \} \}/);
   assert.match(categoryService, /if \(category\._count\.products \|\| category\._count\.children\) \{/);

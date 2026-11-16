@@ -14,6 +14,7 @@ import { productPromotions } from "@/lib/promotion-pricing";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getPublicCategoryData, type PublicCategoryNode } from "@/lib/public-category-tree";
 import { selectHomepageCampaignProducts, type HomepageCampaign } from "@/lib/homepage-campaign-products";
+import { findHomepageCampaignProductBatches } from "@/lib/homepage-campaign-query";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { resolveActiveCity } from "@/lib/city-resolution";
 
@@ -149,20 +150,8 @@ export default async function HomePage({ searchParams }: Props) {
   ]) as [HomeCategory[], HomeStore[], HomeProduct[], PopularOrderRow[], HomeProduct[], HomepageCampaign[], HomepageCampaign[], Awaited<ReturnType<typeof getSiteSettings>>, { id: string; title: string; description: string; imageUrl: string; buttonLabel: string; href: string; startsAt: Date; endsAt: Date; isActive: boolean; sortOrder: number }[], { productId: string }[], { storeId: string }[]];
   const orderedCategories = categories;
 
-  const campaignProductsByPromotion = await Promise.all(promotionalCampaigns.map((campaign) => prisma.promotionProduct.findMany({
-    where: { promotionId: campaign.id, product: { status: "ACTIVE", storeId: campaign.storeId!, store: storeFilter, OR: [
-      { variants: { none: { isActive: true } }, inventory: { some: { variantId: null, quantity: { gt: prisma.inventory.fields.reserved } } } },
-      { variants: { some: { isActive: true, inventory: { some: { quantity: { gt: prisma.inventory.fields.reserved } } } } } },
-    ] } },
-    orderBy: [{ product: { name: "asc" } }, { product: { id: "asc" } }],
-    take: 10,
-    select: { product: { select: {
-      id: true, storeId: true, name: true, price: true, discountPrice: true, images: true,
-      store: { select: { id: true, name: true } },
-      inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },
-      variants: { where: { isActive: true }, select: { isActive: true, options: true, inventory: { select: { quantity: true, reserved: true, lowStockThreshold: true } } } },
-    } } },
-  })));
+  // One query for all campaigns (was one per campaign); first 10 per campaign, same filter and order.
+  const campaignProductsByPromotion = await findHomepageCampaignProductBatches(prisma, promotionalCampaigns, storeFilter, 10);
 
   const featuredProductIds = featuredProductLinks.map((item) => item.productId);
   const featuredStoreIds = featuredStoreLinks.map((item) => item.storeId);

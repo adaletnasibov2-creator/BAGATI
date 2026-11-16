@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { selectHomepageCampaignProducts, type HomepageCampaign, type HomepageCampaignProduct } from "../lib/homepage-campaign-products";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { groupCampaignProductRows, selectHomepageCampaignProducts, type HomepageCampaign, type HomepageCampaignProduct } from "../lib/homepage-campaign-products";
 
 function campaign(id: string, storeId: string): HomepageCampaign {
   return { id, storeId, name: id, startsAt: new Date("2026-10-01T00:00:00.000Z"), endsAt: new Date("2026-11-01T00:00:00.000Z"), isActive: true, discountType: "PERCENT", discountValue: 10 };
@@ -41,4 +43,31 @@ test("homepage campaign cards stop at the visible limit and empty campaigns yiel
   assert.equal(result.size, 10);
   assert.equal(selectHomepageCampaignProducts([], [], new Date()).size, 0);
   assert.throws(() => selectHomepageCampaignProducts([active], [candidates], new Date(), 51), { message: "HOMEPAGE_CAMPAIGN_PRODUCT_LIMIT_INVALID" });
+});
+
+test("one combined campaign query is split into the same batches as one query per campaign", () => {
+  // Global order of the combined query: product name, then id.
+  const rows = [
+    { promotionId: "p2", name: "Ayaqqabı", id: "x1" },
+    { promotionId: "p1", name: "Bal", id: "a1" },
+    { promotionId: "p1", name: "Bal", id: "a2" },
+    { promotionId: "p3", name: "Çanta", id: "c1" },
+    { promotionId: "p2", name: "Divan", id: "x2" },
+    { promotionId: "p1", name: "Ətir", id: "a3" },
+    { promotionId: "unknown", name: "Kitab", id: "u1" },
+  ];
+  const perCampaign = (id: string, limit: number) => rows.filter((row) => row.promotionId === id).slice(0, limit);
+  for (const limit of [1, 2, 10]) {
+    const batches = groupCampaignProductRows(["p1", "p2", "p3", "p4"], rows, limit);
+    assert.deepEqual(batches, ["p1", "p2", "p3", "p4"].map((id) => perCampaign(id, limit)));
+  }
+  assert.deepEqual(groupCampaignProductRows(["p1", "p2"], rows, 2).map((batch) => batch.map((row) => row.id)), [["a1", "a2"], ["x1", "x2"]]);
+  assert.deepEqual(groupCampaignProductRows([], rows), []);
+  assert.throws(() => groupCampaignProductRows(["p1"], rows, 0), /HOMEPAGE_CAMPAIGN_PRODUCT_LIMIT_INVALID/);
+});
+
+test("the homepage runs one campaign product query, not one per campaign", () => {
+  const page = readFileSync(join(__dirname, "..", "app", "(customer)", "page.tsx"), "utf8");
+  assert.match(page, /findHomepageCampaignProductBatches\(prisma, promotionalCampaigns, storeFilter, 10\)/);
+  assert.doesNotMatch(page, /promotionalCampaigns\.map\(\(campaign\) => prisma\.promotionProduct\.findMany/);
 });

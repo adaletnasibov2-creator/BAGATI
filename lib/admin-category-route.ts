@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { csrfRejection } from "@/lib/csrf";
 import { CategoryAdminError } from "@/lib/admin-category-service";
 import { logSecurityOperationFailure } from "@/lib/security-logging";
+import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 
 export function adminForbidden() {
   return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
@@ -24,7 +25,10 @@ export async function runCategoryAdmin(
     try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   }
   try {
-    return NextResponse.json({ item: await work(body) }, { status });
+    const item = await work(body);
+    // Every category-tree write (create, edit, activate/deactivate, delete, reorder, move products) has committed here.
+    invalidatePublicCategoryCache();
+    return NextResponse.json({ item }, { status });
   } catch (error) {
     return categoryAdminFailure(error, operation);
   }

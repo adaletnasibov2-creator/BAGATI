@@ -81,8 +81,10 @@ export function verifyEpointCallback(config: EpointConfig, data: string, signatu
   return { paymentId, transaction, providerStatus: providerStatus as EpointProviderStatus, amount, currency, operationCode, traceId };
 }
 
-export function choosePaymentAttempt(order: { userId: string; total: string; payments: PaymentSnapshot[] } | null, userId: string) {
+export function choosePaymentAttempt(order: { userId: string; total: string; status?: string; payments: PaymentSnapshot[] } | null, userId: string) {
   if (!order || order.userId !== userId) return { code: "ORDER_NOT_FOUND" as const };
+  // A cancelled order is never sent to the payment provider.
+  if (order.status === "CANCELLED") return { code: "ORDER_CANCELLED" as const };
   const amount = formatEpointAmount(order.total);
   if (!amount || order.payments.some((payment) => payment.currency !== "AZN")) return { code: "AMOUNT_INVALID" as const };
   if (order.payments.some((payment) => payment.status === "PAID")) return { code: "ALREADY_PAID" as const };

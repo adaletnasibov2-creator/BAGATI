@@ -19,6 +19,7 @@ import { planStoreProfileUpdate } from "@/lib/admin-store-profile";
 import { createCategory, deleteCategory, updateCategory } from "@/lib/admin-category-service";
 import { categoryAdminFailure } from "@/lib/admin-category-route";
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
+import { CANCELLATION_REQUEST_OPEN_MESSAGE } from "@/lib/order-cancellation-guard";
 
 const db: any = prisma;
 const storeStatuses = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "SUSPENDED", "REJECTED"] as const;
@@ -274,7 +275,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (error instanceof Error && error.message === "PRODUCT_STATUS_CHANGED") return NextResponse.json({ error: "Məhsulun statusu paralel dəyişdirildi. Səhifəni yeniləyin." }, { status: 409 });
     if (error instanceof OrderFulfillmentError) {
       const status = error.code === "NOT_FOUND" ? 404 : 409;
-      const message = error.code === "PAYMENT_NOT_SETTLED" ? "\u00d6d\u0259ni\u015f t\u0259sdiql\u0259nm\u0259d\u0259n sifari\u015f \u00e7atd\u0131r\u0131lm\u0131\u015f kimi qeyd edil\u0259 bilm\u0259z" : error.code === "INVALID_TRANSITION" ? "Bu status ke\u00e7idi m\u00fcmk\u00fcn deyil" : error.code === "NO_STORE_ORDERS" ? "Sifari\u015f ma\u011faza s\u0259trl\u0259rini ehtiva etmir" : error.code === "NOT_FOUND" ? "Sifari\u015f tap\u0131lmad\u0131" : "Sifari\u015f paralel olaraq yenil\u0259ndi";
+      const message = error.code === "CANCELLATION_REQUEST_OPEN" ? CANCELLATION_REQUEST_OPEN_MESSAGE : error.code === "PAYMENT_NOT_SETTLED" ? "\u00d6d\u0259ni\u015f t\u0259sdiql\u0259nm\u0259d\u0259n sifari\u015f \u00e7atd\u0131r\u0131lm\u0131\u015f kimi qeyd edil\u0259 bilm\u0259z" : error.code === "INVALID_TRANSITION" ? "Bu status ke\u00e7idi m\u00fcmk\u00fcn deyil" : error.code === "NO_STORE_ORDERS" ? "Sifari\u015f ma\u011faza s\u0259trl\u0259rini ehtiva etmir" : error.code === "NOT_FOUND" ? "Sifari\u015f tap\u0131lmad\u0131" : "Sifari\u015f paralel olaraq yenil\u0259ndi";
       return NextResponse.json({ error: message }, { status });
     }
     if (error instanceof Error && "code" in error && error.code === "P2025") return NextResponse.json({ error: "Qeyd tapılmadı" }, { status: 404 });

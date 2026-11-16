@@ -19,6 +19,9 @@ export const EMAIL_TEMPLATES = [
   "SUBSCRIPTION_STATUS",
   "ACCOUNT_SECURITY",
   "STORE_INQUIRY",
+  "SELLER_ORDER_CANCELLED",
+  "SELLER_CANCELLATION_REQUEST",
+  "CANCELLATION_REQUEST_DECISION",
 ] as const;
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[number];
 export type EmailPayload = Record<string, string | number | boolean | null>;
@@ -113,6 +116,19 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
     case "RETURN_STATUS": subject = "Qaytarılma sorğusu yeniləndi"; lines = [`${value(payload, "productName", "Məhsul")} sorğusu: ${returnStatus(value(payload, "status"))}.`, ...(value(payload, "resolution") === "REFUND" ? [`Geri ödəniş məbləği: ${azn(payload, "refundAmount")}`] : [])]; break;
     case "SELLER_RETURN_STATUS": subject = "Mağaza qaytarılma sorğusu yeniləndi"; lines = [`${value(payload, "storeName", "Mağaza")} üçün ${value(payload, "productName", "məhsul")} sorğusu: ${returnStatus(value(payload, "status"))}.`, `Sifariş: #${value(payload, "orderRef")}`, ...(value(payload, "resolution") === "REFUND" ? [`Geri ödəniş məbləği: ${azn(payload, "refundAmount")}`] : [])]; break;
     case "SUBSCRIPTION_STATUS": subject = "Mağaza abunəliyinin statusu yeniləndi"; lines = [`${value(payload, "storeName", "Mağaza")} üçün ${value(payload, "planName", "abunəlik")} planının statusu: ${value(payload, "status")}.`, "Abunəlik statusu ödəniş provayderinin təsdiqi kimi qəbul edilmir."]; break;
+    case "SELLER_ORDER_CANCELLED": subject = "Sifariş müştəri tərəfindən ləğv edildi"; lines = [`${value(payload, "storeName", "Mağaza")}: sifariş #${value(payload, "orderRef")} müştəri tərəfindən ləğv edildi.`, `Mağaza sifarişi: #${value(payload, "storeOrderRef")}`, "Sifarişdəki məhsulların stoku avtomatik bərpa edildi. Sifarişi göndərməyin."]; break;
+    case "SELLER_CANCELLATION_REQUEST": subject = "Müştəri sifarişin ləğvini istəyir"; lines = [`${value(payload, "storeName", "Mağaza")}: sifariş #${value(payload, "orderRef")} üçün ləğv müraciəti daxil oldu.`, `Mağaza sifarişi: #${value(payload, "storeOrderRef")}`, `Səbəb: ${value(payload, "reason", "Qeyd göstərilməyib")}`, "Müraciət açıq olduğu müddətdə sifariş kuryerə verilə bilməz. Satıcı panelində müraciəti təsdiqləyin və ya rədd edin."]; break;
+    case "CANCELLATION_REQUEST_DECISION": {
+      const approved = value(payload, "decision") === "APPROVED";
+      subject = approved ? "Ləğv müraciətiniz təsdiqləndi" : "Ləğv müraciətiniz rədd edildi";
+      lines = [
+        `Sifariş #${value(payload, "orderRef")} — ${value(payload, "storeName", "Mağaza")}.`,
+        approved ? "Mağaza sifarişin ləğvini təsdiqlədi." : "Mağaza sifarişin ləğvini rədd etdi; sifariş davam edir.",
+        ...(value(payload, "response") ? [`Mağazanın cavabı: ${value(payload, "response")}`] : []),
+        ...(approved && value(payload, "paid") === "true" ? ["Ödənilmiş məbləğin geri qaytarılması əl ilə həyata keçirilir."] : []),
+      ];
+      break;
+    }
     case "ACCOUNT_SECURITY": subject = "BAGATI hesabınızda təhlükəsizlik dəyişikliyi"; lines = ["Hesabınızın şifrəsi yeniləndi.", "Bu əməliyyatı siz etməmisinizsə, hesabınıza daxil olun və dəstək xidməti ilə əlaqə saxlayın."]; break;
     case "STORE_INQUIRY": {
       // Buyer text is plain text: every line is HTML-escaped below, and nothing from the buyer reaches a header except a validated Reply-To.

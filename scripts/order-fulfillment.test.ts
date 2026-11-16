@@ -17,6 +17,8 @@ function makeTransaction(options: { paymentStatus?: string; status?: string; qua
   });
   const tx: any = {
     $queryRaw: async () => [],
+    // Customer cancellation requests (since 2026-11-16): none open in these scenarios.
+    orderCancellationRequest: { count: async () => 0, updateMany: async () => ({ count: 0 }) },
     order: {
       findUnique: async ({ data, include }: any) => {
         if (data?.status) state.parentStatus = data.status;

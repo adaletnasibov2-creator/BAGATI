@@ -273,7 +273,7 @@ export default async function HomePage({ searchParams }: Props) {
         <nav aria-label="Məhsul kateqoriyaları" className="-mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-3 sm:px-0 lg:grid-cols-10">
           {orderedCategories.map((category) => (
             <Link key={category.id} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group flex min-h-[142px] min-w-[108px] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-[20px] border border-bagati-border bg-white px-2 py-3 text-center shadow-[0_6px_18px_rgba(23,58,58,.035)] outline-none transition duration-200 hover:-translate-y-0.5 hover:border-[#C9D8D1] hover:shadow-card focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2 motion-reduce:transition-none sm:min-w-0">
-              <CategoryIcon category={category} size="large" />
+              <CategoryIcon category={category} size="large" loading="lazy" />
               <span className="line-clamp-2 min-h-8 max-w-[104px] text-[.74rem] font-semibold leading-4 text-bagati-text sm:text-[.78rem]">{category.name}</span>
             </Link>
           ))}

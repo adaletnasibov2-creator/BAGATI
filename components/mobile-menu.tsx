@@ -141,7 +141,7 @@ export function MobileMenu({
                     <li key={category.id} className="rounded-2xl border border-bagati-border/80 bg-bagati-page/70">
                       <div className="flex min-w-0 items-center">
                         <Link onClick={closeMenu} href={categoryHref(category.slug)} className="group flex min-h-[60px] min-w-0 flex-1 items-center gap-2 rounded-2xl p-2 text-[.82rem] font-medium text-bagati-text transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
-                          <CategoryIcon category={category} size="small" />
+                          <CategoryIcon category={category} size="small" loading="lazy" />
                           <span className="line-clamp-2 min-w-0">{category.name}</span>
                         </Link>
                         {children.length > 0 && (

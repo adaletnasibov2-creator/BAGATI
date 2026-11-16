@@ -79,6 +79,13 @@ enum ReturnResolution {
   EXCHANGE
 }
 
+enum OrderCancellationRequestStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
 enum ReturnStatus {
   REQUESTED
   APPROVED
@@ -202,6 +209,8 @@ model User {
   voenVerifications             SellerVoenVerification[]        @relation("SellerVoenVerificationSeller")
   voenVerificationsGiven        SellerVoenVerification[]        @relation("SellerVoenVerificationVerifiedBy")
   voenVerificationsRevoked      SellerVoenVerification[]        @relation("SellerVoenVerificationRevokedBy")
+  cancellationRequests          OrderCancellationRequest[]      @relation("OrderCancellationRequestCustomer")
+  cancellationDecisions         OrderCancellationRequest[]      @relation("OrderCancellationRequestDecidedBy")
 
   @@index([role, isActive])
 }
@@ -696,13 +705,13 @@ model Order {
 }
 
 model StoreOrder {
-  id                     String          @id @default(cuid())
+  id                     String                     @id @default(cuid())
   orderId                String
   storeId                String
-  status                 OrderStatus     @default(PENDING)
-  subtotal               Decimal         @db.Decimal(12, 2)
-  commissionRateSnapshot Decimal?        @db.Decimal(5, 4)
-  deliveryFee            Decimal         @default(0.00) @db.Decimal(12, 2)
+  status                 OrderStatus                @default(PENDING)
+  subtotal               Decimal                    @db.Decimal(12, 2)
+  commissionRateSnapshot Decimal?                   @db.Decimal(5, 4)
+  deliveryFee            Decimal                    @default(0.00) @db.Decimal(12, 2)
   deliveryMethod         String?
   deliveryNote           String?
   deliveryCarrier        String?
@@ -712,11 +721,12 @@ model StoreOrder {
   shippedAt              DateTime?
   outForDeliveryAt       DateTime?
   deliveredAt            DateTime?
-  createdAt              DateTime        @default(now())
-  order                  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  store                  Store           @relation(fields: [storeId], references: [id])
+  createdAt              DateTime                   @default(now())
+  order                  Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  store                  Store                      @relation(fields: [storeId], references: [id])
   items                  OrderItem[]
   returnRequests         ReturnRequest[]
+  cancellationRequests   OrderCancellationRequest[]
 
   @@unique([orderId, storeId])
   @@index([storeId, status, createdAt])
@@ -1279,4 +1289,27 @@ model ContentPageRevision {
   createdBy   User?       @relation("ContentPageRevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([pageId, createdAt])
+}
+
+/// A customer's request to cancel one store order after the store confirmed it or after payment (rule 2 of
+/// lib/order-cancellation.ts). The store decides; approval uses the normal store cancel (stock restored once) and never
+/// touches the payment: refunds stay manual. At most one REQUESTED row per store order (partial unique index in the
+/// migration, not expressible in this schema).
+model OrderCancellationRequest {
+  id            String                         @id @default(cuid())
+  storeOrderId  String
+  customerId    String
+  status        OrderCancellationRequestStatus @default(REQUESTED)
+  reason        String                         @db.VarChar(500)
+  storeResponse String?                        @db.VarChar(1000)
+  decidedById   String?
+  decidedAt     DateTime?
+  createdAt     DateTime                       @default(now())
+  updatedAt     DateTime                       @updatedAt
+  storeOrder    StoreOrder                     @relation(fields: [storeOrderId], references: [id], onDelete: Cascade)
+  customer      User                           @relation("OrderCancellationRequestCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  decidedBy     User?                          @relation("OrderCancellationRequestDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([storeOrderId, status])
+  @@index([customerId, createdAt])
 }

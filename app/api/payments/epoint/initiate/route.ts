@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Sifariş identifikatoru yanlışdır" }, { status: 400 });
   const result = await startEpointCheckout(user.id, parsed.data.orderId);
   if (!result.ok) {
-    const status = result.code === "ORDER_NOT_FOUND" ? 404 : result.code === "EPOINT_NOT_CONFIGURED" ? 503 : result.code === "ALREADY_PAID" || result.code === "ALREADY_STARTED" ? 409 : 422;
-    return NextResponse.json({ error: "Ödəniş başladılmadı", code: result.code }, { status, headers: { "Cache-Control": "no-store" } });
+    const status = result.code === "ORDER_NOT_FOUND" ? 404 : result.code === "EPOINT_NOT_CONFIGURED" ? 503 : result.code === "ALREADY_PAID" || result.code === "ALREADY_STARTED" || result.code === "ORDER_CANCELLED" ? 409 : 422;
+    return NextResponse.json({ error: result.code === "ORDER_CANCELLED" ? "Ləğv edilmiş sifariş üçün ödəniş başladıla bilməz" : "Ödəniş başladılmadı", code: result.code }, { status, headers: { "Cache-Control": "no-store" } });
   }
   return NextResponse.json({ redirectUrl: result.redirectUrl }, { headers: { "Cache-Control": "no-store" } });
 }

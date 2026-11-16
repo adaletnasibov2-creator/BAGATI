@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { readJsonBodyLimited } from "@/lib/request-json";
 import { logSecurityOperationFailure } from "@/lib/security-logging";
 import { setShipmentStatusAsAdmin, ShipmentAdminError } from "@/lib/shipment-admin";
+import { CANCELLATION_REQUEST_OPEN_MESSAGE } from "@/lib/order-cancellation-guard";
 import { SHIPMENT_STATUSES } from "@/lib/shipment-tracking";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ st
       const message = error.code === "NOT_FOUND" ? "Mağaza sifarişi tapılmadı"
         : error.code === "ORDER_CLOSED" ? "Ləğv edilmiş və ya qaytarılmış sifarişin göndəriş statusu dəyişdirilə bilməz"
         : error.code === "INVALID_TRANSITION" ? "Bu göndəriş statusu keçidi mümkün deyil"
+        : error.code === "CANCELLATION_REQUEST_OPEN" ? CANCELLATION_REQUEST_OPEN_MESSAGE
         : "Sifariş bu vaxt dəyişdirilib. Səhifəni yeniləyin.";
       return NextResponse.json({ error: message, code: error.code }, { status, headers });
     }

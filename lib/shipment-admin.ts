@@ -6,9 +6,10 @@
  */
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { allowedShipmentTransitions, shipmentChangeAllowedForOrder, shipmentTimestamps, type ShipmentStatusValue } from "@/lib/shipment-tracking";
+import { hasOpenCancellationRequest, isDispatchShipmentStatus } from "@/lib/order-cancellation-guard";
 
 export class ShipmentAdminError extends Error {
-  constructor(readonly code: "NOT_FOUND" | "ORDER_CLOSED" | "INVALID_TRANSITION" | "CONFLICT") { super(code); this.name = "ShipmentAdminError"; }
+  constructor(readonly code: "NOT_FOUND" | "ORDER_CLOSED" | "INVALID_TRANSITION" | "CONFLICT" | "CANCELLATION_REQUEST_OPEN") { super(code); this.name = "ShipmentAdminError"; }
 }
 
 export async function setShipmentStatusAsAdmin(db: PrismaClient, input: { storeOrderId: string; actorId: string; target: ShipmentStatusValue }) {
@@ -20,6 +21,8 @@ export async function setShipmentStatusAsAdmin(db: PrismaClient, input: { storeO
     if (!current) throw new ShipmentAdminError("NOT_FOUND");
     if (!shipmentChangeAllowedForOrder(current.status)) throw new ShipmentAdminError("ORDER_CLOSED");
     if (!allowedShipmentTransitions(current.shipmentStatus as ShipmentStatusValue | null).includes(input.target)) throw new ShipmentAdminError("INVALID_TRANSITION");
+    // An open customer cancellation request must be decided before the goods leave the store.
+    if (isDispatchShipmentStatus(input.target) && await hasOpenCancellationRequest(tx, current.id)) throw new ShipmentAdminError("CANCELLATION_REQUEST_OPEN");
     const changed = await tx.storeOrder.updateMany({
       where: { id: current.id, status: current.status, shipmentStatus: current.shipmentStatus },
       data: { shipmentStatus: input.target, ...shipmentTimestamps(input.target, current, new Date()) },

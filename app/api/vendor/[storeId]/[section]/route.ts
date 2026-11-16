@@ -18,6 +18,7 @@ import { enqueueEmail } from "@/lib/email-outbox";
 import { checkImportRows, ImportInventoryReservationError, isSafeImportImageUrl, parseImportVariants } from "@/lib/product-import";
 import { CatalogSkuConflictError, findExistingProductSkuMatches, findExistingVariantSkuKeys, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
+import { CANCELLATION_REQUEST_OPEN_MESSAGE, hasOpenCancellationRequest, isDispatchShipmentStatus } from "@/lib/order-cancellation-guard";
 import { legacyVendorProductPatchSchema } from "@/lib/vendor-product-schemas";
 import { parseImportByExtension, ImportParseError } from "@/lib/import-parsers";
 import { isStorefrontTheme } from "@/lib/storefront-themes";
@@ -295,6 +296,8 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     const targetOrderStatus=s.data.status;
     if(targetOrderStatus&&!allowedVendorOrderTransitions(locked.status).includes(targetOrderStatus))return {error:"INVALID_TRANSITION"};
     if(s.data.shipmentStatus&&!shipmentChangeAllowedForOrder(locked.status))return {error:"SHIPMENT_ORDER_CLOSED"};
+    // An open customer cancellation request must be decided before the goods leave the store (status or shipment).
+    if(s.data.shipmentStatus&&isDispatchShipmentStatus(s.data.shipmentStatus)&&await hasOpenCancellationRequest(tx,locked.id))return {error:"CANCELLATION_REQUEST_OPEN"};
     const deliveryData:any={};for(const key of ["deliveryMethod","deliveryNote","deliveryCarrier","deliveryTrackingCode","trackingUrl"] as const)if(s.data[key]!==undefined)deliveryData[key]=s.data[key];
     if(s.data.shipmentStatus){deliveryData.shipmentStatus=s.data.shipmentStatus;Object.assign(deliveryData,shipmentTimestamps(s.data.shipmentStatus,locked,new Date()));}
     let item;
@@ -326,13 +329,14 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
    if(result.error==="NOT_FOUND")return NextResponse.json({error:"Sifariş tapılmadı"},{status:404});
    if(result.error==="INVALID_TRANSITION")return NextResponse.json({error:"Bu status keçidi mümkün deyil"},{status:409});
    if(result.error==="INVALID_SHIPMENT_TRANSITION")return NextResponse.json({error:"Bu çatdırılma statusu keçidi mümkün deyil"},{status:409});
+   if(result.error==="CANCELLATION_REQUEST_OPEN")return NextResponse.json({error:CANCELLATION_REQUEST_OPEN_MESSAGE},{status:409});
    if(result.error==="SHIPMENT_ORDER_CLOSED")return NextResponse.json({error:"Ləğv edilmiş və ya qaytarılmış sifarişin göndəriş statusu dəyişdirilə bilməz"},{status:409});
    if(result.error)return NextResponse.json({error:"Sifariş paralel olaraq yeniləndi"},{status:409});
    return NextResponse.json(result);
   } catch(error) {
    if(error instanceof OrderFulfillmentError){
     const status=error.code==="NOT_FOUND"?404:409;
-    const message=error.code==="NOT_FOUND"?"Sifari\u015f tap\u0131lmad\u0131":error.code==="PAYMENT_NOT_SETTLED"?"\u00d6d\u0259ni\u015f t\u0259sdiql\u0259nm\u0259d\u0259n sifari\u015f \u00e7atd\u0131r\u0131lm\u0131\u015f kimi qeyd edil\u0259 bilm\u0259z":error.code==="INVALID_TRANSITION"?"Bu status ke\u00e7idi m\u00fcmk\u00fcn deyil":"Sifari\u015f paralel olaraq yenil\u0259ndi";
+    const message=error.code==="CANCELLATION_REQUEST_OPEN"?CANCELLATION_REQUEST_OPEN_MESSAGE:error.code==="NOT_FOUND"?"Sifari\u015f tap\u0131lmad\u0131":error.code==="PAYMENT_NOT_SETTLED"?"\u00d6d\u0259ni\u015f t\u0259sdiql\u0259nm\u0259d\u0259n sifari\u015f \u00e7atd\u0131r\u0131lm\u0131\u015f kimi qeyd edil\u0259 bilm\u0259z":error.code==="INVALID_TRANSITION"?"Bu status ke\u00e7idi m\u00fcmk\u00fcn deyil":"Sifari\u015f paralel olaraq yenil\u0259ndi";
     return NextResponse.json({error:message},{status});
    }
    return NextResponse.json({error:"Sifari\u015f yenil\u0259nm\u0259di"},{status:500});

@@ -48,7 +48,8 @@ const defaultSlides: Slide[] = [
     image: "/images/home/hero-electronics-devices-desktop.webp",
     imageAlt: "Noutbuk, baş qulaqlığı, ağıllı saat, planşet, smartfon və qutusu ilə simsiz qulaqcıqlardan ibarət elektronika kompozisiyası",
     sources: [
-      { media: "(max-width: 639px)", srcSet: "/images/home/hero-electronics-devices-mobile.webp" },
+      // Square for phones: the 4:3 flat-lay with its plain background continued above and below (no device cropped).
+      { media: "(max-width: 639px)", srcSet: "/images/home/hero-electronics-devices-square.webp" },
       { media: "(max-width: 1279px)", srcSet: "/images/home/hero-electronics-devices-tablet.webp" },
     ],
     visualLabel: "Texnologiya",
@@ -76,11 +77,16 @@ const defaultSlides: Slide[] = [
     description: "Mebel, dekor və ev texnikası ilə daha keyfiyyətli, rahat bir yaşam sahəsi yarat.",
     button: "Ev məhsullarını kəşf et",
     href: "/products?category=ev-ve-mesiet",
-    secondary: "Bütün kateqoriyalar",
+    // Same label as slide 1, so both buttons fit on one line on a 390 px phone (the longer one wrapped below the fold).
+    secondary: "Kateqoriyalar",
     secondaryHref: "/categories",
-    image: "/images/home/hero-home.webp",
+    // Art-directed crops of hero-home.webp, each centred on the room (57-70 KB instead of 348 KB).
+    image: "/images/home/hero-home-desktop.webp",
     imageAlt: "Divan, jurnal masası və puflar olan işıqlı qonaq otağı",
-    imagePosition: "50% 68%",
+    sources: [
+      { media: "(max-width: 639px)", srcSet: "/images/home/hero-home-mobile.webp" },
+      { media: "(max-width: 1279px)", srcSet: "/images/home/hero-home-tablet.webp" },
+    ],
     visualLabel: "Ev üçün",
   },
   {
@@ -103,11 +109,24 @@ const defaultSlides: Slide[] = [
 const controlButton =
   "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold";
 
+/** Time each slide stays before autoplay moves on (owner decision 2026-11-16). */
+export const HERO_AUTOPLAY_MS = 6000;
+/** Crossfade length; matches the opacity transition class on the images. */
+const CROSSFADE_MS = 500;
+
 export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  // False until hydration: autoplay and preloading only start once the carousel can react.
+  const [hydrated, setHydrated] = useState(false);
+  const [tabHidden, setTabHidden] = useState(false);
+  // Slides whose image is in the DOM (the first one from the server; the next one is added ahead of time).
+  const [rendered, setRendered] = useState<ReadonlySet<number>>(() => new Set([0]));
+  const [loaded, setLoaded] = useState<ReadonlySet<number>>(() => new Set());
+  // The slide whose image is fully visible underneath; the active one fades in on top of it once loaded.
+  const [shown, setShown] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   const slides: Slide[] = banners.length
@@ -141,20 +160,42 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
     const updatePreference = () => setReducedMotion(preference.matches);
+    const updateVisibility = () => setTabHidden(document.visibilityState !== "visible");
     updatePreference();
+    updateVisibility();
+    setHydrated(true);
     preference.addEventListener("change", updatePreference);
-    return () => preference.removeEventListener("change", updatePreference);
+    document.addEventListener("visibilitychange", updateVisibility);
+    return () => {
+      preference.removeEventListener("change", updatePreference);
+      document.removeEventListener("visibilitychange", updateVisibility);
+    };
   }, []);
 
+  // Keep the active slide and the one after it in the DOM, so the next photo is already downloaded when it is due.
   useEffect(() => {
-    if (paused || interacting || reducedMotion) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        setActive((value) => (value + 1) % slides.length);
-      }
-    }, 7000);
-    return () => window.clearInterval(timer);
-  }, [paused, interacting, reducedMotion, slides.length]);
+    if (!hydrated) return;
+    setRendered((current) => {
+      const next = (active + 1) % slides.length;
+      if (current.has(active) && current.has(next)) return current;
+      return new Set([...current, active, next]);
+    });
+  }, [hydrated, active, slides.length]);
+
+  // Once the active image has loaded and faded in, it becomes the image underneath for the next change.
+  const activeReady = loaded.has(active) || !slides[active]?.image;
+  useEffect(() => {
+    if (!activeReady || shown === active) return;
+    const timer = window.setTimeout(() => setShown(active), reducedMotion ? 0 : CROSSFADE_MS);
+    return () => window.clearTimeout(timer);
+  }, [activeReady, active, shown, reducedMotion]);
+
+  const markLoaded = (index: number) => setLoaded((current) => (current.has(index) ? current : new Set([...current, index])));
+
+  // Autoplay is driven by the progress fill in the active dot: its animationend moves to the next slide, so a hover or
+  // focus pause freezes the fill and the timer together. Never runs under reduced motion.
+  const autoplay = hydrated && !reducedMotion && slides.length > 1;
+  const autoplayRunning = autoplay && !paused && !interacting && !tabHidden;
 
   const slide = slides[active] ?? slides[0];
   const step = (delta: number) => setActive((value) => (value + delta + slides.length) % slides.length);
@@ -197,31 +238,51 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
     >
       {/* The photograph is not used as a text backdrop: below xl it has its own strip above the
           copy, from xl it fills the right-hand panel. No overlay or control covers the products. */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#e1ded7] sm:aspect-[5/2] lg:aspect-[3/1] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[58%]">
-        {slide.image ? (
-          <picture key={slide.id}>
-            {slide.sources?.map((item) => <source key={item.media} media={item.media} srcSet={item.srcSet} />)}
-            {/* Plain <img> inside <picture>: the sources are art-directed, pre-optimised WebP files. */}
-            <img
-              src={slide.image}
-              alt={slide.imageAlt}
-              decoding="async"
-              draggable={false}
-              className="absolute inset-0 h-full w-full object-cover"
-              style={slide.imagePosition ? { objectPosition: slide.imagePosition } : undefined}
-            />
-          </picture>
-        ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(243,233,213,0.7),_rgba(23,58,58,0.18)_45%,_rgba(23,58,58,0.75)_100%)]" />
-        )}
+      {/* Hero sizes (owner, 2026-11-16): image 4:3 on phones (so the buttons stay in the first screen of a 390x844 phone),
+          2:1 from 640 px, 5:2 from 1024 px; from 1280 px the panel fills the right side of a 600 px tall hero. The aspect ratios and min-heights reserve the space before any
+          image arrives, so nothing below moves while the photos load. */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#e1ded7] sm:aspect-[2/1] lg:aspect-[5/2] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[58%]">
+        {/* Every slide image that is in the DOM is stacked here. The one underneath ("shown") stays visible until the
+            active one has loaded and faded in on top, so a change never shows an empty grey box. */}
+        {slides.map((item, index) => {
+          if (!rendered.has(index)) return null;
+          const isActive = index === active;
+          const visible = index === shown || (isActive && (loaded.has(index) || !item.image));
+          const layer = `absolute inset-0 transition-opacity duration-500 ease-out motion-reduce:transition-none ${visible ? "opacity-100" : "opacity-0"} ${isActive ? "z-[2]" : index === shown ? "z-[1]" : "z-0"}`;
+          if (!item.image) {
+            return <div key={item.id} aria-hidden={!isActive} className={`${layer} bg-[radial-gradient(circle_at_top_left,_rgba(243,233,213,0.7),_rgba(23,58,58,0.18)_45%,_rgba(23,58,58,0.75)_100%)]`} />;
+          }
+          return (
+            <picture key={item.id}>
+              {item.sources?.map((source) => <source key={source.media} media={source.media} srcSet={source.srcSet} />)}
+              {/* Plain <img> inside <picture>: the sources are art-directed, pre-optimised WebP files. The first slide
+                  is the page's main image (high priority); the others are fetched ahead of their turn at low priority. */}
+              <img
+                ref={(element) => {
+                  // An image that finished before hydration fires no onLoad that React can see.
+                  if (element?.complete && element.naturalWidth > 0) markLoaded(index);
+                }}
+                src={item.image}
+                alt={isActive ? item.imageAlt : ""}
+                aria-hidden={!isActive}
+                decoding="async"
+                fetchPriority={index === 0 ? "high" : "low"}
+                draggable={false}
+                onLoad={() => markLoaded(index)}
+                className={`${layer} h-full w-full object-cover`}
+                style={item.imagePosition ? { objectPosition: item.imagePosition } : undefined}
+              />
+            </picture>
+          );
+        })}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 hidden w-[13%] bg-[linear-gradient(90deg,#102726_0%,rgba(16,39,38,0.62)_38%,rgba(16,39,38,0)_100%)] xl:block"
+          className="pointer-events-none absolute inset-y-0 left-0 z-[3] hidden w-[13%] bg-[linear-gradient(90deg,#102726_0%,rgba(16,39,38,0.62)_38%,rgba(16,39,38,0)_100%)] xl:block"
         />
       </div>
 
       {/* Fixed minimum heights keep the carousel from changing height between slides. */}
-      <div className="relative z-10 flex min-h-[416px] flex-col justify-between gap-5 p-5 sm:min-h-[404px] sm:gap-6 sm:p-7 xl:min-h-[520px] xl:w-[45%] xl:p-9">
+      <div className="relative z-10 flex min-h-[416px] flex-col justify-between gap-5 p-5 sm:min-h-[404px] sm:gap-6 sm:p-7 xl:min-h-[600px] xl:w-[45%] xl:p-9">
         <div className="flex items-center justify-between gap-3">
           <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[.62rem] font-semibold uppercase tracking-[.18em] text-white/90">
             {slide.eyebrow}
@@ -259,16 +320,38 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
 
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            {slides.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-label={`${index + 1}. slayd`}
-                aria-pressed={index === active}
-                onClick={() => setActive(index)}
-                className={`h-2.5 rounded-full transition-all duration-200 ${index === active ? "w-8 bg-[#F0E3BE]" : "w-2.5 bg-white/70 hover:bg-white"}`}
-              />
-            ))}
+            {slides.map((item, index) => {
+              const isActive = index === active;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-label={`${index + 1}. slayd`}
+                  aria-pressed={isActive}
+                  onClick={() => setActive(index)}
+                  className={`relative h-2.5 overflow-hidden rounded-full transition-all duration-200 ${isActive ? (autoplay ? "w-8 bg-white/35" : "w-8 bg-[#F0E3BE]") : "w-2.5 bg-white/70 hover:bg-white"}`}
+                >
+                  {isActive && autoplay && (
+                    // Progress fill = the autoplay timer. Keyed by slide so a manual change restarts it; paused with the
+                    // carousel (hover, focus, pause button, hidden tab).
+                    <span
+                      key={item.id}
+                      aria-hidden="true"
+                      data-hero-progress=""
+                      className="absolute inset-0 origin-left rounded-full bg-[#F0E3BE]"
+                      style={{
+                        animation: `bagati-hero-progress ${HERO_AUTOPLAY_MS}ms linear forwards`,
+                        animationPlayState: autoplayRunning ? "running" : "paused",
+                      }}
+                      onAnimationEnd={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        setActive((value) => (value + 1) % slides.length);
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
           <div className="flex items-center gap-2">
             <span className="mr-1 hidden rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[.62rem] font-medium uppercase tracking-[.18em] text-white/80 sm:inline-flex">

@@ -29,7 +29,8 @@ export default async function NewConversationPage({ searchParams }: { searchPara
   if (target.existingConversationId) redirect(customerThreadHref(target.existingConversationId));
   const productHref = target.product ? `/products/${encodeURIComponent(target.product.id)}` : null;
   const orderHref = target.order ? `/orders/${encodeURIComponent(target.order.orderId)}` : null;
-  return <div className="container max-w-3xl py-5 md:py-10">
+  // The shared .container sets its own max-width, so the reading width is limited by an inner wrapper.
+  return <div className="container py-5 md:py-10"><div className="mx-auto max-w-3xl">
     <Link href={productHref ?? orderHref ?? `/stores/${encodeURIComponent(target.store.id)}`} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-emerald"><ChevronLeft size={16} aria-hidden="true"/>Geri</Link>
     <header className="mt-1 grid gap-3">
       <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#967844]">Mağazaya yaz</p>
@@ -40,5 +41,5 @@ export default async function NewConversationPage({ searchParams }: { searchPara
       <NewConversationForm storeId={target.store.id} context={target.context} contextId={target.contextId} allowContactDetails={settings.allowContactDetails}/>
       <p className="mt-3 text-xs leading-5 text-muted">Mağazanın cavabı “Mesajlarım” bölməsinə gələcək; yeni cavab barədə sizə e-poçtla xəbər veriləcək.</p>
     </div>
-  </div>;
+  </div></div>;
 }

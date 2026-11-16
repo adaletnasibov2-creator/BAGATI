@@ -20,7 +20,8 @@ export default async function CustomerConversationPage({ params }: { params: Pro
   const view = await getConversationView(prisma, { conversationId, actor });
   if (!view) notFound();
   const page = await listMessages(prisma, { conversationId: view.id, actor });
-  return <div className="container max-w-3xl py-5 md:py-10">
+  // The shared .container sets its own max-width, so the reading width is limited by an inner wrapper.
+  return <div className="container py-5 md:py-10"><div className="mx-auto max-w-3xl">
     <Link href={customerInboxHref} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-emerald"><ChevronLeft size={16} aria-hidden="true"/>Mesajlarım</Link>
     <header className="mt-1 grid gap-3">
       <h1 className="text-xl font-semibold text-ink sm:text-2xl"><Link href={`/stores/${encodeURIComponent(view.store.id)}`} className="hover:text-emerald">{view.store.name}</Link></h1>
@@ -45,5 +46,5 @@ export default async function CustomerConversationPage({ params }: { params: Pro
         allowContactDetails={settings.allowContactDetails}
       />
     </div>
-  </div>;
+  </div></div>;
 }

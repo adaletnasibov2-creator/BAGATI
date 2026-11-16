@@ -20,7 +20,7 @@ import { AZ_PHONE_ERROR, normalizeAzPhone } from "@/lib/az-phone";
 import { MAINTENANCE_MESSAGE_DEFAULT } from "@/lib/maintenance-defaults";
 
 export type SettingPermission = "settings.finance" | "settings.content" | "settings.limits";
-export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance" | "catalog";
+export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance" | "catalog" | "orders";
 
 export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description: string }> = {
   finance: { label: "Maliyyə", description: "Komissiya və digər maliyyə parametrləri." },
@@ -31,6 +31,7 @@ export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description
   footer: { label: "Footer", description: "Footer şüarı və footer keçidləri. Boş qalanda indiki mətn və keçidlər göstərilir." },
   maintenance: { label: "Texniki iş rejimi", description: "Açıq olanda müştəri və satıcı səhifələri müvəqqəti bağlanır; admin paneli və ödəniş bildirişləri işləyir." },
   catalog: { label: "Kataloq", description: "Kateqoriyaların mağazada necə göstərildiyi." },
+  orders: { label: "Sifarişlər", description: "Müştərinin sifarişlə bağlı edə biləcəyi əməliyyatlar." },
 };
 
 export type SettingInput =
@@ -463,6 +464,33 @@ const catalogShowEmptyCategories: SettingDefinition<boolean> = {
 
 const catalogSettings = [catalogShowEmptyCategories];
 
+// ---- Orders -------------------------------------------------------------------------------------------------
+
+/**
+ * Master switch for customer order cancellation (lib/order-cancellation.ts rules 1 and 2). OFF (default, owner
+ * decision 2026-11-16): the order page shows no cancellation panel and the direct-cancel and cancellation-request routes
+ * answer 403. This default deliberately differs from the code before the setting (where the feature was on): the owner
+ * switched the customer feature off. Store and admin cancels, returns, the open-request decision and the payment guards
+ * are not affected. Read through the cached read path by lib/order-cancellation-switch.ts.
+ */
+const ordersCustomerCancellationEnabled: SettingDefinition<boolean> = {
+  key: "orders.customerCancellationEnabled",
+  group: "orders",
+  permission: "settings.content",
+  sensitive: false,
+  label: "Müştəri sifariş ləğvi",
+  description: "Söndürülü olanda müştəri sifarişi ləğv edə bilməz; çatdırıldıqdan sonra qaytarma axını işləyir.",
+  schema: z.boolean(),
+  inputSchema: z.union([z.boolean(), z.enum(["true", "false"])]).transform((value) => value === true || value === "true"),
+  toInput: (value) => String(value),
+  display: (value) => (value ? "Açıqdır — müştəri sifarişi ləğv edə və ya ləğv müraciəti göndərə bilər" : "Söndürülüb — müştəri sifarişi ləğv edə bilməz"),
+  default: false,
+  input: { kind: "toggle" },
+  read: "ttl",
+};
+
+const orderSettings = [ordersCustomerCancellationEnabled];
+
 // ---- Maintenance mode ---------------------------------------------------------------------------------------
 
 export { MAINTENANCE_MESSAGE_DEFAULT };
@@ -505,6 +533,7 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
   ...(footerSettings as SettingDefinition[]),
   ...(maintenanceSettings as SettingDefinition[]),
   ...(catalogSettings as SettingDefinition[]),
+  ...(orderSettings as SettingDefinition[]),
 ];
 
 /**
@@ -542,4 +571,5 @@ export const SETTING_KEYS = {
   maintenanceEnabled: "maintenance.enabled",
   maintenanceMessage: "maintenance.message",
   catalogShowEmptyCategories: "catalog.showEmptyCategories",
+  ordersCustomerCancellationEnabled: "orders.customerCancellationEnabled",
 } as const;

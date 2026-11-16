@@ -4,6 +4,7 @@ import { csrfRejection } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { cancelOrderByCustomer } from "@/lib/order-cancellation-service";
 import { cancellationErrorResponse } from "@/lib/order-cancellation-http";
+import { customerCancellationGate } from "@/lib/order-cancellation-switch";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (crossSite) return crossSite;
   const customer = await requireRole("CUSTOMER");
   if (!customer) return NextResponse.json({ error: "Daxil olmaq tələb olunur" }, { status: 401 });
+  // Master switch (admin setting, default OFF): refused on the server before the order is read.
+  const disabled = await customerCancellationGate();
+  if (disabled) return disabled;
   const { orderId } = await params;
   try {
     const result = await cancelOrderByCustomer(prisma, { orderId, customerId: customer.id });

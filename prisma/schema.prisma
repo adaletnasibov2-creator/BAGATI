@@ -211,6 +211,11 @@ model User {
   voenVerificationsRevoked      SellerVoenVerification[]        @relation("SellerVoenVerificationRevokedBy")
   cancellationRequests          OrderCancellationRequest[]      @relation("OrderCancellationRequestCustomer")
   cancellationDecisions         OrderCancellationRequest[]      @relation("OrderCancellationRequestDecidedBy")
+  conversations                 Conversation[]                  @relation("ConversationCustomer")
+  conversationMessages          ConversationMessage[]           @relation("ConversationMessageSender")
+  conversationBlocks            ConversationBlock[]             @relation("ConversationBlockCustomer")
+  conversationReports           ConversationReport[]            @relation("ConversationReportReporter")
+  conversationReportReviews     ConversationReport[]            @relation("ConversationReportReviewer")
 
   @@index([role, isActive])
 }
@@ -504,6 +509,8 @@ model Store {
   returnRequests            ReturnRequest[]
   catalogImportJobs         ImportJob[]
   inquiries                 StoreInquiry[]
+  conversations             Conversation[]
+  conversationBlocks        ConversationBlock[]
 
   @@index([vendorId, cityId])
   @@index([cityId, isActive])
@@ -606,6 +613,7 @@ model Product {
   cartItems         CartItem[]
   promotionProducts PromotionProduct[]
   homepageFeatured  HomepageFeaturedProduct?
+  conversations     Conversation[]
 
   @@unique([storeId, slug])
   @@unique([storeId, sku])
@@ -727,6 +735,7 @@ model StoreOrder {
   items                  OrderItem[]
   returnRequests         ReturnRequest[]
   cancellationRequests   OrderCancellationRequest[]
+  conversations          Conversation[]
 
   @@unique([orderId, storeId])
   @@index([storeId, status, createdAt])
@@ -1312,4 +1321,108 @@ model OrderCancellationRequest {
 
   @@index([storeOrderId, status])
   @@index([customerId, createdAt])
+}
+
+// ---- Customer <-> store messaging (owner decisions 2026-11-16; rules in lib/messaging.ts) -------------------------
+
+enum ConversationContext {
+  PRODUCT
+  ORDER
+  STORE
+}
+
+enum MessageSenderRole {
+  CUSTOMER
+  STORE
+}
+
+enum ConversationBlockSide {
+  CUSTOMER
+  STORE
+}
+
+enum ConversationReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+/// One thread per customer, store and context ("product:<id>", "order:<storeOrderId>" or "store"). Only a customer
+/// starts one; the store replies. Unread counters are updated with every message under a row lock on this row, so
+/// badges and lists never count messages. Deleted with the customer account (owner decision) or the store.
+model Conversation {
+  id                  String                @id @default(cuid())
+  storeId             String
+  customerId          String
+  context             ConversationContext
+  contextKey          String                @db.VarChar(80)
+  productId           String?
+  storeOrderId        String?
+  lastMessageAt       DateTime              @default(now())
+  lastMessagePreview  String                @db.VarChar(140)
+  lastSenderRole      MessageSenderRole
+  customerUnreadCount Int                   @default(0)
+  storeUnreadCount    Int                   @default(0)
+  customerLastReadAt  DateTime?
+  storeLastReadAt     DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  store               Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer            User                  @relation("ConversationCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  product             Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  storeOrder          StoreOrder?           @relation(fields: [storeOrderId], references: [id], onDelete: SetNull)
+  messages            ConversationMessage[]
+  reports             ConversationReport[]
+
+  @@unique([customerId, storeId, contextKey])
+  @@index([storeId, lastMessageAt(sort: Desc), id])
+  @@index([customerId, lastMessageAt(sort: Desc), id])
+}
+
+/// Plain text, 1-1000 characters (CHECK in the migration). Never shown with the sender's e-mail or phone.
+model ConversationMessage {
+  id             String            @id @default(cuid())
+  conversationId String
+  senderRole     MessageSenderRole
+  senderUserId   String?
+  body           String            @db.VarChar(1000)
+  createdAt      DateTime          @default(now())
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User?             @relation("ConversationMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt, id])
+}
+
+/// A side blocks the other for this store: no new messages in any of their conversations; history stays readable.
+model ConversationBlock {
+  id          String                @id @default(cuid())
+  storeId     String
+  customerId  String
+  side        ConversationBlockSide
+  createdById String?
+  createdAt   DateTime              @default(now())
+  store       Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer    User                  @relation("ConversationBlockCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, customerId, side])
+}
+
+/// A report makes the conversation readable for admins (every admin read is audited). The store is not told.
+model ConversationReport {
+  id             String                   @id @default(cuid())
+  conversationId String
+  reporterUserId String?
+  reporterRole   MessageSenderRole
+  reason         String                   @db.VarChar(20)
+  note           String?                  @db.VarChar(500)
+  status         ConversationReportStatus @default(OPEN)
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime                 @default(now())
+  conversation   Conversation             @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reporter       User?                    @relation("ConversationReportReporter", fields: [reporterUserId], references: [id], onDelete: SetNull)
+  reviewedBy     User?                    @relation("ConversationReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([conversationId])
 }

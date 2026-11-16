@@ -150,12 +150,15 @@ test("public and publication entry points use trim-aware store eligibility", () 
     ["app/api/stores/route.ts", /filterEligiblePublicStores/],
     ["app/api/admin/homepage/featured/route.ts", /filterEligiblePublicStores[\s\S]*resolvePublicStoreEligibility/],
     ["app/api/vendor/[storeId]/products/route.ts", /resolvePublicStoreEligibility\(\[access\.storeId\], tx\)/],
-    ["app/api/vendor/[storeId]/[section]/route.ts", /resolvePublicStoreEligibility\(\[storeId\],\s*tx\)/],
     ["app/api/vendor/[storeId]/campaigns/route.ts", /resolvePublicStoreEligibility\(\[storeId\], tx\)/],
     ["app/api/admin/[...resource]/route.ts", /resolvePublicStoreEligibility\(\[current\.storeId\], tx\)/],
   ] as const) {
     assert.match(source(path), pattern, path);
   }
+  // [section] no longer creates products: its unreachable legacy create branch (the one that held this check) was
+  // removed in scale-fixes-1. Seller creates go through products/route.ts, checked above.
+  // (Its CSV import branch still creates DRAFT products, which never need the publish check.)
+  assert.doesNotMatch(source("app/api/vendor/[storeId]/[section]/route.ts"), /tx\.product\.create\(\{data:\{id:productId,storeId,name:parsed\.data\.name/);
 });
 
 test("subscription and admin-managed eligibility retain the existing policy", () => {

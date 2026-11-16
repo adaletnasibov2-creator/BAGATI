@@ -48,7 +48,9 @@ test("every product write path runs the category choice check", () => {
     "app/api/vendor/[storeId]/products/[productId]/route.ts",
     "app/api/admin/products/[productId]/route.ts",
   ]) assert.match(read(path), /productCategoryChoiceError\(/, path);
-  assert.equal(read("app/api/vendor/[storeId]/[section]/route.ts").match(/productCategoryChoiceError\(/g)?.length, 2, "legacy create and patch");
+  // The legacy create branch of [section] was removed in scale-fixes-1 (unreachable: products/route.ts exports POST).
+  assert.equal(read("app/api/vendor/[storeId]/[section]/route.ts").match(/productCategoryChoiceError\(/g)?.length, 1, "legacy patch");
+  assert.doesNotMatch(read("app/api/vendor/[storeId]/[section]/route.ts"), /legacyVendorProductSchema\b/, "no legacy product create path left");
   assert.match(read("app/api/vendor/[storeId]/products/[productId]/route.ts"), /previousCategoryId: existing \? existing\.categoryId : undefined/);
   assert.match(read("app/api/admin/products/[productId]/route.ts"), /previousCategoryId: product\.categoryId/);
 });

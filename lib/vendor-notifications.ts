@@ -12,6 +12,9 @@ export const VENDOR_NOTIFICATION_TITLES = {
   storeApproved: "Mağaza təsdiqləndi",
   storeRejected: "Mağaza müraciəti rədd edildi",
   storeSuspended: "Mağaza dayandırıldı",
+  orderCancelledByCustomer: "Sifariş müştəri tərəfindən ləğv edildi",
+  cancellationRequest: "Yeni ləğv müraciəti",
+  cancellationRequestWithdrawn: "Ləğv müraciəti geri götürüldü",
 } as const;
 
 /** Seller notification for an administrator's store review decision (audit action from lib/store-review). */
@@ -44,6 +47,9 @@ const routes: [title: string, section: string][] = [
   [VENDOR_NOTIFICATION_TITLES.outOfStock, "inventory"],
   [VENDOR_NOTIFICATION_TITLES.newReturn, "returns"],
   [VENDOR_NOTIFICATION_TITLES.returnCancelled, "returns"],
+  [VENDOR_NOTIFICATION_TITLES.orderCancelledByCustomer, "orders"],
+  [VENDOR_NOTIFICATION_TITLES.cancellationRequest, "orders"],
+  [VENDOR_NOTIFICATION_TITLES.cancellationRequestWithdrawn, "orders"],
 ];
 
 /** Seller page for a notification, or null when the title is not a known seller event. */

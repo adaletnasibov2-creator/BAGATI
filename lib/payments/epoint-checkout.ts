@@ -24,7 +24,7 @@ export async function startEpointCheckout(userId: string, orderId: string, trans
     await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
     const order = await tx.order.findFirst({ where: { id: orderId, userId }, include: { payments: true } });
     if (!order) return { code: "ORDER_NOT_FOUND" as const };
-    const decision = choosePaymentAttempt({ userId: order.userId, total: order.total.toFixed(2), payments: order.payments.map(snapshot) }, userId);
+    const decision = choosePaymentAttempt({ userId: order.userId, total: order.total.toFixed(2), status: order.status, payments: order.payments.map(snapshot) }, userId);
     if (decision.code !== "READY") return decision;
     const reusable = order.payments.find((payment) => payment.status === "PENDING" && !payment.providerReference);
     const payment = reusable ?? await tx.payment.create({ data: { orderId: order.id, amount: order.total, currency: "AZN", status: "PENDING", provider: "epoint" } });
@@ -49,16 +49,35 @@ export async function startEpointCheckout(userId: string, orderId: string, trans
 }
 
 export async function settleVerifiedEpointResult(result: VerifiedEpointResult) {
-  return prisma.$transaction((tx) => commitEpointSettlement({
-    async find(id) {
-      const row = await tx.payment.findUnique({ where: { id } });
-      return row ? snapshot(row) : null;
-    },
-    async compareAndSet(id, from, to, transaction) {
-      const updated = await tx.payment.updateMany({ where: { id, status: from }, data: { status: to, provider: "epoint", providerReference: transaction } });
-      return updated.count === 1;
-    },
-  }, result), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  return prisma.$transaction(async (tx) => {
+    const decision = await commitEpointSettlement({
+      async find(id) {
+        const row = await tx.payment.findUnique({ where: { id } });
+        return row ? snapshot(row) : null;
+      },
+      async compareAndSet(id, from, to, transaction) {
+        const updated = await tx.payment.updateMany({ where: { id, status: from }, data: { status: to, provider: "epoint", providerReference: transaction } });
+        return updated.count === 1;
+      },
+    }, result);
+    if (decision.type === "set" && decision.status === "PAID") await recordPaidAfterCancellation(tx, result.paymentId);
+    return decision;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+/**
+ * A payment confirmed for an order that is (wholly or partly) cancelled: nothing is refunded automatically. An audit row
+ * makes it visible; the admin refunds page lists every cancelled store order of a paid order as "refund needed".
+ */
+async function recordPaidAfterCancellation(tx: Prisma.TransactionClient, paymentId: string) {
+  const payment = await tx.payment.findUnique({ where: { id: paymentId }, select: { orderId: true, order: { select: { status: true, storeOrders: { select: { id: true, status: true } } } } } });
+  const cancelled = payment?.order.storeOrders.filter((storeOrder) => storeOrder.status === "CANCELLED") ?? [];
+  if (!payment || !cancelled.length) return;
+  await tx.auditLog.create({ data: {
+    actorId: null, action: "PAYMENT_PAID_AFTER_CANCELLATION", entityType: "Order", entityId: payment.orderId,
+    metadata: { paymentId, orderStatus: payment.order.status, cancelledStoreOrderIds: cancelled.map((storeOrder) => storeOrder.id), refund: "manual" },
+  } });
+  paymentLog("epoint.paid_after_cancellation", { orderId: payment.orderId });
 }
 
 export async function reconcileOwnedOrder(userId: string, orderId: string, transport: EpointTransport = createEpointTransport()) {

@@ -12,8 +12,8 @@ import { SITE_SETTINGS_DEFAULTS } from "@/lib/site-content";
 import { type SectionContext } from "./shared";
 
 export async function renderSettings({ sp, shell }: SectionContext) {
-  // Settings-engine tabs (Maliyyə, SEO, Elan zolağı, Limitlər, Texniki iş, Kataloq, Sifarişlər): one generic page per registry group.
-  const engineTab=(["finance","seo","announcement","limits","maintenance","catalog","orders"] as const).find(tab=>tab===sp.tab);
+  // Settings-engine tabs (Maliyyə, SEO, Elan zolağı, Limitlər, Texniki iş, Kataloq, Sifarişlər, Mesajlaşma): one generic page per registry group.
+  const engineTab=(["finance","seo","announcement","limits","maintenance","catalog","orders","messaging"] as const).find(tab=>tab===sp.tab);
   if(engineTab){
    const group=await loadAdminSettingsGroup(prisma,engineTab);
    // Texniki iş: the middleware's own state check for this request (set by middleware.ts, never client-supplied).

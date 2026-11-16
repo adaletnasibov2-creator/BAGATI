@@ -43,7 +43,7 @@ test("setting: Sifarişlər group, boolean toggle, default OFF, cached read, Aze
   assert.equal(definition.schema.safeParse("true").success, false, "stored value is a real boolean");
   // The admin tab exists and renders this group with the generic settings-engine page.
   assert.match(read("components/admin-settings-tabs.tsx"), /\{ id: "orders", label: "Sifarişlər", href: "\/admin\/settings\?tab=orders" \}/);
-  assert.match(read("app/admin/_sections/settings.tsx"), /"catalog","orders"\] as const\)\.find\(tab=>tab===sp\.tab\)/);
+  assert.match(read("app/admin/_sections/settings.tsx"), /"catalog","orders","messaging"\] as const\)\.find\(tab=>tab===sp\.tab\)/);
 });
 
 test("reader: only a stored true means ON; unset (code default), false or anything else means OFF", async () => {

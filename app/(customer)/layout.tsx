@@ -7,6 +7,7 @@ import { getPublicCategoryData } from "@/lib/public-category-tree";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getPublicContact } from "@/lib/public-contact";
 import AnnouncementBar from "@/components/announcement-bar";
+import { customerMessagesBadge } from "@/lib/messaging-pages";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
     getPublicContact(),
   ]);
   const publicUser = user ? { email: user.email, displayName: user.displayName, role: user.role } : null;
+  // "Mesajlarım" in the account menu: customers only, hidden (null) while messaging is OFF.
+  const messagesUnread = user?.role === "CUSTOMER" ? await customerMessagesBadge(user.id) : null;
 
   return (
     <>
@@ -32,6 +35,7 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
       <Header
         branding={{ siteName: settings.siteName, logoUrl: settings.logoUrl }}
         user={publicUser}
+        messagesUnread={messagesUnread}
         cities={cities}
         categories={categories}
       />

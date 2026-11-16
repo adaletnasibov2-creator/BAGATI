@@ -3,6 +3,7 @@ import { redirect,notFound } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AccountNavigation } from "@/components/account-navigation";
+import { customerMessagesBadge } from "@/lib/messaging-pages";
 import { ProfileForm } from "@/components/profile-form";
 import { AddressBookClient } from "@/components/address-book-client";
 import { Notifications } from "@/components/notifications";
@@ -19,5 +20,6 @@ export default async function AccountSectionPage({params,searchParams}:{params:P
   else if(current==="wishlist"){title="İstək siyahısı";content=<EmptyState title="İstək siyahısı hələ aktiv deyil" detail="Mövcud verilənlər bazasında müştəri istək siyahısı modeli yoxdur."/>}
   else if(current==="security"){title="Təhlükəsizlik";const [googleAccount,accountSecurity]=await Promise.all([prisma.googleAccount.findUnique({where:{userId:user.id},select:{id:true}}),prisma.user.findUnique({where:{id:user.id},select:{passwordAuthEnabled:true}})]);content=<section className="rounded-2xl border border-line bg-white p-6"><h2 className="font-semibold">Şifrə və sessiya</h2>{accountSecurity?.passwordAuthEnabled?<PasswordChangeForm/>:<p className="mt-2 text-sm text-muted">Bu hesab Google ilə idarə olunur; BAGATI şifrəsi dəyişdirilmir.</p>}<div className="mt-6 border-t border-line pt-5"><h2 className="font-semibold">Google hesabı</h2>{googleAccount?<GoogleUnlinkButton canUnlink={Boolean(accountSecurity?.passwordAuthEnabled)}/>:<GoogleOAuthButton intent="customer" mode="link" nextPath="/account/security" errorCode={oauth} portal={portal}/>}</div><div className="mt-6 border-t border-line pt-5"><LogoutButton/></div><p className="mt-5 text-xs leading-5 text-muted">{accountSecurity?.passwordAuthEnabled?<>Şifrənizi unutmusunuzsa, <Link href="/forgot-password" className="font-medium text-emerald">bərpa keçidi istəyin</Link>.</>:<>Bu hesab üçün Google hesabınızdan istifadə edin.</>} Çoxmərhələli təsdiq hazırda təqdim edilmir.</p></section>}
   else notFound();
-  return <div className="container py-10 md:py-14"><p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald"><Link href="/account">Hesabım</Link></p><h1 className="mt-2 mb-8 text-3xl font-semibold text-ink">{title}</h1><div className="grid gap-8 lg:grid-cols-[230px_1fr]"><AccountNavigation/><div>{content}</div></div></div>
+  const messagesUnread=await customerMessagesBadge(user.id);
+  return <div className="container py-10 md:py-14"><p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald"><Link href="/account">Hesabım</Link></p><h1 className="mt-2 mb-8 text-3xl font-semibold text-ink">{title}</h1><div className="grid gap-8 lg:grid-cols-[230px_1fr]"><AccountNavigation messagesUnread={messagesUnread}/><div>{content}</div></div></div>
 }

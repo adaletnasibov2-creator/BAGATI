@@ -167,10 +167,13 @@ export function CategoryIcon({
   category,
   size = "medium",
   className = "",
+  loading = "eager",
 }: {
   category: CategoryInfo;
   size?: "small" | "medium" | "large";
   className?: string;
+  /** "lazy" for tiles that are not on screen at first: the hidden mega menu, the mobile menu, below-the-fold strips. */
+  loading?: "eager" | "lazy";
 }) {
   const visual = categoryVisual(category);
   const kind = visual.kind === "photo" ? visual.photo : categoryKind(category);
@@ -194,7 +197,7 @@ export function CategoryIcon({
         width={320}
         height={320}
         unoptimized
-        loading="eager"
+        loading={loading}
         decoding="async"
         draggable={false}
         className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none"

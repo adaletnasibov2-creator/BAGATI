@@ -264,14 +264,61 @@ test("customer <-> store messaging service on PostgreSQL", { timeout: 240_000 },
       await prisma.store.update({ where: { id: store1.id }, data: { status: "ACTIVE" } });
     });
 
-    await t.test("account deletion deletes the customer's conversations, messages, blocks and reports", async () => {
-      const before = await prisma.conversation.count({ where: { customerId: customerA.id } });
-      assert.ok(before >= 3);
-      await prisma.order.deleteMany({ where: { userId: customerA.id } });
-      await prisma.user.delete({ where: { id: customerA.id } });
-      assert.equal(await prisma.conversation.count({ where: { customerId: customerA.id } }), 0);
-      assert.equal(await prisma.conversationReport.count({ where: { conversationId: storeThread } }), 0);
-      assert.equal(await prisma.conversationMessage.count({ where: { conversationId: storeThread } }), 0);
+    await t.test("account deletion: deleteCustomerConversations keeps only conversations with an OPEN report; they become admin-only orphans", async () => {
+      const own = await prisma.conversation.findMany({ where: { customerId: customerA.id }, select: { id: true, reports: { select: { status: true } } } });
+      assert.ok(own.length >= 3);
+      // Make the case explicit: one thread with an OPEN report, one with only a REVIEWED report, the rest unreported.
+      const [reported, reviewed] = own.filter((row) => row.id !== storeThread).slice(0, 2).map((row) => row.id);
+      await prisma.conversationReport.deleteMany({ where: { conversationId: { in: own.map((row) => row.id) } } });
+      await prisma.conversationReport.create({ data: { conversationId: reported, reporterUserId: seller1.id, reporterRole: "STORE", reason: "ABUSE" } });
+      await prisma.conversationReport.create({ data: { conversationId: reviewed, reporterUserId: seller1.id, reporterRole: "STORE", reason: "SPAM", status: "REVIEWED" } });
+      await prisma.conversation.update({ where: { id: reported }, data: { storeUnreadCount: 3 } });
+      const reportedMessages = await prisma.conversationMessage.count({ where: { conversationId: reported } });
+      assert.ok(reportedMessages > 0);
+      await prisma.conversationBlock.upsert({ where: { storeId_customerId_side: { storeId: store1.id, customerId: customerA.id, side: "STORE" } }, create: { storeId: store1.id, customerId: customerA.id, side: "STORE", createdById: seller1.id }, update: {} });
+
+      const result = await prisma.$transaction(async (tx) => {
+        const cleared = await service.deleteCustomerConversations(tx, customerA.id);
+        await tx.order.deleteMany({ where: { userId: customerA.id } });
+        await tx.user.delete({ where: { id: customerA.id } });
+        return cleared;
+      });
+      assert.deepEqual(result, { deleted: own.length - 1, kept: 1 });
+      // Kept: the OPEN-reported thread, with messages and report, customer link cleared.
+      const orphan = await prisma.conversation.findUniqueOrThrow({ where: { id: reported } });
+      assert.equal(orphan.customerId, null);
+      assert.equal(await prisma.conversationMessage.count({ where: { conversationId: reported } }), reportedMessages);
+      assert.equal(await prisma.conversationReport.count({ where: { conversationId: reported, status: "OPEN" } }), 1);
+      // Gone: everything else (a REVIEWED report does not keep a thread), and the blocks.
+      for (const id of own.map((row) => row.id).filter((id) => id !== reported)) {
+        assert.equal(await prisma.conversation.count({ where: { id } }), 0, id);
+        assert.equal(await prisma.conversationMessage.count({ where: { conversationId: id } }), 0, id);
+      }
+      assert.equal(await prisma.conversationBlock.count({ where: { customerId: customerA.id } }), 0);
+
+      // The orphan is invisible to the store everywhere: list, badge, view, messages/polling, send, read, block, report.
+      const list = await service.listConversations(prisma, { actor: S1, limit: 50 });
+      assert.ok(!list.items.some((item) => item.id === reported), "not in the store's list");
+      const badge = await service.unreadConversationCount(prisma, S1);
+      assert.equal(badge, await prisma.conversation.count({ where: { storeId: store1.id, customerId: { not: null }, storeUnreadCount: { gt: 0 } } }), "badge ignores the orphan's unread count");
+      const { getConversationView } = await import("../lib/messaging-views");
+      assert.equal(await getConversationView(prisma, { conversationId: reported, actor: S1 }), null);
+      await assert.rejects(service.listMessages(prisma, { conversationId: reported, actor: S1 }), (e) => codeOf(e) === "NOT_FOUND");
+      await assert.rejects(service.sendMessage(prisma, { conversationId: reported, actor: S1, body: "salam" }, ON), (e) => codeOf(e) === "NOT_FOUND");
+      await assert.rejects(service.markConversationRead(prisma, { conversationId: reported, actor: S1 }), (e) => codeOf(e) === "NOT_FOUND");
+      await assert.rejects(service.blockCounterpart(prisma, { conversationId: reported, actor: S1 }), (e) => codeOf(e) === "NOT_FOUND");
+      await assert.rejects(service.reportConversation(prisma, { conversationId: reported, actor: S1, reason: "SPAM" }), (e) => codeOf(e) === "NOT_FOUND");
+      assert.equal(await prisma.conversationMessage.count({ where: { conversationId: reported } }), reportedMessages, "nothing was added");
+    });
+
+    await t.test("a user deleted WITHOUT the helper keeps all their conversations as orphans (nothing is lost)", async () => {
+      const ids = (await prisma.conversation.findMany({ where: { customerId: customerC.id }, select: { id: true } })).map((row) => row.id);
+      assert.ok(ids.length >= 1);
+      await prisma.order.deleteMany({ where: { userId: customerC.id } });
+      await prisma.user.delete({ where: { id: customerC.id } });
+      const after = await prisma.conversation.findMany({ where: { id: { in: ids } }, select: { customerId: true } });
+      assert.equal(after.length, ids.length, "every conversation is kept");
+      assert.ok(after.every((row) => row.customerId === null), "and is now an admin-only orphan");
     });
   } finally {
     const { authRateLimitKey, clearAuthRateLimit } = await import("../lib/auth-rate-limit").catch(() => ({ authRateLimitKey: null, clearAuthRateLimit: null }) as never);

@@ -14,7 +14,7 @@ CREATE TYPE "ConversationReportStatus" AS ENUM ('OPEN', 'REVIEWED', 'DISMISSED')
 CREATE TABLE "Conversation" (
     "id" TEXT NOT NULL,
     "storeId" TEXT NOT NULL,
-    "customerId" TEXT NOT NULL,
+    "customerId" TEXT,
     "context" "ConversationContext" NOT NULL,
     "contextKey" VARCHAR(80) NOT NULL,
     "productId" TEXT,
@@ -97,7 +97,7 @@ CREATE INDEX "ConversationReport_conversationId_idx" ON "ConversationReport"("co
 ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Conversation" ADD CONSTRAINT "Conversation_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE SET NULL ON UPDATE CASCADE;

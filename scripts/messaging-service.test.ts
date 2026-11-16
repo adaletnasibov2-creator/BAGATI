@@ -55,3 +55,23 @@ test("inbox cursor: round trip; malformed cursors are ignored", () => {
   }
   assert.equal(new MessagingError("BLOCKED", "x").code, "BLOCKED");
 });
+
+test("orphans (customer account deleted) are admin-only; deletion keeps only OPEN-reported threads", () => {
+  // Every store/customer path goes through loadOwned, which refuses a NULL customer; lists, badge and page view exclude it.
+  assert.match(service, /if \(!conversation \|\| conversation\.customerId === null\) return null;/);
+  assert.match(service, /\{ storeId: input\.actor\.storeId, customerId: \{ not: null \} \}/, "store list");
+  assert.match(service, /\{ storeId: actor\.storeId, customerId: \{ not: null \}, storeUnreadCount: \{ gt: 0 \} \}/, "store badge");
+  assert.match(readFileSync(resolve(process.cwd(), "lib/messaging-views.ts"), "utf8"), /if \(!row \|\| row\.customerId === null\) return null;/, "page view");
+  for (const fn of ["sendMessageLocked", "markConversationRead", "listMessages", "blockCounterpart", "unblockCounterpart", "reportConversation"]) {
+    const start = service.indexOf(`function ${fn}`);
+    assert.ok(start > 0, fn);
+    assert.match(service.slice(start, start + 900), /loadOwned\(/, `${fn} checks ownership`);
+  }
+  assert.match(service, /deleteMany\(\{ where: \{ customerId: userId, reports: \{ none: \{ status: "OPEN" \} \} \} \}\)/);
+  const schema = readFileSync(resolve(process.cwd(), "prisma/schema.prisma"), "utf8");
+  assert.match(schema, /customerId {10}String\?\r?\n/);
+  assert.match(schema, /customer {12}User\? {17}@relation\("ConversationCustomer", fields: \[customerId\], references: \[id\], onDelete: SetNull\)/);
+  const migration = readFileSync(resolve(process.cwd(), "prisma/migrations/20261117010000_customer_store_messaging/migration.sql"), "utf8");
+  assert.match(migration, /"Conversation_customerId_fkey" FOREIGN KEY \("customerId"\) REFERENCES "User"\("id"\) ON DELETE SET NULL/);
+  assert.match(migration, /"ConversationBlock_customerId_fkey" FOREIGN KEY \("customerId"\) REFERENCES "User"\("id"\) ON DELETE CASCADE/, "blocks still cascade");
+});

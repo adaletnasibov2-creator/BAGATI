@@ -34,7 +34,8 @@ export async function getConversationView(db: Db, input: { conversationId: strin
       storeOrder: { select: { id: true, orderId: true } },
     },
   });
-  if (!row) return null;
+  // Orphans (customer account deleted, kept for an OPEN report) are admin-only: never shown to a store or a customer.
+  if (!row || row.customerId === null) return null;
   const own = input.actor.role === "CUSTOMER" ? row.customerId === input.actor.userId : row.storeId === input.actor.storeId;
   if (!own) return null;
   const blocks = await db.conversationBlock.findMany({ where: { storeId: row.storeId, customerId: row.customerId }, select: { side: true } });
@@ -42,7 +43,7 @@ export async function getConversationView(db: Db, input: { conversationId: strin
     id: row.id,
     context: row.context,
     store: row.store,
-    counterpart: input.actor.role === "CUSTOMER" ? row.store.name : customerDisplayName(row.customer.customerProfile?.firstName, row.customer.customerProfile?.lastName),
+    counterpart: input.actor.role === "CUSTOMER" ? row.store.name : customerDisplayName(row.customer?.customerProfile?.firstName, row.customer?.customerProfile?.lastName),
     product: row.product,
     order: row.storeOrder ? { orderId: row.storeOrder.orderId, storeOrderId: row.storeOrder.id, ref: row.storeOrder.orderId.slice(-8).toUpperCase() } : null,
     blockedByMe: blocks.some((block) => block.side === input.actor.role),

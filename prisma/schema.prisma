@@ -1353,7 +1353,8 @@ enum ConversationReportStatus {
 model Conversation {
   id                  String                @id @default(cuid())
   storeId             String
-  customerId          String
+  /// NULL after the customer account is deleted: only conversations with an OPEN report are kept, readable by admin only.
+  customerId          String?
   context             ConversationContext
   contextKey          String                @db.VarChar(80)
   productId           String?
@@ -1368,7 +1369,7 @@ model Conversation {
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   store               Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  customer            User                  @relation("ConversationCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  customer            User?                 @relation("ConversationCustomer", fields: [customerId], references: [id], onDelete: SetNull)
   product             Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
   storeOrder          StoreOrder?           @relation(fields: [storeOrderId], references: [id], onDelete: SetNull)
   messages            ConversationMessage[]

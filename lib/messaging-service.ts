@@ -224,11 +224,16 @@ export async function startConversation(db: Db, input: StartInput, ctx: Messagin
 
 // ---- Send a message in an existing conversation ---------------------------------------------------------------
 
+/**
+ * The conversation if it belongs to this customer or this store, else null (the routes answer 404). A conversation
+ * whose customer account was deleted (customerId NULL, kept only because it had an OPEN report) belongs to nobody but
+ * admin: it is null here for both sides, so every send, read, poll, block and report refuses it.
+ */
 async function loadOwned(db: Db | Tx, conversationId: string, actor: MessagingActor) {
   const conversation = await db.conversation.findUnique({ where: { id: conversationId }, select: { id: true, storeId: true, customerId: true } });
-  if (!conversation) return null;
+  if (!conversation || conversation.customerId === null) return null;
   if (actor.role === "CUSTOMER" ? conversation.customerId !== actor.userId : conversation.storeId !== actor.storeId) return null;
-  return conversation;
+  return { id: conversation.id, storeId: conversation.storeId, customerId: conversation.customerId };
 }
 
 export async function sendMessage(db: Db, input: { conversationId: string; actor: MessagingActor; body: unknown }, ctx: MessagingContext) {
@@ -287,7 +292,7 @@ export async function markConversationRead(db: Db, input: { conversationId: stri
 export async function unreadConversationCount(db: Db, actor: MessagingActor) {
   return actor.role === "CUSTOMER"
     ? db.conversation.count({ where: { customerId: actor.userId, customerUnreadCount: { gt: 0 } } })
-    : db.conversation.count({ where: { storeId: actor.storeId, storeUnreadCount: { gt: 0 } } });
+    : db.conversation.count({ where: { storeId: actor.storeId, customerId: { not: null }, storeUnreadCount: { gt: 0 } } });
 }
 
 type ListCursor = { lastMessageAt: Date; id: string };
@@ -313,7 +318,8 @@ export function decodeConversationCursor(value: string | null | undefined): List
 export async function listConversations(db: Db, input: { actor: MessagingActor; cursor?: string | null; limit?: number }) {
   const limit = Math.min(Math.max(input.limit ?? MESSAGE_LIMITS.inboxPageSize, 1), 50);
   const cursor = decodeConversationCursor(input.cursor);
-  const side: Prisma.ConversationWhereInput = input.actor.role === "CUSTOMER" ? { customerId: input.actor.userId } : { storeId: input.actor.storeId };
+  // Orphans (customerId NULL) never appear on either side: the customer side matches its own id, the store side excludes NULL.
+  const side: Prisma.ConversationWhereInput = input.actor.role === "CUSTOMER" ? { customerId: input.actor.userId } : { storeId: input.actor.storeId, customerId: { not: null } };
   const rows = await db.conversation.findMany({
     where: { AND: [side, ...(cursor ? [{ OR: [{ lastMessageAt: { lt: cursor.lastMessageAt } }, { lastMessageAt: cursor.lastMessageAt, id: { lt: cursor.id } }] }] : [])] },
     orderBy: [{ lastMessageAt: "desc" }, { id: "desc" }],
@@ -331,7 +337,7 @@ export async function listConversations(db: Db, input: { actor: MessagingActor; 
     items: page.map((row) => ({
       id: row.id,
       context: row.context,
-      counterpart: input.actor.role === "CUSTOMER" ? row.store.name : customerDisplayName(row.customer.customerProfile?.firstName, row.customer.customerProfile?.lastName),
+      counterpart: input.actor.role === "CUSTOMER" ? row.store.name : customerDisplayName(row.customer?.customerProfile?.firstName, row.customer?.customerProfile?.lastName),
       storeId: row.store.id,
       product: row.product ? { id: row.product.id, name: row.product.name } : null,
       orderRef: row.storeOrder ? row.storeOrder.orderId.slice(-8).toUpperCase() : null,
@@ -412,4 +418,24 @@ export async function reportConversation(db: Db, input: { conversationId: string
     });
     return { id: report.id, created: true };
   });
+}
+
+// ---- Customer account deletion ---------------------------------------------------------------------------------
+
+/**
+ * Account deletion rule (owner decision 2026-11-17). Any flow that deletes a customer account must call this inside
+ * the same transaction, BEFORE deleting the User row:
+ *
+ * 1. the customer's conversations WITHOUT an OPEN report are deleted (their messages and reports go with them);
+ * 2. conversations WITH an OPEN report stay; deleting the User row then sets their customerId to NULL
+ *    (FK ON DELETE SET NULL). Such orphans are readable by admin only, through their report (lib/messaging-admin.ts);
+ *    stores and customers never see them (loadOwned, listConversations, unreadConversationCount, getConversationView).
+ * 3. blocks (ConversationBlock) cascade with the User row.
+ *
+ * A user deleted without this helper keeps ALL of their conversations as admin-only orphans (nothing is lost).
+ */
+export async function deleteCustomerConversations(tx: Pick<Db, "conversation"> | Tx, userId: string) {
+  const deleted = await tx.conversation.deleteMany({ where: { customerId: userId, reports: { none: { status: "OPEN" } } } });
+  const kept = await tx.conversation.count({ where: { customerId: userId } });
+  return { deleted: deleted.count, kept };
 }

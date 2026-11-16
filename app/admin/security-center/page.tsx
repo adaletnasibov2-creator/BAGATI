@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import AdminSecurityMonitoring from "@/components/admin-security-monitoring";
 import { requireRole } from "@/lib/auth";
 import { requireSecurityPermission } from "@/lib/security-monitoring/permissions";
@@ -10,5 +11,5 @@ export const dynamic = "force-dynamic";
 export default async function AdminSecurityCenterPage() {
   const admin = await requireRole("ADMIN");
   if (!admin || !requireSecurityPermission(admin, "security.view")) redirect("/admin/login");
-  return <AdminShell email={admin.email}><AdminSecurityMonitoring /></AdminShell>;
+  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}><AdminSecurityMonitoring /></AdminShell>;
 }

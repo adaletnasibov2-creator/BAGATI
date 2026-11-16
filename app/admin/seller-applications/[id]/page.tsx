@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import AdminSellerApplicationReview from "@/components/admin-seller-application-review";
 import StatusBadge from "@/components/seller-application-status-badge";
 import { requireRole } from "@/lib/auth";
@@ -46,7 +47,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
   const voenView = await adminVoenView(prisma, application.userId, (await currentVoenOf(prisma, application.userId)) ?? application.voenNormalized ?? application.voen, formatBakuDateTime);
   const accountReady = application.user.role === "CUSTOMER" && application.user.isActive && Boolean(application.user.emailVerifiedAt);
 
-  return <AdminShell email={admin.email}>
+  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <Link href="/admin/seller-applications" className="text-sm text-[#173c40] underline-offset-2 hover:underline">← Satıcı müraciətləri</Link>
     <div className="mb-6 mt-3 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">

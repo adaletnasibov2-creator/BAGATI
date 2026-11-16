@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import AdminTwoFactorSettings from "@/components/admin-two-factor-settings";
 import { PasswordChangeForm } from "@/components/password-change-form";
 import { requireRole } from "@/lib/auth";
@@ -14,7 +15,7 @@ export default async function AdminSecurityPage() {
   const admin = await requireRole("ADMIN");
   if (!admin) redirect("/admin/login");
   const status = await twoFactorStatus(admin.id);
-  return <AdminShell email={admin.email}>
+  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>

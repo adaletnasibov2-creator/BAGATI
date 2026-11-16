@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import { requireRole } from "@/lib/auth";
 import { normalizeAdminPage, normalizeAdminSearch, normalizeAdminSearchParams } from "@/lib/admin-pagination";
 import type { SectionContext } from "../_sections/shared";
@@ -23,7 +24,8 @@ export default async function AdminSectionPage({ params, searchParams }: { param
   const page = normalizeAdminPage(sp.page);
   const take = 25, skip = (page - 1) * take;
   const pageQuery = new URLSearchParams(Object.entries(sp).filter(([k, v]) => k !== "page" && Boolean(v)) as [string, string][]).toString();
-  const shell = (content: ReactNode) => <AdminShell email={admin.email}>{content}</AdminShell>;
+  const messagingEnabled = await adminMessagingNavEnabled();
+  const shell = (content: ReactNode) => <AdminShell email={admin.email} messagingEnabled={messagingEnabled}>{content}</AdminShell>;
   const ctx: SectionContext = { admin, parts, route, sp, q, page, take, skip, pageQuery, shell };
   for (const section of ADMIN_SECTIONS) if (section.match({ route, parts })) return section.render(ctx);
   notFound();

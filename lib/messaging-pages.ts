@@ -49,3 +49,8 @@ export async function messageEntryForViewer(target: { storeId: string; productId
   const user = await currentUser();
   return messageEntryHref(user?.role ?? null, target, loggedOut);
 }
+
+/** Admin menu: the "Mesaj şikayətləri" item is shown only while messaging is ON (cached, fail-safe: OFF). */
+export async function adminMessagingNavEnabled(): Promise<boolean> {
+  return (await loadMessagingSettings()).enabled;
+}

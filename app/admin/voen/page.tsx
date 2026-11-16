@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import { AdminVoenBulk } from "@/components/admin-voen-bulk";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -34,7 +35,7 @@ export default async function AdminVoenPage({ searchParams }: { searchParams: Pr
     };
   });
 
-  return <AdminShell email={admin.email}>
+  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <div className="mb-6">
       <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>
       <h1 className="mt-2 text-3xl font-semibold text-[#0d1b2a]">VÖEN yoxlaması</h1>

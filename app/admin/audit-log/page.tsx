@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import AdminAuditExportButton from "@/components/admin-audit-export-button";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -72,7 +73,7 @@ export default async function AdminAuditLogPage({ searchParams }: { searchParams
     auditDistinctValues(prisma).catch(() => ({ actions: [], entityTypes: [] })),
   ]);
 
-  return <AdminShell email={admin.email}>
+  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>

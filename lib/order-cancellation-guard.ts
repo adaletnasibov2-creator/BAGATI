@@ -3,9 +3,10 @@
  * hold the parent Order row lock (SELECT ... FOR UPDATE), the same lock the cancellation routes take, so a request and a
  * dispatch cannot interleave.
  */
+import type { Prisma } from "@prisma/client";
 import { DISPATCHED_ORDER_STATUSES, DISPATCHED_SHIPMENT_STATUSES } from "@/lib/order-cancellation";
 
-type Tx = { orderCancellationRequest: { count: (args: any) => Promise<number>; updateMany: (args: any) => Promise<{ count: number }> } };
+type Tx = Pick<Prisma.TransactionClient, "orderCancellationRequest">;
 
 export const CANCELLATION_REQUEST_OPEN_MESSAGE = "Bu sifariş üçün açıq ləğv müraciəti var. Əvvəlcə müraciəti təsdiqləyin və ya rədd edin.";
 

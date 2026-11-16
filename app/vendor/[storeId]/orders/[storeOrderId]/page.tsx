@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
 import { statusLabel, paymentStatusLabel } from "@/lib/order-status";
 import VendorOrderActions from "@/components/vendor-order-actions";
+import VendorCancellationRequest from "@/components/vendor-cancellation-request";
 import { InteractiveMap } from "@/components/interactive-map";
 import { buildCustomerWhatsAppUrl, buildTelHref } from "@/lib/az-phone";
 import { VendorDeliveryAddressMenu } from "@/components/vendor-delivery-address-menu";
@@ -28,9 +29,13 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
     include: {
       order: { select: { id: true, createdAt: true, addressSnapshot: true, payments: { select: { status: true, amount: true, currency: true }, orderBy: { createdAt: "desc" }, take: 1 }, user: { select: { customerProfile: { select: { firstName: true, lastName: true, phone: true } } } } } },
       items: { include: { variant: { select: { name: true, options: true } } } },
+      cancellationRequests: { where: { status: "REQUESTED" }, orderBy: { createdAt: "desc" }, take: 1, select: { id: true, reason: true, createdAt: true } },
     },
   });
   if (!order) notFound();
+  // All payments, not only the latest attempt: a paid order whose store order is cancelled needs a manual refund.
+  const paid = (await db.payment.count({ where: { orderId: order.order.id, status: "PAID" } })) > 0;
+  const openRequest = order.cancellationRequests[0] ?? null;
 
   const address = order.order.addressSnapshot && typeof order.order.addressSnapshot === "object" && !Array.isArray(order.order.addressSnapshot)
     ? order.order.addressSnapshot as Record<string, unknown>
@@ -60,6 +65,7 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
       </div>
 
       <div className="space-y-5"><section className={panel}><h2 className="font-semibold text-[#142d38]">Çatdırılma məlumatları</h2><dl className="mt-4 space-y-3 text-sm">{[["Çatdırılma üsulu", order.deliveryMethod], ["Daşıyıcı", order.deliveryCarrier], ["İzləmə kodu", order.deliveryTrackingCode], ["Çatdırılma qeydi", order.deliveryNote]].map(([label, value]) => <div key={String(label)}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium">{value || "Qeyd edilməyib"}</dd></div>)}</dl></section>
+        <VendorCancellationRequest storeId={storeId} request={openRequest ? { id: openRequest.id, reason: openRequest.reason, createdAt: openRequest.createdAt.toISOString() } : null} paid={paid} refundPending={order.status === "CANCELLED" && paid}/>
         <VendorOrderActions storeId={storeId} storeOrderId={order.id} status={order.status} shipmentStatus={order.shipmentStatus} trackingUrl={order.trackingUrl} deliveryMethod={order.deliveryMethod} deliveryNote={order.deliveryNote} deliveryCarrier={order.deliveryCarrier} deliveryTrackingCode={order.deliveryTrackingCode}/>
       </div>
     </div>

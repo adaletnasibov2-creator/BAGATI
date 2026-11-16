@@ -8,6 +8,7 @@ import { formatAmount, formatMoney } from "@/lib/format-money";
 import { AdminShipmentStatusControl } from "@/components/admin-shipment-status-control";
 import { AdminCoordinatesReveal } from "@/components/admin-coordinates-reveal";
 import { deliveryAddressText, maskCoordinates, readAddressSnapshot } from "@/lib/delivery-location";
+import { CANCELLATION_TEXT, refundNeeded } from "@/lib/order-cancellation";
 
 export async function renderOrderDetail({ parts, shell }: SectionContext) {
   const order = await prisma.order.findUnique({
@@ -18,6 +19,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
      include: {
       store: { select: { id: true, name: true, vendor: { select: { displayName: true, user: { select: { email: true } } } } } },
       items: { include: { variant: true, product: { select: { name: true } } } },
+      cancellationRequests: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true, reason: true } },
      },
     },
     payments: true,
@@ -55,6 +57,8 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
    <div className="mt-5 grid gap-4">
     {order.storeOrders.map((group: any) => <section key={group.id} className={card}>
      <h2 className="font-semibold">{group.store.name} · {adminStatusLabel("order", group.status)} · {formatMoney(group.subtotal)}</h2>
+     {refundNeeded(order, group) && <p className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900" data-refund-needed>{CANCELLATION_TEXT.refundPending}: ləğv edilib, ödəniş alınıb</p>}
+     {group.cancellationRequests?.[0] && <p className="mt-2 text-sm text-slate-600">Müştərinin ləğv müraciəti: {({ REQUESTED: "açıq", APPROVED: "təsdiqlənib", REJECTED: "rədd edilib", WITHDRAWN: "geri götürülüb" } as Record<string, string>)[group.cancellationRequests[0].status]} · {group.cancellationRequests[0].reason}</p>}
      <p className="mt-2 text-sm text-slate-600">
       Çatdırılma: {group.deliveryMethod || "Mağaza ilə dəqiqləşdirilir"}
       {group.deliveryCarrier ? ` · ${group.deliveryCarrier}` : ""}

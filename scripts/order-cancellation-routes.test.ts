@@ -63,3 +63,18 @@ test("messages: new e-mails render in Azerbaijani and seller notifications link 
     assert.equal(vendorNotificationHref("s1", title, true), "/vendor/s1/orders");
   }
 });
+
+test("UI: customer page, store order page and admin pages show the cancellation states", () => {
+  const page = read("app/(customer)/orders/[orderId]/page.tsx");
+  assert.match(page, /const cancelView=orderCancellationView\(/);
+  assert.match(page, /<OrderCancelActions orderId=\{order\.id\} direct=\{cancelView\.direct\} storeOrders=\{cancelRows\}\/>/);
+  const panel = read("components/order-cancel-actions.tsx");
+  for (const text of ["Sifarişi ləğv et", "Bəli, ləğv et", "Ləğv müraciəti göndər", "Müraciəti geri götür", "CANCELLATION_TEXT.inTransit", "CANCELLATION_TEXT.refundPending"]) assert.ok(panel.includes(text), text);
+  assert.match(read("lib/order-cancellation.ts"), /inTransit: "Sifariş yoldadır; çatdırıldıqdan sonra qaytarma müraciəti edə bilərsiniz\.",/);
+  const seller = read("app/vendor/[storeId]/orders/[storeOrderId]/page.tsx");
+  assert.match(seller, /cancellationRequests: \{ where: \{ status: "REQUESTED" \}/);
+  assert.match(seller, /refundPending=\{order\.status === "CANCELLED" && paid\}/);
+  assert.match(read("components/vendor-cancellation-request.tsx"), /Təsdiqlə və ləğv et/);
+  assert.match(read("app/admin/_sections/refunds.tsx"), /where: \{ status: "CANCELLED", order: \{ payments: \{ some: \{ status: "PAID" \} \} \} \}/);
+  assert.match(read("app/admin/_sections/order-detail.tsx"), /\{refundNeeded\(order, group\) && /);
+});

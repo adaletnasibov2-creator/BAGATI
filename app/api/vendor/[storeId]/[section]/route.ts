@@ -4,7 +4,6 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireStoreAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { sellerLegalRequirements, sellerRequirementLabels } from "@/lib/seller-legal-policy";
 import { categoriesWithOtherLast } from "@/lib/category-order";
 import { allowedVendorOrderTransitions } from "@/lib/order-status";
@@ -14,14 +13,12 @@ import { deliveryAmountSchema } from "@/lib/delivery";
 import { allowedShipmentTransitions, shipmentChangeAllowedForOrder, shipmentTimestamps, SHIPMENT_STATUSES, type ShipmentStatusValue } from "@/lib/shipment-tracking";
 import { hasOverlappingEnabledPromotion } from "@/lib/promotion-pricing";
 import { countProductsWithLowStock } from "@/lib/vendor-inventory";
-import { activeComplimentaryEntitlementSelect, assertFeature, assertProductLimit, complimentaryFromRows, EntitlementError, entitlementErrorResponse, getStoreEntitlements } from "@/lib/subscription-entitlements";
+import { activeComplimentaryEntitlementSelect, assertFeature, complimentaryFromRows, EntitlementError, entitlementErrorResponse, getStoreEntitlements } from "@/lib/subscription-entitlements";
 import { enqueueEmail } from "@/lib/email-outbox";
 import { checkImportRows, ImportInventoryReservationError, isSafeImportImageUrl, parseImportVariants } from "@/lib/product-import";
 import { CatalogSkuConflictError, findExistingProductSkuMatches, findExistingVariantSkuKeys, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
-import { hasDuplicateNormalizedSkus } from "@/lib/sku-normalization";
-import { legacyVendorProductPatchSchema, legacyVendorProductSchema } from "@/lib/vendor-product-schemas";
-import { assertUniqueVariantCombinations } from "@/lib/product-variants";
+import { legacyVendorProductPatchSchema } from "@/lib/vendor-product-schemas";
 import { parseImportByExtension, ImportParseError } from "@/lib/import-parsers";
 import { isStorefrontTheme } from "@/lib/storefront-themes";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
@@ -63,7 +60,6 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
   const items=rows.map((row:any)=>{const {payments,...order}=row.order;return {...row,order,payment:summarizePaymentStatus(payments.map((p:any)=>p.status))};});
   return NextResponse.json({items,page,pageSize,total,totalPages});
  }
- if(section==="products"){const [items,categories,brands]=await Promise.all([db.product.findMany({where:{storeId},include:{category:true,brand:true,variants:{include:{inventory:true}},inventory:true},orderBy:{updatedAt:"desc"}}),db.category.findMany({where:{isActive:true},select:{id:true,name:true,slug:true,parentId:true,sortOrder:true,iconKey:true,imageUrl:true},orderBy:[{sortOrder:"asc"},{name:"asc"}]}),db.brand.findMany({select:{id:true,name:true},orderBy:{name:"asc"}})]);return NextResponse.json({items,categories:categoriesWithOtherLast(categories),brands});}
   if(section==="inventory")return NextResponse.json({items:await db.inventory.findMany({where:{product:{storeId}},include:{product:{select:{name:true,sku:true}},variant:{select:{id:true,name:true,sku:true,options:true,isActive:true}},adjustments:{orderBy:{createdAt:"desc"},take:5}},orderBy:{updatedAt:"desc"}})});
  if(section==="campaigns"){
   const q=req.nextUrl.searchParams.get("q")?.trim()||"";
@@ -158,37 +154,6 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
 export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:string;section:string}>}){
   const {storeId,section}=await params; const access=await scope(storeId); if(!access)return NextResponse.json({error:"Mağazaya giriş icazəsi yoxdur"},{status:403});
   let body:any; try{body=await req.json()}catch{return NextResponse.json({error:"Sorğu məlumatı yanlışdır"},{status:400})}
-  if(section==="products"){
-   const parsed=legacyVendorProductSchema.safeParse(body); if(!parsed.success)return NextResponse.json({error:"Məhsul məlumatları yanlışdır"},{status:422});
-   const d=parsed.data;
-   const categoryError=await productCategoryChoiceError(db,{categoryId:parsed.data.categoryId,expectedParentId:readCategoryParentId(body)});if(categoryError)return NextResponse.json({error:categoryError},{status:422});
-   const entitlement=await getStoreEntitlements(storeId,db);
-    const publish=parsed.data.status==="ACTIVE";if(publish){if(!entitlement.eligible||!entitlement.plan)return entitlementErrorResponse(new EntitlementError("SUBSCRIPTION_REQUIRED",null));try{await assertProductLimit(db,storeId,entitlement.plan);}catch(error){if(error instanceof EntitlementError)return entitlementErrorResponse(error);throw error}}
-   if(hasDuplicateNormalizedSkus(parsed.data.variants.map((variant:any)=>variant.sku)))return NextResponse.json({error:"Seçimlərin məhsul kodları təkrarlana bilməz"},{status:409});
-   try{assertUniqueVariantCombinations(parsed.data.variants);}catch{return NextResponse.json({error:"Eyni variant kombinasiyası təkrarlanıb"},{status:422});}
-   const ownedImages=parsed.data.images.filter((url:string)=>isOwnedStoreAssetUrl(storeId,url));
-   try {
-   const product=await db.$transaction(async(tx:any)=>{
-    if (d.status === "ACTIVE" && !(await resolvePublicStoreEligibility([storeId], tx)).has(storeId)) return null;
-    if(parsed.data.sku&&(await findExistingProductSkuMatches(tx,storeId,[parsed.data.sku])).length)throw new CatalogSkuConflictError("PRODUCT");
-    const variantSkus=parsed.data.variants.flatMap((variant:any)=>variant.sku?[variant.sku]:[]);
-    if(variantSkus.length){const existing=await findExistingVariantSkuKeys(tx,variantSkus);if(variantSkus.some((sku:string)=>existing.has(sku)))throw new CatalogSkuConflictError("VARIANT");}
-    const productId=crypto.randomUUID();
-    const created=await tx.product.create({data:{id:productId,storeId,name:parsed.data.name,slug:`${slugify(parsed.data.name)}-${productId.slice(0,8)}`,description:parsed.data.description??null,price:new Prisma.Decimal(parsed.data.price),discountPrice:parsed.data.discountPrice?new Prisma.Decimal(parsed.data.discountPrice):null,sku:parsed.data.sku||generateProductCode(productId),categoryId:parsed.data.categoryId??null,brandId:parsed.data.brandId??null,images:ownedImages,status:parsed.data.status}});
-    const inv=await tx.inventory.create({data:{productId:created.id,quantity:parsed.data.quantity}});
-    if(parsed.data.quantity>0)await tx.inventoryAdjustment.create({data:{inventoryId:inv.id,actorUserId:access.user.id,delta:parsed.data.quantity,previousQuantity:0,newQuantity:parsed.data.quantity,reason:"İlkin stok"}});
-    for(const variant of parsed.data.variants){const v=await tx.productVariant.create({data:{productId:created.id,name:variant.name,options:variant.options as Prisma.InputJsonValue,sku:variant.sku??null}});await tx.inventory.create({data:{productId:created.id,variantId:v.id,quantity:variant.quantity}});if(variant.quantity>0)await tx.inventoryAdjustment.create({data:{inventoryId:(await tx.inventory.findFirst({where:{productId:created.id,variantId:v.id}})).id,actorUserId:access.user.id,delta:variant.quantity,previousQuantity:0,newQuantity:variant.quantity,reason:"İlkin variant stoku"}});}
-    return created;
-   });
-   if(!product)return NextResponse.json({error:"Mağaza satışa hazır deyil; məhsulu yayımlamaq mümkün olmadı",code:"STORE_NOT_ELIGIBLE"},{status:409});
-   return NextResponse.json(product,{status:201});
-   } catch(error) {
-    if(error instanceof CatalogSkuConflictError || isSkuUniqueViolation(error)) {
-     return NextResponse.json({error:"Məhsul və ya seçim kodu artıq istifadə olunur"},{status:409});
-    }
-    throw error;
-   }
-  }
   if(section==="campaigns"){
    const s=z.object({name:z.string().trim().min(2).max(160),discountType:z.enum(["PERCENT","FIXED"]),discountValue:z.coerce.number().positive(),startsAt:z.string(),endsAt:z.string(),productIds:z.array(z.string()).max(200).default([])}).safeParse(body);
    if(!s.success)return NextResponse.json({error:"Kampaniya məlumatları yanlışdır"},{status:422});

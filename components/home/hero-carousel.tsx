@@ -77,7 +77,8 @@ const defaultSlides: Slide[] = [
     description: "Mebel, dekor və ev texnikası ilə daha keyfiyyətli, rahat bir yaşam sahəsi yarat.",
     button: "Ev məhsullarını kəşf et",
     href: "/products?category=ev-ve-mesiet",
-    secondary: "Bütün kateqoriyalar",
+    // Same label as slide 1, so both buttons fit on one line on a 390 px phone (the longer one wrapped below the fold).
+    secondary: "Kateqoriyalar",
     secondaryHref: "/categories",
     // Art-directed crops of hero-home.webp, each centred on the room (57-70 KB instead of 348 KB).
     image: "/images/home/hero-home-desktop.webp",
@@ -237,10 +238,10 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
     >
       {/* The photograph is not used as a text backdrop: below xl it has its own strip above the
           copy, from xl it fills the right-hand panel. No overlay or control covers the products. */}
-      {/* Larger hero (owner request 2026-11-16): image 1:1 on phones, 2:1 from 640 px, 5:2 from 1024 px; from 1280 px the
-          panel fills the right side of a 600 px tall hero. The aspect ratios and min-heights reserve the space before any
+      {/* Hero sizes (owner, 2026-11-16): image 4:3 on phones (so the buttons stay in the first screen of a 390x844 phone),
+          2:1 from 640 px, 5:2 from 1024 px; from 1280 px the panel fills the right side of a 600 px tall hero. The aspect ratios and min-heights reserve the space before any
           image arrives, so nothing below moves while the photos load. */}
-      <div className="relative aspect-square w-full overflow-hidden bg-[#e1ded7] sm:aspect-[2/1] lg:aspect-[5/2] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[58%]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#e1ded7] sm:aspect-[2/1] lg:aspect-[5/2] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[58%]">
         {/* Every slide image that is in the DOM is stacked here. The one underneath ("shown") stays visible until the
             active one has loaded and faded in on top, so a change never shows an empty grey box. */}
         {slides.map((item, index) => {

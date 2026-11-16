@@ -59,10 +59,10 @@ test("category tiles off screen load lazily; the default stays eager", () => {
   assert.match(read("app/(customer)/page.tsx"), /<CategoryIcon category=\{category\} size="large" loading="lazy" \/>/);
 });
 
-test("larger hero: 1:1 on phones, 2:1 from 640 px, 5:2 from 1024 px, 600 px tall from 1280 px; space reserved", () => {
-  assert.match(carousel, /className="relative aspect-square w-full overflow-hidden bg-\[#e1ded7\] sm:aspect-\[2\/1\] lg:aspect-\[5\/2\] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-\[58%\]"/);
+test("hero sizes: 4:3 on phones, 2:1 from 640 px, 5:2 from 1024 px, 600 px tall from 1280 px; space reserved", () => {
+  assert.match(carousel, /className="relative aspect-\[4\/3\] w-full overflow-hidden bg-\[#e1ded7\] sm:aspect-\[2\/1\] lg:aspect-\[5\/2\] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-\[58%\]"/);
   assert.match(carousel, /min-h-\[416px\][^"]*sm:min-h-\[404px\][^"]*xl:min-h-\[600px\]/);
-  // Phone image for slide 1: square, small, and no longer the 4:3 file.
+  // Phone image for slide 1: the square file; shown at 4:3 its cover crop removes exactly the added background.
   assert.match(carousel, /\{ media: "\(max-width: 639px\)", srcSet: "\/images\/home\/hero-electronics-devices-square\.webp" \}/);
   assert.ok(statSync(resolve(root, "public/images/home/hero-electronics-devices-square.webp")).size <= 80 * 1024);
 });

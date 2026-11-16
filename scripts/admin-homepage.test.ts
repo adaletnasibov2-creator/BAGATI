@@ -155,13 +155,16 @@ test("storefront layout uses data-backed sections and preserves the BAGATI brand
   assert.match(hero, /<picture/);
   assert.match(hero, /hero-electronics-devices-desktop\.webp/);
   assert.match(hero, /hero-electronics-devices-tablet\.webp/);
-  assert.match(hero, /hero-electronics-devices-mobile\.webp/);
+  // Phones show the hero image square since 2026-11-16: slide 1 uses the square version of the 4:3 phone file.
+  assert.match(hero, /hero-electronics-devices-square\.webp/);
+  assert.doesNotMatch(hero, /hero-electronics-devices-mobile\.webp/);
   assert.match(hero, /hero-beauty-skincare\.webp/);
   assert.doesNotMatch(hero, /images\.pexels\.com/);
   assert.doesNotMatch(hero, /hero-tech-campaign\.svg/);
   assert.doesNotMatch(hero, /hero-tech\.webp/);
   assert.match(hero, /hero-fashion-collection\.webp/);
-  assert.match(hero, /hero-home\.webp/);
+  // Slide 3 uses art-directed crops of hero-home.webp (57-77 KB each instead of 348 KB).
+  for (const variant of ["desktop", "tablet", "mobile"]) assert.match(hero, new RegExp(`/images/home/hero-home-${variant}\\.webp`));
   const heroAssets = hero.match(/\/images\/home\/[\w-]+\.webp/g) ?? [];
   assert.ok(heroAssets.length >= 6);
   for (const asset of heroAssets) assert.ok(existsSync(resolve(root, "public", `.${asset}`)), `${asset} exists`);

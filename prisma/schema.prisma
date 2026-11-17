@@ -647,6 +647,7 @@ model Inventory {
 
   @@unique([productId, variantId])
   @@index([productId])
+  @@index([variantId])
 }
 
 model InventoryAdjustment {
@@ -749,6 +750,7 @@ model OrderItem {
   variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   returnRequest  ReturnRequest?
 
+  @@index([storeOrderId])
   @@index([productId])
   @@index([variantId])
 }

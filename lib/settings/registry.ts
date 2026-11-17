@@ -20,7 +20,7 @@ import { AZ_PHONE_ERROR, normalizeAzPhone } from "@/lib/az-phone";
 import { MAINTENANCE_MESSAGE_DEFAULT } from "@/lib/maintenance-defaults";
 
 export type SettingPermission = "settings.finance" | "settings.content" | "settings.limits";
-export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance" | "catalog" | "orders";
+export type SettingGroupId = "finance" | "seo" | "announcement" | "limits" | "contact" | "footer" | "maintenance" | "catalog" | "orders" | "messaging";
 
 export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description: string }> = {
   finance: { label: "Maliyyə", description: "Komissiya və digər maliyyə parametrləri." },
@@ -32,6 +32,7 @@ export const SETTING_GROUPS: Record<SettingGroupId, { label: string; description
   maintenance: { label: "Texniki iş rejimi", description: "Açıq olanda müştəri və satıcı səhifələri müvəqqəti bağlanır; admin paneli və ödəniş bildirişləri işləyir." },
   catalog: { label: "Kataloq", description: "Kateqoriyaların mağazada necə göstərildiyi." },
   orders: { label: "Sifarişlər", description: "Müştərinin sifarişlə bağlı edə biləcəyi əməliyyatlar." },
+  messaging: { label: "Mesajlaşma", description: "Müştəri ilə mağaza arasında mesajlar: əsas açar, əlaqə məlumatları və limitlər." },
 };
 
 export type SettingInput =
@@ -491,6 +492,74 @@ const ordersCustomerCancellationEnabled: SettingDefinition<boolean> = {
 
 const orderSettings = [ordersCustomerCancellationEnabled];
 
+// ---- Messaging ----------------------------------------------------------------------------------------------
+
+/** On/off switch (stored as a boolean), cached read. */
+function toggleSetting(options: {
+  key: string; group: SettingGroupId; permission: SettingPermission; label: string; description: string;
+  default: boolean; on: string; off: string;
+}): SettingDefinition<boolean> {
+  return {
+    key: options.key,
+    group: options.group,
+    permission: options.permission,
+    sensitive: false,
+    label: options.label,
+    description: options.description,
+    schema: z.boolean(),
+    inputSchema: z.union([z.boolean(), z.enum(["true", "false"])]).transform((value) => value === true || value === "true"),
+    toInput: (value) => String(value),
+    display: (value) => (value ? options.on : options.off),
+    default: options.default,
+    input: { kind: "toggle" },
+    read: "ttl",
+  };
+}
+
+/**
+ * Customer <-> store messaging (owner decisions 2026-11-16, release-output/messaging-phase0.md). The feature is off
+ * until messaging.enabled is switched on; the limit defaults equal MESSAGING_LIMIT_DEFAULTS in lib/messaging.ts
+ * (scripts/messaging-settings.test.ts compares them). Windows stay in code (MESSAGING_WINDOWS).
+ */
+const messagingSettings = [
+  toggleSetting({
+    key: "messaging.enabled", group: "messaging", permission: "settings.content",
+    label: "Müştəri-mağaza mesajlaşması",
+    description: "Açıq olanda daxil olmuş müştərilər məhsul, sifariş və ya mağaza üzrə mağazaya yaza bilər, mağaza cavab verir. Söndürülü olanda heç bir mesajlaşma imkanı göstərilmir; anonim “Mesaj yaz” forması dəyişmir.",
+    default: false, on: "Açıqdır — mesajlaşma işləyir", off: "Söndürülüb — mesajlaşma bağlıdır",
+  }),
+  toggleSetting({
+    key: "messaging.allowContactDetails", group: "messaging", permission: "settings.content",
+    label: "Mesajda telefon və e-poçt",
+    description: "Söndürülü olanda telefon nömrəsi və ya e-poçt ünvanı olan mesaj göndərilmir (təhlükəsizlik üçün). Açıq olanda belə mesajlara icazə verilir.",
+    default: false, on: "Açıqdır — telefon və e-poçt paylaşmaq olar", off: "Söndürülüb — telefon və e-poçt olan mesaj göndərilmir",
+  }),
+  integerSetting({
+    key: "limits.messaging.customerMessagesPerHour", group: "messaging", permission: "settings.limits",
+    label: "Müştəri: saatda mesaj",
+    description: "Bir müştərinin bütün söhbətlər üzrə bir saatda göndərə biləcəyi mesaj sayı.",
+    min: 1, max: 200, default: 30, unit: "mesaj",
+  }),
+  integerSetting({
+    key: "limits.messaging.customerNewConversationsPerDay", group: "messaging", permission: "settings.limits",
+    label: "Müştəri: gündə yeni söhbət",
+    description: "Bir müştərinin 24 saat ərzində başlada biləcəyi yeni söhbət sayı.",
+    min: 1, max: 100, default: 10, unit: "söhbət",
+  }),
+  integerSetting({
+    key: "limits.messaging.storeMessagesPerHour", group: "messaging", permission: "settings.limits",
+    label: "Mağaza: saatda cavab",
+    description: "Bir mağazanın bütün söhbətlər üzrə bir saatda göndərə biləcəyi cavab sayı.",
+    min: 10, max: 2000, default: 200, unit: "mesaj",
+  }),
+  integerSetting({
+    key: "limits.messaging.storeIncomingPerHour", group: "messaging", permission: "settings.limits",
+    label: "Mağaza: saatda gələn mesaj",
+    description: "Bir mağazanın bütün müştərilərdən bir saatda qəbul edə biləcəyi mesaj sayı (çoxlu hesabla axına qarşı).",
+    min: 10, max: 2000, default: 120, unit: "mesaj",
+  }),
+];
+
 // ---- Maintenance mode ---------------------------------------------------------------------------------------
 
 export { MAINTENANCE_MESSAGE_DEFAULT };
@@ -534,6 +603,7 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition[] = [
   ...(maintenanceSettings as SettingDefinition[]),
   ...(catalogSettings as SettingDefinition[]),
   ...(orderSettings as SettingDefinition[]),
+  ...(messagingSettings as SettingDefinition[]),
 ];
 
 /**
@@ -572,4 +642,10 @@ export const SETTING_KEYS = {
   maintenanceMessage: "maintenance.message",
   catalogShowEmptyCategories: "catalog.showEmptyCategories",
   ordersCustomerCancellationEnabled: "orders.customerCancellationEnabled",
+  messagingEnabled: "messaging.enabled",
+  messagingAllowContactDetails: "messaging.allowContactDetails",
+  messagingCustomerMessagesPerHour: "limits.messaging.customerMessagesPerHour",
+  messagingCustomerNewConversationsPerDay: "limits.messaging.customerNewConversationsPerDay",
+  messagingStoreMessagesPerHour: "limits.messaging.storeMessagesPerHour",
+  messagingStoreIncomingPerHour: "limits.messaging.storeIncomingPerHour",
 } as const;

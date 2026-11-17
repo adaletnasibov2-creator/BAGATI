@@ -16,6 +16,8 @@ export type StorefrontContactInfo = {
   address: string | null;
   mapLink: string | null;
   coordinates: { latitude: number; longitude: number } | null;
+  /** Logged-in customer with messaging ON: a "Mağazaya yaz" conversation instead of the anonymous form. */
+  messageHref?: string | null;
 };
 
 const rowLink = "inline-flex min-h-11 items-center gap-1 font-medium text-emerald hover:underline focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]";
@@ -39,10 +41,17 @@ export default function StorefrontContact({ info }: { info: StorefrontContactInf
         <p className="mt-3 whitespace-pre-line text-sm leading-7 text-muted">{info.description}</p>
       </section>}
       <section id="store-message" className="scroll-mt-6 rounded-2xl border border-line bg-white p-5 sm:p-7">
-        <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Mesaj yaz</p>
+        <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">{info.messageHref ? "Mağazaya yaz" : "Mesaj yaz"}</p>
         <h2 className="mt-1 text-xl font-semibold text-ink">Satıcıya sual verin</h2>
-        <p className="mt-1 text-sm leading-6 text-muted">Mesajınız birbaşa mağazaya çatır. Satıcı qeyd etdiyiniz e-poçt və ya telefonla sizə cavab verəcək.</p>
-        <div className="mt-5"><StoreInquiryForm storeId={info.storeId} storeName={info.storeName}/></div>
+        {info.messageHref
+          ? <>
+            <p className="mt-1 text-sm leading-6 text-muted">Sualınızı yazın; mağazanın cavabı hesabınızdakı “Mesajlarım” bölməsinə gələcək.</p>
+            <a href={info.messageHref} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]"><MessageCircle size={16} aria-hidden="true"/>Mağazaya yaz</a>
+          </>
+          : <>
+            <p className="mt-1 text-sm leading-6 text-muted">Mesajınız birbaşa mağazaya çatır. Satıcı qeyd etdiyiniz e-poçt və ya telefonla sizə cavab verəcək.</p>
+            <div className="mt-5"><StoreInquiryForm storeId={info.storeId} storeName={info.storeName}/></div>
+          </>}
       </section>
     </div>
 
@@ -57,7 +66,7 @@ export default function StorefrontContact({ info }: { info: StorefrontContactInf
           <a href={info.telHref} className="inline-flex min-h-11 items-center text-ink hover:underline">{info.phoneDisplay}</a>
         </Row>}
         <Row icon={<Mail size={17}/>} label="Mesaj">
-          <a href="#store-message" className={rowLink}>Mesaj formasını aç</a>
+          <a href={info.messageHref ?? "#store-message"} className={rowLink}>{info.messageHref ? "Mağazaya yaz" : "Mesaj formasını aç"}</a>
         </Row>
         {info.address && <Row icon={<MapPin size={17}/>} label="Ünvan">
           <p className="py-2">{info.address}</p>

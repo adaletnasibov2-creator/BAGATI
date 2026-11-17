@@ -44,9 +44,11 @@ test("no page disappeared from the menu: every former menu item is still listed 
   const former = ["/admin/security-center", "/admin/security", "/admin/security/sessions", "/admin", "/admin/settings", "/admin/homepage", "/admin/promotions", "/admin/stores", "/admin/vendors", "/admin/seller-applications", "/admin/customers", "/admin/verification", "/admin/products", "/admin/categories", "/admin/brands", "/admin/cities", "/admin/orders", "/admin/subscriptions", "/admin/commissions", "/admin/payments", "/admin/returns", "/admin/refunds", "/admin/reviews", "/admin/support", "/admin/imports", "/admin/reports", "/admin/notifications", "/admin/email", "/admin/system", "/admin/audit-log"];
   const listed = new Set(navItems.map((item) => item.href));
   assert.deepEqual(former.filter((href) => !listed.has(href)), ["/admin/payments", "/admin/refunds"]);
-  // Phase C1 added Səhifələr (content pages); the seller VÖEN work added VÖEN yoxlaması (Mağazalar group).
-  assert.deepEqual([...listed].filter((href) => !former.includes(href)).sort(), ["/admin/pages", "/admin/voen"], "only the known additions");
+  // Phase C1 added Səhifələr (content pages); the seller VÖEN work added VÖEN yoxlaması (Mağazalar group); messaging
+  // phase 8 added Mesaj şikayətləri (Məzmun group, shown only while messaging is ON).
+  assert.deepEqual([...listed].filter((href) => !former.includes(href)).sort(), ["/admin/messages/reports", "/admin/pages", "/admin/voen"], "only the known additions");
   assert.equal(navItems.find((item) => item.href === "/admin/voen")?.group, "stores");
+  assert.equal(navItems.find((item) => item.href === "/admin/messages/reports")?.group, "content");
 });
 
 test("requested placement", () => {

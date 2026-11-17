@@ -20,6 +20,8 @@ export type StorefrontBrand = {
   sellerVerified: boolean;
   hasAbout: boolean;
   productCount: number;
+  /** Logged-in customer with messaging ON: "Mağazaya yaz" opens a conversation. Otherwise the anonymous form (#store-message). */
+  messageHref?: string | null;
 };
 
 const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]";
@@ -28,6 +30,9 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
   const colors = getStorefrontTheme(store.theme);
   const initial = store.name.trim().slice(0, 1).toLocaleUpperCase("az-AZ") || "M";
 
+  // One button, two targets: a conversation for a logged-in customer (messaging ON), otherwise the anonymous form.
+  const messageButtonClass = `inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold sm:flex-none ${store.whatsappUrl ? "border bg-white" : "text-white shadow-sm"} ${focusRing}`;
+  const messageButtonStyle = store.whatsappUrl ? { color: colors.accent, borderColor: colors.accent } : { backgroundColor: colors.accent };
   return <header id="top" className="overflow-hidden rounded-[26px] border border-line bg-white shadow-[0_12px_36px_rgba(23,58,58,.07)]">
     {/* Fixed aspect ratio: the cover never pushes or hides the content below it. */}
     <div className="relative isolate aspect-[16/7] w-full overflow-hidden sm:aspect-[4/1] lg:aspect-auto lg:h-72" style={{ backgroundColor: colors.accentSoft }}>
@@ -60,7 +65,9 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
         </div>
         <div className="flex flex-wrap gap-2 sm:shrink-0 sm:pt-4">
           {store.whatsappUrl && <a href={store.whatsappUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold text-white shadow-sm sm:flex-none ${focusRing}`} style={{ backgroundColor: colors.accent }}><MessageCircle size={16} aria-hidden="true"/>WhatsApp ilə yaz</a>}
-          <a href="#store-message" className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold sm:flex-none ${store.whatsappUrl ? "border bg-white" : "text-white shadow-sm"} ${focusRing}`} style={store.whatsappUrl ? { color: colors.accent, borderColor: colors.accent } : { backgroundColor: colors.accent }}><Mail size={16} aria-hidden="true"/>Mesaj yaz</a>
+          {store.messageHref
+            ? <a href={store.messageHref} className={messageButtonClass} style={messageButtonStyle}><Mail size={16} aria-hidden="true"/>Mağazaya yaz</a>
+            : <a href="#store-message" className={messageButtonClass} style={messageButtonStyle}><Mail size={16} aria-hidden="true"/>Mesaj yaz</a>}
         </div>
       </div>
 

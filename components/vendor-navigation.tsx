@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Bell, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileSpreadsheet, LayoutDashboard, Menu, MessageSquare, Package, Plus, RotateCcw, Settings2, ShieldCheck, Star, Store, Tags, X } from "lucide-react";
+import { BarChart3, Bell, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileSpreadsheet, LayoutDashboard, Menu, MessageSquare, MessagesSquare, Package, Plus, RotateCcw, Settings2, ShieldCheck, Star, Store, Tags, X } from "lucide-react";
 
-type NavLink = { path: string; label: string; Icon: typeof Store; badge?: "unread" | "inquiries" };
+type NavLink = { path: string; label: string; Icon: typeof Store; badge?: "unread" | "inquiries" | "conversations" };
 const groups: { title: string; links: NavLink[] }[] = [
   { title: "Mağaza", links: [
     { path: "", label: "İdarəetmə paneli", Icon: LayoutDashboard },
@@ -19,6 +19,8 @@ const groups: { title: string; links: NavLink[] }[] = [
   { title: "Satış", links: [
     { path: "orders", label: "Sifarişlər", Icon: ClipboardList },
     { path: "inquiries", label: "Mesajlar", Icon: MessageSquare, badge: "inquiries" },
+    // Customer conversations (messaging); hidden while messaging.enabled is OFF (conversations = null).
+    { path: "messages", label: "Söhbətlər", Icon: MessagesSquare, badge: "conversations" },
     { path: "returns", label: "Qaytarılma müraciətləri", Icon: RotateCcw },
     { path: "campaigns", label: "Kampaniyalar", Icon: Tags },
     { path: "sales", label: "Satış və gəlir", Icon: BarChart3 },
@@ -32,7 +34,7 @@ const groups: { title: string; links: NavLink[] }[] = [
   ] },
 ];
 
-export function VendorNavigation({ storeId, canUseBulkImport = false, unread = 0, newInquiries = 0 }: { storeId: string; canUseBulkImport?: boolean; unread?: number; newInquiries?: number }) {
+export function VendorNavigation({ storeId, canUseBulkImport = false, unread = 0, newInquiries = 0, conversations = null }: { storeId: string; canUseBulkImport?: boolean; unread?: number; newInquiries?: number; conversations?: number | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const base = `/vendor/${storeId}`;
@@ -45,13 +47,13 @@ export function VendorNavigation({ storeId, canUseBulkImport = false, unread = 0
   const nav = (mobile = false) => <nav aria-label="Satıcı paneli" className="space-y-5">
     {groups.map((group) => <div key={group.title}>
       <p className="mb-1.5 px-3 text-[.62rem] font-semibold uppercase tracking-[.16em] text-[#8A6A37]">{group.title}</p>
-      <ul className="space-y-1">{group.links.filter(({ path }) => path !== "imports" || canUseBulkImport).map(({ path, label, Icon, badge }) => {
+      <ul className="space-y-1">{group.links.filter(({ path }) => (path !== "imports" || canUseBulkImport) && (path !== "messages" || conversations !== null)).map(({ path, label, Icon, badge }) => {
         const active = isActive(path);
         return <li key={path}><Link href={`${base}${path ? `/${path}` : ""}`} onClick={() => mobile && setOpen(false)} aria-current={active ? "page" : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c9973a] ${active ? "bg-[#142d38] font-semibold text-white shadow-sm" : "text-[#536273] hover:bg-[#f2f0e9] hover:text-[#142d38]"}`}>
           <Icon size={17} aria-hidden="true"/><span className="min-w-0 flex-1">{label}</span>
           {(() => {
-            const count = badge === "unread" ? unread : badge === "inquiries" ? newInquiries : 0;
-            return count > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${active ? "bg-white text-[#142d38]" : "bg-[#c9973a] text-white"}`} aria-label={badge === "inquiries" ? `${count} yeni mesaj` : `${count} oxunmamış`}>{count > 99 ? "99+" : count}</span>;
+            const count = badge === "unread" ? unread : badge === "inquiries" ? newInquiries : badge === "conversations" ? conversations ?? 0 : 0;
+            return count > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${active ? "bg-white text-[#142d38]" : "bg-[#c9973a] text-white"}`} aria-label={badge === "inquiries" ? `${count} yeni mesaj` : badge === "conversations" ? `${count} oxunmamış söhbət` : `${count} oxunmamış`}>{count > 99 ? "99+" : count}</span>;
           })()}
           {active && <ChevronRight size={14} aria-hidden="true"/>}
         </Link></li>;

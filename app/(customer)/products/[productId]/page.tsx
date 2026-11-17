@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { categoryHref } from "@/lib/category-tree";
 import { notFound } from "next/navigation";
-import { ChevronRight, MapPin, Store } from "lucide-react";
+import { ChevronRight, MapPin, MessageCircle, Store } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import ProductVariantPurchase from "@/components/product-variant-purchase";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +10,7 @@ import { calculateEffectivePrice, productPromotions, type PromotionPriceInput } 
 import { calculateVariantEffectivePrice } from "@/lib/product-variants";
 import { publicProductVisibilityWhere } from "@/lib/store-visibility";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
+import { messageEntryForViewer } from "@/lib/messaging-pages";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,8 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
 
   const eligibleStoreIds = await resolvePublicStoreEligibility([product.store.id], prisma, now);
   if (!eligibleStoreIds.has(product.store.id)) notFound();
+  // "Bu məhsul haqqında soruş": customers; logged-out visitors sign in first; hidden while messaging is OFF.
+  const askHref = await messageEntryForViewer({ storeId: product.store.id, productId: product.id }, "login");
 
   const promotions = productPromotions(product.promotionProducts, product.store.id);
   const effective = calculateEffectivePrice(product.price, product.discountPrice, promotions, now);
@@ -193,6 +196,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
             />
           ) : <p className="mt-5 rounded-xl bg-[#F4F7F4] p-3 text-xs text-muted">Mağaza xəritə mövqeyini hələ əlavə etməyib.</p>}
           {product.store.mapUrl && <a href={product.store.mapUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block min-h-11 text-sm font-medium leading-11 text-emerald">Mağaza xəritəsinə bax →</a>}
+          {askHref && <Link href={askHref} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#2F6F68] px-4 text-sm font-semibold text-[#2F6F68] transition hover:bg-[#EFF4F1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]"><MessageCircle aria-hidden="true" size={17}/>Bu məhsul haqqında soruş</Link>}
         </section>
       </div>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import AdminSessionsList from "@/components/admin-sessions-list";
 import { currentSessionId, requireRole } from "@/lib/auth";
 import { listActiveSessions } from "@/lib/admin-sessions";
@@ -21,7 +22,7 @@ export default async function AdminSessionsPage() {
     userAgent: session.userAgent,
     current: session.current,
   }));
-  return <AdminShell email={admin.email}>
+  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <div className="mb-6">
       <Link href="/admin/security" className="text-sm font-medium text-[#85621d]">← Hesab təhlükəsizliyi</Link>
       <p className="mt-4 text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>

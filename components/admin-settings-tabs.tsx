@@ -9,6 +9,7 @@ export const ADMIN_SETTINGS_TABS = [
   { id: "maintenance", label: "Texniki iş", href: "/admin/settings?tab=maintenance" },
   { id: "catalog", label: "Kataloq", href: "/admin/settings?tab=catalog" },
   { id: "orders", label: "Sifarişlər", href: "/admin/settings?tab=orders" },
+  { id: "messaging", label: "Mesajlaşma", href: "/admin/settings?tab=messaging" },
 ] as const;
 export type AdminSettingsTab = (typeof ADMIN_SETTINGS_TABS)[number]["id"];
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import AdminVerificationSummary from "@/components/admin-verification-summary";
 import { AdminStatusBadge } from "@/components/admin-ui/admin-status-badge";
 import { EmptyState } from "@/components/admin-ui/empty-state";
@@ -52,7 +53,7 @@ export default async function AdminDashboard() {
     ["Ləğv edilib", cancelledOrders, "/admin/orders?status=CANCELLED"],
   ] as const;
   const seeAll = (href: string, label: string) => <Link href={href} className={`rounded text-sm text-[#85621d] ${focusRing}`}>{label} →</Link>;
-  return <AdminShell email={admin.email}>
+  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     {maintenanceOn === true && <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-900">
       <p><b>Texniki iş rejimi açıqdır.</b> Müştəri və satıcı səhifələri və API-ləri 503 qaytarır; alış-veriş dayanıb. Admin paneli və ödəniş bildirişləri işləyir.</p>
       <Link href="/admin/settings?tab=maintenance" className={buttonClass("danger")}>Rejimi idarə et</Link>

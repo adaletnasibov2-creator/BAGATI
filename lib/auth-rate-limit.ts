@@ -17,7 +17,7 @@ function authRateLimitSecret() {
   return value;
 }
 
-export function authRateLimitKey(scope: "login" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "store-inquiry" | "admin-2fa" | "admin-login" | "admin-email-test" | "admin-email-drain" | "seller-application", identity: string) {
+export function authRateLimitKey(scope: "login" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "store-inquiry" | "admin-2fa" | "admin-email-test" | "admin-email-drain" | "admin-login" | "messaging" | "seller-application", identity: string) {
   return createHmac("sha256", authRateLimitSecret())
     .update(`BAGATI_AUTH_RATE_LIMIT_V1:${scope}:${identity.trim().toLowerCase()}`)
     .digest("hex");

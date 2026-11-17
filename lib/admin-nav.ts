@@ -8,9 +8,12 @@
  */
 import {
   Activity, BadgeCheck, BadgePercent, Bell, FileText, ChartNoAxesCombined, ClipboardCheck, CreditCard, FileClock, Images, LayoutDashboard,
-  LifeBuoy, MailCheck, Map, MonitorSmartphone, Package, Percent, RotateCcw, Send, Settings, ShieldCheck, ShoppingBag,
+  LifeBuoy, MailCheck, Map, MessageSquareWarning, MonitorSmartphone, Package, Percent, RotateCcw, Send, Settings, ShieldCheck, ShoppingBag,
   Star, Store, Tags, Upload, UserRound, Users, type LucideIcon,
 } from "lucide-react";
+
+/** Customer-store messaging reports (phase 8). Hidden from the menu while messaging is OFF. */
+export const ADMIN_MESSAGING_NAV_HREF = "/admin/messages/reports";
 
 export type AdminNavItem = readonly [href: string, label: string, icon: LucideIcon];
 export type AdminNavGroup = { id: string; label: string; items: readonly AdminNavItem[] };
@@ -51,6 +54,8 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       ["/admin/promotions", "Kampaniyalar", BadgePercent],
       ["/admin/reviews", "Rəylər", Star],
       ["/admin/support", "Dəstək", LifeBuoy],
+      // Shown only while messaging.enabled is ON (AdminShell's messagingEnabled prop); the page itself always works.
+      [ADMIN_MESSAGING_NAV_HREF, "Mesaj şikayətləri", MessageSquareWarning],
     ],
   },
   {

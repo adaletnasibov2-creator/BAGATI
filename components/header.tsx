@@ -15,11 +15,13 @@ type HeaderCity = { id: string; name: string; slug: string };
 export function Header({
   branding,
   user,
+  messagesUnread = null,
   cities,
   categories,
 }: {
   branding: { siteName: string; logoUrl: string | null };
   user: HeaderUser;
+  messagesUnread?: number | null;
   cities: HeaderCity[];
   categories: HeaderCategory[];
 }) {
@@ -66,7 +68,7 @@ export function Header({
             <Link href="/cart" aria-label="Səbət" className="grid min-h-11 min-w-10 place-items-center rounded-xl text-[#405451] transition-colors hover:bg-[#EFF4F1] hover:text-[#2F6F68] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F8175] sm:min-w-11">
               <ShoppingBag aria-hidden="true" size={19} />
             </Link>
-            <CustomerAccountMenu user={user ? { email: user.email, displayName: user.displayName, role: user.role } : null} />
+            <CustomerAccountMenu user={user ? { email: user.email, displayName: user.displayName, role: user.role } : null} messagesUnread={messagesUnread} />
           </div>
         </div>
 

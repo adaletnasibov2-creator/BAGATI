@@ -22,6 +22,8 @@ export const EMAIL_TEMPLATES = [
   "SELLER_ORDER_CANCELLED",
   "SELLER_CANCELLATION_REQUEST",
   "CANCELLATION_REQUEST_DECISION",
+  "MESSAGE_TO_STORE",
+  "MESSAGE_TO_CUSTOMER",
 ] as const;
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[number];
 export type EmailPayload = Record<string, string | number | boolean | null>;
@@ -129,6 +131,9 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
       ];
       break;
     }
+    // Messaging (owner decision): a link only, never the message text.
+    case "MESSAGE_TO_STORE": subject = "Yeni müştəri mesajı"; lines = [`${value(payload, "storeName", "Mağaza")}: müştəridən yeni mesajınız var.`, "Mesajı oxumaq və cavab vermək üçün satıcı panelinə daxil olun.", ...(value(payload, "url") ? [value(payload, "url")] : [])]; break;
+    case "MESSAGE_TO_CUSTOMER": subject = "Mağaza sizə cavab yazdı"; lines = [`${value(payload, "storeName", "Mağaza")} sizə cavab yazdı.`, "Mesajı oxumaq üçün BAGATI hesabınıza daxil olun.", ...(value(payload, "url") ? [value(payload, "url")] : [])]; break;
     case "ACCOUNT_SECURITY": subject = "BAGATI hesabınızda təhlükəsizlik dəyişikliyi"; lines = ["Hesabınızın şifrəsi yeniləndi.", "Bu əməliyyatı siz etməmisinizsə, hesabınıza daxil olun və dəstək xidməti ilə əlaqə saxlayın."]; break;
     case "STORE_INQUIRY": {
       // Buyer text is plain text: every line is HTML-escaped below, and nothing from the buyer reaches a header except a validated Reply-To.

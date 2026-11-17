@@ -7,7 +7,8 @@ import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
 
 type AccountIdentity = { email: string; displayName: string; role: "CUSTOMER" | "VENDOR" | "ADMIN" };
 
-export function CustomerAccountMenu({ user }: { user: AccountIdentity | null }) {
+/** messagesUnread: null while messaging is OFF (no "Mesajlarım" entry); otherwise the unread conversation count. */
+export function CustomerAccountMenu({ user, messagesUnread = null }: { user: AccountIdentity | null; messagesUnread?: number | null }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
@@ -26,12 +27,12 @@ export function CustomerAccountMenu({ user }: { user: AccountIdentity | null }) 
   const initials = user.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az-AZ")).join("") || "B";
   const links = user.role === "VENDOR" ? [["/vendor", "Satıcı kabineti"]]
     : user.role === "ADMIN" ? [["/admin", "İdarəetmə paneli"]]
-    : [["/account", "Hesab icmalı"], ["/orders", "Sifarişlərim"], ["/account/returns", "Qaytarılma sorğuları"], ["/account/addresses", "Ünvanlarım"], ["/favorites", "Sevimlilər"], ["/account/notifications", "Bildirişlər"], ["/account/security", "Təhlükəsizlik"]];
+    : [["/account", "Hesab icmalı"], ["/orders", "Sifarişlərim"], ...(messagesUnread === null ? [] : [["/account/messages", "Mesajlarım"]]), ["/account/returns", "Qaytarılma sorğuları"], ["/account/addresses", "Ünvanlarım"], ["/favorites", "Sevimlilər"], ["/account/notifications", "Bildirişlər"], ["/account/security", "Təhlükəsizlik"]];
   return <details className="group relative">
-    <summary aria-label={`${user.displayName}, ${roleLabel}`} className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-2 text-sm font-semibold text-[#24413D] transition hover:bg-[#EFF4F1] sm:px-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E5EEE8] text-xs font-bold text-[#42645C]" aria-hidden="true">{initials}</span><span className="hidden max-w-36 truncate lg:inline">{user.displayName}</span></summary>
+    <summary aria-label={`${user.displayName}, ${roleLabel}`} className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-2 text-sm font-semibold text-[#24413D] transition hover:bg-[#EFF4F1] sm:px-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E5EEE8] text-xs font-bold text-[#42645C]" aria-hidden="true">{initials}</span><span className="hidden max-w-36 truncate lg:inline">{user.displayName}</span>{messagesUnread ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#C9973A] px-1 text-[10px] font-semibold text-white" aria-label={`${messagesUnread} oxunmamış söhbət`}>{messagesUnread > 9 ? "9+" : messagesUnread}</span> : null}</summary>
     <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[#E1E9E4] bg-white p-2 shadow-[0_18px_45px_rgba(23,58,58,.15)]">
       <p className="truncate px-3 pt-2 text-sm font-semibold text-[#24413D]">{user.displayName}</p><p className="truncate px-3 pb-2 text-xs text-[#75817F]">{user.email}</p><p className="px-3 pb-2 text-[11px] font-medium uppercase tracking-wide text-[#638078]">{roleLabel}</p>
-      {links.map(([href, label]) => <Link key={href} href={href} className="block rounded-xl px-3 py-2.5 text-sm text-[#405451] transition hover:bg-[#F2F6F3]">{label}</Link>)}
+      {links.map(([href, label]) => <Link key={href} href={href} className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm text-[#405451] transition hover:bg-[#F2F6F3]">{label}{href === "/account/messages" && messagesUnread ? <span className="rounded-full bg-[#C9973A] px-1.5 py-0.5 text-[10px] font-semibold text-white">{messagesUnread > 99 ? "99+" : messagesUnread}</span> : null}</Link>)}
       {error && <p role="alert" className="px-3 py-2 text-xs text-red-700">{error}</p>}
       <button type="button" disabled={busy} onClick={() => void logout()} className="mt-1 flex min-h-11 w-full items-center gap-2 border-t border-[#E9EEEA] px-3 pt-2 text-left text-sm font-medium text-[#42645C] disabled:opacity-60"><LogOut size={16}/>{busy ? "Çıxış edilir…" : "Hesabdan çıx"}</button>
     </div>

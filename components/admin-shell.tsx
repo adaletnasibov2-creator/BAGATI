@@ -6,13 +6,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
 import { ChevronDown, Menu, Search, X } from "lucide-react";
-import { ADMIN_NAV_GROUPS, activeAdminNavGroup, activeAdminNavHref } from "@/lib/admin-nav";
+import { ADMIN_MESSAGING_NAV_HREF, ADMIN_NAV_GROUPS, activeAdminNavGroup, activeAdminNavHref } from "@/lib/admin-nav";
 
 // Menu groups and items: lib/admin-nav.ts (Ödənişlər and Geri ödənişlər are hidden stubs).
 
-type AdminShellProps = { children: ReactNode; email: string };
+/** messagingEnabled: the "Mesaj şikayətləri" menu item is shown only while messaging is ON (cached setting). */
+type AdminShellProps = { children: ReactNode; email: string; messagingEnabled?: boolean };
 
-export default function AdminShell({ children, email }: AdminShellProps) {
+export default function AdminShell({ children, email, messagingEnabled = false }: AdminShellProps) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -99,7 +100,7 @@ export default function AdminShell({ children, email }: AdminShellProps) {
         />
       </label>
       {ADMIN_NAV_GROUPS.map((group) => {
-        const items = group.items.filter(([, label]) => !needle || label.toLocaleLowerCase().includes(needle));
+        const items = group.items.filter(([href, label]) => (href !== ADMIN_MESSAGING_NAV_HREF || messagingEnabled) && (!needle || label.toLocaleLowerCase().includes(needle)));
         if (!items.length) return null;
         // While searching every group with a match is shown open.
         const expanded = Boolean(needle) || openGroups.has(group.id);

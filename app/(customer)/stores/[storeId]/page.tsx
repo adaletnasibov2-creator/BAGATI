@@ -18,6 +18,7 @@ import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
 import StorefrontBranding, { type StorefrontBrand } from "@/components/storefront-branding";
 import { isSellerVoenVerified } from "@/lib/voen-verification";
 import StorefrontContact from "@/components/storefront-contact";
+import { messageEntryForViewer } from "@/lib/messaging-pages";
 import { buildTelHref, buildWhatsAppUrl, normalizeAzPhone } from "@/lib/az-phone";
 import { formatStoreAddress, openStreetMapUrl, safePublicMapUrl } from "@/lib/store-public-contact";
 import { calculateEffectivePrice } from "@/lib/promotion-pricing";
@@ -144,6 +145,8 @@ export default async function StorefrontPage({
 
   const branding = await getStorefrontBrandingCompatibility(store.id);
   if (!branding) notFound();
+  // Logged-in customers with messaging ON get "Mağazaya yaz"; logged-out visitors keep the anonymous "Mesaj yaz" form.
+  const messageHref = await messageEntryForViewer({ storeId: store.id }, "hide");
 
   const publicLogo = store.logoUrl && isOwnedStoreAssetUrl(store.id, store.logoUrl) ? store.logoUrl : null;
   const publicBanner = branding.bannerUrl && isOwnedStoreAssetUrl(store.id, branding.bannerUrl) ? branding.bannerUrl : null;
@@ -289,6 +292,7 @@ export default async function StorefrontPage({
       sellerVerified,
       hasAbout: Boolean(description),
       productCount: storeProductCount,
+      messageHref,
     } satisfies StorefrontBrand}/>
 
     {storeProductCount === 0
@@ -298,7 +302,7 @@ export default async function StorefrontPage({
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">Satıcı məhsullarını hazırlayır. Axtardığınız məhsul barədə soruşmaq istəyirsinizsə, satıcıya birbaşa yazın.</p>
         <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
           {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">WhatsApp ilə yaz</a>}
-          <a href="#store-message" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Mesaj yaz</a>
+          <a href={messageHref ?? "#store-message"} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">{messageHref ? "Mağazaya yaz" : "Mesaj yaz"}</a>
           <Link href="/stores" className="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-medium text-emerald hover:underline">Digər mağazalara bax</Link>
         </div>
       </section>
@@ -387,6 +391,7 @@ export default async function StorefrontPage({
       address: formatStoreAddress(store.address, store.city.name),
       mapLink: safePublicMapUrl(store.mapUrl) ?? openStreetMapUrl(store.latitude, store.longitude),
       coordinates,
+      messageHref,
     }}/>
     <div className="mt-8 text-right"><a href="#top" className="inline-flex min-h-11 items-center text-sm text-muted hover:underline">Səhifənin əvvəlinə ↑</a></div>
   </div>;

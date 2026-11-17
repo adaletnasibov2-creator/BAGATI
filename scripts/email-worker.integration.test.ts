@@ -60,6 +60,9 @@ test("in-process email worker on PostgreSQL", { timeout: 120_000 }, async (t) =>
     const { writeEmailWorkerHeartbeatToDatabase, readEmailWorkerHeartbeatFromDatabase } = await import("../lib/email-worker-heartbeat-store");
 
     await prisma.emailOutbox.deleteMany({ where: { recipient: { endsWith: `@${tag}.verify.invalid` } } });
+    // availableAt is stored with millisecond precision and PostgreSQL rounds it, so a row queued in the same millisecond
+    // as the batch can sit just after the batch's "now" and wait for the next tick. A few ms keeps the test deterministic.
+    const settleAvailableAt = () => new Promise((resolve) => setTimeout(resolve, 5));
 
     await t.test("session advisory lock: one holder at a time across sessions; released by unlock and by disconnect", async () => {
       const lockA = createAdvisoryOutboxLock(sessionA, TEST_LOCK_KEY);
@@ -84,6 +87,7 @@ test("in-process email worker on PostgreSQL", { timeout: 120_000 }, async (t) =>
       for (let i = 0; i < 6; i++) {
         await enqueueEmail(prisma, { eventKey: `${tag}:welcome:${i}`, recipient: `c${i}@${tag}.verify.invalid`, template: "WELCOME_CUSTOMER", payload: { name: `Test ${i}` } });
       }
+      await settleAvailableAt();
       const delivered: string[] = [];
       let releaseSend!: () => void;
       const sendGate = new Promise<void>((r) => { releaseSend = r; });
@@ -158,6 +162,7 @@ test("in-process email worker on PostgreSQL", { timeout: 120_000 }, async (t) =>
       const recipient = `stale@${tag}.verify.invalid`;
       await enqueueEmail(prisma, { eventKey: `${tag}:stale`, recipient, template: "MESSAGE_TO_STORE", payload: { storeName: "S", url: "https://shopbagati.com/x" } });
       await prisma.emailOutbox.updateMany({ where: { recipient }, data: { createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) } });
+      await settleAvailableAt();
       const delivered: string[] = [];
       await processEmailOutboxBatch(25, { prisma, assertSmtpConfigured: () => undefined, sendTransactionalEmail: (async (_t: string, _p: unknown, to: string) => { delivered.push(to); }) as never });
       const row = await prisma.emailOutbox.findFirstOrThrow({ where: { recipient } });

@@ -98,7 +98,8 @@ export default async function HomePage({ searchParams }: Props) {
     prisma.product.findMany({
       where: { ...productFilter, discountPrice: { not: null } },
       take: 40,
-      orderBy: { createdAt: "desc" },
+      // id breaks createdAt ties (bulk-created products share a timestamp), so the shelf is the same on every request.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: {
         store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } },
         inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },

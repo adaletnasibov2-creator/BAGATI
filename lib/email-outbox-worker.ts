@@ -8,6 +8,18 @@ import { decryptEmailSecret } from "@/lib/email-outbox";
 const MAX_ATTEMPTS = 5;
 const STALE_LOCK_MS = 15 * 60 * 1000;
 
+/**
+ * Notifications that are useless once old ("you have a new message"). After an outage they are never sent late:
+ * a row older than this is marked FAILED with NOTIFICATION_STALE instead. Checked before the template allowlist, so
+ * it also applies on a build where the template is not known yet.
+ */
+export const NOTIFICATION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+export const AGE_LIMITED_TEMPLATES: ReadonlySet<string> = new Set(["MESSAGE_TO_STORE", "MESSAGE_TO_CUSTOMER"]);
+
+export function isNotificationTooOld(template: string, createdAt: Date, now: Date) {
+  return AGE_LIMITED_TEMPLATES.has(template) && now.getTime() - createdAt.getTime() > NOTIFICATION_MAX_AGE_MS;
+}
+
 type EmailWorkerDependencies = {
   prisma: Pick<PrismaClient, "emailOutbox" | "emailVerification" | "user" | "$queryRaw">;
   assertSmtpConfigured: () => void;
@@ -143,6 +155,10 @@ export async function processEmailOutboxBatch(
     let failureStage = "validate_template";
     const logTemplate = EMAIL_TEMPLATES.includes(candidate.template as EmailTemplate) ? candidate.template : "UNKNOWN_TEMPLATE";
     try {
+      if (isNotificationTooOld(candidate.template, candidate.createdAt, new Date())) {
+        failureStage = "validate_age";
+        throw Object.assign(new Error("Notification is too old to send."), { code: "NOTIFICATION_STALE" });
+      }
       if (!EMAIL_TEMPLATES.includes(candidate.template as EmailTemplate)) throw Object.assign(new Error("Unknown template."), { code: "INVALID_TEMPLATE" });
       failureStage = "decode_payload";
       let payload = plainPayload(candidate.payload);

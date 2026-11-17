@@ -1,6 +1,51 @@
-import Link from "next/link";
-import { MessageCircle, CircleHelp } from "lucide-react";
-import { getSiteSettings } from "@/lib/site-settings";
-import { getPublicContact } from "@/lib/public-contact";
-import { toWhatsAppHref } from "@/lib/public-contact-links";
-export default async function ContactPage(){const [settings,contact]=await Promise.all([getSiteSettings(),getPublicContact()]);const whatsappHref=toWhatsAppHref(contact.whatsapp);return <div className="container py-10 md:py-14"><p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald">Əlaqə</p><h1 className="mt-2 text-3xl font-semibold">{settings.siteName} ilə əlaqə</h1><p className="mt-3 max-w-2xl leading-7 text-muted">Müraciətlərinizi sayt daxilində izlənə bilməsi üçün dəstək bölməsindən göndərin.</p>{(settings.contactPhone||settings.contactEmail)&&<div className="mt-5 flex flex-wrap gap-4 text-sm">{settings.contactPhone&&<a href={`tel:${settings.contactPhone}`}>{settings.contactPhone}</a>}{settings.contactEmail&&<a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a>}</div>}{(contact.address||contact.workingHours||whatsappHref)&&<dl className="mt-5 grid gap-2 text-sm sm:grid-cols-[auto_1fr] sm:gap-x-4">{contact.address&&<><dt className="text-muted">Ünvan</dt><dd>{contact.address}</dd></>}{contact.workingHours&&<><dt className="text-muted">İş saatları</dt><dd>{contact.workingHours}</dd></>}{whatsappHref&&<><dt className="text-muted">WhatsApp</dt><dd><a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="text-emerald underline">{contact.whatsappDisplay}</a></dd></>}</dl>}<div className="mt-8 grid gap-4 sm:grid-cols-2"><Link href="/support" className="rounded-2xl border border-line bg-white p-6 hover:border-emerald/40"><MessageCircle className="text-emerald"/><h2 className="mt-4 font-semibold">Dəstəyə yazın</h2><p className="mt-2 text-sm text-muted">Sualınızı və ya probleminizi müraciət kimi göndərin.</p><p className="mt-4 text-sm text-emerald">Müraciət göndər →</p></Link><Link href="/help" className="rounded-2xl border border-line bg-white p-6 hover:border-emerald/40"><CircleHelp className="text-emerald"/><h2 className="mt-4 font-semibold">Kömək mərkəzi</h2><p className="mt-2 text-sm text-muted">Sifariş və alış-veriş haqqında cavabları nəzərdən keçirin.</p><p className="mt-4 text-sm text-emerald">Suallara bax →</p></Link></div></div>}
+import type { Metadata } from "next";
+import { absoluteSiteUrl } from "@/lib/category-seo";
+
+// Legal page, final text of 2026-11-17 (owner). Static text in code: no database read in this page.
+const title = "Əlaqə";
+const description = "Bizə e-poçt və ya telefonla yaza bilərsiniz; müraciətlərinizə adətən 1–2 iş günü ərzində cavab veririk.";
+
+export function generateMetadata(): Metadata {
+  const canonical = absoluteSiteUrl("/contact");
+  return { title, description, robots: { index: true, follow: true }, ...(canonical ? { alternates: { canonical } } : {}) };
+}
+
+const h2 = "mt-4 text-xl font-semibold text-bagati-deep";
+const link = "font-medium text-bagati-primary underline underline-offset-2";
+const th = "border-b border-[#E5E9E5] px-3 py-2 font-semibold text-bagati-deep";
+const td = "border-b border-[#E5E9E5] px-3 py-2 align-top";
+
+export default function ContactPage() {
+  return <div className="container py-10 sm:py-14">
+    <article className="mx-auto max-w-3xl rounded-[24px] border border-[#E5E9E5] bg-white p-6 shadow-[0_10px_28px_rgba(23,58,58,.05)] sm:p-10">
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#173A3A]">{title}</h1>
+      <div className="mt-5 grid gap-4 text-sm leading-7 text-bagati-secondary sm:text-base">
+        <p><strong>Bizə e-poçt və ya telefonla yaza bilərsiniz; müraciətlərinizə adətən 1–2 iş günü ərzində cavab veririk.</strong></p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[20rem] border-collapse text-left text-sm">
+            <thead><tr><th scope="col" className={th}>Məlumat</th><th scope="col" className={th}>Detal</th></tr></thead>
+            <tbody>
+              <tr><td className={td}>E-poçt</td><td className={td}><a href="mailto:adaletnasibov2@gmail.com" className={link}>adaletnasibov2@gmail.com</a></td></tr>
+              <tr><td className={td}>Telefon</td><td className={td}><a href="tel:+994557614332" className={link}>+994 55 761 43 32</a></td></tr>
+              <tr><td className={td}>Operator</td><td className={td}>Fərdi sahibkar Nəsibov Ədalət Şücaət oğlu</td></tr>
+              <tr><td className={td}>VÖEN</td><td className={td}>4202455532</td></tr>
+              <tr><td className={td}>Hüquqi ünvan</td><td className={td}>AZ3500, Qazax rayonu, Qazax şəhəri, N. Nərimanov küçəsi, ev 17</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 className={h2}>Kimə yazmalı?</h2>
+        <ul className="list-disc space-y-1 pl-6">
+          <li><strong>Sifariş, çatdırılma və qaytarma:</strong> İlk əvvəl mağazanın özünə yazın. Sifariş səhifəsindən və mağaza səhifəsindən mağazaya birbaşa mesaj göndərə bilərsiniz. Mağaza cavab verməsə və ya problem həll olunmasa, bizə yazın.</li>
+          <li><strong>Hesab, sayt və ödəniş problemi:</strong> Birbaşa bizə yazın. Sifariş nömrəsini və problemin qısa təsvirini əlavə edin.</li>
+          <li><strong>Şikayət və təklif:</strong> Mağaza və ya məhsul barədə şikayətinizi əsasları ilə yazın, araşdırıb geri dönəcəyik.</li>
+          <li><strong>Mağaza açmaq istəyirsiniz?</strong> Satıcı olmaq üçün saytdakı „Satıcı ol“ düyməsindən başlayın; suallarınızı da bu ünvana yaza bilərsiniz.</li>
+        </ul>
+
+        <h2 className={h2}>Yazanda necə tez cavab ala bilərsiniz?</h2>
+        <p>Müraciətinizdə adınızı, hesabda yazılan e-poçtunuzu, sifariş nömrəsini (varsa) və problemi qeyd edin. Bank kartı məlumatlarını, şifrəni və ya təhlükəsizlik kodlarını heç vaxt yazmayın, biz bunları heç vaxt istəmirik.</p>
+      </div>
+    </article>
+  </div>;
+}

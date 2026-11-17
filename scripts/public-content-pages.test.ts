@@ -12,8 +12,9 @@ import { CONTENT_PAGE_DEFAULTS } from "../lib/content-pages";
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 
-test("terms, privacy, about and help render ContentPageView with their slug and are dynamic", () => {
-  for (const slug of ["terms", "privacy", "about", "help"]) {
+test("help renders ContentPageView with its slug and is dynamic", () => {
+  // terms, privacy and about carry the final legal text in code since 2026-11-17 (scripts/legal-pages.test.ts).
+  for (const slug of ["help"]) {
     const page = read(`app/(customer)/${slug}/page.tsx`);
     assert.match(page, new RegExp(`<ContentPageView slug="${slug}"`), slug);
     assert.match(page, /export const dynamic = "force-dynamic";/, `${slug}: a save shows at once`);

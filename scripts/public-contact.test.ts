@@ -60,10 +60,11 @@ test("footer with settings: tagline, address, hours, WhatsApp number and admin l
   assert.match(html, /Zəng et · \+994501112233/, "the contact phone stays reachable as a call link");
 });
 
-test("wiring: the customer layout and contact page read the settings", () => {
+test("wiring: the customer layout reads the settings; the contact page is the static legal page", () => {
   assert.match(read("app/(customer)/layout.tsx"), /<CustomerFooter settings=\{settings\} contact=\{contact\} \/>/);
+  // Since 2026-11-17 /contact carries the final legal text in code (scripts/legal-pages.test.ts); the footer still
+  // shows the settings-engine contact details on every page.
   const contact = read("app/(customer)/contact/page.tsx");
-  assert.match(contact, /getPublicContact\(\)/);
-  assert.match(contact, /contact\.address&&/);
-  assert.match(contact, /contact\.workingHours&&/);
+  assert.doesNotMatch(contact, /getPublicContact|getSiteSettings|prisma/);
+  assert.match(contact, /href="mailto:adaletnasibov2@gmail\.com"/);
 });

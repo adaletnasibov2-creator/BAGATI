@@ -349,6 +349,25 @@ model EmailOutbox {
   @@index([createdAt])
 }
 
+/// Liveness of the in-process email worker (lib/email-worker-loop.ts). One row, id "email-outbox".
+/// Written only by the process that holds the outbox advisory lock, so every instance reads the same state.
+/// Holds timestamps, counts and allowlisted error codes only: never recipients, payloads or messages.
+model EmailWorkerHeartbeat {
+  id                   String    @id
+  startedAt            DateTime
+  heartbeatAt          DateTime
+  lastPollStartedAt    DateTime?
+  lastPollCompletedAt  DateTime?
+  lastSuccessfulPollAt DateTime?
+  lastPollErrorCode    String?
+  lastPollErrorType    String?
+  lastPollProcessed    Int?
+  lastPollSent         Int?
+  lastPollFailed       Int?
+  stoppedAt            DateTime?
+  updatedAt            DateTime  @updatedAt
+}
+
 model CustomerProfile {
   id        String  @id @default(cuid())
   userId    String  @unique

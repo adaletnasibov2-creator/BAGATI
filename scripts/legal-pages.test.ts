@@ -111,6 +111,43 @@ test("typographic characters are exact („ “ quotes, – dash)", () => {
   assert.ok(textOf(html(TermsPage)).includes("„Qaytarılma sorğuları“"));
 });
 
+test("revision of 2026-11-18: wording matches what the code does today", () => {
+  const about = textOf(html(AboutPage));
+  const terms = textOf(html(TermsPage));
+  const privacy = textOf(html(PrivacyPage));
+  assert.ok(about.includes("Problem olsa, hesabınızdan qaytarma sorğusu göndərin. Qaytarma şərtləri mağazadan asılı ola bilər; sifarişdən əvvəl mağazadan soruşa bilərsiniz."));
+  for (const sentence of [
+    "Bir səbətdə bir neçə mağazanın məhsulu ola bilər. Hər mağaza üçün ayrı sifariş yaradılır və ayrıca çatdırılır.",
+    "ləğv edə bilər; ödəniş edilibsə, ödədiyiniz məbləğ geri qaytarılır.",
+    "Onlayn ödəniş aktiv olduqda ödəniş lisenziyalı ödəniş xidməti Epoint vasitəsilə həyata keçirilir. Kart məlumatlarını biz görmürük və saxlamırıq. Onlayn ödəniş aktiv olmayan müddətdə sifariş „Ödəniş gözləyir“ statusu ilə qeyd olunur.",
+    "Onlayn ödəniş aktiv olduqda hər mağaza sifarişi ayrıca ödənilir. Məbləğ mağazaya və platformaya ödəniş xidməti tərəfindən bölünür.",
+    "Qaytarma şərtləri mağazalar üzrə fərqlənə bilər. Alışdan əvvəl mağazadan soruşun və ya mağaza ilə mesajlaşın.",
+    "Qəbul edilmiş qaytarmada ödənilmiş məbləğ geri qaytarılır. Qaytarma üsulu və müddəti ödəniş üsulundan, ödəniş xidmətindən və bankdan asılıdır.",
+    "Son yenilənmə: 17 noyabr 2026.",
+  ]) assert.ok(terms.includes(sentence), sentence);
+  for (const sentence of [
+    "Google-dan ad, e-poçt və Google hesabının identifikatorunu alırıq, başqa məlumat saxlamırıq.",
+    "Texniki məlumatlar: giriş cəhdləri və təhlükəsizlik jurnalı (məsələn, şübhəli girişləri müəyyən etmək üçün).",
+    "OpenStreetMap Xəritələri göstərmək Xəritə açılanda brauzer sorğusu: IP ünvanı və brauzer məlumatı",
+    "Sayt giriş etdiyinizi xatırlamaq, Google ilə daxil olmaq və hesabınızı qorumaq üçün yalnız zəruri cookie-lərdən istifadə edir. Reklam və izləmə cookie-ləri istifadə etmirik. Seçdiyiniz şəhər və sevimli məhsullarınız brauzerinizin yaddaşında saxlanılır.",
+  ]) assert.ok(privacy.includes(sentence), sentence);
+  // The OpenStreetMap row comes right after the Google row.
+  assert.match(privacy, /Google Google hesabı ilə giriş Ad, e-poçt OpenStreetMap /);
+  // Claims the code does not support any more are gone.
+  for (const removed of ["Qaytarma qaydası hər mağazanın", "pul eyni ödəniş üsulu ilə", "ayrı sifariş yaradılır, ayrıca ödənilir", "yalnız ad və e-poçtunuzu", "sessiya cookie-si", "Hər mağaza sifarişi üçün ödəniş ayrı aparılır"]) {
+    assert.ok(!`${about} ${terms} ${privacy}`.includes(removed), `removed: ${removed}`);
+  }
+});
+
+test("admin Səhifələr list hides about, privacy and terms (static in code) and keeps help", () => {
+  const list = read("app/admin/_sections/pages.tsx");
+  assert.match(list, /STATIC_LEGAL_PAGE_SLUGS: readonly string\[\] = \["about", "privacy", "terms"\];/);
+  assert.match(list, /\(await listContentPages\(prisma\)\)\.filter\(\(page\) => !STATIC_LEGAL_PAGE_SLUGS\.includes\(page\.slug\)\)/);
+  assert.doesNotMatch(list, /"help"/, "help stays listed");
+  // The CMS itself is unchanged: all four slugs still exist (database rows and defaults untouched).
+  assert.match(read("lib/content-pages.ts"), /CONTENT_PAGE_SLUGS = \["terms", "privacy", "about", "help"\] as const;/);
+});
+
 test("footer links to the four legal pages with their labels", () => {
   const settings = { siteName: "BAGATI", logoUrl: null, contactPhone: null, contactEmail: null, instagramUrl: null, facebookUrl: null, tiktokUrl: null };
   const markup = renderToStaticMarkup(createElement(CustomerFooter, { settings }));

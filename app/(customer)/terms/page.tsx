@@ -39,14 +39,14 @@ export default function TermsPage() {
         <ul className="list-disc space-y-1 pl-6">
           <li>Saytdakı qiymətlər Azərbaycan manatı ilə (AZN) göstərilir.</li>
           <li>Sifariş verdikdə görünən qiymət, çatdırılma haqqı və ümumi məbləğ sifarişdə dərhal qeyd olunur və sonradan dəyişdirilmir.</li>
-          <li>Bir səbətdə bir neçə mağazanın məhsulu ola bilər. Hər mağaza üçün ayrı sifariş yaradılır, ayrıca ödənilir və ayrıca çatdırılır.</li>
-          <li>Stokda olmayan və ya səhv qiymətlə göstərilən məhsul üçün mağaza sifarişi əvvəlcədən xəbərdar etməklə ləğv edə bilər; bu halda ödədiyiniz məbləğ geri qaytarılır.</li>
+          <li>Bir səbətdə bir neçə mağazanın məhsulu ola bilər. Hər mağaza üçün ayrı sifariş yaradılır və ayrıca çatdırılır.</li>
+          <li>Stokda olmayan və ya səhv qiymətlə göstərilən məhsul üçün mağaza sifarişi əvvəlcədən xəbərdar etməklə ləğv edə bilər; ödəniş edilibsə, ödədiyiniz məbləğ geri qaytarılır.</li>
         </ul>
 
         <h2 className={h2}>4. Ödəniş</h2>
         <ul className="list-disc space-y-1 pl-6">
-          <li>Onlayn ödəniş lisenziyalı ödəniş xidməti Epoint vasitəsilə həyata keçirilir. Kart məlumatlarını biz görmürük və saxlamırıq.</li>
-          <li>Hər mağaza sifarişi üçün ödəniş ayrı aparılır. Məbləğ mağazaya və platformaya ödəniş xidməti tərəfindən bölünür. Siz yalnız sifarişdə göstərilən məbləği ödəyirsiniz, əlavə komissiya alınmır.</li>
+          <li>Onlayn ödəniş aktiv olduqda ödəniş lisenziyalı ödəniş xidməti Epoint vasitəsilə həyata keçirilir. Kart məlumatlarını biz görmürük və saxlamırıq. Onlayn ödəniş aktiv olmayan müddətdə sifariş „Ödəniş gözləyir“ statusu ilə qeyd olunur.</li>
+          <li>Onlayn ödəniş aktiv olduqda hər mağaza sifarişi ayrıca ödənilir. Məbləğ mağazaya və platformaya ödəniş xidməti tərəfindən bölünür. Siz yalnız sifarişdə göstərilən məbləği ödəyirsiniz, əlavə komissiya alınmır.</li>
           <li>Bir ödəniş üçün ödəniş xidmətinin təyin etdiyi məbləğ limiti var (hazırda 500 AZN). Bu limitdən çox olan mağaza sifarişini bir dəfəyə vermək mümkün olmaya bilər.</li>
           <li>Ödəniş tamamlanmayan sifariş müəyyən müddətdən sonra avtomatik ləğv oluna bilər.</li>
         </ul>
@@ -60,9 +60,9 @@ export default function TermsPage() {
 
         <h2 className={h2}>6. Qaytarma və geri ödəniş</h2>
         <ul className="list-disc space-y-1 pl-6">
-          <li>Qaytarma qaydası hər mağazanın öz səhifəsində göstərilir. Alışdan əvvəl mütləq oxuyun.</li>
+          <li>Qaytarma şərtləri mağazalar üzrə fərqlənə bilər. Alışdan əvvəl mağazadan soruşun və ya mağaza ilə mesajlaşın.</li>
           <li>Qaytarma sorğusunu hesabınızdakı „Qaytarılma sorğuları“ bölməsindən göndərə bilərsiniz. Mağaza sorğunu qəbul və ya rədd edə bilər; mübahisə yaranarsa, platforma müraciətinə baxa bilər.</li>
-          <li>Qəbul edilmiş qaytarmada pul eyni ödəniş üsulu ilə geri qaytarılır. Müddət ödəniş xidmətindən və bankdan asılıdır.</li>
+          <li>Qəbul edilmiş qaytarmada ödənilmiş məbləğ geri qaytarılır. Qaytarma üsulu və müddəti ödəniş üsulundan, ödəniş xidmətindən və bankdan asılıdır.</li>
           <li>Azərbaycan qanunvericiliyi istehlakçıların hüquqlarını qoruyur; bu şərtlər həmin hüquqları məhdudlaşdırmır.</li>
         </ul>
 

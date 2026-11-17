@@ -25,10 +25,10 @@ export default function PrivacyPage() {
 
         <h2 className={h2}>Hansı məlumatları toplayırıq?</h2>
         <ul className="list-disc space-y-1 pl-6">
-          <li><strong>Hesab məlumatları:</strong> ad, e-poçt ünvanı, telefon (istəyə bağlı). Google ilə daxil olsanız, Google-dan yalnız ad və e-poçtunuzu alırıq. E-poçt və şifrə ilə qeydiyyatda şifrə yalnız qorunan (hash) formada saxlanılır.</li>
+          <li><strong>Hesab məlumatları:</strong> ad, e-poçt ünvanı, telefon (istəyə bağlı). Google ilə daxil olsanız, Google-dan ad, e-poçt və Google hesabının identifikatorunu alırıq, başqa məlumat saxlamırıq. E-poçt və şifrə ilə qeydiyyatda şifrə yalnız qorunan (hash) formada saxlanılır.</li>
           <li><strong>Sifariş məlumatları:</strong> çatdırılma ünvanı, alıcının adı və telefonu, sifariş edilən məhsullar, məbləğ və sifariş tarixçəsi.</li>
           <li><strong>Mesajlar:</strong> mağazaya yazdığınız mesajlar və mağazanın cavabları. Mağaza sizin yalnız göstərilən adınızı görür.</li>
-          <li><strong>Texniki məlumatlar:</strong> sessiya cookie-si, giriş cəhdləri, təhlükəsizlik jurnalı (məsələn, şübhəli girişləri müəyyən etmək üçün).</li>
+          <li><strong>Texniki məlumatlar:</strong> giriş cəhdləri və təhlükəsizlik jurnalı (məsələn, şübhəli girişləri müəyyən etmək üçün).</li>
           <li><strong>Ödəniş:</strong> bank kartı məlumatlarınızı biz görmürük və saxlamırıq. Onlayn ödəniş aktiv olduğu zaman kart məlumatları yalnız ödəniş xidmətinin (Epoint) təhlükəsiz səhifəsində daxil edilir.</li>
         </ul>
 
@@ -51,6 +51,7 @@ export default function PrivacyPage() {
               <tr><td className={td}>Ödəniş xidməti (Epoint)</td><td className={td}>Onlayn ödənişi qəbul etmək və geri ödəmək</td><td className={td}>Sifariş nömrəsi, məbləğ (kart məlumatları yalnız ödəniş xidmətində)</td></tr>
               <tr><td className={td}>E-poçt xidməti (Brevo)</td><td className={td}>Bildiriş və təsdiq e-poçtlarını göndərmək</td><td className={td}>E-poçt ünvanı və məktubun mətni</td></tr>
               <tr><td className={td}>Google</td><td className={td}>Google hesabı ilə giriş</td><td className={td}>Ad, e-poçt</td></tr>
+              <tr><td className={td}>OpenStreetMap</td><td className={td}>Xəritələri göstərmək</td><td className={td}>Xəritə açılanda brauzer sorğusu: IP ünvanı və brauzer məlumatı</td></tr>
               <tr><td className={td}>Hosting və infrastruktur (Cloudways, Cloudflare)</td><td className={td}>Saytın işləməsi və şəkillərin saxlanması</td><td className={td}>Texniki məlumatlar</td></tr>
               <tr><td className={td}>Dövlət orqanları</td><td className={td}>Yalnız qanunun tələb etdiyi hallarda</td><td className={td}>Qanunla tələb olunan məlumat</td></tr>
             </tbody>
@@ -61,7 +62,7 @@ export default function PrivacyPage() {
         <p>Mesajlar yalnız siz və müvafiq mağaza arasındadır. Platforma administratoru söhbətə yalnız kimsə şikayət göndərdikdə və yalnız həmin söhbəti yoxlamaq üçün baxa bilər. Hər belə baxış jurnalda qeyd olunur. Mesajlarda telefon nömrəsi və e-poçt ünvanı paylaşmaq təhlükəsizlik üçün məhdudlaşdırıla bilər.</p>
 
         <h2 className={h2}>Cookie-lər</h2>
-        <p>Sayt giriş etdiyinizi xatırlamaq və hesabınızı qorumaq üçün zəruri sessiya cookie-si istifadə edir.</p>
+        <p>Sayt giriş etdiyinizi xatırlamaq, Google ilə daxil olmaq və hesabınızı qorumaq üçün yalnız zəruri cookie-lərdən istifadə edir. Reklam və izləmə cookie-ləri istifadə etmirik. Seçdiyiniz şəhər və sevimli məhsullarınız brauzerinizin yaddaşında saxlanılır.</p>
 
         <h2 className={h2}>Məlumatlar nə qədər saxlanılır?</h2>
         <p>Hesab məlumatlarınız hesabınız aktiv olduğu müddət saxlanılır. Sifariş qeydləri mühasibat və hüquqi tələblərə görə qanunun tələb etdiyi müddət ərzində qala bilər.</p>

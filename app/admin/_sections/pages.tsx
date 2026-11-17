@@ -9,10 +9,16 @@ import { listContentPages } from "@/lib/content-pages-admin";
 import { formatContentDate } from "@/lib/content-pages";
 import { type SectionContext } from "./shared";
 
+/**
+ * about, privacy and terms carry the final legal text in code since 2026-11-17 (app/(customer)/about|privacy|terms):
+ * a save here would no longer reach the site, so they are not listed. Their database rows are left as they are.
+ */
+export const STATIC_LEGAL_PAGE_SLUGS: readonly string[] = ["about", "privacy", "terms"];
+
 export async function renderPages({ shell }: SectionContext) {
-  const pages = await listContentPages(prisma);
+  const pages = (await listContentPages(prisma)).filter((page) => !STATIC_LEGAL_PAGE_SLUGS.includes(page.slug));
   return shell(<>
-    <PageHeader title="Səhifələr" description="İstifadə şərtləri, gizlilik siyasəti, haqqımızda və kömək mərkəzi. Hər yadda saxlama yeni versiya yaradır və audit jurnalına yazılır." />
+    <PageHeader title="Səhifələr" description="Kömək mərkəzi. Hər yadda saxlama yeni versiya yaradır və audit jurnalına yazılır. Haqqımızda, Əlaqə, Məxfilik siyasəti və İstifadə şərtləri saytın kodunda saxlanılır və burada redaktə olunmur." />
     <DataTable rows={pages} rowKey={(page) => page.slug} caption="Məzmun səhifələri" columns={[
       { label: "Səhifə", cell: (page) => <span><Link href={`/admin/pages/${page.slug}`} className="font-semibold text-[#173c40] hover:underline">{page.adminLabel}</Link><small className="block text-slate-500">{page.path}</small></span> },
       { label: "Başlıq", cell: (page) => page.title },

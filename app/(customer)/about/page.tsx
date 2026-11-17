@@ -35,7 +35,7 @@ export default function AboutPage() {
           <li>Mağazaları və məhsulları kəşf edin, bəyəndiklərinizi səbətə əlavə edin.</li>
           <li>Çatdırılma ünvanınızı yazıb sifarişi tamamlayın. Bir səbətdə bir neçə mağazanın məhsulu ola bilər, hər mağaza öz sifarişini ayrıca hazırlayır.</li>
           <li>Mağaza sifarişi hazırlayır və çatdırır. Sifarişin vəziyyətini hesabınızdan izləyə bilərsiniz.</li>
-          <li>Problem olsa, qaytarma sorğusu göndərin. Qaytarma qaydası hər mağazanın səhifəsində göstərilir.</li>
+          <li>Problem olsa, hesabınızdan qaytarma sorğusu göndərin. Qaytarma şərtləri mağazadan asılı ola bilər; sifarişdən əvvəl mağazadan soruşa bilərsiniz.</li>
         </ol>
 
         <h2 className={h2}>Kim idarə edir?</h2>

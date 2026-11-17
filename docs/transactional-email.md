@@ -34,7 +34,7 @@ The additive migration `20261014003000_secure_account_recovery` creates hashed r
 
 ## Worker and checks
 
-The Next.js web server only queues messages; it does not start the email worker. Without a worker, verification messages remain `PENDING` and no code is sent.
+By default the Next.js web server only queues messages; it starts the in-process worker only with `EMAIL_WORKER_ENABLED=true` (see "In-process worker" below). Without a worker, verification messages remain `PENDING` and no code is sent.
 
 For local development, use two PowerShell terminals from the BAGATI project directory:
 
@@ -69,9 +69,23 @@ For a one-time batch, `npm.cmd run email:worker` processes up to 25 currently re
 
 To process one already-approved message without sending other pending messages, use `npm.cmd run email:worker -- --id <outbox-id>`. This one-shot mode selects and claims only that row, and any stale-lock cleanup is restricted to the same row. It does not support `--watch`. Confirm the row is the intended message before running it; the worker still validates the current template and reset/verification token before sending.
 
+### In-process worker (Cloudways: one PM2 process, no SSH, no cron)
+
+Set `EMAIL_WORKER_ENABLED=true` in the server environment and restart. `instrumentation.ts` then starts the same batch (`processEmailOutboxBatch`) inside the Next.js server: first poll 5 s after start, then every 30 s, up to 25 messages per poll. Details (`lib/email-worker-loop.ts`, `lib/email-worker-runtime.ts`):
+
+- Only the Node.js runtime, never Edge, never `next build`; any value other than exactly `true` keeps it off, so `next dev`, builds and tests never send.
+- A PostgreSQL session advisory lock (`pg_try_advisory_lock`) on one dedicated connection per process: at most one process sends at a time; the others stay on standby. The lock is freed by PostgreSQL if the process dies. This costs one extra database connection per app process.
+- Errors never reach the server: they are logged once per change with allowlisted codes only (`SMTP_NOT_CONFIGURED`, `ECONNREFUSED`, `P1001`, ...).
+- Liveness goes to the `EmailWorkerHeartbeat` table (migration `20261118010000_email_worker_heartbeat`), shown on **Sistem vəziyyəti → E-poçt növbəsi**. The CLI watch worker still writes `.runtime/email-worker-health.json`; the card shows whichever is newer.
+- On SIGTERM/SIGINT no new poll starts; Next.js then exits. A message cut mid-send follows the existing `DELIVERY_RESULT_UNKNOWN` path (never resent automatically).
+- **Email çatdırılması** has **Test e-poçtu göndər** (only to the signed-in admin's own address) and **Növbəni indi göndər** (one batch under the same lock; works even when the flag is off). Both are ADMIN only, same-origin, rate limited (5/hour and 10/10 min per admin) and audited (`EMAIL_TEST_SEND`, `EMAIL_OUTBOX_DRAIN`).
+- `MESSAGE_TO_STORE` / `MESSAGE_TO_CUSTOMER` rows older than 24 h are never sent: they become `FAILED` / `NOTIFICATION_STALE`.
+
+Do not also run the CLI watch worker in the same environment (it does not take the lock; the row-level claim still prevents double sends). To stop sending, remove the flag (or set it to anything but `true`) and restart.
+
 ### Linux hosts (Cloudways and similar)
 
-`next start` only queues messages. If no worker runs beside it, every verification code, password reset and order email stays `PENDING`, while the API still answers "sent" generically. This is the most likely reason emails "do not arrive" on a freshly deployed server.
+`next start` only queues messages unless `EMAIL_WORKER_ENABLED=true` (above). If no worker runs beside it, every verification code, password reset and order email stays `PENDING`, while the API still answers "sent" generically. This is the most likely reason emails "do not arrive" on a freshly deployed server.
 
 Run exactly one long-lived worker per environment, from the application directory and with the same environment variables as the web process:
 

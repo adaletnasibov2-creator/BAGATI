@@ -5,6 +5,8 @@ import { resolve } from "node:path";
 import test from "node:test";
 import { buildTransactionalEmail, EMAIL_TEMPLATES } from "../lib/email-templates";
 import { decodeConversationCursor, encodeConversationCursor, MessagingError } from "../lib/messaging-service";
+import { MESSAGE_EMAIL_WINDOW_MS, messageEmailEventKey } from "../lib/messaging";
+import { AGE_LIMITED_TEMPLATES, isNotificationTooOld, NOTIFICATION_MAX_AGE_MS } from "../lib/email-outbox-worker";
 
 const service = readFileSync(resolve(process.cwd(), "lib/messaging-service.ts"), "utf8").replace(/\r\n/g, "\n");
 
@@ -45,6 +47,23 @@ test("e-mails: link only, never the message text", () => {
   assert.ok(notify.length > 100);
   assert.doesNotMatch(notify, /body/, "the e-mail payload never includes the message body");
   assert.equal(notify.match(/payload: \{ storeName: store\.name, url: /g)?.length, 2);
+});
+
+test("in-process email worker: both messaging templates are sendable and limited to 24 h; one e-mail per window", () => {
+  for (const template of ["MESSAGE_TO_STORE", "MESSAGE_TO_CUSTOMER"]) {
+    assert.ok((EMAIL_TEMPLATES as readonly string[]).includes(template), `${template} passes the worker's template allowlist`);
+    assert.ok(AGE_LIMITED_TEMPLATES.has(template), `${template} is FAILED NOTIFICATION_STALE after 24 h`);
+  }
+  assert.ok([...AGE_LIMITED_TEMPLATES].every((template) => (EMAIL_TEMPLATES as readonly string[]).includes(template)), "no age rule for an unknown template");
+  assert.equal(NOTIFICATION_MAX_AGE_MS, 24 * 60 * 60 * 1000);
+  // Dedupe key: conversation + recipient side + 15-minute window; the outbox upsert turns a repeat into a no-op.
+  const t0 = Date.UTC(2026, 10, 18, 10, 0, 0);
+  assert.equal(messageEmailEventKey("c1", "STORE", t0), messageEmailEventKey("c1", "STORE", t0 + MESSAGE_EMAIL_WINDOW_MS - 1));
+  assert.notEqual(messageEmailEventKey("c1", "STORE", t0), messageEmailEventKey("c1", "STORE", t0 + MESSAGE_EMAIL_WINDOW_MS));
+  assert.notEqual(messageEmailEventKey("c1", "STORE", t0), messageEmailEventKey("c1", "CUSTOMER", t0));
+  assert.notEqual(messageEmailEventKey("c1", "STORE", t0), messageEmailEventKey("c2", "STORE", t0));
+  assert.ok(isNotificationTooOld("MESSAGE_TO_CUSTOMER", new Date(t0), new Date(t0 + NOTIFICATION_MAX_AGE_MS + 1)));
+  assert.ok(!isNotificationTooOld("MESSAGE_TO_CUSTOMER", new Date(t0), new Date(t0 + NOTIFICATION_MAX_AGE_MS)));
 });
 
 test("inbox cursor: round trip; malformed cursors are ignored", () => {

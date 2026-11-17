@@ -95,9 +95,10 @@ export function CustomerFooter({ settings, contact }: { settings: FooterSettings
             ["/delivery-returns", "Çatdırılma və qaytarılma"],
             ["/support", "Dəstəyə yaz"],
             ["/about", "Haqqımızda"],
+            ["/contact", "Əlaqə"],
           ]} />
           <FooterColumn title="Hüquqi məlumat" links={[
-            ["/privacy", "Gizlilik siyasəti"],
+            ["/privacy", "Məxfilik siyasəti"],
             ["/terms", "İstifadə şərtləri"],
           ]} />
         </div>

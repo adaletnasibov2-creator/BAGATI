@@ -611,6 +611,10 @@ model Product {
   @@unique([storeId, sku])
   @@index([categoryId, status])
   @@index([storeId, status])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([status, name, id])
+  @@index([categoryId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([storeId, status, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 model ProductVariant {

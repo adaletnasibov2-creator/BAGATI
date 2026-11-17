@@ -24,6 +24,7 @@
     "test:pagination:integration": "tsx --test scripts/pagination-postgres.integration.test.ts",
     "test:pagination:postgres": "node scripts/run-pagination-postgres-tests.mjs",
     "test:homepage-campaign-products": "tsx --test scripts/homepage-campaign-products.test.ts",
+    "test:deals-campaigns": "tsx --test scripts/deals-campaigns.test.ts",
     "test:auth:integration": "tsx --test scripts/auth-integration.test.ts",
     "test:epoint": "tsx --test scripts/epoint-payment.test.ts",
     "verify:smtp": "tsx scripts/verify-smtp.ts",

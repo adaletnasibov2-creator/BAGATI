@@ -96,7 +96,8 @@ function EmailBody({ data }: { data: SystemStatusData["email"] }) {
       <Row label="Son 24 saatda uğursuzluqlar" tone={data.failedLast24h ? "bad" : undefined}>{data.failedLast24h}</Row>
       <Row label="SMTP konfiqurasiyası" tone={data.smtpConfigured ? "good" : "bad"}>{yesNo(data.smtpConfigured)}</Row>
       <Row label="EMAIL_ENCRYPTION_KEY" tone={data.encryptionKeyConfigured ? "good" : "warn"}>{yesNo(data.encryptionKeyConfigured)}</Row>
-      <Row label="Worker" tone={data.workerState === "alive" ? "good" : "warn"}>{workerLabel[data.workerState] ?? workerLabel.unknown}{data.workerHeartbeatAt && <span className="block text-xs text-slate-500">Son siqnal: {formatDateTime(data.workerHeartbeatAt)}</span>}</Row>
+      <Row label="Daxili göndərici (EMAIL_WORKER_ENABLED)" tone={data.inProcessWorkerEnabled ? "good" : "warn"}>{data.inProcessWorkerEnabled ? "Aktivdir" : "Söndürülüb"}</Row>
+      <Row label="Worker" tone={data.workerState === "alive" && !data.workerLastPollErrorCode ? "good" : "warn"}>{workerLabel[data.workerState] ?? workerLabel.unknown}{data.workerHeartbeatAt && <span className="block text-xs text-slate-500">Son siqnal: {formatDateTime(data.workerHeartbeatAt)}{data.workerHeartbeatSource === "file" ? " (CLI worker)" : ""}</span>}{data.workerLastPollErrorCode && <span className="block text-xs text-amber-800">Son xəta kodu: {data.workerLastPollErrorCode}</span>}</Row>
     </dl>
     {!data.encryptionKeyConfigured && data.encryptionUsable && <p className="mt-2 text-xs text-slate-500">Ayrıca açar yoxdur; şifrələmə ehtiyat açarla işləyir.</p>}
   </>;

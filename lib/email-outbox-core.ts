@@ -48,7 +48,7 @@ export function safeEmailFailureCode(error: unknown): string {
   if (!error || typeof error !== "object") return "DELIVERY_FAILED";
   if (error instanceof Error && error.name === "SmtpConfigurationError") return "SMTP_CONFIGURATION";
   const value = error as { code?: unknown; responseCode?: unknown };
-  const allowed = new Set(["EAUTH", "ECONNECTION", "ETIMEDOUT", "ESOCKET", "ECONNREFUSED", "ECONNRESET", "EAI_AGAIN", "ENOTFOUND", "EDNS", "ETLS", "ECERT", "EENVELOPE", "EMESSAGE", "EPIPE", "SMTP_REJECTED", "SMTP_CONFIGURATION", "MESSAGE_NOT_ACCEPTED", "VERIFICATION_STALE", "INVALID_TEMPLATE", "EMAIL_PAYLOAD_INVALID", "EMAIL_PAYLOAD_DECRYPT_FAILED", "PASSWORD_RESET_STALE", "DELIVERY_RESULT_UNKNOWN"]);
+  const allowed = new Set(["EAUTH", "ECONNECTION", "ETIMEDOUT", "ESOCKET", "ECONNREFUSED", "ECONNRESET", "EAI_AGAIN", "ENOTFOUND", "EDNS", "ETLS", "ECERT", "EENVELOPE", "EMESSAGE", "EPIPE", "SMTP_REJECTED", "SMTP_CONFIGURATION", "MESSAGE_NOT_ACCEPTED", "VERIFICATION_STALE", "INVALID_TEMPLATE", "EMAIL_PAYLOAD_INVALID", "EMAIL_PAYLOAD_DECRYPT_FAILED", "PASSWORD_RESET_STALE", "NOTIFICATION_STALE", "DELIVERY_RESULT_UNKNOWN"]);
   if (typeof value.code === "string" && allowed.has(value.code.toUpperCase())) return value.code.toUpperCase();
   if (typeof value.code === "string" && /^P\d{4}$/.test(value.code)) return `PRISMA_${value.code}`;
   if (typeof value.responseCode === "number" && Number.isInteger(value.responseCode)) return `SMTP_${value.responseCode}`;
@@ -109,7 +109,7 @@ const CONNECT_COMMANDS = new Set(["CONN", "EHLO", "STARTTLS", "MAIL FROM", "RCPT
 const AMBIGUOUS_CONN_CODES = new Set(["ESOCKET", "ETIMEDOUT", "ECONNECTION"]);
 const BEFORE_DATA_COMMANDS = new Set(["EHLO", "STARTTLS", "MAIL FROM", "RCPT TO", "VERIFY"]);
 const PERMANENT_TLS_CODES = new Set(["UNABLE_TO_VERIFY_LEAF_SIGNATURE", "SELF_SIGNED_CERT_IN_CHAIN", "DEPTH_ZERO_SELF_SIGNED_CERT", "CERT_HAS_EXPIRED", "ERR_TLS_CERT_ALTNAME_INVALID", "ECERT"]);
-const MESSAGE_REJECTION_CODES = new Set(["EMAIL_PAYLOAD_INVALID", "INVALID_TEMPLATE", "VERIFICATION_STALE", "PASSWORD_RESET_STALE", "MESSAGE_NOT_ACCEPTED", "DELIVERY_RESULT_UNKNOWN"]);
+const MESSAGE_REJECTION_CODES = new Set(["EMAIL_PAYLOAD_INVALID", "INVALID_TEMPLATE", "VERIFICATION_STALE", "PASSWORD_RESET_STALE", "NOTIFICATION_STALE", "MESSAGE_NOT_ACCEPTED", "DELIVERY_RESULT_UNKNOWN"]);
 
 function smtpCodeClass(responseCode: number | undefined): "4xx" | "5xx" | null {
   if (responseCode === undefined) return null;
@@ -121,7 +121,7 @@ function smtpCodeClass(responseCode: number | undefined): "4xx" | "5xx" | null {
 function deliveryErrorShape(error: unknown) {
   if (!error || typeof error !== "object") return { code: "", command: "", responseCode: undefined as number | undefined, name: "", permanentTls: false };
   const value = error as { code?: unknown; command?: unknown; responseCode?: unknown; authorizationError?: unknown };
-  const allowedCodes = new Set(["EAUTH", "ECONNECTION", "ETIMEDOUT", "ESOCKET", "ECONNREFUSED", "ECONNRESET", "EAI_AGAIN", "ENOTFOUND", "EDNS", "ETLS", "ECERT", "EENVELOPE", "EMESSAGE", "EPIPE", "SMTP_REJECTED", "SMTP_CONFIGURATION", "MESSAGE_NOT_ACCEPTED", "VERIFICATION_STALE", "INVALID_TEMPLATE", "EMAIL_PAYLOAD_INVALID", "EMAIL_PAYLOAD_DECRYPT_FAILED", "PASSWORD_RESET_STALE", "DELIVERY_RESULT_UNKNOWN"]);
+  const allowedCodes = new Set(["EAUTH", "ECONNECTION", "ETIMEDOUT", "ESOCKET", "ECONNREFUSED", "ECONNRESET", "EAI_AGAIN", "ENOTFOUND", "EDNS", "ETLS", "ECERT", "EENVELOPE", "EMESSAGE", "EPIPE", "SMTP_REJECTED", "SMTP_CONFIGURATION", "MESSAGE_NOT_ACCEPTED", "VERIFICATION_STALE", "INVALID_TEMPLATE", "EMAIL_PAYLOAD_INVALID", "EMAIL_PAYLOAD_DECRYPT_FAILED", "PASSWORD_RESET_STALE", "NOTIFICATION_STALE", "DELIVERY_RESULT_UNKNOWN"]);
   const allowedCommands = new Set(["AUTH", "CONN", "EHLO", "STARTTLS", "MAIL FROM", "RCPT TO", "DATA", "QUIT", "VERIFY"]);
   const rawCode = typeof value.code === "string" ? value.code.toUpperCase() : "";
   const code = allowedCodes.has(rawCode) ? rawCode : "";

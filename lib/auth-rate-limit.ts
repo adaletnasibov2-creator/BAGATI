@@ -7,6 +7,9 @@ export const PASSWORD_RESET_RATE_LIMIT = { limit: 3, windowMs: 60 * 60 * 1000 } 
 export const REGISTRATION_RATE_LIMIT = { limit: 5, windowMs: 60 * 60 * 1000 } as const;
 export const REGISTRATION_IP_RATE_LIMIT = { limit: 30, windowMs: 60 * 60 * 1000 } as const;
 export const OAUTH_IP_RATE_LIMIT = { limit: 300, windowMs: 15 * 60 * 1000 } as const;
+/** Admin email tools, per admin account. */
+export const ADMIN_EMAIL_TEST_RATE_LIMIT = { limit: 5, windowMs: 60 * 60 * 1000 } as const;
+export const ADMIN_EMAIL_DRAIN_RATE_LIMIT = { limit: 10, windowMs: 10 * 60 * 1000 } as const;
 
 function authRateLimitSecret() {
   const value = process.env.SESSION_SECRET;
@@ -14,7 +17,7 @@ function authRateLimitSecret() {
   return value;
 }
 
-export function authRateLimitKey(scope: "login" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "store-inquiry" | "admin-2fa" | "admin-login" | "messaging" | "seller-application", identity: string) {
+export function authRateLimitKey(scope: "login" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "store-inquiry" | "admin-2fa" | "admin-email-test" | "admin-email-drain" | "admin-login" | "messaging" | "seller-application", identity: string) {
   return createHmac("sha256", authRateLimitSecret())
     .update(`BAGATI_AUTH_RATE_LIMIT_V1:${scope}:${identity.trim().toLowerCase()}`)
     .digest("hex");

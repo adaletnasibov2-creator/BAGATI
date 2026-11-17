@@ -354,6 +354,25 @@ model EmailOutbox {
   @@index([createdAt])
 }
 
+/// Liveness of the in-process email worker (lib/email-worker-loop.ts). One row, id "email-outbox".
+/// Written only by the process that holds the outbox advisory lock, so every instance reads the same state.
+/// Holds timestamps, counts and allowlisted error codes only: never recipients, payloads or messages.
+model EmailWorkerHeartbeat {
+  id                   String    @id
+  startedAt            DateTime
+  heartbeatAt          DateTime
+  lastPollStartedAt    DateTime?
+  lastPollCompletedAt  DateTime?
+  lastSuccessfulPollAt DateTime?
+  lastPollErrorCode    String?
+  lastPollErrorType    String?
+  lastPollProcessed    Int?
+  lastPollSent         Int?
+  lastPollFailed       Int?
+  stoppedAt            DateTime?
+  updatedAt            DateTime  @updatedAt
+}
+
 model CustomerProfile {
   id        String  @id @default(cuid())
   userId    String  @unique
@@ -619,6 +638,10 @@ model Product {
   @@unique([storeId, sku])
   @@index([categoryId, status])
   @@index([storeId, status])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([status, name, id])
+  @@index([categoryId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([storeId, status, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 model ProductVariant {
@@ -655,6 +678,7 @@ model Inventory {
 
   @@unique([productId, variantId])
   @@index([productId])
+  @@index([variantId])
 }
 
 model InventoryAdjustment {
@@ -758,6 +782,7 @@ model OrderItem {
   variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   returnRequest  ReturnRequest?
 
+  @@index([storeOrderId])
   @@index([productId])
   @@index([variantId])
 }

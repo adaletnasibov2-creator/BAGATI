@@ -20,6 +20,8 @@ import { storageReadinessMode } from "@/lib/storage/store-assets";
 import { getSmtpConfiguration } from "@/lib/email";
 import { emailPayloadEncryptionMode } from "@/lib/email-outbox";
 import { evaluateEmailWorkerMonitoring, readEmailWorkerHeartbeat } from "@/lib/email-worker-monitoring";
+import { newestEmailWorkerHeartbeat, readEmailWorkerHeartbeatFromDatabase } from "@/lib/email-worker-heartbeat-store";
+import { emailWorkerEnabled } from "@/lib/email-worker-loop";
 
 type Tx = Prisma.TransactionClient;
 type CountRow = { key: string; count: number };
@@ -101,7 +103,9 @@ async function emailCard(now: Date) {
       WHERE "status" IN ('PENDING', 'PROCESSING', 'FAILED') AND "failedAt" >= ${utcTimestamp(since)}`;
     return { byStatus: countMap(byStatus), oldestPendingAt: oldest?.oldest ?? null, failedLast24h: Number(failures?.count ?? 0) };
   });
-  const heartbeat = await readEmailWorkerHeartbeat();
+  // In-process worker: database heartbeat. CLI watch worker: .runtime file. The newer one wins.
+  const [databaseHeartbeat, fileHeartbeat] = await Promise.all([readEmailWorkerHeartbeatFromDatabase(prisma), readEmailWorkerHeartbeat()]);
+  const { heartbeat, source: workerHeartbeatSource } = newestEmailWorkerHeartbeat(databaseHeartbeat, fileHeartbeat);
   const smtp = smtpConfigured();
   const encryptionMode = emailPayloadEncryptionMode();
   const encryption = encryptionMode !== "missing";
@@ -123,6 +127,9 @@ async function emailCard(now: Date) {
     encryptionUsable: encryption,
     workerState: monitoring.workerState,
     workerHeartbeatAt: heartbeat?.heartbeatAt ?? null,
+    workerHeartbeatSource,
+    workerLastPollErrorCode: heartbeat?.lastPollErrorCode ?? null,
+    inProcessWorkerEnabled: emailWorkerEnabled(),
   };
 }
 

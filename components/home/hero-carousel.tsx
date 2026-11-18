@@ -114,6 +114,45 @@ export const HERO_AUTOPLAY_MS = 6000;
 /** Crossfade length; matches the opacity transition class on the images. */
 const CROSSFADE_MS = 500;
 
+/** At most this many slides in the hero (the home page also reads at most 8 active banners). */
+export const HERO_MAX_SLIDES = 8;
+
+export type HeroSlide = Slide;
+
+/**
+ * The hero's slides (owner decision 2026-11-19): the active admin banners first, in the order the page passes them
+ * (Sıra, then newest), then the built-in slides in their own order, until HERO_MAX_SLIDES. With no banners the hero
+ * is the 4 built-in slides as before; with 8 or more banners only banners are shown.
+ * Uploaded banners keep the T5 rules: fixed eyebrow and secondary button, no default label pill, decorative alt.
+ * Built-in slides keep their labels and art-directed images. Pure, so it is unit-tested directly.
+ */
+export function buildHeroSlides(banners: HeroBanner[], max = HERO_MAX_SLIDES): Slide[] {
+  const uploaded: Slide[] = banners.slice(0, max).map((banner, index) => {
+    const visual = defaultSlides[index % defaultSlides.length];
+    return {
+      ...visual,
+      id: banner.id,
+      eyebrow: "BAGATI seçimi",
+      title: banner.title,
+      highlight: "",
+      description: banner.description,
+      button: banner.buttonLabel,
+      href: banner.href,
+      secondary: "Kateqoriyalar",
+      secondaryHref: "/categories",
+      image: banner.imageUrl || visual.image,
+      // Uploaded art sits next to the live title, so it is decorative (alt=""); a default photo keeps its alt.
+      imageAlt: banner.imageUrl ? "" : visual.imageAlt,
+      // An uploaded banner image is a single file: drop the default slide's art direction.
+      imagePosition: banner.imageUrl ? undefined : visual.imagePosition,
+      sources: banner.imageUrl ? undefined : visual.sources,
+      // The default slide's label ("Texnologiya", ...) belongs to its photo, not to an uploaded banner.
+      visualLabel: banner.imageUrl ? "" : visual.visualLabel,
+    };
+  });
+  return [...uploaded, ...defaultSlides.slice(0, Math.max(0, max - uploaded.length))];
+}
+
 export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -129,31 +168,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
   const [shown, setShown] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
-  const slides: Slide[] = banners.length
-    ? banners.map((banner, index) => {
-        const visual = defaultSlides[index % defaultSlides.length];
-        return {
-          ...visual,
-          id: banner.id,
-          eyebrow: "BAGATI seçimi",
-          title: banner.title,
-          highlight: "",
-          description: banner.description,
-          button: banner.buttonLabel,
-          href: banner.href,
-          secondary: "Kateqoriyalar",
-          secondaryHref: "/categories",
-          image: banner.imageUrl || visual.image,
-          // Uploaded art sits next to the live title, so it is decorative (alt=""); a default photo keeps its alt.
-          imageAlt: banner.imageUrl ? "" : visual.imageAlt,
-          // An uploaded banner image is a single file: drop the default slide's art direction.
-          imagePosition: banner.imageUrl ? undefined : visual.imagePosition,
-          sources: banner.imageUrl ? undefined : visual.sources,
-          // The default slide's label ("Texnologiya", ...) belongs to its photo, not to an uploaded banner.
-          visualLabel: banner.imageUrl ? "" : visual.visualLabel,
-        };
-      })
-    : defaultSlides;
+  const slides = buildHeroSlides(banners);
 
   useEffect(() => {
     setActive((value) => value % slides.length);

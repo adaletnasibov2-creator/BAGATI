@@ -127,7 +127,9 @@ test("homepage reads only active scheduled banners and retains existing seller p
   assert.match(page, /homepageFeaturedProduct\.findMany/);
   assert.match(page, /homepageFeaturedStore\.findMany/);
   assert.match(page, /promotionalCampaigns/);
-  assert.match(source("components/home/hero-carousel.tsx"), /banners\.length/);
+  // Active banners first, then the built-in slides fill the remaining places (owner decision 2026-11-19).
+  assert.match(source("components/home/hero-carousel.tsx"), /const slides = buildHeroSlides\(banners\);/);
+  assert.match(page, /take: 8,/);
 });
 
 test("storefront layout uses data-backed sections and preserves the BAGATI brand", () => {

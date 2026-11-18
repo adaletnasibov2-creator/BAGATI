@@ -4,8 +4,8 @@ import { LEGAL_VERSIONS } from "@/lib/legal-versions";
 /**
  * Recorded acceptance of the legal texts (owner decisions 2026-11-18, release-output/consent-audit-report.md B5):
  * one LegalAcceptance row per user, document and version; no IP address or user agent; no backfill.
- * Phase A: no callers outside tests. Phase B calls recordAcceptance inside the registration, checkout and seller
- * application transactions, and hasAcceptedCurrent in the checkout and seller-panel gates.
+ * Phase B: recordAcceptance runs inside the registration (e-mail and Google) and seller-application transactions; the
+ * checkout and seller-panel gates use lib/legal-gates.ts (hasAcceptedCurrent + recordAcceptance).
  */
 
 export const LEGAL_TERMS_ACCEPTED = "LEGAL_TERMS_ACCEPTED";

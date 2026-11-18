@@ -30,6 +30,8 @@
     "test:legal-versions": "tsx --test scripts/legal-versions.test.ts",
     "test:legal-acceptance": "tsx --test scripts/legal-acceptance.test.ts",
     "test:legal-acceptance:integration": "tsx --test scripts/legal-acceptance.integration.test.ts",
+    "test:legal-acceptance-b": "tsx --test scripts/legal-acceptance-b.test.ts",
+    "test:legal-acceptance-b:integration": "tsx --test scripts/legal-acceptance-b.integration.test.ts",
     "test:auth:integration": "tsx --test scripts/auth-integration.test.ts",
     "test:epoint": "tsx --test scripts/epoint-payment.test.ts",
     "verify:smtp": "tsx scripts/verify-smtp.ts",

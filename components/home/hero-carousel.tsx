@@ -201,6 +201,18 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
 
   const slide = slides[active] ?? slides[0];
   const step = (delta: number) => setActive((value) => (value + delta + slides.length) % slides.length);
+  // One pause button: in the eyebrow row from 640 px, in the controls row on phones (so the buttons of the slide stay
+  // above the bottom tab bar on a 390 x 844 phone). Only one of the two is ever displayed.
+  const pauseButton = (
+    <button
+      type="button"
+      aria-label={paused ? "Karuseli davam et" : "Karuseli dayandır"}
+      onClick={() => setPaused((value) => !value)}
+      className={controlButton}
+    >
+      {paused ? <Play aria-hidden="true" size={15} className="fill-current" /> : <Pause aria-hidden="true" size={15} className="fill-current" />}
+    </button>
+  );
 
   return (
     <section
@@ -285,25 +297,18 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
       </div>
 
       {/* Fixed minimum heights (and line clamps on the copy) keep the carousel from changing height between slides. */}
-      <div className="bagati-on-dark relative z-10 flex min-h-[452px] flex-col justify-between gap-5 p-5 sm:min-h-[404px] sm:gap-6 sm:p-8 xl:min-h-[clamp(560px,44vw,640px)] xl:w-[46%] xl:p-11">
+      <div className="bagati-on-dark relative z-10 flex min-h-[404px] flex-col justify-between gap-4 p-5 sm:min-h-[404px] sm:gap-6 sm:p-8 xl:min-h-[clamp(560px,44vw,640px)] xl:w-[46%] xl:p-11">
         <div className="flex items-center justify-between gap-3">
           {/* Gold hairline + eyebrow: the one gold accent of the hero (decoration; the text is cream). */}
           <span className="inline-flex min-w-0 items-center gap-3 text-kicker uppercase text-gold-200">
             <span aria-hidden="true" className="h-px w-8 shrink-0 bg-gold-400" />
             <span className="truncate">{slide.eyebrow}</span>
           </span>
-          <button
-            type="button"
-            aria-label={paused ? "Karuseli davam et" : "Karuseli dayandır"}
-            onClick={() => setPaused((value) => !value)}
-            className={controlButton}
-          >
-            {paused ? <Play aria-hidden="true" size={15} className="fill-current" /> : <Pause aria-hidden="true" size={15} className="fill-current" />}
-          </button>
+          <span className="hidden sm:inline-flex">{pauseButton}</span>
         </div>
 
         <div className="max-w-[560px]">
-          <h1 className="line-clamp-3 font-serif text-[2.25rem] font-medium leading-[1.04] tracking-[-0.025em] text-white sm:text-[3rem] xl:text-[3.5rem]">
+          <h1 className="line-clamp-3 font-serif text-[2rem] font-medium leading-[1.04] tracking-[-0.025em] text-white sm:text-[3rem] xl:text-[3.5rem]">
             {slide.title}
             {slide.highlight && (
               <>
@@ -362,6 +367,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
             })}
           </div>
           <div className="flex items-center gap-2">
+            <span className="sm:hidden">{pauseButton}</span>
             {slide.visualLabel && <span className="mr-1 hidden rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-medium text-white/85 sm:inline-flex">
               {slide.visualLabel}
             </span>}

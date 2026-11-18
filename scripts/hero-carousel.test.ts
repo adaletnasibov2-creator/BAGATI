@@ -62,7 +62,10 @@ test("category tiles off screen load lazily; the default stays eager", () => {
 test("hero sizes (design T5): 4:3 on phones, 2:1 from 640 px, 5:2 from 1024 px, 560-640 px tall from 1280 px; space reserved", () => {
   assert.match(carousel, /className="relative aspect-\[4\/3\] w-full overflow-hidden bg-brand-800 sm:aspect-\[2\/1\] lg:aspect-\[5\/2\] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-\[56%\]"/);
   // The text panel keeps a fixed minimum height and the copy is clamped, so every slide fits the same space.
-  assert.match(carousel, /min-h-\[452px\][^"]*sm:min-h-\[404px\][^"]*xl:min-h-\[clamp\(560px,44vw,640px\)\]/);
+  assert.match(carousel, /min-h-\[404px\][^"]*sm:min-h-\[404px\][^"]*xl:min-h-\[clamp\(560px,44vw,640px\)\]/);
+  // Phones: the pause button sits in the controls row, so the slide's buttons stay above the bottom tab bar.
+  assert.match(carousel, /<span className="hidden sm:inline-flex">\{pauseButton\}<\/span>/);
+  assert.match(carousel, /<span className="sm:hidden">\{pauseButton\}<\/span>/);
   assert.match(carousel, /<h1 className="line-clamp-3 font-serif /);
   assert.match(carousel, /line-clamp-2 max-w-\[32rem\][^"]*sm:line-clamp-3/);
   // Phone image for slide 1: the square file; shown at 4:3 its cover crop removes exactly the added background.

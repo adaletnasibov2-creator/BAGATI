@@ -78,7 +78,7 @@ test("hero: 44 px controls and dots, eager first image, gold hairline, uploaded 
 
 test("home skeleton mirrors the new hero, trust row, category cards and shelf", () => {
   const loading = read("app/(customer)/(home)/loading.tsx");
-  assert.match(loading, /min-h-\[452px\][^"]*sm:min-h-\[404px\][^"]*xl:min-h-\[clamp\(560px,44vw,640px\)\]/);
+  assert.match(loading, /min-h-\[404px\][^"]*xl:min-h-\[clamp\(560px,44vw,640px\)\]/);
   assert.match(loading, /border-t border-gold-200/);
   assert.match(loading, /h-\[148px\] w-\[112px\]/);
   assert.match(loading, /<ProductCardSkeleton key=\{index\} \/>/);

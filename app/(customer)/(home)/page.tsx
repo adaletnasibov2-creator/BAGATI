@@ -264,7 +264,7 @@ export default async function HomePage({ searchParams }: Props) {
 
       <TrustRow />
 
-      {categories.length > 0 && <section className="container py-8 sm:py-12" aria-labelledby="categories-title">
+      {categories.length > 0 && <section className="container py-8 sm:py-10" aria-labelledby="categories-title">
         <HomeSectionHeading id="categories-title" eyebrow="BAGATI kataloqu" title="Nə axtarırsan?" href="/categories" />
         <nav aria-label="Məhsul kateqoriyaları" className="-mx-3 flex snap-x gap-3 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-10">
           {orderedCategories.map((category) => (
@@ -323,7 +323,7 @@ export default async function HomePage({ searchParams }: Props) {
       )}
 
       {eligibleCampaigns.length > 0 && (
-        <section className="py-8 sm:py-12" aria-labelledby="campaigns-title">
+        <section className="py-8 sm:py-10" aria-labelledby="campaigns-title">
           <div className="container">
             <HomeSectionHeading id="campaigns-title" eyebrow="Mağazaların aktiv təklifləri" title="Kampaniyalar" href="/deals" />
             <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
@@ -334,7 +334,7 @@ export default async function HomePage({ searchParams }: Props) {
       )}
 
       {homepageStores.length > 0 && (
-        <section className="border-y border-line bg-surface-sunken py-8 sm:py-12" aria-labelledby="stores-title">
+        <section className="border-y border-line bg-surface-sunken py-8 sm:py-10" aria-labelledby="stores-title">
           <div className="container">
             <HomeSectionHeading id="stores-title" eyebrow={featuredStores.length ? "BAGATI seçimi" : "Şəhərinə uyğun"} title={featuredStores.length ? "Seçilmiş mağazalar" : city?.slug === "qazax" ? "Qazax mağazaları" : city?.name ? `${city.name} mağazaları` : "Mağazalar"} href="/stores">
               <Link href="/stores/map" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line-strong bg-white px-4 text-sm font-semibold text-fg-body transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none">
@@ -346,7 +346,7 @@ export default async function HomePage({ searchParams }: Props) {
         </section>
       )}
 
-      <section className="container py-8 sm:py-12" aria-labelledby="seller-cta-title">
+      <section className="container py-8 sm:py-10" aria-labelledby="seller-cta-title">
         <div className="bagati-on-dark relative isolate overflow-hidden rounded-feature bg-primary px-6 py-8 text-white shadow-overlay sm:flex sm:items-center sm:justify-between sm:gap-8 sm:px-10 sm:py-10">
           {/* Decorative gold line-art arcs (CSS only). */}
           <span aria-hidden="true" className="absolute -right-20 -top-28 -z-10 h-80 w-80 rounded-full border border-[rgba(199,154,82,0.45)] sm:right-[6%] sm:h-[26rem] sm:w-[26rem]" />

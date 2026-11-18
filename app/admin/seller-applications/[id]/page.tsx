@@ -7,6 +7,7 @@ import StatusBadge from "@/components/seller-application-status-badge";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatBakuDateTime } from "@/lib/admin-audit-log";
+import { AdminLegalAcceptances, adminLegalAcceptanceSelect } from "@/components/admin-legal-acceptances";
 import { SELLER_APPLICATION_SOURCE_LABELS, SELLER_TYPE_LABELS } from "@/lib/seller-application";
 import { findDuplicateVoen } from "@/lib/seller-application-service";
 import { AdminVoenPanel } from "@/components/admin-voen-panel";
@@ -28,7 +29,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
   const application = await prisma.vendorApplication.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, email: true, role: true, isActive: true, emailVerifiedAt: true, createdAt: true } },
+      user: { select: { id: true, email: true, role: true, isActive: true, emailVerifiedAt: true, createdAt: true, legalAcceptances: { select: adminLegalAcceptanceSelect, orderBy: { acceptedAt: "desc" } } } },
       reviewedBy: { select: { email: true } },
     },
   });
@@ -109,6 +110,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
             <Field label="Aktivdir">{application.user.isActive ? "Bəli" : "Xeyr"}</Field>
           </dl>
         </section>
+        <AdminLegalAcceptances rows={application.user.legalAcceptances} applicationId={application.id} className={card} />
         <AdminVoenPanel view={voenView} />
         {application.status === "PENDING" && <AdminSellerApplicationReview applicationId={application.id} duplicateCount={duplicateCount} accountReady={accountReady} />}
         {history.length > 0 && <section className={card}>

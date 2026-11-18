@@ -20,8 +20,12 @@ import { LEGAL_DOCUMENT_KEYS, LEGAL_VERSIONS, type LegalDocumentKey } from "../l
 
 const VERSIONED_TEXT: Record<LegalDocumentKey, { version: string; sha256: string; route: string; Page: () => React.ReactElement }> = {
   CUSTOMER_TERMS: { version: "2026-11-17", sha256: "29d569e2049e48bdfafa6add1363e00200d927df832b34ae28447306debb15fe", route: "/terms", Page: TermsPage },
-  SELLER_TERMS: { version: "2026-11-18", sha256: "d8392d4b28940a099e72123f35b9cd6a98ee9458da999b2d1bf9e31999a8dd69", route: "/seller-terms", Page: SellerTermsPage },
+  // Phase B (2026-11-18): the quotes around „Ödəniş gözləyir“ became the „…“ used on /terms. The page was not public
+  // yet (noindex, not linked, nobody could accept it), so the hash was re-pinned WITHOUT a new version. The test
+  // below proves the quotes are the only change against the Phase A hash.
+  SELLER_TERMS: { version: "2026-11-18", sha256: "5b10b20dd9249bc3f7bf47a43e3a0fc0d55ca5f4af84a2ef5d2f180997f8f1c9", route: "/seller-terms", Page: SellerTermsPage },
 };
+const SELLER_TERMS_PHASE_A_SHA256 = "d8392d4b28940a099e72123f35b9cd6a98ee9458da999b2d1bf9e31999a8dd69";
 
 /** Visible text: tags removed, entities decoded, whitespace collapsed (as in scripts/legal-pages.test.ts). */
 const textOf = (markup: string) => markup.replace(/<[^>]+>/g, " ")
@@ -59,4 +63,10 @@ test("the version keys are exactly the LegalDocument enum values in prisma/schem
 test("a one-character change is detected (the hash really covers the text)", () => {
   const text = textOf(renderToStaticMarkup(createElement(SellerTermsPage)));
   assert.notEqual(sha256(text.replace("standart 10 %", "standart 12 %")), VERSIONED_TEXT.SELLER_TERMS.sha256);
+});
+
+test("SELLER_TERMS re-pin: the only difference from the Phase A text is the „…“ quotes around Ödəniş gözləyir", () => {
+  const text = textOf(renderToStaticMarkup(createElement(SellerTermsPage)));
+  assert.equal(text.split("„Ödəniş gözləyir“").length, 2, "the new quotes appear exactly once");
+  assert.equal(sha256(text.replace("„Ödəniş gözləyir“", "\"Ödəniş gözləyir\"")), SELLER_TERMS_PHASE_A_SHA256);
 });

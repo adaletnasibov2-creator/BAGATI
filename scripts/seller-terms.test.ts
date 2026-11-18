@@ -1,10 +1,10 @@
 /**
  * /seller-terms carries the owner's seller agreement (v2 of 2026-11-18) in code. Same kinds of checks as
- * scripts/legal-pages.test.ts, without a database. Until Phase B (consent checkboxes) the page is NOT indexed and NOT
- * linked from the site; this test pins both. The word-for-word comparison with the md is done at release time.
+ * scripts/legal-pages.test.ts, without a database. Since Phase B (consent checkboxes) the page is public: indexed and
+ * linked from the footer and from /terms section 9. The word-for-word comparison with the md is done at release time.
  */
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import * as React from "react";
@@ -52,7 +52,7 @@ test("/seller-terms: the v2 wording (online payment conditions, visibility after
     "Onlayn ödəniş aktiv olduqda hər mağaza sifarişi ayrıca ödənilir.",
     "Onlayn ödəniş aktiv olduqda bir mağaza sifarişi üçün ödəniş xidmətinin təyin etdiyi limit tətbiq olunur (hazırda 500 AZN).",
     "Onlayn ödəniş aktiv olduqda qəbul edilmiş qaytarmada geri ödənən məbləğ satıcının payından tutulur.",
-    "sifarişlər \"Ödəniş gözləyir\" statusu ilə qeyd olunur",
+    "sifarişlər „Ödəniş gözləyir“ statusu ilə qeyd olunur",
   ]) assert.ok(text.includes(sentence), sentence);
   // v1 sentences that ran ahead of the code are gone.
   for (const removed of ["saytda görünməyə bilər", "- Hər satışdan", "limit var (hazırda 500 AZN)"]) {
@@ -76,12 +76,12 @@ test("/seller-terms: links to /terms and /contact with the md's link texts", () 
   assert.equal((markup.match(/<a /g) ?? []).length, 2, "exactly the two links of the md");
 });
 
-test("/seller-terms: metadata title and Azerbaijani description, NOT indexed (until Phase B), canonical from APP_BASE_URL", () => {
+test("/seller-terms: metadata title and Azerbaijani description, indexed (Phase B), canonical from APP_BASE_URL", () => {
   const withBase = withBaseUrl("https://shop.example.az", () => generateMetadata()) as Metadata;
   assert.equal(withBase.title, "Satıcı şərtləri");
   assert.ok(typeof withBase.description === "string" && withBase.description.length > 40);
   assert.match(withBase.description as string, /[əıöüğşç]/, "Azerbaijani description");
-  assert.deepEqual(withBase.robots, { index: false, follow: false });
+  assert.deepEqual(withBase.robots, { index: true, follow: true });
   assert.equal(withBase.alternates?.canonical, "https://shop.example.az/seller-terms");
   const withoutBase = withBaseUrl(undefined, () => generateMetadata()) as Metadata;
   assert.equal(withoutBase.alternates, undefined, "no canonical rather than a wrong one");
@@ -94,21 +94,13 @@ test("/seller-terms: static source with no database, client code or raw HTML", (
   }
 });
 
-test("/seller-terms is not linked from the site yet (footer, /terms, any app/components/lib source)", () => {
+test("/seller-terms is linked from the footer (Hüquqi məlumat) and from /terms section 9", () => {
   const settings = { siteName: "BAGATI", logoUrl: null, contactPhone: null, contactEmail: null, instagramUrl: null, facebookUrl: null, tiktokUrl: null };
-  assert.doesNotMatch(renderToStaticMarkup(createElement(CustomerFooter, { settings })), /seller-terms/);
-  assert.doesNotMatch(renderToStaticMarkup(createElement(TermsPage)), /seller-terms/);
-  const offenders: string[] = [];
-  const walk = (dir: string) => {
-    for (const name of readdirSync(join(root, dir))) {
-      const path = `${dir}/${name}`;
-      if (statSync(join(root, path)).isDirectory()) walk(path);
-      // A route string literal ("/seller-terms", '/seller-terms?…', `/seller-terms#…`); file paths in comments do not count.
-      else if (/\.(ts|tsx)$/.test(name) && path !== FILE && /["'`]\/seller-terms(?:["'`?#])/.test(read(path))) offenders.push(path);
-    }
-  };
-  for (const dir of ["app", "components", "lib"]) walk(dir);
-  assert.deepEqual(offenders, []);
+  assert.match(renderToStaticMarkup(createElement(CustomerFooter, { settings })), /href="\/seller-terms"[^>]*>Satıcı şərtləri<\/a>/);
+  const terms = renderToStaticMarkup(createElement(TermsPage));
+  const section9 = terms.slice(terms.indexOf("9. Satıcılar üçün"), terms.indexOf("10. "));
+  assert.match(section9, /href="\/seller-terms"[^>]*>satıcı şərtlərini<\/a>/);
+  assert.equal((terms.match(/href="\/seller-terms"/g) ?? []).length, 1);
 });
 
 test("admin Səhifələr list is unchanged: seller-terms has no CMS row, so it is not in STATIC_LEGAL_PAGE_SLUGS", () => {

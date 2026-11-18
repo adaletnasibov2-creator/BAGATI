@@ -82,7 +82,7 @@ export default function TermsPage() {
         </ul>
 
         <h2 className={h2}>9. Satıcılar üçün</h2>
-        <p>Satıcılar ayrıca satıcı şərtlərini qəbul edir. Onlar məhsul məlumatının doğruluğuna, stokuna, çatdırılmasına, qaytarma qaydasına və vergi öhdəliklərinə görə özləri məsuliyyət daşıyır.</p>
+        <p>Satıcılar ayrıca <Link href="/seller-terms" className={link}>satıcı şərtlərini</Link> qəbul edir. Onlar məhsul məlumatının doğruluğuna, stokuna, çatdırılmasına, qaytarma qaydasına və vergi öhdəliklərinə görə özləri məsuliyyət daşıyır.</p>
 
         <h2 className={h2}>10. Məsuliyyətin həddi</h2>
         <p>Biz platformanın fasiləsiz işləməsinə çalışırıq, amma texniki işlər və ya üçüncü tərəflərin (ödəniş xidməti, bank, internet) səbəbindən fasilələr ola bilər. Mağazanın öz məhsulu və xidməti üzrə öhdəliklərinə görə platforma məsuliyyət daşımır.</p>

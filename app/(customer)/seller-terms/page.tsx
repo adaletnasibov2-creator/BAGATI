@@ -3,14 +3,14 @@ import Link from "next/link";
 import { absoluteSiteUrl } from "@/lib/category-seo";
 
 // Seller agreement, final text of 2026-11-18 (owner, v2). Static text in code: no database read in this page.
-// Until the consent checkboxes ship (Phase B) the page is not indexed and not linked from the site.
+// Public since Phase B (consent checkboxes): indexed, linked from the footer and from /terms section 9.
 // Changing this text requires a new LEGAL_VERSIONS.SELLER_TERMS (lib/legal-versions.ts; scripts/legal-versions.test.ts).
 const title = "Satıcı şərtləri";
 const description = "BAGATI-də mağaza açan və məhsul satan satıcılar üçün şərtlər: abunə haqqı, komissiya, ödəniş, məhsul məlumatı, sifariş, qaytarma və mağazanın dayandırılması.";
 
 export function generateMetadata(): Metadata {
   const canonical = absoluteSiteUrl("/seller-terms");
-  return { title, description, robots: { index: false, follow: false }, ...(canonical ? { alternates: { canonical } } : {}) };
+  return { title, description, robots: { index: true, follow: true }, ...(canonical ? { alternates: { canonical } } : {}) };
 }
 
 const h2 = "mt-4 text-xl font-semibold text-bagati-deep";
@@ -49,7 +49,7 @@ export default function SellerTermsPage() {
           <li>Onlayn ödəniş aktiv olduqda satıcının öz Epoint hesabı olmalıdır. Hesabı olmayan mağaza saytda qala bilər, amma onun sifarişləri onlayn ödənilə bilməz.</li>
           <li>Onlayn ödəniş aktiv olduqda hər mağaza sifarişi ayrıca ödənilir. Ödənilən məbləğ Epoint tərəfindən satıcı ilə platforma arasında bölünür.</li>
           <li>Onlayn ödəniş aktiv olduqda bir mağaza sifarişi üçün ödəniş xidmətinin təyin etdiyi limit tətbiq olunur (hazırda 500 AZN).</li>
-          <li>Onlayn ödəniş aktiv olmayan müddətdə sifarişlər &quot;Ödəniş gözləyir&quot; statusu ilə qeyd olunur və ödəniş satıcı ilə alıcı arasında razılaşdırılır.</li>
+          <li>Onlayn ödəniş aktiv olmayan müddətdə sifarişlər „Ödəniş gözləyir“ statusu ilə qeyd olunur və ödəniş satıcı ilə alıcı arasında razılaşdırılır.</li>
         </ul>
 
         <h2 className={h2}>5. Vergi və hesabat</h2>

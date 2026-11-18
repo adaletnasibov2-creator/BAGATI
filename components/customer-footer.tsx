@@ -100,6 +100,7 @@ export function CustomerFooter({ settings, contact }: { settings: FooterSettings
           <FooterColumn title="Hüquqi məlumat" links={[
             ["/privacy", "Məxfilik siyasəti"],
             ["/terms", "İstifadə şərtləri"],
+            ["/seller-terms", "Satıcı şərtləri"],
           ]} />
         </div>
       </div>

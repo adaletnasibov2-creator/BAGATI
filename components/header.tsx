@@ -47,13 +47,6 @@ export function Header({
           <span className="sm:hidden"><BrandLogo variant="icon" className="py-1" priority {...branding} /></span>
           <span className="hidden sm:inline-flex"><BrandLogo variant="full" className="py-1" priority {...branding} /></span>
 
-          <nav aria-label="Əsas naviqasiya" className="hidden shrink-0 items-center gap-1 xl:flex">
-            <CategoryMegaMenu categories={categories} />
-            <Link href="/stores" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Mağazalar</Link>
-            <Link href="/deals" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Endirimlər</Link>
-            <Link href="/new-products" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Yenilər</Link>
-          </nav>
-
           <div className="hidden min-w-0 flex-1 md:block">
             <SearchForm categories={categories} />
           </div>
@@ -73,7 +66,8 @@ export function Header({
           </div>
         </div>
 
-        <nav aria-label="Alış-veriş bölmələri" className="hidden border-t border-line py-1 md:flex md:items-center md:gap-3 xl:hidden">
+        {/* Section links live in this second row at every desktop width, so the search field keeps its width next to the city and account controls. */}
+        <nav aria-label="Alış-veriş bölmələri" className="hidden border-t border-line py-1 md:flex md:items-center md:gap-3">
           <CategoryMegaMenu categories={categories} />
           <Link href="/stores" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Mağazalar</Link>
           <Link href="/deals" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Endirimlər</Link>

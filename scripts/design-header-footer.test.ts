@@ -43,8 +43,14 @@ test("top bar: fixed 44 px height, one line, nothing can change its height on fo
 test("header: 44 px targets for icons, nav links and the search button; tokens instead of hex colours", () => {
   const header = read("components/header.tsx");
   assert.equal(header.match(/className="grid h-11 w-11 place-items-center rounded-full/g)?.length, 2, "favourites and cart");
-  assert.equal(header.match(/className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold/g)?.length, 6, "desktop and tablet nav links");
+  assert.equal(header.match(/className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold/g)?.length, 3, "Mağazalar, Endirimlər, Yeni məhsullar");
   assert.doesNotMatch(header, /\[#[0-9A-Fa-f]{6}\]/);
+  // The section links use the second row at every desktop width, so the search field is never squeezed next to the
+  // city and account controls (at 1280 px it showed only the category select); one copy of each link.
+  assert.doesNotMatch(header, /aria-label="Əsas naviqasiya"/);
+  assert.match(header, /<nav aria-label="Alış-veriş bölmələri" className="hidden border-t border-line py-1 md:flex md:items-center md:gap-3">/);
+  assert.equal(header.match(/<CategoryMegaMenu categories=\{categories\} \/>/g)?.length, 1);
+  assert.match(read("components/search-form.tsx"), /"hidden max-w-\[158px\] px-2 xl:block"/, "desktop category select from 1280 px only");
   const search = read("components/search-form.tsx");
   assert.match(search, /<button type="submit" aria-label="Axtar" className="grid h-11 w-11 shrink-0/);
   assert.match(search, /border border-line-strong bg-white/, "visible 3:1 field border");

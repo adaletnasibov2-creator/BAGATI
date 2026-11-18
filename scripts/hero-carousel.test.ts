@@ -56,7 +56,7 @@ test("category tiles off screen load lazily; the default stays eager", () => {
   assert.match(icon, /loading=\{loading\}/);
   assert.match(read("components/category-mega-menu.tsx"), /<CategoryIcon category=\{category\} size="small" loading="lazy" \/>/);
   assert.match(read("components/mobile-menu.tsx"), /<CategoryIcon category=\{category\} size="small" loading="lazy" \/>/);
-  assert.match(read("app/(customer)/page.tsx"), /<CategoryIcon category=\{category\} size="large" loading="lazy" \/>/);
+  assert.match(read("app/(customer)/(home)/page.tsx"), /<CategoryIcon category=\{category\} size="large" loading="lazy" \/>/);
 });
 
 test("hero sizes: 4:3 on phones, 2:1 from 640 px, 5:2 from 1024 px, 600 px tall from 1280 px; space reserved", () => {

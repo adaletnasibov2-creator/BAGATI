@@ -69,7 +69,7 @@ export default function StorefrontPreviewPage() {
         <HeroCarousel />
       </section>
 
-      {/* Same markup as the homepage catalog in app/(customer)/page.tsx. */}
+      {/* Same markup as the homepage catalog in app/(customer)/(home)/page.tsx. */}
       <section className="container pb-6 sm:pb-8" data-preview="home-catalog">
         <div className="mb-4 flex items-end justify-between gap-3">
           <SectionHeading eyebrow="BAGATI kataloqu" title="Nə axtarırsan?" />

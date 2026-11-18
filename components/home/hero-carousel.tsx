@@ -107,7 +107,7 @@ const defaultSlides: Slide[] = [
 ];
 
 const controlButton =
-  "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold";
+  "inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none";
 
 /** Time each slide stays before autoplay moves on (owner decision 2026-11-16). */
 export const HERO_AUTOPLAY_MS = 6000;
@@ -144,11 +144,13 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
           secondary: "Kateqoriyalar",
           secondaryHref: "/categories",
           image: banner.imageUrl || visual.image,
-          imageAlt: banner.imageUrl ? banner.title || visual.imageAlt : visual.imageAlt,
+          // Uploaded art sits next to the live title, so it is decorative (alt=""); a default photo keeps its alt.
+          imageAlt: banner.imageUrl ? "" : visual.imageAlt,
           // An uploaded banner image is a single file: drop the default slide's art direction.
           imagePosition: banner.imageUrl ? undefined : visual.imagePosition,
           sources: banner.imageUrl ? undefined : visual.sources,
-          visualLabel: visual.visualLabel,
+          // The default slide's label ("Texnologiya", ...) belongs to its photo, not to an uploaded banner.
+          visualLabel: banner.imageUrl ? "" : visual.visualLabel,
         };
       })
     : defaultSlides;
@@ -199,6 +201,18 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
 
   const slide = slides[active] ?? slides[0];
   const step = (delta: number) => setActive((value) => (value + delta + slides.length) % slides.length);
+  // One pause button: in the eyebrow row from 640 px, in the controls row on phones (so the buttons of the slide stay
+  // above the bottom tab bar on a 390 x 844 phone). Only one of the two is ever displayed.
+  const pauseButton = (
+    <button
+      type="button"
+      aria-label={paused ? "Karuseli davam et" : "Karuseli dayandır"}
+      onClick={() => setPaused((value) => !value)}
+      className={controlButton}
+    >
+      {paused ? <Play aria-hidden="true" size={15} className="fill-current" /> : <Pause aria-hidden="true" size={15} className="fill-current" />}
+    </button>
+  );
 
   return (
     <section
@@ -233,7 +247,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
         if (startX === null || endX === undefined || Math.abs(endX - startX) < 48) return;
         step(endX < startX ? 1 : -1);
       }}
-      className="relative isolate overflow-hidden rounded-[28px] border border-bagati-border bg-[#102726] shadow-[0_20px_44px_rgba(23,58,58,.10)] outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2"
+      className="relative isolate overflow-hidden rounded-feature bg-brand-900 shadow-overlay outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2"
       style={{ touchAction: "pan-y" }}
     >
       {/* The photograph is not used as a text backdrop: below xl it has its own strip above the
@@ -241,7 +255,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
       {/* Hero sizes (owner, 2026-11-16): image 4:3 on phones (so the buttons stay in the first screen of a 390x844 phone),
           2:1 from 640 px, 5:2 from 1024 px; from 1280 px the panel fills the right side of a 600 px tall hero. The aspect ratios and min-heights reserve the space before any
           image arrives, so nothing below moves while the photos load. */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#e1ded7] sm:aspect-[2/1] lg:aspect-[5/2] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[58%]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-800 sm:aspect-[2/1] lg:aspect-[5/2] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[56%]">
         {/* Every slide image that is in the DOM is stacked here. The one underneath ("shown") stays visible until the
             active one has loaded and faded in on top, so a change never shows an empty grey box. */}
         {slides.map((item, index) => {
@@ -266,6 +280,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
                 alt={isActive ? item.imageAlt : ""}
                 aria-hidden={!isActive}
                 decoding="async"
+                loading={index === 0 ? "eager" : "lazy"}
                 fetchPriority={index === 0 ? "high" : "low"}
                 draggable={false}
                 onLoad={() => markLoaded(index)}
@@ -277,60 +292,57 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
         })}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-[3] hidden w-[13%] bg-[linear-gradient(90deg,#102726_0%,rgba(16,39,38,0.62)_38%,rgba(16,39,38,0)_100%)] xl:block"
+          className="pointer-events-none absolute inset-y-0 left-0 z-[3] hidden w-[13%] bg-[linear-gradient(90deg,#10292a_0%,rgba(16,41,42,0.62)_38%,rgba(16,41,42,0)_100%)] xl:block"
         />
       </div>
 
-      {/* Fixed minimum heights keep the carousel from changing height between slides. */}
-      <div className="bagati-on-dark relative z-10 flex min-h-[416px] flex-col justify-between gap-5 p-5 sm:min-h-[404px] sm:gap-6 sm:p-7 xl:min-h-[600px] xl:w-[45%] xl:p-9">
+      {/* Fixed minimum heights (and line clamps on the copy) keep the carousel from changing height between slides. */}
+      <div className="bagati-on-dark relative z-10 flex min-h-[404px] flex-col justify-between gap-4 p-5 sm:min-h-[404px] sm:gap-6 sm:p-8 xl:min-h-[clamp(560px,44vw,640px)] xl:w-[46%] xl:p-11">
         <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[.62rem] font-semibold uppercase tracking-[.18em] text-white/90">
-            {slide.eyebrow}
+          {/* Gold hairline + eyebrow: the one gold accent of the hero (decoration; the text is cream). */}
+          <span className="inline-flex min-w-0 items-center gap-3 text-kicker uppercase text-gold-200">
+            <span aria-hidden="true" className="h-px w-8 shrink-0 bg-gold-400" />
+            <span className="truncate">{slide.eyebrow}</span>
           </span>
-          <button
-            type="button"
-            aria-label={paused ? "Karuseli davam et" : "Karuseli dayandır"}
-            onClick={() => setPaused((value) => !value)}
-            className={controlButton}
-          >
-            {paused ? <Play aria-hidden="true" size={15} className="fill-current" /> : <Pause aria-hidden="true" size={15} className="fill-current" />}
-          </button>
+          <span className="hidden sm:inline-flex">{pauseButton}</span>
         </div>
 
         <div className="max-w-[560px]">
-          <h1 className="font-serif text-[2.1rem] leading-[0.98] tracking-[-.055em] text-white sm:text-[2.75rem] xl:text-[3.25rem]">
+          <h1 className="line-clamp-3 font-serif text-[2rem] font-medium leading-[1.04] tracking-[-0.025em] text-white sm:text-[3rem] xl:text-[3.5rem]">
             {slide.title}
             {slide.highlight && (
               <>
                 <br />
-                <span className="font-normal italic text-[#F2E8C8]">{slide.highlight}</span>
+                <span className="font-normal italic text-gold-200">{slide.highlight}</span>
               </>
             )}
           </h1>
-          <p className="mt-4 max-w-[32rem] text-sm leading-6 text-white/85 sm:text-base">{slide.description}</p>
+          {slide.description && <p className="mt-4 line-clamp-2 max-w-[32rem] text-body leading-6 text-white/85 sm:line-clamp-3 sm:text-body-lg">{slide.description}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href={slide.href} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#F3E9D5] px-5 text-sm font-semibold text-[#173A3A] transition hover:bg-[#E8D7B7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3E9D5]">
+            <Link href={slide.href} className="inline-flex min-h-12 items-center justify-center rounded-full bg-gold-100 px-6 text-body font-semibold text-fg shadow-subtle transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
               {slide.button}
             </Link>
-            <Link href={slide.secondaryHref} className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/35 bg-white/8 px-4 text-sm font-semibold text-white transition hover:bg-white/12 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F3E9D5]">
+            <Link href={slide.secondaryHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 px-5 text-body font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
               {slide.secondary}
             </Link>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="-ml-2.5 flex items-center">
             {slides.map((item, index) => {
               const isActive = index === active;
               return (
+                // 44 px hit area around a small track; the track holds the autoplay progress fill.
                 <button
                   key={item.id}
                   type="button"
                   aria-label={`${index + 1}. slayd`}
                   aria-pressed={isActive}
                   onClick={() => setActive(index)}
-                  className={`relative h-2.5 overflow-hidden rounded-full transition-all duration-200 ${isActive ? (autoplay ? "w-8 bg-white/35" : "w-8 bg-[#F0E3BE]") : "w-2.5 bg-white/70 hover:bg-white"}`}
+                  className="group/dot grid h-11 min-w-11 place-items-center rounded-full px-1.5"
                 >
+                  <span className={`relative block h-2.5 overflow-hidden rounded-full transition-all duration-200 motion-reduce:transition-none ${isActive ? (autoplay ? "w-8 bg-white/35" : "w-8 bg-gold-200") : "w-2.5 bg-white/70 group-hover/dot:bg-white"}`}>
                   {isActive && autoplay && (
                     // Progress fill = the autoplay timer. Keyed by slide so a manual change restarts it; paused with the
                     // carousel (hover, focus, pause button, hidden tab).
@@ -338,7 +350,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
                       key={item.id}
                       aria-hidden="true"
                       data-hero-progress=""
-                      className="absolute inset-0 origin-left rounded-full bg-[#F0E3BE]"
+                      className="absolute inset-0 origin-left rounded-full bg-gold-200"
                       style={{
                         animation: `bagati-hero-progress ${HERO_AUTOPLAY_MS}ms linear forwards`,
                         animationPlayState: autoplayRunning ? "running" : "paused",
@@ -349,14 +361,16 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
                       }}
                     />
                   )}
+                  </span>
                 </button>
               );
             })}
           </div>
           <div className="flex items-center gap-2">
-            <span className="mr-1 hidden rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[.62rem] font-medium uppercase tracking-[.18em] text-white/80 sm:inline-flex">
+            <span className="sm:hidden">{pauseButton}</span>
+            {slide.visualLabel && <span className="mr-1 hidden rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-medium text-white/85 sm:inline-flex">
               {slide.visualLabel}
-            </span>
+            </span>}
             <button type="button" aria-label="Əvvəlki slayd" onClick={() => step(-1)} className={controlButton}>
               <ChevronLeft aria-hidden="true" size={18} />
             </button>

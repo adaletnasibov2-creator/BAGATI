@@ -86,8 +86,9 @@ export default function AdminHomepageManager() {
       const body = new FormData();
       body.set("file", file);
       const response = await fetch("/api/admin/homepage/assets", { method: "POST", body });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Banner şəkli yüklənmədi.");
+      // A proxy or server error page is not JSON: show a readable message with the status instead of a parse error.
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || (response.status === 413 ? "Şəkil çox böyükdür (maksimum 5 MB)." : `Banner şəkli yüklənmədi (HTTP ${response.status}).`));
       setValue("imageUrl", data.asset.url);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Banner şəkli yüklənmədi.");
@@ -108,8 +109,8 @@ export default function AdminHomepageManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Banner saxlanılmadı.");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Banner saxlanılmadı (HTTP ${response.status}).`);
       setMessage(data.message || "Banner yadda saxlanıldı.");
       setForm(blankBanner());
       await load();

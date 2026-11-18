@@ -123,13 +123,13 @@ export function CitySelector({ cities, selected, compact = false }: { cities: Ci
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((value) => !value)}
-        className={`${compact ? "w-[118px] px-2.5 text-xs" : "w-[160px]"} inline-flex h-11 min-w-0 items-center gap-2 rounded-full border border-[#E3EAE5] bg-white px-3 text-left text-sm font-semibold text-[#36534D] shadow-[0_2px_8px_rgba(23,58,58,.04)] transition hover:border-[#B8CDC1] hover:bg-[#FBFCFA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F8175] disabled:cursor-not-allowed disabled:text-[#697875] sm:w-[176px] sm:px-3.5`}
+        className={`${compact ? "w-[118px] px-2.5 text-xs" : "w-[160px]"} inline-flex h-11 min-w-0 items-center gap-2 rounded-full border border-line-strong bg-white px-3 text-left text-sm font-semibold text-fg-body shadow-subtle transition-colors hover:border-primary hover:bg-primary-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:text-fg-muted motion-reduce:transition-none sm:w-[176px] sm:px-3.5`}
       >
-        <MapPin aria-hidden="true" size={16} className="shrink-0 text-[#638078]" />
+        <MapPin aria-hidden="true" size={16} className="shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate">
           {activeCity?.name ?? "Şəhər seçin"}
         </span>
-        <ChevronDown aria-hidden="true" size={15} className={`shrink-0 text-[#75817F] transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown aria-hidden="true" size={15} className={`shrink-0 text-fg-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && position && typeof document !== "undefined" && createPortal(

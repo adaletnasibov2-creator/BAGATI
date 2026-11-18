@@ -5,7 +5,6 @@ import { CategoryIcon } from "@/components/category-icon";
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { ProductShelf } from "@/components/home/product-shelf";
 import { StoreCard } from "@/components/store-card";
-import StorefrontImage from "@/components/storefront-image";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { publicProductVisibilityWhere, publicStoreVisibilityWhere } from "@/lib/store-visibility";
@@ -355,7 +354,7 @@ export default async function HomePage({ searchParams }: Props) {
       )}
 
       <section className="container py-8 sm:py-10">
-        <div className="relative isolate overflow-hidden rounded-[24px] bg-bagati-primary px-5 py-6 text-white shadow-[0_18px_46px_rgba(23,58,58,.13)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:rounded-[30px] sm:px-9 sm:py-8">
+        <div className="bagati-on-dark relative isolate overflow-hidden rounded-[24px] bg-bagati-primary px-5 py-6 text-white shadow-[0_18px_46px_rgba(23,58,58,.13)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:rounded-[30px] sm:px-9 sm:py-8">
           <div aria-hidden="true" className="absolute -right-16 -top-32 -z-10 h-72 w-72 rounded-full border border-[#C9D9CC]/25 sm:right-[8%] sm:h-[23rem] sm:w-[23rem]" />
           <div className="max-w-2xl">
             <p className="text-[.65rem] font-semibold uppercase tracking-[.18em] text-bagati-cream-dark">BAGATI-də satıcı ol</p>
@@ -449,35 +448,6 @@ function CampaignSpotlight({ campaign }: { campaign: HomepageCampaign }) {
       <span className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-semibold text-bagati-primary">
         {campaignDiscount(campaign) ?? "Kampaniyaya bax"}<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" />
       </span>
-    </Link>
-  );
-}
-
-function ProductSpotlight({ product }: { product: HomeProduct }) {
-  const effective = calculateEffectivePrice(product.price, product.discountPrice, productPromotions(product.promotionProducts, product.store.id));
-  const discountedPrice = effective.unitPrice.lt(effective.basePrice);
-  return (
-    <Link href={`/products/${product.id}`} className="group relative isolate flex min-h-[148px] items-center gap-3 overflow-hidden rounded-[22px] border border-bagati-border bg-white p-3.5 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-4 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
-      <span aria-hidden="true" className="absolute -bottom-16 -right-10 -z-10 h-44 w-44 rounded-full bg-bagati-section" />
-      <div className="relative aspect-square w-[90px] shrink-0 overflow-hidden rounded-[17px] bg-bagati-page sm:w-[104px]">
-        <StorefrontImage
-          src={product.images[0] ?? null}
-          alt={product.images[0] ? product.name : ""}
-          fill
-          sizes="104px"
-          className="object-contain p-2"
-          fallback={<span className="grid h-full w-full place-items-center text-bagati-muted"><Store aria-hidden="true" size={26} /></span>}
-        />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[.62rem] font-semibold uppercase tracking-[.12em] text-bagati-muted">Yeni məhsul</p>
-        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-bagati-text group-hover:text-bagati-accent">{product.name}</p>
-        <p className="mt-1 truncate text-xs text-bagati-muted">{product.store.name}</p>
-        <p className="mt-2 text-sm font-semibold text-bagati-deep">
-          {effective.unitPrice.toFixed(2)} ₼
-          {discountedPrice && <del className="ml-2 text-xs font-normal text-bagati-muted">{effective.basePrice.toFixed(2)} ₼</del>}
-        </p>
-      </div>
     </Link>
   );
 }

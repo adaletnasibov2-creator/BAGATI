@@ -27,7 +27,7 @@ const html = (element: Parameters<typeof renderToStaticMarkup>[0]) => renderToSt
 // ---------------------------------------------------------------------------------------------------------------
 // T1: tokens and fonts
 
-test("fonts: next/font/local with committed woff2 files, swap and a metric-adjusted fallback; no font CDN", () => {
+test("fonts: next/font/local with committed woff2 files, Inter optional and Fraunces swap, metric-adjusted fallbacks; no font CDN", () => {
   const fonts = read("app/fonts/public-fonts.ts");
   assert.match(fonts, /import localFont from "next\/font\/local";/);
   for (const file of ["inter-variable-az.woff2", "fraunces-variable-az.woff2"]) {
@@ -36,7 +36,10 @@ test("fonts: next/font/local with committed woff2 files, swap and a metric-adjus
     assert.equal(bytes.subarray(0, 4).toString("latin1"), "wOF2", `${file} is woff2`);
     assert.ok(bytes.length < 80_000, `${file} stays small (${bytes.length} bytes)`);
   }
-  assert.equal(fonts.match(/display: "swap"/g)?.length, 2);
+  // Inter: optional, so body text never re-wraps after the first paint (T4 CLS fix). Fraunces: swap.
+  assert.match(fonts, /src: "\.\/inter-variable-az\.woff2",[\s\S]*?display: "optional",/);
+  assert.match(fonts, /src: "\.\/fraunces-variable-az\.woff2",[\s\S]*?display: "swap",/);
+  assert.equal(fonts.match(/^  display: "/gm)?.length, 2, "one display setting per font");
   assert.match(fonts, /adjustFontFallback: "Arial"/);
   assert.match(fonts, /adjustFontFallback: "Times New Roman"/);
   assert.ok(existsSync(join(root, "app/fonts/Inter-OFL.txt")) && existsSync(join(root, "app/fonts/Fraunces-OFL.txt")), "OFL licences ship with the fonts");

@@ -23,7 +23,7 @@ export default function AnnouncementBarClient({ bar, signature }: { bar: Announc
       ? <a href={bar.href} className="underline underline-offset-2" rel="noopener noreferrer">{bar.text}</a>
       : <Link href={bar.href} className="underline underline-offset-2">{bar.text}</Link>
     : bar.text;
-  return <div className={`${ANNOUNCEMENT_TONE_CLASSES[bar.tone]} text-sm`}>
+  return <div className={`bagati-focus-current ${ANNOUNCEMENT_TONE_CLASSES[bar.tone]} text-sm`}>
     <div className="container flex min-h-10 items-center gap-3 py-2">
       <p className="min-w-0 flex-1 break-words text-center font-medium leading-5">{text}</p>
       <button type="button" onClick={dismiss} aria-label="Elanı bağla" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg hover:bg-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current">

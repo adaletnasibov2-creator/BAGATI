@@ -1,5 +1,6 @@
 import { PRODUCT_SHELF_TRACK_CLASS } from "@/components/product-layout";
-import { Skeleton, SkeletonRegion, SkeletonText } from "@/components/ui/skeleton";
+import { ProductCardSkeleton } from "@/components/product-card";
+import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
 
 /**
  * Home page while the server renders it: hero, category row and one product shelf, in the page's own sizes
@@ -22,20 +23,9 @@ export default function HomeLoading() {
       <Skeleton rounded="full" className="h-3 w-24" />
       <Skeleton rounded="full" className="mt-2 h-7 w-64" />
       <div className={`mt-4 overflow-hidden ${PRODUCT_SHELF_TRACK_CLASS}`}>
-        {Array.from({ length: 5 }, (_, index) => <ProductCardPlaceholder key={index} />)}
+        {Array.from({ length: 5 }, (_, index) => <ProductCardSkeleton key={index} />)}
       </div>
     </div>
   </SkeletonRegion>;
 }
 
-function ProductCardPlaceholder() {
-  return <div className="flex min-w-0 flex-col overflow-hidden rounded-[18px] border border-bagati-border bg-white">
-    <Skeleton rounded="none" className="aspect-square" />
-    <div className="grid gap-2.5 p-2.5 sm:p-3">
-      <Skeleton rounded="full" className="h-3 w-2/5" />
-      <SkeletonText lines={2} />
-      <Skeleton rounded="full" className="h-5 w-1/2" />
-      <Skeleton className="h-11 w-full" />
-    </div>
-  </div>;
-}

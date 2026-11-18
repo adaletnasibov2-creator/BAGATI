@@ -3,6 +3,9 @@ import { PRODUCT_CARD_IMAGE_SIZES } from "@/components/product-layout";
 import { FavoriteToggle } from "@/components/favorite-toggle";
 import ProductCardImage from "@/components/product-card-image";
 import { QuickAddToCart } from "@/components/quick-add-to-cart";
+import { badgeClass } from "@/components/ui/badge";
+import { cx } from "@/components/ui/cx";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { getProductDiscount } from "@/lib/product-card-pricing";
 
 type ProductCardProps = {
@@ -23,6 +26,15 @@ type ProductCardProps = {
   variantCount?: number;
 };
 
+/** In-card focus ring: 2 px primary green drawn inside the element (cards clip overflow). */
+const insetFocus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-focus";
+
+/**
+ * The one product card of the public site (home shelves, /products and search, /categories, /deals,
+ * /new-products, store pages, favourites). Design T3: calmer type in Inter (Fraunces is for headings only),
+ * the current price strongest, the old price struck through and muted, a gold discount badge, a reserved square
+ * image, a CSS-only hover lift and the pill "Səbətə əlavə et" action that the card already had.
+ */
 export function ProductCard({ id, name, price, originalPrice, store, storeHref, storeIsPro, campaignName, discountLabel, image, secondaryImage, badge, stock, lowStockThreshold, variantCount }: ProductCardProps) {
   const { discounted, percentOff } = getProductDiscount(price, originalPrice);
   const badgeLabel = discounted
@@ -33,12 +45,12 @@ export function ProductCard({ id, name, price, originalPrice, store, storeHref, 
 
   return (
     // relative: contains every sr-only (position:absolute) text of the card, so a card scrolled out of a carousel never widens the page.
-    <article className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-bagati-border bg-white transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-[#C9D8D1] hover:shadow-[0_16px_38px_rgba(23,58,58,.1)] motion-reduce:transform-none motion-reduce:transition-none">
+    <article className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-card border border-line bg-white transition-[border-color,box-shadow,transform] duration-200 ease-out hover:border-brand-200 hover:shadow-card motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none">
       <div className="relative">
         <Link
           href={`/products/${id}`}
           aria-label={`${name} məhsuluna bax`}
-          className="relative block aspect-square overflow-hidden bg-white focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-bagati-gold"
+          className="relative block aspect-square overflow-hidden bg-white focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-focus"
         >
           <ProductCardImage
             src={image}
@@ -48,13 +60,7 @@ export function ProductCard({ id, name, price, originalPrice, store, storeHref, 
           />
         </Link>
         {badgeLabel && (
-          <span
-            className={`absolute left-2 right-12 top-2 w-fit max-w-[calc(100%-3.5rem)] truncate rounded-full border border-white/60 px-2 py-1 text-[.62rem] font-semibold shadow-sm backdrop-blur sm:left-2.5 sm:top-2.5 ${
-              discounted || campaignName
-                ? "bg-[#F3E9D5] text-[#70552E]"
-                : "bg-white/95 text-[#315A51]"
-            }`}
-          >
+          <span className={cx("absolute left-2 top-2 max-w-[calc(100%-3.75rem)] truncate font-semibold shadow-subtle sm:left-2.5 sm:top-2.5", badgeClass(discounted || campaignName ? "gold" : "primary"))}>
             {badgeLabel}
           </span>
         )}
@@ -63,58 +69,59 @@ export function ProductCard({ id, name, price, originalPrice, store, storeHref, 
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col border-t border-bagati-border/70 p-2.5 sm:p-3">
+      <div className="flex flex-1 flex-col border-t border-line p-3 sm:p-3.5">
         <div className="flex min-h-5 items-center justify-between gap-2">
           {storeHref ? (
             <Link
               href={storeHref}
-              className="min-w-0 truncate text-xs font-medium text-bagati-muted hover:text-bagati-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold sm:text-[.8rem]"
+              className={cx("min-w-0 truncate rounded-sm text-xs font-medium text-fg-muted transition-colors hover:text-primary", insetFocus, "focus-visible:outline-offset-0")}
             >
               {store}
             </Link>
           ) : (
-            <p className="min-w-0 truncate text-xs font-medium text-bagati-muted sm:text-[.8rem]">
+            <p className="min-w-0 truncate text-xs font-medium text-fg-muted">
               {store}
             </p>
           )}
           {storeIsPro && (
-            <span className="shrink-0 rounded-full bg-bagati-section px-2 py-0.5 text-[.58rem] font-semibold text-bagati-text">
+            <span className={cx("shrink-0", badgeClass("neutral"))}>
               PRO mağaza
             </span>
           )}
         </div>
         <Link
           href={`/products/${id}`}
-          className="mt-1 line-clamp-2 min-h-10 text-[.82rem] font-semibold leading-5 text-bagati-text hover:text-bagati-accent sm:text-sm focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold"
+          className={cx("mt-1 line-clamp-2 min-h-10 rounded-sm text-sm font-medium leading-5 text-fg transition-colors hover:text-primary", insetFocus, "focus-visible:outline-offset-0")}
         >
           {name}
         </Link>
         {/* Fixed one-line slot (variant count and/or campaign), so the price sits at the same height in every card of a row. */}
-        <p className="mt-0.5 h-4 truncate text-[.7rem] leading-4 text-bagati-muted">
+        <p className="mt-1 h-[1.125rem] truncate text-xs leading-[1.125rem] text-fg-muted">
           {variantCount !== undefined && variantCount > 0 ? `${variantCount} variant seçimi` : null}
           {variantCount !== undefined && variantCount > 0 && campaignName ? " · " : null}
-          {campaignName ? <span className="font-medium text-bagati-gold-dark">{campaignName}</span> : null}
+          {campaignName ? <span className="font-medium text-gold-700">{campaignName}</span> : null}
         </p>
 
-        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-          <p className="text-[.95rem] font-semibold tracking-tight text-bagati-deep sm:text-base">
+        {/* Phones: the old price on its own line, so long prices never wrap differently across a row. */}
+        <div className="mt-2 flex flex-col gap-y-0 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
+          <p className="text-base font-bold tabular-nums tracking-tight text-fg sm:text-[1.0625rem]">
             {price} ₼
           </p>
           {discounted && (
-            <del className="text-xs text-bagati-muted">
+            <del className="text-xs tabular-nums text-fg-muted">
               <span className="sr-only">Əvvəlki qiymət: </span>
               {originalPrice} ₼
             </del>
           )}
         </div>
         {stock !== undefined && stock > 0 && lowStockThreshold !== undefined && stock <= lowStockThreshold && (
-          <p className="mt-0.5 inline-flex items-center gap-1.5 text-[.7rem] font-medium text-bagati-gold-dark">
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-bagati-gold" />
+          <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-gold-700">
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-gold-400" />
             Az sayda qalıb
           </p>
         )}
         {/* mt-auto: the button is the last thing in the card, at the same height across a row. */}
-        <div className="mt-auto pt-2.5">
+        <div className="mt-auto pt-3">
           <QuickAddToCart productId={id} stock={stock} />
         </div>
       </div>
@@ -122,17 +129,17 @@ export function ProductCard({ id, name, price, originalPrice, store, storeHref, 
   );
 }
 
+/** Same frame as ProductCard (square image, text lines, price, button), for loading.tsx and client loading states. */
 export function ProductCardSkeleton() {
   return (
-    <article aria-hidden="true" className="flex h-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-bagati-border bg-white">
-      <div className="bagati-skeleton aspect-square" />
-      <div className="flex flex-1 flex-col gap-2.5 p-2.5 sm:p-3">
-        <div className="bagati-skeleton h-3 w-2/5 rounded-full" />
-        <div className="bagati-skeleton h-4 w-full rounded-full" />
-        <div className="bagati-skeleton h-4 w-3/4 rounded-full" />
-        <div className="mt-auto bagati-skeleton h-6 w-1/2 rounded-full" />
-        <div className="bagati-skeleton mt-2 h-11 w-full rounded-xl" />
+    <div aria-hidden="true" className="flex h-full min-w-0 flex-col overflow-hidden rounded-card border border-line bg-white">
+      <Skeleton rounded="none" className="aspect-square" />
+      <div className="flex flex-1 flex-col gap-2.5 border-t border-line p-3 sm:p-3.5">
+        <Skeleton rounded="full" className="h-3 w-2/5" />
+        <SkeletonText lines={2} />
+        <Skeleton rounded="full" className="h-5 w-1/2" />
+        <Skeleton rounded="full" className="mt-auto h-11 w-full" />
       </div>
-    </article>
+    </div>
   );
 }

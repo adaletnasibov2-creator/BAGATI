@@ -48,6 +48,8 @@
   --bagati-danger-hover: #991b1b;
   --bagati-danger-subtle: #fef2f2;
   --bagati-focus-ring: var(--bagati-primary);
+  /* Colour of the site-wide :focus-visible outline: gold in admin and the seller panel, green on the public site. */
+  --bagati-focus-outline: var(--bagati-gold);
   --bagati-radius-control: 12px;
   --bagati-radius-card: 20px;
   --bagati-radius-feature: 28px;
@@ -78,7 +80,20 @@ body:has(> .bagati-public),
   --bagati-text-xs-lh: 1.125rem;
   --bagati-text-sm: 0.9375rem;
   --bagati-text-sm-lh: 1.375rem;
+  /* Green focus outline (design T4): #174746 is 10.36:1 on white and 9.24:1 on the section colour; the gold
+     (#c79a52) reached only 2.57:1 on white. Dark surfaces switch back to gold with .bagati-on-dark. */
+  --bagati-focus-outline: var(--bagati-primary);
   font-family: var(--bagati-font-sans);
+}
+
+/* Focus outline on dark public surfaces (header top bar, footer, hero, seller banner): gold #c79a52 is 4.80:1 on
+   #173a3a, where green would be invisible. Coloured bars whose background varies use the text colour. */
+.bagati-on-dark {
+  --bagati-focus-outline: var(--bagati-gold);
+}
+
+.bagati-focus-current {
+  --bagati-focus-outline: currentColor;
 }
 
 /* Headings: Fraunces for page and section titles. Headings set in a small size (text-xs/sm/base), such as footer
@@ -178,7 +193,7 @@ select {
 }
 
 :focus-visible {
-  outline: 3px solid var(--bagati-gold);
+  outline: 3px solid var(--bagati-focus-outline);
   outline-offset: 3px;
 }
 

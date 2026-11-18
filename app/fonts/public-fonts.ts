@@ -9,14 +9,18 @@ import localFont from "next/font/local";
  * (ə Ə ı İ ş Ş ğ Ğ ç Ç ö Ö ü Ü) in one file per family. Fraunces is pinned to optical size 48 (display headings),
  * which halves the file. Licences: Inter-OFL.txt and Fraunces-OFL.txt (SIL OFL 1.1).
  *
- * `adjustFontFallback` makes next/font emit a size-adjusted local fallback face, so swapping in the web font
- * barely moves the layout.
+ * `adjustFontFallback` makes next/font emit a size-adjusted local fallback face.
+ *
+ * Inter uses `display: "optional"` (design T4): with `swap`, body text re-wrapped when Inter arrived after the first
+ * paint (CLS 0.059 on /seller-terms at 390 px, also with preload on a slow connection). With `optional` a page that
+ * paints before the font is ready keeps the size-adjusted fallback for that view, and the font, now cached, is used
+ * from the next page on. Fraunces keeps `swap`: headings did not move the layout when it arrived.
  */
 export const inter = localFont({
   src: "./inter-variable-az.woff2",
   weight: "400 700",
   style: "normal",
-  display: "swap",
+  display: "optional",
   adjustFontFallback: "Arial",
   fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Arial", "sans-serif"],
 });

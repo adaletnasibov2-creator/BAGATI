@@ -27,7 +27,8 @@ import { AdminLegalAcceptances } from "../components/admin-legal-acceptances";
 (globalThis as { React?: typeof React }).React = React;
 
 const root = join(__dirname, "..");
-const read = (path: string) => readFileSync(join(root, path), "utf8");
+// CRLF → LF: on a Windows checkout (core.autocrlf=true) the multi-line regexes below would never match.
+const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const savedEnv = { SESSION_SECRET: process.env.SESSION_SECRET, NODE_ENV: process.env.NODE_ENV, APP_BASE_URL: process.env.APP_BASE_URL, GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET };
 process.env.SESSION_SECRET = "legal-acceptance-b-test-session-secret-0123456789";
 after(() => {

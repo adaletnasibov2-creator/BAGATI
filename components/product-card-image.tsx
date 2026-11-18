@@ -25,7 +25,7 @@ export default function ProductCardImage({
 
   if (!primarySrc) {
     return (
-      <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[linear-gradient(145deg,#F7F8F6,#EEF3F0)] text-xs text-bagati-muted">
+      <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-surface-page to-surface-sunken text-xs text-fg-muted">
         <ImageOff aria-hidden="true" size={24} strokeWidth={1.5} />
         <span>Şəkil yoxdur</span>
       </span>

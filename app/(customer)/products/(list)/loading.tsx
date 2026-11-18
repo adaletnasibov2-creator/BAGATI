@@ -1,4 +1,5 @@
 import { PRODUCT_GRID_WITH_SIDEBAR_CLASS } from "@/components/product-layout";
+import { ProductCardSkeleton } from "@/components/product-card";
 import { Skeleton, SkeletonRegion, SkeletonText } from "@/components/ui/skeleton";
 
 /**
@@ -18,15 +19,7 @@ export default function ProductListLoading() {
         <SkeletonText lines={8} />
       </div>
       <div className={`mt-8 lg:mt-0 ${PRODUCT_GRID_WITH_SIDEBAR_CLASS}`}>
-        {Array.from({ length: 8 }, (_, index) => <div key={index} className="flex min-w-0 flex-col overflow-hidden rounded-[18px] border border-bagati-border bg-white">
-          <Skeleton rounded="none" className="aspect-square" />
-          <div className="grid gap-2.5 p-2.5 sm:p-3">
-            <Skeleton rounded="full" className="h-3 w-2/5" />
-            <SkeletonText lines={2} />
-            <Skeleton rounded="full" className="h-5 w-1/2" />
-            <Skeleton className="h-11 w-full" />
-          </div>
-        </div>)}
+        {Array.from({ length: 8 }, (_, index) => <ProductCardSkeleton key={index} />)}
       </div>
     </div>
   </SkeletonRegion>;

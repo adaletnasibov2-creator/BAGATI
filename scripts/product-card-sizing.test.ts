@@ -41,8 +41,10 @@ test("card: equal heights, square white image with contain, title clamp, fixed m
   assert.match(card, /className="relative block aspect-square overflow-hidden bg-white/);
   assert.doesNotMatch(card, /aspect-\[4\/5\]/);
   assert.match(card, /line-clamp-2 min-h-10/);
-  assert.match(card, /<p className="mt-0\.5 h-4 truncate text-\[\.7rem\] leading-4 text-bagati-muted">/, "one fixed line for variants/campaign");
-  assert.match(card, /<div className="mt-auto pt-2\.5">\s*<QuickAddToCart productId=\{id\} stock=\{stock\} \/>\s*<\/div>/);
+  assert.match(card, /<p className="mt-1 h-\[1\.125rem\] truncate text-xs leading-\[1\.125rem\] text-fg-muted">/, "one fixed line (height = line height) for variants/campaign");
+  assert.match(card, /<div className="mt-auto pt-3">\s*<QuickAddToCart productId=\{id\} stock=\{stock\} \/>\s*<\/div>/);
+  // The title keeps a 20 px line height, so two lines are exactly min-h-10 and prices line up across a row.
+  assert.match(card, /line-clamp-2 min-h-10 rounded-sm text-sm font-medium leading-5/);
   assert.doesNotMatch(card, /min-h-5 pt-1/, "no reserved empty stock row");
   assert.match(card, /sizes=\{PRODUCT_CARD_IMAGE_SIZES\}/);
   assert.match(PRODUCT_CARD_IMAGE_SIZES, /\(min-width: 1280px\)/);
@@ -54,11 +56,25 @@ test("card: equal heights, square white image with contain, title clamp, fixed m
 test("quick add: no empty line under the button; the live region stays and cannot escape a carousel", () => {
   const quickAdd = read("components/quick-add-to-cart.tsx");
   assert.match(quickAdd, /return <div className="relative"><button type="button"/);
-  assert.match(quickAdd, /<p className=\{message \? "mt-1 text-center text-\[\.68rem\] text-\[#697875\]" : "sr-only"\} role="status" aria-live="polite">\{message\}<\/p>/);
+  assert.match(quickAdd, /<p className=\{message \? "mt-1 text-center text-xs text-fg-muted" : "sr-only"\} role="status" aria-live="polite">\{message\}<\/p>/);
+  assert.match(quickAdd, /min-h-11 w-full[^"]*rounded-full[^"]*focus-visible:outline-focus/, "44 px pill with the green focus ring");
   assert.doesNotMatch(quickAdd, /mt-1 min-h-4/);
   assert.match(quickAdd, /whitespace-nowrap/);
   // Behaviour untouched: same endpoints and texts.
   assert.match(quickAdd, /fetch\("\/api\/cart\/items", \{ method: "POST"/);
   assert.match(quickAdd, /"Səbətə əlavə et"/);
   assert.match(quickAdd, /"Stokda yoxdur"/);
+});
+
+test("design T3: price hierarchy, tokens, CSS-only hover lift, one shared skeleton", () => {
+  const card = read("components/product-card.tsx");
+  assert.match(card, /<p className="text-base font-bold tabular-nums tracking-tight text-fg sm:text-\[1\.0625rem\]">\s*\{price\} ₼/, "current price is the strongest text");
+  assert.match(card, /<del className="text-xs tabular-nums text-fg-muted">\s*<span className="sr-only">Əvvəlki qiymət: <\/span>/, "old price struck through, muted, announced");
+  assert.match(card, /badgeClass\(discounted \|\| campaignName \? "gold" : "primary"\)/);
+  assert.match(card, /motion-safe:hover:-translate-y-0\.5 motion-reduce:transition-none/);
+  assert.doesNotMatch(card, /font-serif|font-display|bagati-gold-dark|#[0-9A-Fa-f]{6}/, "no serif and no hard-coded colours in the card");
+  for (const path of ["app/(customer)/(home)/loading.tsx", "app/(customer)/products/(list)/loading.tsx"]) {
+    assert.match(read(path), /<ProductCardSkeleton key=\{index\} \/>/, `${path} uses the shared skeleton`);
+  }
+  assert.doesNotMatch(read("app/(customer)/(home)/page.tsx"), /function ProductSpotlight/, "the unused second product card is gone");
 });

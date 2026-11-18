@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import { absoluteSiteUrl } from "@/lib/category-seo";
 
 // Legal page, final text of 2026-11-17 (owner). Static text in code: no database read in this page.
@@ -12,7 +12,6 @@ export function generateMetadata(): Metadata {
 }
 
 const h2 = "mt-4 text-xl font-semibold text-bagati-deep";
-const link = "font-medium text-bagati-primary underline underline-offset-2";
 const th = "border-b border-[#E5E9E5] px-3 py-2 font-semibold text-bagati-deep";
 const td = "border-b border-[#E5E9E5] px-3 py-2 align-top";
 
@@ -75,7 +74,7 @@ export default function PrivacyPage() {
           <li>hesabınızın və məlumatlarınızın silinməsini tələb etmək (qanunla saxlanmalı qeydlər istisna olmaqla);</li>
           <li>məlumatların istifadəsinə etiraz etmək.</li>
         </ul>
-        <p>Bunun üçün <Link href="/contact" className={link}>Əlaqə</Link> səhifəsindəki e-poçt ünvanına yazın. Müraciətinizə mümkün qədər tez, qanunda göstərilən müddət ərzində cavab veririk.</p>
+        <p>Bunun üçün <TextLink href="/contact">Əlaqə</TextLink> səhifəsindəki e-poçt ünvanına yazın. Müraciətinizə mümkün qədər tez, qanunda göstərilən müddət ərzində cavab veririk.</p>
 
         <h2 className={h2}>Dəyişikliklər</h2>
         <p>Bu siyasəti vaxtaşırı yeniləyə bilərik. Əsas dəyişikliklər bu səhifədə dərc olunacaq. Son yenilənmə: 17 noyabr 2026.</p>

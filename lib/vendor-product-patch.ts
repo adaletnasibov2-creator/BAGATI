@@ -13,6 +13,8 @@ import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/
 import { findExistingProductSkuMatches, findExistingVariantSkuKeys } from "@/lib/catalog-import-persistence";
 import { productCodeFor } from "@/lib/product-code";
 import { hasDuplicateNormalizedSkus, nullableSkuSchema } from "@/lib/sku-normalization";
+import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
+import { SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
 
 const variantSchema = z.object({
   id: z.string().optional(),
@@ -123,6 +125,10 @@ export async function updateVendorProduct(
 
   const entitlement = await getStoreEntitlements(storeId, tx, input.now);
   const activating = isVendorProductActivation(product.status, values.status);
+  // Publishing (DRAFT/ARCHIVED -> ACTIVE) needs the CURRENT seller terms; editing an already active product does not.
+  if (activating && !await hasAcceptedCurrent(tx, input.actorUserId, "SELLER_TERMS")) {
+    throw new VendorProductPatchError(SELLER_TERMS_REQUIRED);
+  }
   const existingVariants = product.variants;
   const variantSkuValues = (values.variants || []).flatMap((variant) => variant.sku ? [variant.sku] : []);
   if (variantSkuValues.length) {

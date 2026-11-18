@@ -7,6 +7,7 @@ import VendorImageUploader from "@/components/vendor-image-uploader";
 import VendorVariantEditor from "@/components/vendor-variant-editor";
 import VendorBrandSelector from "@/components/vendor-brand-selector";
 import { presentStockQuantity } from "@/lib/stock-quantity";
+import { SellerTermsCard } from "@/components/seller-terms-card";
 
 type Option = { id: string; name: string };
 const input = "mt-1 w-full rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
@@ -17,6 +18,7 @@ export default function VendorProductCreateForm({ storeId, categories, brands, c
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [termsRequired, setTermsRequired] = useState(false);
   const [categoryId, setCategoryId] = useState("");
   const [brandId, setBrandId] = useState("");
 
@@ -47,7 +49,10 @@ export default function VendorProductCreateForm({ storeId, categories, brands, c
     try {
       const response = await fetch(`/api/vendor/${storeId}/products`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Məhsul yadda saxlanmadı.");
+      if (!response.ok) {
+        if (result.code === "SELLER_TERMS_REQUIRED") setTermsRequired(true);
+        throw new Error(result.error || "Məhsul yadda saxlanmadı.");
+      }
       setMessage(shouldPublish ? "Məhsul yayımlandı." : "Məhsul qaralama kimi saxlanıldı.");
       router.replace(`/vendor/${storeId}/products/${result.product.id}`); router.refresh();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Məhsul yadda saxlanmadı."); }
@@ -68,7 +73,8 @@ export default function VendorProductCreateForm({ storeId, categories, brands, c
     <section className="grid gap-4 rounded-2xl border border-[#e9e4da] bg-white p-5 sm:p-7"><div><h2 className="font-semibold">Şəkillər</h2><p className="mt-1 text-sm text-slate-500">Birinci şəkil əsas şəkil kimi göstərilir. Sıralama yükləmə ardıcıllığı ilə müəyyən olunur.</p></div><VendorImageUploader storeId={storeId}/></section>
     <VendorVariantEditor storeId={storeId} name="variants" initial={[]} categoryName={categories.find(item => item.id === categoryId)?.name || ""}/>
     {!canSell && <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Mağaza, satıcı hesabı və abunəlik aktiv olana qədər məhsul qaralama kimi saxlanıla bilər, lakin yayımlana bilməz.</p>}
-    {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}{message && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
+    {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    {termsRequired && <SellerTermsCard compact onAccepted={() => { setTermsRequired(false); setError(""); }}/>}{message && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
     <div className="flex flex-wrap gap-3"><button type="submit" name="intent" value="draft" disabled={busy} onClick={() => setPublish(false)} className="min-h-11 rounded-xl border border-[#173c40] px-5 py-3 text-sm font-semibold text-[#173c40]">{busy && !publish ? "Saxlanılır…" : "Qaralama saxla"}</button><button type="submit" name="intent" value="publish" disabled={busy || !canSell || !categories.length} onClick={() => setPublish(true)} className="min-h-11 rounded-xl bg-[#173c40] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy && publish ? "Yayımlanır…" : "Yayımla"}</button></div>
   </form>;
 }

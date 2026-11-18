@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { getStorePublicationBlockers } from "@/lib/admin-store-product-publishing";
 import { activeComplimentaryEntitlementSelect, complimentaryFromRows } from "@/lib/subscription-entitlements";
 import VendorLogoutButton from "@/components/vendor-logout-button";
+import { SellerTermsCard } from "@/components/seller-terms-card";
+import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,9 @@ export default async function VendorStoresPage() {
     },
     orderBy: { createdAt: "desc" },
   });
-  return <div className="min-h-screen bg-[#F7F5EF] text-[#16202C]"><header className="border-b border-[#E8E7E2] bg-white"><div className="container flex items-center justify-between py-4"><BrandLogo variant="compact"/><div className="flex items-center gap-4"><Link href="/vendor/security" className="text-sm text-[#85621d]">Hesabın təhlükəsizliyi</Link><VendorLogoutButton/></div></div></header><main className="container py-9 sm:py-12"><div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#85621d]">Satıcı portalı</p><h1 className="mt-2 text-3xl font-semibold text-[#0B1726] sm:text-4xl">Mağazalarınız</h1><p className="mt-2 text-sm text-[#667085]">Mağazanı seçin və ya yenisini yaradın.</p></div><Link href="/vendor/stores/new" className="rounded-xl bg-[#173c40] px-5 py-3 text-sm font-semibold text-white">+ Yeni mağaza yarat</Link></div>
+  // Existing and admin-created sellers accept the current seller terms here once (decision 3/4 of the audit).
+  const sellerTermsAccepted = await hasAcceptedCurrent(prisma, user.id, "SELLER_TERMS");
+  return <div className="min-h-screen bg-[#F7F5EF] text-[#16202C]"><header className="border-b border-[#E8E7E2] bg-white"><div className="container flex items-center justify-between py-4"><BrandLogo variant="compact"/><div className="flex items-center gap-4"><Link href="/vendor/security" className="text-sm text-[#85621d]">Hesabın təhlükəsizliyi</Link><VendorLogoutButton/></div></div></header><main className="container py-9 sm:py-12">{!sellerTermsAccepted && <div className="mb-7"><SellerTermsCard/></div>}<div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#85621d]">Satıcı portalı</p><h1 className="mt-2 text-3xl font-semibold text-[#0B1726] sm:text-4xl">Mağazalarınız</h1><p className="mt-2 text-sm text-[#667085]">Mağazanı seçin və ya yenisini yaradın.</p></div><Link href="/vendor/stores/new" className="rounded-xl bg-[#173c40] px-5 py-3 text-sm font-semibold text-white">+ Yeni mağaza yarat</Link></div>
   {stores.length ? <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{stores.map((store) => {
     const blockers = getStorePublicationBlockers({
       status: store.status,

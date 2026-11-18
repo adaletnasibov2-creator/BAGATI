@@ -7,6 +7,7 @@ import VendorImageUploader from "@/components/vendor-image-uploader";
 import VendorVariantEditor from "@/components/vendor-variant-editor";
 import VendorBrandSelector from "@/components/vendor-brand-selector";
 import { presentStockQuantity } from "@/lib/stock-quantity";
+import { SellerTermsCard } from "@/components/seller-terms-card";
 
 const input = "w-full rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
 const box = "rounded-2xl border border-[#e9e4da] bg-white p-5";
@@ -15,6 +16,7 @@ export default function VendorProductEditor({ storeId, productId }: { storeId: s
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [termsRequired, setTermsRequired] = useState(false);
   const [busy, setBusy] = useState(false);
   const url = `/api/vendor/${storeId}/products/${productId}`;
   useEffect(() => { void fetch(url).then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error || "Məhsul tapılmadı"); setData(result); }).catch(reason => setError(reason instanceof Error ? reason.message : "Məhsul yüklənmədi")); }, [url]);
@@ -29,7 +31,7 @@ export default function VendorProductEditor({ storeId, productId }: { storeId: s
     if (!variantsEnabled && lowStockThreshold === null) { setError("Az stok həddi tam ədəd olmalıdır."); setBusy(false); return; }
     if (variants.some((variant) => presentStockQuantity(variant.quantity) === null || presentStockQuantity(variant.lowStockThreshold) === null)) { setError("Hər variantın stoku və az stok həddi tam ədəd olmalıdır. Boş sahə 0 kimi saxlanmır."); setBusy(false); return; }
     const payload = { ...form, sku: String(form.sku || "").trim() || null, price: Number(form.price), discountPrice: form.discountPrice ? Number(form.discountPrice) : null, categoryId: form.categoryId || null, brandId: form.brandId || null, images: String(form.images || "").split(/\n|,/).map(value => value.trim()).filter(Boolean), variantsEnabled, variants, ...(quantity !== null ? { quantity } : {}), ...(lowStockThreshold !== null ? { lowStockThreshold } : {}) };
-    try { const response = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const result = await response.json(); if (!response.ok) throw new Error(result.error === "Məhsul yenilənə bilmədi" ? "Bu məhsulu yeniləmək mümkün olmadı. Məlumatları yoxlayın." : result.error || "Məhsul yenilənmədi"); setData((current:any)=>({...current,product:result.product})); setMessage("Məhsul məlumatları yadda saxlanıldı."); }
+    try { const response = await fetch(url, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const result = await response.json(); if (!response.ok && result.code === "SELLER_TERMS_REQUIRED") setTermsRequired(true); if (!response.ok) throw new Error(result.error === "Məhsul yenilənə bilmədi" ? "Bu məhsulu yeniləmək mümkün olmadı. Məlumatları yoxlayın." : result.error || "Məhsul yenilənmədi"); setData((current:any)=>({...current,product:result.product})); setMessage("Məhsul məlumatları yadda saxlanıldı."); }
     catch(reason) { setError(reason instanceof Error ? reason.message : "Məhsul yenilənmədi"); }
     finally { setBusy(false); }
   }
@@ -51,7 +53,7 @@ export default function VendorProductEditor({ storeId, productId }: { storeId: s
       <section className={`${box} sm:col-span-2`}><VendorImageUploader key={product.id} storeId={storeId} initialUrls={product.images||[]}/></section>
       <section className={`${box} grid gap-3 sm:col-span-2 sm:grid-cols-2`}><h2 className="font-semibold sm:col-span-2">Standart məhsul stoku</h2><label className="grid gap-1 text-sm">Miqdar<input name="quantity" type="number" min="0" defaultValue={product.inventory?.find((item:any)=>item.variantId===null)?.quantity??0} className={input}/></label><label className="grid gap-1 text-sm">Az stok həddi<input name="lowStockThreshold" type="number" min="0" defaultValue={product.inventory?.find((item:any)=>item.variantId===null)?.lowStockThreshold??5} className={input}/></label><p className="text-xs text-slate-500 sm:col-span-2">Bu stok yalnız variantlar söndürüldükdə istifadə olunur.</p></section>
       <div className="sm:col-span-2"><VendorVariantEditor key={`${product.id}:${product.updatedAt}`} storeId={storeId} initial={product.variants||[]} categoryName={data.categories.find((category:any)=>category.id===product.categoryId)?.name||""}/></div>
-      {error&&<p role="alert" className="sm:col-span-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}{message&&<p role="status" className="sm:col-span-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
+      {error&&<p role="alert" className="sm:col-span-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}{termsRequired&&<div className="sm:col-span-2"><SellerTermsCard compact onAccepted={()=>{setTermsRequired(false);setError("")}}/></div>}{message&&<p role="status" className="sm:col-span-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
       <div className="flex flex-wrap gap-3 sm:col-span-2"><button disabled={busy} className="rounded-xl bg-[#173c40] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy?"Yadda saxlanılır…":"Dəyişiklikləri yadda saxla"}</button>{product.status!=="ARCHIVED"&&<button type="button" disabled={busy} onClick={()=>void archive()} className="rounded-xl border border-red-200 px-5 py-3 text-sm font-medium text-red-700">Məhsulu arxivlə</button>}</div>
     </form>
   </div>;

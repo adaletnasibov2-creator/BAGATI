@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
+import { buildHeroSlides, HERO_MAX_SLIDES } from "../components/home/hero-carousel";
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
@@ -75,4 +76,57 @@ test("hero sizes (design T5): 4:3 on phones, 2:1 from 640 px, 5:2 from 1024 px, 
 
 test("the xl edge gradient stays above the stacked images (z-[3] over z-[2] / z-[1])", () => {
   assert.match(carousel, /className="pointer-events-none absolute inset-y-0 left-0 z-\[3\] hidden w-\[13%\]/);
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Slide list (owner decision 2026-11-19): admin banners first, then the 4 built-in slides, at most 8 slides.
+
+const DEFAULT_IDS = ["technology", "fashion", "home", "beauty"];
+const banner = (n: number) => ({ id: `b${n}`, title: `Banner ${n}`, description: `Mətn ${n}`, imageUrl: `https://cdn.example.com/b${n}.webp`, buttonLabel: "Bax", href: "/products" });
+const banners = (count: number) => Array.from({ length: count }, (_, index) => banner(index + 1));
+const ids = (count: number) => buildHeroSlides(banners(count)).map((slide) => slide.id);
+
+test("0 banners: the 4 built-in slides, exactly as before", () => {
+  assert.deepEqual(ids(0), DEFAULT_IDS);
+  assert.equal(HERO_MAX_SLIDES, 8);
+});
+
+test("2 banners: the 2 banners first, then all 4 built-in slides (6)", () => {
+  assert.deepEqual(ids(2), ["b1", "b2", ...DEFAULT_IDS]);
+});
+
+test("6 banners: 6 banners, then the first 2 built-in slides (cap 8)", () => {
+  assert.deepEqual(ids(6), ["b1", "b2", "b3", "b4", "b5", "b6", "technology", "fashion"]);
+});
+
+test("9 banners: capped at 8, banners only", () => {
+  assert.deepEqual(ids(9), ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"]);
+});
+
+test("banner order is kept as passed (Sıra order from the page query)", () => {
+  const slides = buildHeroSlides([banner(3), banner(1), banner(2)]);
+  assert.deepEqual(slides.slice(0, 3).map((slide) => slide.id), ["b3", "b1", "b2"]);
+});
+
+test("uploaded banners keep the T5 rules; built-in slides keep their labels and art-directed images", () => {
+  const slides = buildHeroSlides(banners(2));
+  for (const uploaded of slides.slice(0, 2)) {
+    assert.equal(uploaded.eyebrow, "BAGATI seçimi");
+    assert.equal(uploaded.secondary, "Kateqoriyalar");
+    assert.equal(uploaded.visualLabel, "", "no default label pill on an uploaded banner");
+    assert.equal(uploaded.imageAlt, "", "uploaded art is decorative next to the live title");
+    assert.equal(uploaded.sources, undefined, "an uploaded image is one file, no art-directed sources");
+  }
+  const builtIn = slides.slice(2);
+  assert.deepEqual(builtIn.map((slide) => slide.visualLabel), ["Texnologiya", "Aksesuarlar", "Ev üçün", "Gözəllik"]);
+  assert.equal(builtIn[0].sources?.[0]?.srcSet, "/images/home/hero-electronics-devices-square.webp");
+  assert.equal(builtIn[2].sources?.length, 2, "slide 3 keeps its phone and tablet crops");
+  assert.ok(builtIn.every((slide) => slide.imageAlt.length > 0), "built-in photos keep their alt text");
+});
+
+test("the first slide's image is eager and high priority whichever slide comes first; dots count the real slides", () => {
+  assert.match(carousel, /loading=\{index === 0 \? "eager" : "lazy"\}/);
+  assert.match(carousel, /fetchPriority=\{index === 0 \? "high" : "low"\}/);
+  assert.match(carousel, /\{slides\.map\(\(item, index\) => \{\s*const isActive = index === active;/, "one dot per slide in the list");
+  assert.match(carousel, /aria-label=\{`\$\{index \+ 1\}\. slayd`\}/);
 });

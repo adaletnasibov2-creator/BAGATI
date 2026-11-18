@@ -51,7 +51,14 @@ export type GoogleOAuthState = {
   mode: GoogleOAuthMode;
   next: string;
   accountUserId?: string;
+  /**
+   * The customer-terms version the user accepted with the /register checkbox (customer + register only). The callback
+   * creates an account only when it equals LEGAL_VERSIONS.CUSTOMER_TERMS; it is signed, so the browser cannot add it.
+   */
+  termsVersion?: string;
 };
+
+const TERMS_VERSION_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export type GoogleIdentity = {
   sub: string;
@@ -227,6 +234,12 @@ export async function verifyGoogleOAuthState(token: string): Promise<GoogleOAuth
       || typeof payload.next !== "string"
       || (payload.mode === "link" && (typeof payload.accountUserId !== "string" || !payload.accountUserId))
       || (payload.mode !== "link" && payload.accountUserId !== undefined)
+      || (payload.termsVersion !== undefined && (
+        typeof payload.termsVersion !== "string"
+        || !TERMS_VERSION_PATTERN.test(payload.termsVersion)
+        || payload.intent !== "customer"
+        || payload.mode !== "register"
+      ))
     ) return null;
     return {
       state: payload.state,
@@ -236,6 +249,7 @@ export async function verifyGoogleOAuthState(token: string): Promise<GoogleOAuth
       mode: payload.mode,
       next: payload.next,
       ...(typeof payload.accountUserId === "string" ? { accountUserId: payload.accountUserId } : {}),
+      ...(typeof payload.termsVersion === "string" ? { termsVersion: payload.termsVersion } : {}),
     };
   } catch {
     return null;
@@ -248,6 +262,7 @@ export async function googleAuthorizationUrl(input: {
   mode: GoogleOAuthMode;
   next: string;
   accountUserId?: string;
+  termsVersion?: string;
 }) {
   const state = randomBytes(32).toString("base64url");
   const nonce = randomBytes(32).toString("base64url");
@@ -261,6 +276,7 @@ export async function googleAuthorizationUrl(input: {
     mode: input.mode,
     next: input.next,
     ...(input.mode === "link" && input.accountUserId ? { accountUserId: input.accountUserId } : {}),
+    ...(input.intent === "customer" && input.mode === "register" && input.termsVersion ? { termsVersion: input.termsVersion } : {}),
   });
   const authorization = new URL(googleEndpoints().authorization);
   authorization.search = new URLSearchParams({

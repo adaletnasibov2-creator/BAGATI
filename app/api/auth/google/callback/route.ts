@@ -7,7 +7,8 @@ import { currentUser } from "@/lib/auth";
 import { logAuthFailure } from "@/lib/auth-logging";
 import { enqueueEmail } from "@/lib/email-outbox";
 import { GOOGLE_OAUTH_COOKIE, GoogleEmailUnverifiedError, exchangeGoogleCode, googleOAuthConfig, googleOAuthCookieOptions, safeEqual, safeOAuthNextPath, verifyGoogleOAuthState, type GoogleOAuthIntent, type GoogleOAuthMode } from "@/lib/google-oauth";
-import { decideGoogleSignIn, intentRole, type GoogleSignInDecision } from "@/lib/google-oauth-decision";
+import { decideGoogleSignIn, intentRole, stateAcceptedCustomerTerms, type GoogleSignInDecision } from "@/lib/google-oauth-decision";
+import { recordAcceptance } from "@/lib/legal-acceptance";
 import { existingAccountIdentity } from "@/lib/existing-account";
 import { createGoogleLinkTransaction, GOOGLE_LINK_COOKIE, GOOGLE_LINK_NEXT_COOKIE, googleLinkCookieOptions, isMissingGoogleLinkStore } from "@/lib/google-link";
 import { loginPortalForRole, type LoginPortal } from "@/lib/login-portal";
@@ -24,8 +25,12 @@ function entryPath(intent: GoogleOAuthIntent, mode: GoogleOAuthMode) {
   return mode === "register" ? "/register" : "/login";
 }
 
+/** Results that always send the customer to /register, whichever page started the flow (decision 1a). */
+const REGISTER_RESULTS = new Set(["register-required", "terms-required"]);
+
 function resultUrl(origin: string, state: CallbackState | null, result: string, portal?: LoginPortal) {
-  const target = new URL(entryPath(state?.intent ?? "customer", state?.mode ?? "login"), origin);
+  const path = REGISTER_RESULTS.has(result) ? "/register" : entryPath(state?.intent ?? "customer", state?.mode ?? "login");
+  const target = new URL(path, origin);
   target.searchParams.set("oauth", result);
   if (portal && (result === "account-exists" || result === "wrong-role" || result === "link-pending")) target.searchParams.set("portal", portal);
   // Keep the customer's destination (e.g. /checkout, /vendor/apply) across an error on the login/register page.
@@ -148,6 +153,7 @@ export async function GET(request: NextRequest) {
         intent: state.intent,
         linkedUser,
         existing: linkedUser ? { kind: "none" } : await existingAccountIdentity(identity.email),
+        customerTermsAccepted: stateAcceptedCustomerTerms(state),
       });
     };
 
@@ -184,6 +190,8 @@ export async function GET(request: NextRequest) {
             template: "WELCOME_CUSTOMER",
             payload: { name: displayName },
           });
+          // Reached only with the current terms version in the signed state (stateAcceptedCustomerTerms).
+          await recordAcceptance(transaction, { userId: created.id, document: "CUSTOMER_TERMS", source: "REGISTER_GOOGLE" });
           return created;
         });
         decision = { kind: "session", userId: user.id };

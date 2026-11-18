@@ -22,6 +22,8 @@ export function googleOAuthMessage(code?: string, _intent: GoogleOAuthIntent = "
   switch (code) {
     case "unavailable": return "Google girişi serverdə konfiqurasiya edilməyib.";
     case "account-exists": return "Təsdiqlənmiş Google e-poçtu ilə BAGATI hesabı tapıldı. Hesablar avtomatik birləşdirilmir. Mövcud hesabınıza uyğun giriş bölməsini seçin.";
+    case "register-required": return "Əvvəlcə qeydiyyatdan keçin. Bu Google e-poçtu ilə BAGATI hesabı tapılmadı: şərtlərlə razılığınızı təsdiqləyib Google ilə davam edin.";
+    case "terms-required": return "Google ilə qeydiyyat üçün əvvəlcə İstifadəçi şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";
     case "not-registered": return "Bu Google e-poçtu ilə BAGATI hesabı tapılmadı. Qeydiyyat səhifəsindən hesab yaradın.";
     case "seller-not-found": return "Bu Google e-poçtu ilə satıcı hesabı tapılmadı. Satıcı olmaq üçün əvvəlcə müştəri kimi qeydiyyatdan keçin, sonra satıcı müraciəti göndərin və admin təsdiqini gözləyin.";
     case "account-inactive": return "Bu e-poçta aid BAGATI hesabı deaktiv edilib. Ətraflı məlumat üçün dəstək xidməti ilə əlaqə saxlayın.";
@@ -48,15 +50,21 @@ export function googleOAuthMessage(code?: string, _intent: GoogleOAuthIntent = "
   }
 }
 
-export function GoogleOAuthButton({ intent, mode, nextPath, errorCode, portal }: {
+export function GoogleOAuthButton({ intent, mode, nextPath, errorCode, portal, termsGate }: {
   intent: GoogleOAuthIntent;
   mode: GoogleOAuthMode;
   nextPath?: string;
   errorCode?: string;
   portal?: string | null;
+  /**
+   * /register only: the consent checkbox. Until it is ticked the button does not start Google (onBlocked shows the
+   * inline error); once ticked the start URL carries acceptTerms=1, which the server signs into the OAuth state.
+   */
+  termsGate?: { accepted: boolean; onBlocked: () => void };
 }) {
   const query = new URLSearchParams({ intent, mode });
   if (nextPath) query.set("next", nextPath);
+  if (termsGate?.accepted) query.set("acceptTerms", "1");
   const error = googleOAuthMessage(errorCode, intent, portal);
   const portalChoice = errorCode === "account-exists" || errorCode === "wrong-role" || errorCode === "link-pending";
   // Public page: link only to the customer or seller login. The admin login is never linked (typed directly).
@@ -80,10 +88,17 @@ export function GoogleOAuthButton({ intent, mode, nextPath, errorCode, portal }:
         <Link href="/vendor/apply">Satıcı müraciəti göndər</Link>
       </nav>}
     </div>}
-    <Link href={`/api/auth/google/start?${query.toString()}`} className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 py-3.5 font-medium text-ink transition hover:bg-slate-50">
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.28-1.93-6.15-4.53H2.16v2.84A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.85 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.16a11 11 0 0 0 0 9.9l3.69-2.84Z"/><path fill="#EA4335" d="M12 4.36c1.62 0 3.07.56 4.21 1.68l3.15-3.15C17.45 1.1 14.97 0 12 0a11 11 0 0 0-9.84 7.05l3.69 2.84C6.72 7.29 9.14 4.36 12 4.36Z"/></svg>
+    {termsGate && !termsGate.accepted ? <button type="button" onClick={termsGate.onBlocked} aria-disabled="true" className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 py-3.5 font-medium text-ink opacity-60 transition">
+      <GoogleMark/>
+      Google ilə davam et
+    </button> : <Link href={`/api/auth/google/start?${query.toString()}`} className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 py-3.5 font-medium text-ink transition hover:bg-slate-50">
+      <GoogleMark/>
       {mode === "link" ? "Google hesabını bağla" : "Google ilə davam et"}
-    </Link>
+    </Link>}
     <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line"/><span>və ya e-poçtla</span><span className="h-px flex-1 bg-line"/></div>
   </div>;
+}
+
+function GoogleMark() {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.28-1.93-6.15-4.53H2.16v2.84A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.85 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.16a11 11 0 0 0 0 9.9l3.69-2.84Z"/><path fill="#EA4335" d="M12 4.36c1.62 0 3.07.56 4.21 1.68l3.15-3.15C17.45 1.1 14.97 0 12 0a11 11 0 0 0-9.84 7.05l3.69 2.84C6.72 7.29 9.14 4.36 12 4.36Z"/></svg>;
 }

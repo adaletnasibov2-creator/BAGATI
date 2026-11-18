@@ -14,6 +14,22 @@ import {
   hashVerificationCode,
 } from "@/lib/email-verification";
 import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
+import { recordAcceptance } from "@/lib/legal-acceptance";
+import { LEGAL_GATE_MESSAGES, TERMS_REQUIRED } from "@/lib/legal-gates";
+
+/**
+ * Resume path (an unverified account re-registering with the same password): the person ticked the box again, so
+ * the acceptance is recorded for that account. A failure is logged and never changes the acknowledgement (which
+ * must look the same for new and existing addresses); the checkout gate asks again if no row was written.
+ */
+async function recordResumedAcceptance(userId: string | null) {
+  if (!userId) return;
+  try {
+    await prisma.$transaction((tx) => recordAcceptance(tx, { userId, document: "CUSTOMER_TERMS", source: "REGISTER_EMAIL" }));
+  } catch (error) {
+    logAuthFailure("customer_registration_terms_resume", error);
+  }
+}
 
 async function handlePOST(request: NextRequest) {
   let data: unknown;
@@ -25,7 +41,13 @@ async function handlePOST(request: NextRequest) {
 
   const parsed = registerSchema.safeParse(data);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Məlumatları yoxlayın.", details: parsed.error.flatten() }, { status: 400 });
+    const termsMissing = parsed.error.issues.some((issue) => issue.path[0] === "acceptTerms");
+    return NextResponse.json(
+      termsMissing
+        ? { error: LEGAL_GATE_MESSAGES.registerTerms, code: TERMS_REQUIRED, details: parsed.error.flatten() }
+        : { error: "Məlumatları yoxlayın.", details: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
   const email = parsed.data.email.toLowerCase();
@@ -54,6 +76,7 @@ async function handlePOST(request: NextRequest) {
   catch (error) { logAuthFailure("customer_registration_lookup", error); return NextResponse.json({ error: "Qeydiyyat xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } }); }
   if (exists) {
     const userId = await resumableRegistrationUserId(exists, parsed.data.password, "CUSTOMER");
+    await recordResumedAcceptance(userId);
     return registrationAcknowledgement(userId, "CUSTOMER", "/verify-email");
   }
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
@@ -72,12 +95,15 @@ async function handlePOST(request: NextRequest) {
       select: { id: true, email: true, role: true },
     });
     await enqueueVerificationEmail(tx, { userId: created.id, recipient: created.email, codeHash, code, expiresAt: new Date(now.getTime() + EMAIL_CODE_TTL_MS) });
+    // Same transaction as the account: no account without its acceptance row, and no row without the account.
+    await recordAcceptance(tx, { userId: created.id, document: "CUSTOMER_TERMS", source: "REGISTER_EMAIL" });
     return created;
   }); } catch (error) {
     if (isDuplicateEmailError(error)) {
       try {
         const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true, emailVerifiedAt: true } });
         const userId = await resumableRegistrationUserId(existing, parsed.data.password, "CUSTOMER");
+        await recordResumedAcceptance(userId);
         return registrationAcknowledgement(userId, "CUSTOMER", "/verify-email");
       } catch (lookupError) {
         logAuthFailure("customer_registration_duplicate_lookup", lookupError);

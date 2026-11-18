@@ -3,6 +3,7 @@ import { currentUser } from "@/lib/auth";
 import { authRateLimitKey, consumeAuthProcessRateLimit, consumeAuthRateLimit, OAUTH_IP_RATE_LIMIT } from "@/lib/auth-rate-limit";
 import { logAuthFailure } from "@/lib/auth-logging";
 import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
+import { LEGAL_VERSIONS } from "@/lib/legal-versions";
 import {
   GOOGLE_OAUTH_COOKIE,
   googleAuthorizationUrl,
@@ -34,6 +35,13 @@ export async function GET(request: NextRequest) {
   // Seller accounts are never created through Google; sellers apply from a customer account at /vendor/apply.
   if (intent === "vendor" && mode === "register") {
     return NextResponse.redirect(new URL("/vendor/login?oauth=invalid", origin));
+  }
+  // Google registration needs the /register checkbox; the accepted version is signed into the state below.
+  if (intent === "customer" && mode === "register" && params.get("acceptTerms") !== "1") {
+    const target = new URL("/register?oauth=terms-required", origin);
+    const requestedNext = params.get("next");
+    if (requestedNext) target.searchParams.set("next", safeOAuthNextPath(requestedNext, "customer"));
+    return NextResponse.redirect(target);
   }
   if (!consumeAuthProcessRateLimit("google-oauth-start", 600, 60_000)) {
     return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=unavailable`, origin));
@@ -69,6 +77,7 @@ export async function GET(request: NextRequest) {
       mode,
       next,
       ...(mode === "link" && account ? { accountUserId: account.id } : {}),
+      ...(intent === "customer" && mode === "register" ? { termsVersion: LEGAL_VERSIONS.CUSTOMER_TERMS } : {}),
     });
     const response = NextResponse.redirect(authorization.url);
     response.cookies.set(GOOGLE_OAUTH_COOKIE, authorization.signedState, googleOAuthCookieOptions());

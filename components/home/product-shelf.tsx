@@ -1,7 +1,7 @@
 "use client";
 
 import { PRODUCT_SHELF_TRACK_CLASS } from "@/components/product-layout";
-import Link from "next/link";
+import { HomeSectionHeading } from "@/components/home/section-heading";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
 
@@ -25,32 +25,23 @@ export function ProductShelf({ id, eyebrow, title, href, actionLabel, children }
   }
 
   return (
-    <section className="container py-7 sm:py-9" aria-labelledby={`${id}-title`}>
-      <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5">
-        <div className="min-w-0">
-          <p className="text-[.63rem] font-semibold uppercase tracking-[.16em] text-bagati-muted sm:text-[.68rem]">{eyebrow}</p>
-          <h2 id={`${id}-title`} className="mt-1 text-xl font-semibold tracking-tight text-bagati-text sm:text-2xl">{title}</h2>
+    <section className="container py-8 sm:py-12" aria-labelledby={`${id}-title`}>
+      <HomeSectionHeading id={`${id}-title`} eyebrow={eyebrow} title={title} href={href} actionLabel={actionLabel}>
+        <div className="hidden items-center gap-1.5 sm:flex">
+          <button type="button" aria-label={`${title}: əvvəlki məhsullar`} onClick={() => scroll(-1)} className="grid h-11 w-11 place-items-center rounded-full border border-line bg-white text-fg-body transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none">
+            <ChevronLeft aria-hidden="true" size={18} />
+          </button>
+          <button type="button" aria-label={`${title}: növbəti məhsullar`} onClick={() => scroll(1)} className="grid h-11 w-11 place-items-center rounded-full border border-line bg-white text-fg-body transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none">
+            <ChevronRight aria-hidden="true" size={18} />
+          </button>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Link href={href} className="inline-flex min-h-10 items-center gap-1 text-[.68rem] font-semibold text-bagati-text transition hover:text-bagati-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold sm:text-sm">
-            {actionLabel}<ChevronRight aria-hidden="true" size={15} />
-          </Link>
-          <div className="hidden items-center gap-1 sm:flex">
-            <button type="button" aria-label={`${title}: əvvəlki məhsullar`} onClick={() => scroll(-1)} className="grid h-10 w-10 place-items-center rounded-full border border-bagati-border bg-white text-bagati-text transition hover:border-bagati-accent hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
-              <ChevronLeft aria-hidden="true" size={17} />
-            </button>
-            <button type="button" aria-label={`${title}: növbəti məhsullar`} onClick={() => scroll(1)} className="grid h-10 w-10 place-items-center rounded-full border border-bagati-border bg-white text-bagati-text transition hover:border-bagati-accent hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
-              <ChevronRight aria-hidden="true" size={17} />
-            </button>
-          </div>
-        </div>
-      </div>
+      </HomeSectionHeading>
       <div
         ref={shelfRef}
         role="region"
         aria-label={`${title} məhsulları`}
         tabIndex={0}
-        className={`${PRODUCT_SHELF_TRACK_CLASS} overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory pb-3 outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2`}
+        className={`${PRODUCT_SHELF_TRACK_CLASS} overflow-x-auto overscroll-x-contain scroll-smooth snap-x snap-mandatory pb-3 outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2`}
       >
         {children}
       </div>

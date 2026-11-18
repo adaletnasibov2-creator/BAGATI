@@ -27,7 +27,7 @@ test("focus ring: green on the public site, gold kept for admin/seller panel and
   assert.match(read("components/header.tsx"), /<div className="bagati-on-dark bg-surface-inverse text-white">/);
   assert.match(read("components/customer-footer.tsx"), /<footer className="bagati-on-dark /);
   assert.match(read("components/home/hero-carousel.tsx"), /className="bagati-on-dark relative z-10 flex/);
-  assert.match(read("app/(customer)/(home)/page.tsx"), /className="bagati-on-dark relative isolate overflow-hidden rounded-\[24px\] bg-bagati-primary/);
+  assert.match(read("app/(customer)/(home)/page.tsx"), /className="bagati-on-dark relative isolate overflow-hidden rounded-feature bg-primary /);
   assert.match(read("components/announcement-bar-client.tsx"), /className=\{`bagati-focus-current \$\{ANNOUNCEMENT_TONE_CLASSES\[bar\.tone\]\}/);
 });
 

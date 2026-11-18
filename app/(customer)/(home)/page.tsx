@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { ChevronRight, MapPin, Store } from "lucide-react";
+import { ArrowRight, ChevronRight, MapPin } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
 import { HeroCarousel } from "@/components/home/hero-carousel";
 import { ProductShelf } from "@/components/home/product-shelf";
-import { StoreCard } from "@/components/store-card";
+import { HomeSectionHeading } from "@/components/home/section-heading";
+import { StoreStrip } from "@/components/home/store-strip";
+import { TrustRow } from "@/components/home/trust-row";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { publicProductVisibilityWhere, publicStoreVisibilityWhere } from "@/lib/store-visibility";
@@ -260,21 +262,15 @@ export default async function HomePage({ searchParams }: Props) {
         <HeroCarousel banners={banners} />
       </section>
 
-      {categories.length > 0 && <section className="container pb-4 pt-2 sm:pb-6" aria-labelledby="categories-title">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-bagati-muted">BAGATI kataloqu</p>
-            <h2 id="categories-title" className="mt-1 text-xl font-semibold tracking-tight text-bagati-text sm:text-2xl">Nə axtarırsan?</h2>
-          </div>
-          <Link href="/categories" className="inline-flex min-h-10 shrink-0 items-center gap-1 text-xs font-semibold text-bagati-text transition hover:text-bagati-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold sm:text-sm">
-            Hamısına bax<ChevronRight aria-hidden="true" size={15} />
-          </Link>
-        </div>
-        <nav aria-label="Məhsul kateqoriyaları" className="-mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-3 sm:px-0 lg:grid-cols-10">
+      <TrustRow />
+
+      {categories.length > 0 && <section className="container py-8 sm:py-12" aria-labelledby="categories-title">
+        <HomeSectionHeading id="categories-title" eyebrow="BAGATI kataloqu" title="Nə axtarırsan?" href="/categories" />
+        <nav aria-label="Məhsul kateqoriyaları" className="-mx-3 flex snap-x gap-3 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-10">
           {orderedCategories.map((category) => (
-            <Link key={category.id} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group flex min-h-[142px] min-w-[108px] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-[20px] border border-bagati-border bg-white px-2 py-3 text-center shadow-[0_6px_18px_rgba(23,58,58,.035)] outline-none transition duration-200 hover:-translate-y-0.5 hover:border-[#C9D8D1] hover:shadow-card focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2 motion-reduce:transition-none sm:min-w-0">
+            <Link key={category.id} href={`/products?category=${encodeURIComponent(category.slug)}`} className="group flex min-h-[148px] w-[112px] shrink-0 snap-start flex-col items-center justify-start gap-3 rounded-card border border-line bg-white px-2 pb-3 pt-4 text-center transition-[transform,box-shadow,border-color] duration-200 hover:border-brand-200 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none sm:w-auto sm:min-w-0">
               <CategoryIcon category={category} size="large" loading="lazy" />
-              <span className="line-clamp-2 min-h-8 max-w-[104px] text-[.74rem] font-semibold leading-4 text-bagati-text sm:text-[.78rem]">{category.name}</span>
+              <span className="line-clamp-2 min-h-10 max-w-[104px] text-sm font-medium leading-5 text-fg group-hover:text-primary">{category.name}</span>
             </Link>
           ))}
         </nav>
@@ -296,7 +292,7 @@ export default async function HomePage({ searchParams }: Props) {
         </ProductShelf>
       )}
       {promotionalById.size > 0 && (
-        <div className="border-y border-bagati-border bg-bagati-section">
+        <div className="border-y border-line bg-surface-sunken">
           <ProductShelf id="campaign-products" eyebrow="Mağazaların aktiv təklifləri" title="Kampaniyada" href="/deals" actionLabel="Hamısına bax">
             {[...promotionalById.values()].slice(0, 10).map(({ product, campaign, price, basePrice, discountLabel }) => (
               <div key={product.id} className="min-w-0 snap-start">
@@ -327,10 +323,10 @@ export default async function HomePage({ searchParams }: Props) {
       )}
 
       {eligibleCampaigns.length > 0 && (
-        <section className="border-y border-bagati-border bg-white py-8 sm:py-10" aria-labelledby="campaigns-title">
+        <section className="py-8 sm:py-12" aria-labelledby="campaigns-title">
           <div className="container">
-            <SectionHeading eyebrow="Mağazaların aktiv təklifləri" title="Kampaniyalar" href="/deals" actionLabel="Hamısına bax" id="campaigns-title" />
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <HomeSectionHeading id="campaigns-title" eyebrow="Mağazaların aktiv təklifləri" title="Kampaniyalar" href="/deals" />
+            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
               {eligibleCampaigns.map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} />)}
             </div>
           </div>
@@ -338,42 +334,43 @@ export default async function HomePage({ searchParams }: Props) {
       )}
 
       {homepageStores.length > 0 && (
-        <section className="border-y border-bagati-border bg-bagati-section py-8 sm:py-10" aria-labelledby="stores-title">
+        <section className="border-y border-line bg-surface-sunken py-8 sm:py-12" aria-labelledby="stores-title">
           <div className="container">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <SectionHeading eyebrow={featuredStores.length ? "BAGATI seçimi" : "Şəhərinə uyğun"} title={featuredStores.length ? "Seçilmiş mağazalar" : city?.slug === "qazax" ? "Qazax mağazaları" : city?.name ? `${city.name} mağazaları` : "Mağazalar"} href="/stores" actionLabel="Hamısına bax" id="stores-title" />
-              <Link href="/stores/map" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-bagati-border bg-white px-4 text-xs font-semibold text-bagati-text transition hover:border-bagati-accent hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold sm:text-sm">
-                <MapPin aria-hidden="true" size={15} />Xəritəyə bax
+            <HomeSectionHeading id="stores-title" eyebrow={featuredStores.length ? "BAGATI seçimi" : "Şəhərinə uyğun"} title={featuredStores.length ? "Seçilmiş mağazalar" : city?.slug === "qazax" ? "Qazax mağazaları" : city?.name ? `${city.name} mağazaları` : "Mağazalar"} href="/stores">
+              <Link href="/stores/map" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line-strong bg-white px-4 text-sm font-semibold text-fg-body transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none">
+                <MapPin aria-hidden="true" size={16} /><span className="hidden sm:inline">Xəritəyə bax</span><span className="sr-only sm:hidden">Xəritəyə bax</span>
               </Link>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-              {homepageStores.slice(0, 4).map((store) => <StoreCard key={store.id} id={store.id} name={store.name} city={store.city.name} description={store.description} logoUrl={store.logoUrl} hasLocation={store.latitude !== null && store.longitude !== null} />)}
-            </div>
+            </HomeSectionHeading>
+            <StoreStrip stores={homepageStores.slice(0, 4)} />
           </div>
         </section>
       )}
 
-      <section className="container py-8 sm:py-10">
-        <div className="bagati-on-dark relative isolate overflow-hidden rounded-[24px] bg-bagati-primary px-5 py-6 text-white shadow-[0_18px_46px_rgba(23,58,58,.13)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:rounded-[30px] sm:px-9 sm:py-8">
-          <div aria-hidden="true" className="absolute -right-16 -top-32 -z-10 h-72 w-72 rounded-full border border-[#C9D9CC]/25 sm:right-[8%] sm:h-[23rem] sm:w-[23rem]" />
+      <section className="container py-8 sm:py-12" aria-labelledby="seller-cta-title">
+        <div className="bagati-on-dark relative isolate overflow-hidden rounded-feature bg-primary px-6 py-8 text-white shadow-overlay sm:flex sm:items-center sm:justify-between sm:gap-8 sm:px-10 sm:py-10">
+          {/* Decorative gold line-art arcs (CSS only). */}
+          <span aria-hidden="true" className="absolute -right-20 -top-28 -z-10 h-80 w-80 rounded-full border border-[rgba(199,154,82,0.45)] sm:right-[6%] sm:h-[26rem] sm:w-[26rem]" />
+          <span aria-hidden="true" className="absolute -right-6 -top-14 -z-10 h-52 w-52 rounded-full border border-[rgba(199,154,82,0.28)] sm:right-[14%] sm:h-72 sm:w-72" />
           <div className="max-w-2xl">
-            <p className="text-[.65rem] font-semibold uppercase tracking-[.18em] text-bagati-cream-dark">BAGATI-də satıcı ol</p>
-            <h2 className="mt-2 text-xl font-semibold leading-tight sm:text-2xl">Mağazanı BAGATI-də aç</h2>
-            <p className="mt-2 text-sm leading-6 text-white/80">Müraciətə başla və mağazan üçün hesab yarat.</p>
+            <p className="flex items-center gap-3 text-kicker uppercase text-gold-200">
+              <span aria-hidden="true" className="h-px w-8 shrink-0 bg-gold-400" />BAGATI-də satıcı ol
+            </p>
+            <h2 id="seller-cta-title" className="mt-3 text-h2 text-white">Mağazanı BAGATI-də aç</h2>
+            <p className="mt-2 text-body text-white/85">Müraciətə başla və mağazan üçün hesab yarat.</p>
           </div>
-          <Link href="/vendor/apply" className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-bagati-cream px-5 text-sm font-semibold text-bagati-deep transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold sm:mt-0">
-            Satıcı ol<ChevronRight aria-hidden="true" size={16} />
+          <Link href="/vendor/apply" className="mt-6 inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gold-100 px-6 text-body font-semibold text-fg shadow-subtle transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none sm:mt-0">
+            Satıcı ol<ArrowRight aria-hidden="true" size={17} />
           </Link>
         </div>
       </section>
 
       {!hasHomepageContent && (
         <section className="container pb-9 pt-1 sm:pb-12">
-          <div className="rounded-2xl border border-bagati-border bg-white p-5 sm:p-7">
-            <p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-bagati-muted">{settings.siteName}</p>
-            <h2 className="mt-2 text-xl font-semibold text-bagati-deep">{settings.homeIntroTitle}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-bagati-secondary">{settings.homeIntroDescription}</p>
-            <Link href={settings.homeIntroLinkUrl} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-bagati-primary px-5 text-sm font-semibold text-white transition hover:bg-bagati-hover">
+          <div className="rounded-card border border-line bg-white p-6 sm:p-8">
+            <p className="text-kicker uppercase text-gold-700">{settings.siteName}</p>
+            <h2 className="mt-2 text-h2 text-fg">{settings.homeIntroTitle}</h2>
+            <p className="mt-2 max-w-2xl text-body text-fg-secondary">{settings.homeIntroDescription}</p>
+            <Link href={settings.homeIntroLinkUrl} className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-6 text-body font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none">
               {settings.homeIntroLinkLabel}<ChevronRight aria-hidden="true" size={16} />
             </Link>
           </div>
@@ -413,83 +410,14 @@ function HomeProductCards({ products }: { products: HomeProduct[] }) {
   });
 }
 
-function SectionHeading({ eyebrow, title, href, actionLabel, id }: { eyebrow: string; title: string; href: string; actionLabel: string; id: string }) {
-  return (
-    <div className="flex items-end justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-[.63rem] font-semibold uppercase tracking-[.16em] text-bagati-muted sm:text-[.68rem]">{eyebrow}</p>
-        <h2 id={id} className="mt-1 text-xl font-semibold tracking-tight text-bagati-text sm:text-2xl">{title}</h2>
-      </div>
-      <Link href={href} className="inline-flex min-h-10 shrink-0 items-center gap-1 text-[.68rem] font-semibold text-bagati-text transition hover:text-bagati-accent sm:text-sm">{actionLabel}<ChevronRight size={15} /></Link>
-    </div>
-  );
-}
-
 function CampaignCard({ campaign }: { campaign: HomepageCampaign }) {
+  const discount = campaignDiscount(campaign);
   return (
-    <Link href="/deals" className="group rounded-[20px] border border-bagati-border bg-white p-4 transition hover:-translate-y-0.5 hover:border-bagati-gold hover:shadow-card motion-reduce:transition-none">
-      <p className="text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-gold-dark">{campaign.store?.name ?? "BAGATI kampaniyası"}</p>
-      <h3 className="mt-2 line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-bagati-text group-hover:text-bagati-accent">{campaign.name}</h3>
-      {campaignDiscount(campaign) && <p className="mt-2 text-sm font-semibold text-bagati-accent">{campaignDiscount(campaign)}</p>}
-      <p className="mt-3 text-[.68rem] text-bagati-muted">{campaign.startsAt.toLocaleDateString("az-AZ")} – {campaign.endsAt.toLocaleDateString("az-AZ")}</p>
-    </Link>
-  );
-}
-
-function CampaignSpotlight({ campaign }: { campaign: HomepageCampaign }) {
-  return (
-    <Link href="/deals" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] border border-[#E6D8BD] bg-gradient-to-br from-bagati-cream to-[#FBF8F0] p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
-      <span aria-hidden="true" className="absolute -right-9 -top-12 -z-10 h-40 w-40 rounded-full border-[18px] border-white/35" />
-      <div>
-        <p className="text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-gold-dark">İndi aktiv</p>
-        <h2 className="mt-2 line-clamp-2 text-base font-semibold leading-5 text-bagati-deep sm:text-lg">{campaign.name}</h2>
-        {campaign.store?.name && <p className="mt-1 truncate text-xs text-bagati-text-secondary">{campaign.store.name}</p>}
-      </div>
-      <span className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-semibold text-bagati-primary">
-        {campaignDiscount(campaign) ?? "Kampaniyaya bax"}<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" />
-      </span>
-    </Link>
-  );
-}
-
-function SellerSpotlight() {
-  return (
-    <Link href="/vendor/apply" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] bg-bagati-primary p-4 text-white transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
-      <span aria-hidden="true" className="absolute -right-8 -top-12 -z-10 h-36 w-36 rounded-full border-[18px] border-white/10" />
-      <span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-bagati-cream"><Store aria-hidden="true" size={19} /></span>
-      <span>
-        <span className="block text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-cream-dark">Satıcı ol</span>
-        <span className="mt-1 block text-base font-semibold">Mağazanı BAGATI-də aç</span>
-        <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-white/85">Müraciətə başla<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" /></span>
-      </span>
-    </Link>
-  );
-}
-
-function CitySpotlight({ city }: { city: string }) {
-  return (
-    <Link href="/stores/map" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] border border-bagati-border bg-bagati-section p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
-      <span aria-hidden="true" className="absolute -right-7 -top-9 -z-10 h-36 w-36 rounded-full border-[18px] border-white/55" />
-      <MapPin aria-hidden="true" size={20} className="text-bagati-accent" />
-      <span>
-        <span className="block text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-muted">Şəhərindən kəşf et</span>
-        <span className="mt-1 block text-base font-semibold text-bagati-deep">{city} mağazaları</span>
-        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-bagati-primary">Xəritəyə bax<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" /></span>
-      </span>
-    </Link>
-  );
-}
-
-function CategorySpotlight() {
-  return (
-    <Link href="/categories" className="group relative isolate flex min-h-[148px] flex-col justify-between overflow-hidden rounded-[22px] border border-bagati-border bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:min-h-[164px] sm:p-5 lg:min-h-0 lg:flex-1 motion-reduce:transition-none">
-      <span aria-hidden="true" className="absolute -right-7 -top-9 -z-10 h-36 w-36 rounded-full bg-bagati-section" />
-      <Store aria-hidden="true" size={20} className="text-bagati-accent" />
-      <span>
-        <span className="block text-[.62rem] font-semibold uppercase tracking-[.14em] text-bagati-muted">Kəşfə başla</span>
-        <span className="mt-1 block text-base font-semibold text-bagati-deep">Kateqoriyalara göz at</span>
-        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-bagati-primary">Bölmələri gör<ChevronRight aria-hidden="true" size={14} className="transition-transform group-hover:translate-x-0.5" /></span>
-      </span>
+    <Link href="/deals" className="group flex flex-col rounded-card border border-line bg-white p-5 transition-[transform,box-shadow,border-color] duration-200 hover:border-gold-200 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none">
+      <p className="truncate text-kicker uppercase text-gold-700">{campaign.store?.name ?? "BAGATI kampaniyası"}</p>
+      <h3 className="mt-2 line-clamp-2 min-h-10 text-body font-semibold leading-5 text-fg group-hover:text-primary">{campaign.name}</h3>
+      {discount && <p className="mt-3 w-fit rounded-full bg-gold-100 px-3 py-1 text-sm font-semibold text-gold-700 ring-1 ring-inset ring-gold-200">{discount}</p>}
+      <p className="mt-auto pt-4 text-xs text-fg-muted">{campaign.startsAt.toLocaleDateString("az-AZ")} – {campaign.endsAt.toLocaleDateString("az-AZ")}</p>
     </Link>
   );
 }

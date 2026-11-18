@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SellerTermsCard } from "@/components/seller-terms-card";
 
 type City = { id: string; name: string };
 const input = "mt-1 w-full rounded-xl border border-[#ded9cf] bg-white px-3.5 py-3 text-sm outline-none focus:border-[#b89758]";
@@ -18,6 +19,7 @@ export default function VendorStoreCreateForm({ cities }: { cities: City[] }) {
   const [addressEdited, setAddressEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [termsRequired, setTermsRequired] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,7 +33,10 @@ export default function VendorStoreCreateForm({ cities }: { cities: City[] }) {
         body: JSON.stringify({ ...values, slug: storeAddress }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Mağazanı yaratmaq mümkün olmadı.");
+      if (!response.ok) {
+        if (result.code === "SELLER_TERMS_REQUIRED") setTermsRequired(true);
+        throw new Error(result.error || "Mağazanı yaratmaq mümkün olmadı.");
+      }
       router.replace(`/vendor/${result.store.id}/profile`);
       router.refresh();
     } catch (reason) {
@@ -73,6 +78,7 @@ export default function VendorStoreCreateForm({ cities }: { cities: City[] }) {
       </div>
     </div>
     {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+    {termsRequired && <SellerTermsCard compact onAccepted={() => { setTermsRequired(false); setError(""); }}/>}
     <button type="submit" disabled={busy || cities.length === 0 || storeAddress.length < 2} className="min-h-11 rounded-xl bg-[#173c40] px-5 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
       {busy ? "Yaradılır…" : "Qaralama yarat və qurulumu davam et"}
     </button>

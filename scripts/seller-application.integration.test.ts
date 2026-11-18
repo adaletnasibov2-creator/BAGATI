@@ -71,7 +71,7 @@ test("seller applications: submit, one open, reapply rules, withdraw, approve at
     let voenCounter = 0;
     const nextVoen = () => `9${tag.replace(/\D/g, "").padEnd(6, "7").slice(0, 6)}${String(++voenCounter).padStart(2, "0")}2`;
     const input = (overrides: Record<string, unknown> = {}) => sellerApplicationInputSchema.parse({
-      displayName: "Fixture Seller", phone: "055 123 45 67", sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Fixture Sahibkar", voen: nextVoen(), ...overrides,
+      displayName: "Fixture Seller", phone: "055 123 45 67", sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Fixture Sahibkar", voen: nextVoen(), acceptSellerTerms: true, ...overrides,
     });
 
     await t.test("submit keeps CUSTOMER, writes PENDING + audit + outbox; a second open application is refused", async () => {

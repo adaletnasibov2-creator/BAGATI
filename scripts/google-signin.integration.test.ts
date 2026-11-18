@@ -135,9 +135,10 @@ test("Google sign-in creates only customers, never sellers, and routes other rol
 
     const get = (path: string, jar?: Jar) => fetch(new URL(path, baseUrl), { headers: jar?.header() ? { cookie: jar.header() } : {}, redirect: "manual", cache: "no-store" });
     const fakeGoogle = fake;
-    async function google(input: { intent: "customer" | "vendor"; mode: "login" | "register"; identity: FakeGoogleIdentity; next?: string; tamper?: FakeGoogleTamper }) {
+    async function google(input: { intent: "customer" | "vendor"; mode: "login" | "register"; identity: FakeGoogleIdentity; next?: string; tamper?: FakeGoogleTamper; acceptTerms?: boolean }) {
       const jar = new Jar();
-      const query = new URLSearchParams({ intent: input.intent, mode: input.mode, ...(input.next ? { next: input.next } : {}) });
+      // acceptTerms: the /register consent checkbox (legal Phase B); the start route signs the version into the state.
+      const query = new URLSearchParams({ intent: input.intent, mode: input.mode, ...(input.next ? { next: input.next } : {}), ...(input.acceptTerms ? { acceptTerms: "1" } : {}) });
       const start = await get(`/api/auth/google/start?${query}`, jar);
       assert.equal(start.status, 307, `start ${query}`);
       jar.absorb(start);
@@ -156,9 +157,25 @@ test("Google sign-in creates only customers, never sellers, and routes other rol
     }
     const result = (location: URL) => ({ path: location.pathname, oauth: location.searchParams.get("oauth"), portal: location.searchParams.get("portal") });
 
-    await t.test("new customer: first Google sign-in on the customer login page creates a verified CUSTOMER", async () => {
+    await t.test("new customer: Google on /login creates nothing and sends the user to /register (legal decision 1a)", async () => {
       const identity = { sub: `new-${tag}`, email: email("new"), givenName: "Yeni", familyName: "Musteri" };
       const { location, jar } = await google({ intent: "customer", mode: "login", identity, next: "/checkout" });
+      assert.deepEqual(result(location), { path: "/register", oauth: "register-required", portal: null });
+      assert.equal(location.searchParams.get("next"), "/checkout");
+      assert.equal(await prisma.user.count({ where: { email: identity.email } }), 0);
+      assert.equal(jar.has("bagati_session"), false);
+    });
+
+    await t.test("new customer: /register without the checkbox never reaches Google", async () => {
+      const start = await get(`/api/auth/google/start?${new URLSearchParams({ intent: "customer", mode: "register" })}`);
+      assert.equal(start.status, 307);
+      const target = new URL(start.headers.get("location") ?? "", baseUrl);
+      assert.deepEqual(result(target), { path: "/register", oauth: "terms-required", portal: null });
+    });
+
+    await t.test("new customer: Google on /register with the checkbox creates a verified CUSTOMER and records REGISTER_GOOGLE", async () => {
+      const identity = { sub: `new-${tag}`, email: email("new"), givenName: "Yeni", familyName: "Musteri" };
+      const { location, jar } = await google({ intent: "customer", mode: "register", identity, next: "/checkout", acceptTerms: true });
       assert.equal(location.pathname, "/checkout");
       const user = await prisma.user.findUniqueOrThrow({ where: { email: identity.email }, include: { googleAccount: true, customerProfile: true, vendorProfile: true } });
       assert.equal(user.role, "CUSTOMER");
@@ -167,12 +184,14 @@ test("Google sign-in creates only customers, never sellers, and routes other rol
       assert.equal(user.googleAccount?.googleSub, identity.sub);
       assert.ok(user.customerProfile);
       assert.equal(user.vendorProfile, null);
+      const acceptances = await prisma.legalAcceptance.findMany({ where: { userId: user.id } });
+      assert.deepEqual(acceptances.map((row) => [row.document, row.source]), [["CUSTOMER_TERMS", "REGISTER_GOOGLE"]]);
       assert.equal((await get("/account", jar)).status, 200);
     });
 
-    await t.test("returning customer is signed in without a second account", async () => {
+    await t.test("returning customer is signed in from /login without a second account", async () => {
       const identity = { sub: `new-${tag}`, email: email("new") };
-      const { location, jar } = await google({ intent: "customer", mode: "register", identity });
+      const { location, jar } = await google({ intent: "customer", mode: "login", identity });
       assert.equal(location.pathname, "/account");
       assert.equal(await prisma.user.count({ where: { email: identity.email } }), 1);
       assert.equal((await get("/account", jar)).status, 200);
@@ -250,7 +269,7 @@ test("Google sign-in creates only customers, never sellers, and routes other rol
 
     await t.test("unverified Google email creates nothing and gets its own message code", async () => {
       const identity = { sub: `unverified-${tag}`, email: email("unverified") };
-      const { location, jar } = await google({ intent: "customer", mode: "register", identity, tamper: "unverified-email" });
+      const { location, jar } = await google({ intent: "customer", mode: "register", identity, tamper: "unverified-email", acceptTerms: true });
       assert.deepEqual(result(location), { path: "/register", oauth: "email-unverified", portal: null });
       assert.equal(await prisma.user.count({ where: { email: identity.email } }), 0);
       assert.equal(jar.has("bagati_session"), false);
@@ -274,6 +293,7 @@ test("Google sign-in creates only customers, never sellers, and routes other rol
       if (ids.length) {
         await prisma.googleLinkTransaction.deleteMany({ where: { userId: { in: ids } } });
         await prisma.googleAccount.deleteMany({ where: { userId: { in: ids } } });
+        await prisma.auditLog.deleteMany({ where: { actorId: { in: ids }, action: "LEGAL_TERMS_ACCEPTED" } });
         await prisma.user.deleteMany({ where: { id: { in: ids } } });
       }
       await prisma.emailOutbox.deleteMany({ where: { recipient: { endsWith: `@${domain}` } } });

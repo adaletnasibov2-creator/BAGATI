@@ -9,6 +9,7 @@ import { categoriesWithOtherLast } from "@/lib/category-order";
 import { vendorProductPatchSchema, VendorProductPatchError, hasVendorProductStoreAccess, runVendorProductPatch } from "@/lib/vendor-product-patch";
 import { isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
+import { LEGAL_GATE_MESSAGES, SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
 
 const db = prisma;
 
@@ -67,6 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (error instanceof EntitlementError) return entitlementErrorResponse(error);
     if (error instanceof VendorProductPatchError) {
       if (error.code === "NOT_FOUND") return NextResponse.json({ error: "Məhsul tapılmadı" }, { status: 404 });
+      if (error.code === SELLER_TERMS_REQUIRED) return NextResponse.json({ error: LEGAL_GATE_MESSAGES.sellerTermsRequired, code: SELLER_TERMS_REQUIRED }, { status: 409 });
       if (error.code === "IMAGE_NOT_OWNED") return NextResponse.json({ error: "Yeni şəkilləri bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });
       if (error.code === "VARIANT_NOT_OWNED") return NextResponse.json({ error: "Seçim bu məhsula aid deyil" }, { status: 422 });
       if (error.code === "VARIANT_IMAGE_NOT_OWNED") return NextResponse.json({ error: "Seçim şəkillərini bu mağazanın yükləmə bölməsindən əlavə edin" }, { status: 422 });

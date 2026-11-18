@@ -3,6 +3,7 @@ import { z } from "zod";
 import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sellerTermsGate } from "@/lib/legal-gates";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
@@ -38,6 +39,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const user = await currentUser();
   if (!user || user.role !== "VENDOR") return NextResponse.json({ error: "Satıcı hesabına giriş tələb olunur" }, { status: 403 });
+  // A new store needs the CURRENT seller terms (accepted on /vendor/apply or with the seller panel card).
+  const terms = await sellerTermsGate(prisma, user.id);
+  if (!terms.ok) return NextResponse.json({ error: terms.error, code: terms.code }, { status: terms.status });
   let raw: unknown;
   try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = schema.safeParse(raw);

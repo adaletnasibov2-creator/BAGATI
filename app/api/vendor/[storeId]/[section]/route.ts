@@ -34,6 +34,8 @@ import { resetVoenVerificationOnChange } from "@/lib/voen-verification";
 import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-notifications";
 import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
+import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
+import { LEGAL_GATE_MESSAGES, SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
 
 const statuses = ["NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "DELIVERED", "CANCELLED", "RETURNED"] as const;
 const db: any = prisma;
@@ -360,6 +362,8 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
      if(v.images?.some((url:string)=>!isOwnedStoreAssetUrl(storeId,url)&&!current.images.includes(url)))return {error:"IMAGE_NOT_OWNED" as const};
 
      if(isVendorProductActivation(current.status,v.status)){
+      // Publishing needs the CURRENT seller terms (lib/legal-gates.ts); an already active product is not affected.
+      if(!await hasAcceptedCurrent(tx,access.user.id,"SELLER_TERMS"))return {error:SELLER_TERMS_REQUIRED};
       const store=await tx.store.findUnique({where:{id:storeId},select:{
        status:true,isActive:true,legalInfoApproved:true,adminManaged:true,
        city:{select:{isActive:true}},
@@ -403,6 +407,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     });
     if("error" in result){
      if(result.error==="NOT_FOUND")return NextResponse.json({error:"Məhsul tapılmadı"},{status:404});
+     if(result.error===SELLER_TERMS_REQUIRED)return NextResponse.json({error:LEGAL_GATE_MESSAGES.sellerTermsRequired,code:SELLER_TERMS_REQUIRED},{status:409});
      if(result.error==="IMAGE_NOT_OWNED")return NextResponse.json({error:"Yeni şəkilləri bu mağazanın yükləmə bölməsindən əlavə edin"},{status:422});
      if(result.error==="PRODUCT_LIMIT_REACHED"&&"check" in result&&result.check.reason==="PRODUCT_LIMIT_REACHED"){
       return entitlementErrorResponse(new EntitlementError("PRODUCT_LIMIT_REACHED",result.check.plan,result.check.current,result.check.limit));

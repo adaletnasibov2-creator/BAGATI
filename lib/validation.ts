@@ -7,6 +7,8 @@ export const registerSchema = z.object({
   password: z.string().min(12).max(128),
   firstName: z.string().trim().min(1).max(80).optional(),
   lastName: z.string().trim().min(1).max(80).optional(),
+  /** The /register checkbox (İstifadə şərtləri + Məxfilik siyasəti); recorded as REGISTER_EMAIL. */
+  acceptTerms: z.literal(true),
 });
 
 export const vendorRegisterSchema = z.object({

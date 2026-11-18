@@ -78,13 +78,22 @@ function fakeDatabase(options: {
   stores?: Record<string, ReturnType<typeof store>>;
   products?: ReturnType<typeof product>[];
   onProductUpdate?: (item: ReturnType<typeof product>) => void;
+  /** Whether the vendor accepted the CURRENT seller terms (legal Phase B); accepted unless a test says otherwise. */
+  sellerTermsAccepted?: boolean;
 } = {}) {
   const stores = options.stores ?? { "store-a": store() };
   const products = options.products ?? [product()];
   const queryLog: string[] = [];
   let transactionTail: Promise<void> = Promise.resolve();
   const transactionOptions: unknown[] = [];
+  const sellerTermsLookups: { userId: string; document: string; version: string }[] = [];
   const tx = {
+    legalAcceptance: {
+      findUnique: async ({ where }: { where: { userId_document_version: { userId: string; document: string; version: string } } }) => {
+        sellerTermsLookups.push(where.userId_document_version);
+        return options.sellerTermsAccepted === false ? null : { id: "acceptance-a" };
+      },
+    },
     // Accepts both tagged-template calls and Prisma.sql objects (used by the product-code duplicate check).
     $queryRaw: async (parts: TemplateStringsArray | { strings: readonly string[] }) => {
       queryLog.push((Array.isArray(parts) ? parts : (parts as { strings: readonly string[] }).strings).join("?"));
@@ -159,6 +168,7 @@ function fakeDatabase(options: {
       },
     } as unknown as VendorProductPatchDatabase,
     tx,
+    sellerTermsLookups,
   };
 }
 
@@ -470,4 +480,29 @@ test("serialized stock updates keep the last explicit quantity", async () => {
     actorUserId: "vendor-a",
   });
   assert.ok(existing.inventory[0].quantity === 4 || existing.inventory[0].quantity === 7);
+});
+
+test("legal Phase B: publishing needs the current seller terms of the acting vendor; editing an active product does not", async () => {
+  const blocked = fakeDatabase({ sellerTermsAccepted: false });
+  await assert.rejects(runVendorProductPatch(blocked.database, {
+    storeId: "store-a",
+    productId: "product-a",
+    values: patchValues(),
+    isOwnedImage: () => true,
+    actorUserId: "vendor-a",
+    now: new Date("2026-10-23T00:00:00.000Z"),
+  }), (error: unknown) => error instanceof Error && error.message === "SELLER_TERMS_REQUIRED");
+  assert.deepEqual(blocked.sellerTermsLookups, [{ userId: "vendor-a", document: "SELLER_TERMS", version: "2026-11-18" }]);
+
+  const alreadyActive = fakeDatabase({ sellerTermsAccepted: false, products: [product("product-a", "store-a", "ACTIVE")] });
+  const saved = await runVendorProductPatch(alreadyActive.database, {
+    storeId: "store-a",
+    productId: "product-a",
+    values: patchValues(),
+    isOwnedImage: () => true,
+    actorUserId: "vendor-a",
+    now: new Date("2026-10-23T00:00:00.000Z"),
+  });
+  assert.equal(saved.status, "ACTIVE");
+  assert.deepEqual(alreadyActive.sellerTermsLookups, [], "no gate when nothing is being published");
 });

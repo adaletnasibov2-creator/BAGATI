@@ -3,6 +3,7 @@ const fieldLabels: Record<string, string> = {
   password: "Şifrə 12–128 simvol olmalıdır.",
   firstName: "Adı yoxlayın.",
   lastName: "Soyadı yoxlayın.",
+  acceptTerms: "Davam etmək üçün İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.",
 };
 
 export function registrationErrorMessage(data: unknown, fallback: string) {

@@ -10,6 +10,8 @@ import { getStoreEntitlements, hasFeature } from "@/lib/subscription-entitlement
 import { storeStatusLabels, subscriptionStatusLabels } from "@/lib/vendor-store-setup";
 import { vendorNotificationScope } from "@/lib/vendor-notifications";
 import { storeConversationsBadge } from "@/lib/messaging-pages";
+import { SellerTermsCard } from "@/components/seller-terms-card";
+import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
@@ -18,7 +20,7 @@ export default async function VendorLayout({ children, params }: Readonly<{ chil
   const { storeId } = await params;
   // Owner continues; a signed-in CUSTOMER goes to /vendor/apply; anyone else gets a 404.
   const access = await requireVendorStorePage(storeId);
-  const [store, stores, unread, entitlement, newInquiries, conversations] = await Promise.all([
+  const [store, stores, unread, entitlement, newInquiries, conversations, sellerTermsAccepted] = await Promise.all([
     prisma.store.findUnique({ where: { id: access.storeId }, select: { name: true, status: true, isActive: true, city: { select: { name: true } }, subscription: { select: { status: true, plan: { select: { name: true } } } } } }),
     prisma.store.findMany({ where: { vendor: { userId: access.user.id } }, select: { id: true, name: true, city: { select: { name: true } } }, orderBy: { createdAt: "desc" } }),
     db.notification.count({ where: vendorNotificationScope(access.user.id, access.storeId, { unreadOnly: true }) }),
@@ -26,6 +28,8 @@ export default async function VendorLayout({ children, params }: Readonly<{ chil
     prisma.storeInquiry.count({ where: { storeId: access.storeId, status: "NEW" } }),
     // "Söhbətlər" badge: conversations with unread customer messages (partial index); null hides the tab while OFF.
     storeConversationsBadge(access.storeId, access.user.id),
+    // The card stays above every store page until the current seller terms are accepted; nothing else is blocked.
+    hasAcceptedCurrent(prisma, access.user.id, "SELLER_TERMS"),
   ]);
   if (!store) notFound();
   return <div className="min-h-screen bg-[#f7f5ef] text-[#16202c]">
@@ -43,6 +47,6 @@ export default async function VendorLayout({ children, params }: Readonly<{ chil
       </div>
     </header>
     <VendorNavigation storeId={storeId} canUseBulkImport={hasFeature(entitlement, "BULK_IMPORT")} unread={unread} newInquiries={newInquiries} conversations={conversations}/>
-    <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1600px] p-4 sm:p-7 lg:ml-[248px] lg:p-9 xl:p-10">{children}</main>
+    <main className="mx-auto min-h-[calc(100vh-72px)] max-w-[1600px] p-4 sm:p-7 lg:ml-[248px] lg:p-9 xl:p-10">{!sellerTermsAccepted && <div className="mb-6"><SellerTermsCard/></div>}{children}</main>
   </div>;
 }

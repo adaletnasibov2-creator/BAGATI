@@ -15,6 +15,7 @@ import { hasDuplicateNormalizedSkus } from "@/lib/sku-normalization";
 import { vendorProductCreateSchema } from "@/lib/vendor-product-schemas";
 import { generateProductCode } from "@/lib/product-code";
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
+import { sellerTermsGate } from "@/lib/legal-gates";
 
 const db: any = prisma;
 class StoreNotEligibleError extends Error {}
@@ -165,6 +166,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (value.brandId && !await db.brand.findUnique({ where: { id: value.brandId }, select: { id: true } })) return NextResponse.json({ error: "Brend tapılmadı" }, { status: 422 });
   if (value.status === "ACTIVE") {
     if (!value.categoryId) return NextResponse.json({ error: "Məhsulu yayımlamaq üçün kateqoriya seçin" }, { status: 422 });
+    // Publishing needs the CURRENT seller terms; saving a draft does not.
+    const terms = await sellerTermsGate(db, access.user.id);
+    if (!terms.ok) return NextResponse.json({ error: terms.error, code: terms.code }, { status: terms.status });
   }
   try {
     const product = await db.$transaction(async (tx: any) => {

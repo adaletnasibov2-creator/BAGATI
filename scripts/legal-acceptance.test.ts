@@ -94,7 +94,7 @@ test("hasAcceptedCurrent: only the current version counts", async () => {
   assert.equal(await hasAcceptedCurrent(db, "", "CUSTOMER_TERMS"), false);
 });
 
-test("Phase A: no application code calls the helper yet", async () => {
+test("Phase B: exactly the expected application code calls the helper (registration, Google, checkout, seller gates)", async () => {
   const { readdirSync, readFileSync, statSync } = await import("node:fs");
   const { join } = await import("node:path");
   const root = join(__dirname, "..");
@@ -107,5 +107,17 @@ test("Phase A: no application code calls the helper yet", async () => {
     }
   };
   for (const dir of ["app", "components", "lib"]) walk(dir);
-  assert.deepEqual(callers, []);
+  // A new caller must be added here on purpose (and recorded in the legal-acceptance report).
+  assert.deepEqual(callers.sort(), [
+    "app/(customer)/checkout/page.tsx",
+    "app/api/auth/google/callback/route.ts",
+    "app/api/auth/register/route.ts",
+    "app/api/vendor/[storeId]/[section]/route.ts",
+    "app/vendor/[storeId]/layout.tsx",
+    "app/vendor/page.tsx",
+    "app/vendor/stores/new/page.tsx",
+    "lib/legal-gates.ts",
+    "lib/seller-application-service.ts",
+    "lib/vendor-product-patch.ts",
+  ]);
 });

@@ -25,6 +25,67 @@
   --bagati-ivory: var(--bagati-page);
   --bagati-soft: var(--bagati-border);
   --bagati-muted: var(--bagati-muted-green);
+
+  /* Design tokens (design T1). Tailwind maps them in tailwind.config.ts. The legacy names above stay as they are
+     (admin and the seller panel use them); the public site overrides a few of them in the scope below. */
+  --bagati-brand-50: #f1f6f4;
+  --bagati-brand-100: #e1ece8;
+  --bagati-brand-200: #c4d9d1;
+  --bagati-brand-300: #93ada0;
+  --bagati-brand-500: var(--bagati-accent);
+  --bagati-brand-600: var(--bagati-hover);
+  --bagati-brand-700: var(--bagati-primary);
+  --bagati-brand-800: var(--bagati-deep-teal);
+  --bagati-brand-900: #10292a;
+  /* Gold: 400 is decoration only (lines, badges, icons; 2.57:1 on white). 700 is the gold for text. */
+  --bagati-gold-100: var(--bagati-cream);
+  --bagati-gold-200: var(--bagati-cream-dark);
+  --bagati-gold-400: var(--bagati-gold);
+  --bagati-gold-600: var(--bagati-gold-dark);
+  --bagati-gold-700: #7a5c2e;
+  --bagati-border-strong: #7b968c;
+  --bagati-danger: #b91c1c;
+  --bagati-danger-hover: #991b1b;
+  --bagati-danger-subtle: #fef2f2;
+  --bagati-focus-ring: var(--bagati-primary);
+  --bagati-radius-control: 12px;
+  --bagati-radius-card: 20px;
+  --bagati-radius-feature: 28px;
+  --bagati-shadow-subtle: 0 1px 2px rgba(23, 58, 58, 0.06), 0 1px 3px rgba(23, 58, 58, 0.04);
+  --bagati-shadow-card: 0 14px 32px rgba(23, 58, 58, 0.08);
+  --bagati-shadow-overlay: 0 24px 60px rgba(23, 58, 58, 0.12);
+  /* Font stacks and the two smallest text sizes. These defaults equal what the site used before (system font,
+     Tailwind's 12 px and 14 px), so admin and the seller panel look the same. */
+  --bagati-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bagati-font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --bagati-text-xs: 0.75rem;
+  --bagati-text-xs-lh: 1rem;
+  --bagati-text-sm: 0.875rem;
+  --bagati-text-sm-lh: 1.25rem;
+}
+
+/* Public site (design T1). components/public-theme.tsx renders the .bagati-public wrapper and defines
+   --bagati-font-inter and --bagati-font-fraunces. The rule sits on <body> so the menus portalled into <body> get it too.
+   The muted text colour is darkened for WCAG AA: #56706a is 5.36:1 on white, 5.03:1 on the page and 4.77:1 on
+   the section colour (#638078 was 4.29:1). */
+body:has(> .bagati-public),
+.bagati-public {
+  --bagati-muted-green: #56706a;
+  --bagati-muted: #56706a;
+  --bagati-font-sans: var(--bagati-font-inter, ui-sans-serif), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bagati-font-serif: var(--bagati-font-fraunces, Georgia), Georgia, "Times New Roman", serif;
+  --bagati-text-xs: 0.8125rem;
+  --bagati-text-xs-lh: 1.125rem;
+  --bagati-text-sm: 0.9375rem;
+  --bagati-text-sm-lh: 1.375rem;
+  font-family: var(--bagati-font-sans);
+}
+
+/* Headings: Fraunces for page and section titles. Headings set in a small size (text-xs/sm/base), such as footer
+   column titles and card titles, stay in Inter. Zero specificity, so any utility class on the heading wins. */
+:where(body:has(> .bagati-public), .bagati-public) :where(h1, h2):not(:where(.text-xs, .text-sm, .text-base)) {
+  font-family: var(--bagati-font-serif);
+  font-optical-sizing: auto;
 }
 
 * {
@@ -52,7 +113,7 @@ html {
 }
 
 .bagati-skeleton {
-  background: linear-gradient(90deg, #eef3f0 20%, #e5eae6 38%, #eef3f0 62%);
+  background: linear-gradient(90deg, var(--bagati-section) 20%, var(--bagati-border) 38%, var(--bagati-section) 62%);
   background-size: 200% 100%;
   animation: bagati-shimmer 1.4s ease-in-out infinite;
 }
@@ -63,14 +124,7 @@ body {
   margin: 0;
   background: var(--bagati-page);
   color: var(--bagati-text);
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--bagati-font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -141,45 +195,6 @@ img {
   .container {
     width: min(1280px, calc(100% - 28px));
   }
-}
-
-.bagati-display {
-  font-family: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-}
-
-.bagati-kicker {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #5d736c;
-}
-
-.bagati-panel {
-  border: 1px solid #e4e8e4;
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 10px 28px rgba(23, 58, 58, 0.05);
-}
-
-.bagati-service-link {
-  display: flex;
-  min-height: 72px;
-  align-items: center;
-  gap: 12px;
-  border-radius: 16px;
-  border: 1px solid #e4e8e4;
-  background: #fff;
-  padding: 12px 14px;
-  color: #173a3a;
-  transition: border-color 160ms ease, transform 160ms ease;
-}
-
-.bagati-service-link:hover {
-  border-color: #c9d8d1;
-  transform: translateY(-1px);
 }
 
 @media (prefers-reduced-motion: reduce) {

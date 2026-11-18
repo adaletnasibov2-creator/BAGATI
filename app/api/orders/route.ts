@@ -12,8 +12,11 @@ import { enqueueEmail } from "@/lib/email-outbox";
 import { stockAlertCrossing, stockAlertNotification, VENDOR_NOTIFICATION_TITLES } from "@/lib/vendor-notifications";
 import { listCustomerOrderPage, parseCustomerOrderPageSize } from "@/lib/customer-order-pagination";
 import { commissionRatesForNewOrder } from "@/lib/order-commission";
+import { customerTermsGate } from "@/lib/legal-gates";
 const db: any = prisma;
-const schema = z.object({ addressId: z.string().min(1), expectedPrices: z.array(z.object({ cartItemId: z.string().min(1), unitPrice: z.number().positive() })).max(500).optional() });
+// acceptTerms: the checkout checkbox, shown only while the current customer terms are not accepted. The server decides
+// from the database (customerTermsGate); the flag alone never skips the check.
+const schema = z.object({ addressId: z.string().min(1), expectedPrices: z.array(z.object({ cartItemId: z.string().min(1), unitPrice: z.number().positive() })).max(500).optional(), acceptTerms: z.boolean().optional() });
 export async function GET(request: NextRequest) {
  const user=await requireRole("CUSTOMER"); if(!user)return NextResponse.json({error:"Authentication required"},{status:401});
  const pageSize = parseCustomerOrderPageSize(request.nextUrl.searchParams.get("pageSize"));
@@ -31,6 +34,12 @@ export async function POST(request:NextRequest) {
  const user=await requireRole("CUSTOMER"); if(!user)return NextResponse.json({error:"Authentication required"},{status:401});
  let raw:unknown;try{raw=await request.json()}catch{return NextResponse.json({error:"Invalid JSON"},{status:400})}
  const parsed=schema.safeParse(raw);if(!parsed.success)return NextResponse.json({error:"A delivery address is required"},{status:400});
+ // Legal gate before any stock is touched: 409 TERMS_REQUIRED without a current acceptance; with the box ticked the
+ // acceptance is recorded (source CHECKOUT) in its own short transaction and the order continues.
+ let termsGate;
+ try{termsGate=await customerTermsGate(prisma,user.id,parsed.data.acceptTerms===true)}
+ catch{return NextResponse.json({error:"Sifariş yaradılmadı. Bir az sonra yenidən yoxlayın.",code:"TERMS_CHECK_FAILED"},{status:503})}
+ if(!termsGate.ok)return NextResponse.json({error:termsGate.error,code:termsGate.code},{status:termsGate.status});
  const now=new Date();
  // The map pin is optional and never blocks an order: a missing, half-filled, malformed or out-of-Azerbaijan pin is
  // dropped here and the order is created from the address text (lib/delivery-location.ts).

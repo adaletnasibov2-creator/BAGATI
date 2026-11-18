@@ -29,8 +29,8 @@ test("carousel tracks have a fixed width per breakpoint (2.15 / 3 / 4 / 5), neve
 test("every product grid uses the shared classes", () => {
   assert.match(read("components/product-grid.tsx"), /<div className=\{PRODUCT_GRID_CLASS\}>/);
   assert.match(read("components/favorites-client.tsx"), /<div className=\{PRODUCT_GRID_CLASS\}>/);
-  assert.match(read("app/(customer)/products/page.tsx"), /className=\{`mt-8 lg:mt-0 \$\{PRODUCT_GRID_WITH_SIDEBAR_CLASS\}`\}/);
-  for (const path of ["components/product-grid.tsx", "components/favorites-client.tsx", "app/(customer)/products/page.tsx"]) {
+  assert.match(read("app/(customer)/products/(list)/page.tsx"), /className=\{`mt-8 lg:mt-0 \$\{PRODUCT_GRID_WITH_SIDEBAR_CLASS\}`\}/);
+  for (const path of ["components/product-grid.tsx", "components/favorites-client.tsx", "app/(customer)/products/(list)/page.tsx"]) {
     assert.doesNotMatch(read(path), /grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3/, `${path} has no hand-written product grid`);
   }
 });

@@ -122,7 +122,7 @@ test("admin payment route clearly reports that transactions are unavailable", ()
 });
 
 test("homepage reads only active scheduled banners and retains existing seller promotion display", () => {
-  const page = source("app/(customer)/page.tsx");
+  const page = source("app/(customer)/(home)/page.tsx");
   assert.match(page, /where: \{ isActive: true, startsAt: \{ lte: now \}, endsAt: \{ gte: now \} \}/);
   assert.match(page, /homepageFeaturedProduct\.findMany/);
   assert.match(page, /homepageFeaturedStore\.findMany/);
@@ -131,7 +131,7 @@ test("homepage reads only active scheduled banners and retains existing seller p
 });
 
 test("storefront layout uses data-backed sections and preserves the BAGATI brand", () => {
-  const page = source("app/(customer)/page.tsx");
+  const page = source("app/(customer)/(home)/page.tsx");
   const header = source("components/header.tsx");
   const brand = source("components/brand-logo.tsx");
   const hero = source("components/home/hero-carousel.tsx");

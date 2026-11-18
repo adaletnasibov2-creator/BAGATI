@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import { absoluteSiteUrl } from "@/lib/category-seo";
 
 // Legal page, final text of 2026-11-17 (owner). Static text in code: no database read in this page.
@@ -12,7 +12,6 @@ export function generateMetadata(): Metadata {
 }
 
 const h2 = "mt-4 text-xl font-semibold text-bagati-deep";
-const link = "font-medium text-bagati-primary underline underline-offset-2";
 
 export default function TermsPage() {
   return <div className="container py-10 sm:py-14">
@@ -82,13 +81,13 @@ export default function TermsPage() {
         </ul>
 
         <h2 className={h2}>9. Satıcılar üçün</h2>
-        <p>Satıcılar ayrıca <Link href="/seller-terms" className={link}>satıcı şərtlərini</Link> qəbul edir. Onlar məhsul məlumatının doğruluğuna, stokuna, çatdırılmasına, qaytarma qaydasına və vergi öhdəliklərinə görə özləri məsuliyyət daşıyır.</p>
+        <p>Satıcılar ayrıca <TextLink href="/seller-terms">satıcı şərtlərini</TextLink> qəbul edir. Onlar məhsul məlumatının doğruluğuna, stokuna, çatdırılmasına, qaytarma qaydasına və vergi öhdəliklərinə görə özləri məsuliyyət daşıyır.</p>
 
         <h2 className={h2}>10. Məsuliyyətin həddi</h2>
         <p>Biz platformanın fasiləsiz işləməsinə çalışırıq, amma texniki işlər və ya üçüncü tərəflərin (ödəniş xidməti, bank, internet) səbəbindən fasilələr ola bilər. Mağazanın öz məhsulu və xidməti üzrə öhdəliklərinə görə platforma məsuliyyət daşımır.</p>
 
         <h2 className={h2}>11. Tətbiq olunan hüquq və mübahisələr</h2>
-        <p>Bu şərtlərə Azərbaycan Respublikasının qanunvericiliyi tətbiq olunur. Problem yaranarsa, əvvəl <Link href="/contact" className={link}>Əlaqə</Link> üzrə bizə yazın; razılaşma baş tutmasa, mübahisə qanunvericilikdə nəzərdə tutulan qaydada həll olunur.</p>
+        <p>Bu şərtlərə Azərbaycan Respublikasının qanunvericiliyi tətbiq olunur. Problem yaranarsa, əvvəl <TextLink href="/contact">Əlaqə</TextLink> üzrə bizə yazın; razılaşma baş tutmasa, mübahisə qanunvericilikdə nəzərdə tutulan qaydada həll olunur.</p>
 
         <h2 className={h2}>12. Şərtlərin dəyişdirilməsi</h2>
         <p>Şərtləri vaxtaşırı yeniləyə bilərik. Yeni variant bu səhifədə dərc olunan andan qüvvəyə minir. Son yenilənmə: 17 noyabr 2026.</p>

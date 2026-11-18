@@ -38,8 +38,8 @@ test("the public city API returns only active cities with the fields the UI need
 });
 
 test("homepage and city selector share the same resolution rule", () => {
-  assert.match(read("app/(customer)/page.tsx"), /resolveActiveCity\(activeCities, params\.city\)/);
-  assert.doesNotMatch(read("app/(customer)/page.tsx"), /params\.city \|\| "qazax"/);
+  assert.match(read("app/(customer)/(home)/page.tsx"), /resolveActiveCity\(activeCities, params\.city\)/);
+  assert.doesNotMatch(read("app/(customer)/(home)/page.tsx"), /params\.city \|\| "qazax"/);
   assert.match(read("components/city-selector.tsx"), /resolveActiveCity\(cities\)/);
 });
 

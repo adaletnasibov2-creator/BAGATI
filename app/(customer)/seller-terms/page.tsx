@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import { absoluteSiteUrl } from "@/lib/category-seo";
 
 // Seller agreement, final text of 2026-11-18 (owner, v2). Static text in code: no database read in this page.
@@ -14,14 +14,13 @@ export function generateMetadata(): Metadata {
 }
 
 const h2 = "mt-4 text-xl font-semibold text-bagati-deep";
-const link = "font-medium text-bagati-primary underline underline-offset-2";
 
 export default function SellerTermsPage() {
   return <div className="container py-10 sm:py-14">
     <article className="mx-auto max-w-3xl rounded-[24px] border border-[#E5E9E5] bg-white p-6 shadow-[0_10px_28px_rgba(23,58,58,.05)] sm:p-10">
       <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#173A3A]">{title}</h1>
       <div className="mt-5 grid gap-4 text-sm leading-7 text-bagati-secondary sm:text-base">
-        <p><strong>Bu şərtlər BAGATI-də mağaza açan və məhsul satan satıcılar üçündür.</strong> Satıcı müraciətini göndərməklə və razılıq xanasını işarələməklə bu şərtləri qəbul etmiş olursunuz. Alıcılar üçün qaydalar <Link href="/terms" className={link}>İstifadə şərtləri</Link> səhifəsindədir. Platformanı fərdi sahibkar Nəsibov Ədalət Şücaət oğlu (VÖEN 4202455532, Qazax şəhəri) idarə edir.</p>
+        <p><strong>Bu şərtlər BAGATI-də mağaza açan və məhsul satan satıcılar üçündür.</strong> Satıcı müraciətini göndərməklə və razılıq xanasını işarələməklə bu şərtləri qəbul etmiş olursunuz. Alıcılar üçün qaydalar <TextLink href="/terms">İstifadə şərtləri</TextLink> səhifəsindədir. Platformanı fərdi sahibkar Nəsibov Ədalət Şücaət oğlu (VÖEN 4202455532, Qazax şəhəri) idarə edir.</p>
 
         <h2 className={h2}>1. Kim satıcı ola bilər</h2>
         <ul className="list-disc space-y-1 pl-6">
@@ -108,7 +107,7 @@ export default function SellerTermsPage() {
         </ul>
 
         <h2 className={h2}>13. Tətbiq olunan hüquq</h2>
-        <p>Bu şərtlərə Azərbaycan Respublikasının qanunvericiliyi tətbiq olunur. Problem yaranarsa, əvvəl <Link href="/contact" className={link}>Əlaqə</Link> üzrə bizə yazın; razılaşma baş tutmasa, mübahisə qanunvericilikdə nəzərdə tutulan qaydada həll olunur.</p>
+        <p>Bu şərtlərə Azərbaycan Respublikasının qanunvericiliyi tətbiq olunur. Problem yaranarsa, əvvəl <TextLink href="/contact">Əlaqə</TextLink> üzrə bizə yazın; razılaşma baş tutmasa, mübahisə qanunvericilikdə nəzərdə tutulan qaydada həll olunur.</p>
 
         <h2 className={h2}>14. Şərtlərin dəyişdirilməsi</h2>
         <p>Şərtləri yeniləyə bilərik. Əsaslı dəyişiklik barədə satıcılara e-poçtla xəbər verəcəyik. Yeni variant dərc olunandan sonra mağazanı istifadə etməyə davam etmək yeni şərtlərin qəbulu sayılır.</p>

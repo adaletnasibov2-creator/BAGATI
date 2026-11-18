@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import { Mail, MessageCircle, Phone } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import type { getSiteSettings } from "@/lib/site-settings";
@@ -122,9 +123,9 @@ function FooterColumn({ title, links }: { title: string; links: [string, string]
       <h2 className="text-sm font-semibold text-white">{title}</h2>
       <div className="mt-2 grid">
         {links.map(([href, label]) => (
-          <Link key={href + label} href={href} className="inline-flex min-h-11 items-center text-sm text-white/70 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold">
+          <TextLink key={href + label} href={href} tone="inverse" underline={false} className="inline-flex min-h-11 items-center text-sm">
             {label}
-          </Link>
+          </TextLink>
         ))}
       </div>
     </div>

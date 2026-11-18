@@ -8,6 +8,7 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { getPublicContact } from "@/lib/public-contact";
 import AnnouncementBar from "@/components/announcement-bar";
 import { customerMessagesBadge } from "@/lib/messaging-pages";
+import { PublicTheme } from "@/components/public-theme";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
   const messagesUnread = user?.role === "CUSTOMER" ? await customerMessagesBadge(user.id) : null;
 
   return (
-    <>
+    <PublicTheme>
       <AnnouncementBar />
       <Header
         branding={{ siteName: settings.siteName, logoUrl: settings.logoUrl }}
@@ -42,6 +43,6 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
       <main className="min-h-[55vh]">{children}</main>
       <CustomerFooter settings={settings} contact={contact} />
       <MobileBottomNav user={publicUser ? { role: publicUser.role } : null} />
-    </>
+    </PublicTheme>
   );
 }

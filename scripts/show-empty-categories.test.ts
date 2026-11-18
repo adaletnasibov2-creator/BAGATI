@@ -91,7 +91,7 @@ test("wiring: the public loader reads the setting; zero counts are never rendere
   assert.match(read("app/(customer)/categories/page.tsx"), /\{child\.count \? <span className="opacity-70">/);
   assert.match(read("components/category-empty-state.tsx"), /Bu kateqoriyada hələ məhsul yoxdur\. Tezliklə əlavə olunacaq\./);
   assert.match(read("components/category-empty-state.tsx"), />Bütün məhsullar</);
-  assert.match(read("app/(customer)/products/page.tsx"), /<CategoryEmptyState links=\{categorySiblingLinks\(categoryData\.tree, selectedCategory\.category\.id\)\} \/>/);
+  assert.match(read("app/(customer)/products/(list)/page.tsx"), /<CategoryEmptyState links=\{categorySiblingLinks\(categoryData\.tree, selectedCategory\.category\.id\)\} \/>/);
   assert.match(read("app/(customer)/categories/page.tsx"), /<CategoryEmptyState links=\{categorySiblingLinks\(categories, selected\.id\)\}/);
   assert.match(read("app/(customer)/products/[productId]/page.tsx"), /const publicCategory = product\.category && product\.category\.isActive && \(!product\.category\.parent \|\| product\.category\.parent\.isActive\)/);
 });

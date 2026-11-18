@@ -342,7 +342,7 @@ test("public discovery, cart, and checkout share current store and product eligi
   const catalog = readFileSync(resolve(root, "lib/public-product-catalog.ts"), "utf8");
   assert.match(catalog, /publicStoreEligibilityBaseWhere/);
   assert.match(catalog, /isPublicStoreEligible/);
-  for (const path of ["app/(customer)/products/page.tsx", "app/(customer)/products/[productId]/page.tsx", "app/(customer)/categories/page.tsx", "app/(customer)/new-products/page.tsx", "app/(customer)/deals/page.tsx", "app/(customer)/page.tsx", "app/api/products/route.ts", "app/api/products/[id]/route.ts", "app/(customer)/stores/[storeId]/page.tsx"]) {
+  for (const path of ["app/(customer)/products/(list)/page.tsx", "app/(customer)/products/[productId]/page.tsx", "app/(customer)/categories/page.tsx", "app/(customer)/new-products/page.tsx", "app/(customer)/deals/page.tsx", "app/(customer)/(home)/page.tsx", "app/api/products/route.ts", "app/api/products/[id]/route.ts", "app/(customer)/stores/[storeId]/page.tsx"]) {
     const source = readFileSync(resolve(root, path), "utf8");
     assert.match(source, /publicProductVisibilityWhere|findPublicProductCatalogPage/);
     if (path.startsWith("app/(customer)/")) assert.match(source, /export const dynamic = "force-dynamic"/);

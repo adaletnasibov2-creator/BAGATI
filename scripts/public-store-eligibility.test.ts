@@ -138,11 +138,11 @@ test("post-query filters reject null, empty, and whitespace legal fields but pre
 
 test("public and publication entry points use trim-aware store eligibility", () => {
   for (const [path, pattern] of [
-    ["app/(customer)/page.tsx", /resolvePublicStoreEligibility/],
+    ["app/(customer)/(home)/page.tsx", /resolvePublicStoreEligibility/],
     ["app/(customer)/categories/page.tsx", /filterEligiblePublicProducts/],
     ["app/(customer)/deals/page.tsx", /filterEligiblePublicProducts/],
     ["app/(customer)/new-products/page.tsx", /filterEligiblePublicProducts/],
-    ["app/(customer)/products/page.tsx", /resolvePublicStoreEligibility/],
+    ["app/(customer)/products/(list)/page.tsx", /resolvePublicStoreEligibility/],
     ["app/(customer)/products/[productId]/page.tsx", /resolvePublicStoreEligibility/],
     ["app/(customer)/stores/[storeId]/page.tsx", /isPublicStoreEligible/],
     ["app/api/products/route.ts", /findPublicProductCatalogPage[\s\S]*exactTotal:\s*true/],

@@ -23,7 +23,7 @@ export function googleOAuthMessage(code?: string, _intent: GoogleOAuthIntent = "
     case "unavailable": return "Google girişi serverdə konfiqurasiya edilməyib.";
     case "account-exists": return "Təsdiqlənmiş Google e-poçtu ilə BAGATI hesabı tapıldı. Hesablar avtomatik birləşdirilmir. Mövcud hesabınıza uyğun giriş bölməsini seçin.";
     case "register-required": return "Əvvəlcə qeydiyyatdan keçin. Bu Google e-poçtu ilə BAGATI hesabı tapılmadı: şərtlərlə razılığınızı təsdiqləyib Google ilə davam edin.";
-    case "terms-required": return "Google ilə qeydiyyat üçün əvvəlcə İstifadəçi şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";
+    case "terms-required": return "Google ilə qeydiyyat üçün əvvəlcə İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";
     case "not-registered": return "Bu Google e-poçtu ilə BAGATI hesabı tapılmadı. Qeydiyyat səhifəsindən hesab yaradın.";
     case "seller-not-found": return "Bu Google e-poçtu ilə satıcı hesabı tapılmadı. Satıcı olmaq üçün əvvəlcə müştəri kimi qeydiyyatdan keçin, sonra satıcı müraciəti göndərin və admin təsdiqini gözləyin.";
     case "account-inactive": return "Bu e-poçta aid BAGATI hesabı deaktiv edilib. Ətraflı məlumat üçün dəstək xidməti ilə əlaqə saxlayın.";

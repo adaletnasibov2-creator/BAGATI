@@ -9,7 +9,7 @@ import { DeliveryLocationPicker } from "@/components/delivery-location-picker";
 import { normalizeDeliveryCoordinates } from "@/lib/delivery-location";
 import { CUSTOMER_CONSENT_PARTS, LegalConsentCheckbox } from "@/components/legal-consent-checkbox";
 
-const TERMS_ERROR="Sifarişi tamamlamaq üçün İstifadəçi şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";
+const TERMS_ERROR="Sifarişi tamamlamaq üçün İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";
 
 type Address={id:string;cityId:string;recipientName:string;phone:string;line1:string;line2:string|null;label?:string|null;postalCode?:string|null;isDefault:boolean;latitude:number|null;longitude:number|null;city:{name:string}};
 type City={id:string;name:string};

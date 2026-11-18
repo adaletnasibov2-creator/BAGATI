@@ -70,8 +70,8 @@ test("register form: one checkbox gates both e-mail and Google; the request carr
 test("consent checkbox: owner's sentence, links open /terms and /privacy in a new tab, error tied to the box", () => {
   const markup = renderToStaticMarkup(createElement(LegalConsentCheckbox, { id: "x", checked: false, onChange: () => undefined, error: "Səhv", parts: CUSTOMER_CONSENT_PARTS }));
   const text = markup.replace(/<[^>]+>/g, "");
-  assert.ok(text.includes("İstifadəçi şərtləri və Məxfilik siyasəti ilə tanış oldum və razıyam"), text);
-  assert.match(markup, /<a target="_blank" rel="noopener noreferrer"[^>]*href="\/terms">İstifadəçi şərtləri<\/a>/);
+  assert.ok(text.includes("İstifadə şərtləri və Məxfilik siyasəti ilə tanış oldum və razıyam"), text);
+  assert.match(markup, /<a target="_blank" rel="noopener noreferrer"[^>]*href="\/terms">İstifadə şərtləri<\/a>/);
   assert.match(markup, /<a target="_blank" rel="noopener noreferrer"[^>]*href="\/privacy">Məxfilik siyasəti<\/a>/);
   assert.match(markup, /type="checkbox"[^>]*aria-invalid="true"[^>]*aria-describedby="x-error"/);
   assert.match(markup, /id="x-error" role="alert"/);

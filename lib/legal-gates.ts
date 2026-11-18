@@ -13,9 +13,9 @@ export const TERMS_REQUIRED = "TERMS_REQUIRED";
 export const SELLER_TERMS_REQUIRED = "SELLER_TERMS_REQUIRED";
 
 export const LEGAL_GATE_MESSAGES = {
-  termsRequired: "Sifarişi tamamlamaq üçün İstifadəçi şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.",
+  termsRequired: "Sifarişi tamamlamaq üçün İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.",
   sellerTermsRequired: "Mağaza yaratmaq və məhsul yayımlamaq üçün əvvəlcə Satıcı şərtlərini qəbul edin.",
-  registerTerms: "Davam etmək üçün İstifadəçi şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.",
+  registerTerms: "Davam etmək üçün İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.",
   sellerApplicationTerms: "Müraciəti göndərmək üçün Satıcı şərtləri ilə razılığınızı təsdiqləyin.",
 } as const;
 

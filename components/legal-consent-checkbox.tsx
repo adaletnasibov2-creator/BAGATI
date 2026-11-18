@@ -35,9 +35,9 @@ export function LegalConsentCheckbox({ id, checked, onChange, error, parts }: {
   </div>;
 }
 
-/** "İstifadəçi şərtləri və Məxfilik siyasəti ilə tanış oldum və razıyam" (owner's wording, Phase B brief). */
+/** "İstifadə şərtləri və Məxfilik siyasəti ilə tanış oldum və razıyam" (owner's wording, Phase B brief). */
 export const CUSTOMER_CONSENT_PARTS: (string | ConsentLink)[] = [
-  { href: "/terms", label: "İstifadəçi şərtləri" },
+  { href: "/terms", label: "İstifadə şərtləri" },
   " və ",
   { href: "/privacy", label: "Məxfilik siyasəti" },
   " ilə tanış oldum və razıyam",

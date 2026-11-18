@@ -6,7 +6,7 @@ import { registrationErrorMessage } from "@/lib/auth-form-errors";
 import { GoogleOAuthButton } from "@/components/google-oauth-button";
 import { CUSTOMER_CONSENT_PARTS, LegalConsentCheckbox } from "@/components/legal-consent-checkbox";
 
-const TERMS_ERROR = "Davam etmək üçün İstifadəçi şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";
+const TERMS_ERROR = "Davam etmək üçün İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";
 
 export function RegisterForm({ nextPath, oauthError, portal }: { nextPath: string; oauthError?: string; portal?: string | null }) {
   const [firstName, setFirstName] = useState("");

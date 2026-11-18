@@ -282,7 +282,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
       </div>
 
       {/* Fixed minimum heights keep the carousel from changing height between slides. */}
-      <div className="relative z-10 flex min-h-[416px] flex-col justify-between gap-5 p-5 sm:min-h-[404px] sm:gap-6 sm:p-7 xl:min-h-[600px] xl:w-[45%] xl:p-9">
+      <div className="bagati-on-dark relative z-10 flex min-h-[416px] flex-col justify-between gap-5 p-5 sm:min-h-[404px] sm:gap-6 sm:p-7 xl:min-h-[600px] xl:w-[45%] xl:p-9">
         <div className="flex items-center justify-between gap-3">
           <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[.62rem] font-semibold uppercase tracking-[.18em] text-white/90">
             {slide.eyebrow}

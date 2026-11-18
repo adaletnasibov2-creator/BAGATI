@@ -354,7 +354,7 @@ export default async function HomePage({ searchParams }: Props) {
       )}
 
       <section className="container py-8 sm:py-10">
-        <div className="relative isolate overflow-hidden rounded-[24px] bg-bagati-primary px-5 py-6 text-white shadow-[0_18px_46px_rgba(23,58,58,.13)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:rounded-[30px] sm:px-9 sm:py-8">
+        <div className="bagati-on-dark relative isolate overflow-hidden rounded-[24px] bg-bagati-primary px-5 py-6 text-white shadow-[0_18px_46px_rgba(23,58,58,.13)] sm:flex sm:items-center sm:justify-between sm:gap-6 sm:rounded-[30px] sm:px-9 sm:py-8">
           <div aria-hidden="true" className="absolute -right-16 -top-32 -z-10 h-72 w-72 rounded-full border border-[#C9D9CC]/25 sm:right-[8%] sm:h-[23rem] sm:w-[23rem]" />
           <div className="max-w-2xl">
             <p className="text-[.65rem] font-semibold uppercase tracking-[.18em] text-bagati-cream-dark">BAGATI-də satıcı ol</p>

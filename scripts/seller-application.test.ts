@@ -31,6 +31,7 @@ const valid = {
   sellerType: "INDIVIDUAL_ENTREPRENEUR",
   legalName: "Aysel Məmmədova",
   voen: "1234 567 892",
+  acceptSellerTerms: true,
 };
 
 test("VÖEN: stored values are compared as digits; new VÖENs follow lib/voen.ts (10 digits, last digit 1 or 2, spaces only)", () => {

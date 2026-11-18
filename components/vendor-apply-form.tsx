@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { parseVoen, VOEN_ADMIN_NOTE, VOEN_HELP } from "@/lib/voen";
 import { useRouter } from "next/navigation";
-import { SELLER_APPLICATION_RULES } from "@/lib/seller-application";
+import { SELLER_APPLICATION_MESSAGES, SELLER_APPLICATION_RULES } from "@/lib/seller-application";
+import { LegalConsentCheckbox, SELLER_CONSENT_PARTS } from "@/components/legal-consent-checkbox";
 
 const field = "mt-1 w-full rounded-xl border border-[#ded9cf] bg-white px-3.5 py-3 text-sm";
 const label = "grid gap-1 text-sm";
@@ -27,6 +28,8 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
   const [note, setNote] = useState("");
   const [voen, setVoen] = useState(defaults.voen);
   const [voenTouched, setVoenTouched] = useState(false);
+  const [acceptSellerTerms, setAcceptSellerTerms] = useState(false);
+  const [termsError, setTermsError] = useState("");
   const voenCheck = parseVoen(voen);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -34,8 +37,9 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
     if (busy) return;
     // Same rule as the server (lib/voen.ts); the server checks again.
     if (!voenCheck.ok) { setVoenTouched(true); setError(voenCheck.error); return; }
+    if (!acceptSellerTerms) { setTermsError(SELLER_APPLICATION_MESSAGES.sellerTerms); document.getElementById("vendor-apply-accept-terms")?.focus(); return; }
     setBusy(true); setError("");
-    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const values = { ...Object.fromEntries(new FormData(event.currentTarget).entries()), acceptSellerTerms: true };
     try {
       const response = await fetch("/api/vendor/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
       const result = await response.json().catch(() => ({}));
@@ -66,6 +70,9 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
       <span className="text-xs text-slate-500">{note.length} / {SELLER_APPLICATION_RULES.applicantNoteMax} · yalnız BAGATI adminləri görür</span>
     </label>
     <p className="text-sm leading-6 text-slate-600">Müraciət göndərildikdən sonra admin məlumatları yoxlayır. Təsdiqə qədər hesabınız müştəri hesabı olaraq qalır. Təsdiqdən sonra satıcı panelində mağaza qaralaması yarada bilərsiniz; mağaza ictimai satış üçün ayrıca yoxlanılır.</p>
+    <div className="rounded-xl border border-[#e8e4db] bg-[#f7f8f6] p-4">
+      <LegalConsentCheckbox id="vendor-apply-accept-terms" checked={acceptSellerTerms} onChange={(checked) => { setAcceptSellerTerms(checked); if (checked) setTermsError(""); }} error={termsError} parts={SELLER_CONSENT_PARTS}/>
+    </div>
     {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     <button disabled={busy} className="w-fit rounded-xl bg-[#173c40] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Göndərilir…" : "Müraciəti göndər"}</button>
   </form>;

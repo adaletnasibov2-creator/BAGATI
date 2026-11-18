@@ -96,6 +96,7 @@ export const SELLER_APPLICATION_MESSAGES = {
   withdrawn: "Müraciətiniz geri götürüldü.",
   voen: "VÖEN 10 rəqəmdən ibarət olmalıdır.",
   legalAddress: "Qeydiyyatdan keçmiş şirkət üçün hüquqi ünvan tələb olunur.",
+  sellerTerms: "Müraciəti göndərmək üçün Satıcı şərtləri ilə razılığınızı təsdiqləyin.",
 } as const;
 
 /** Digits only; null when nothing is left. "12 345-678 90" → "1234567890". */
@@ -149,6 +150,8 @@ export const sellerApplicationInputSchema = z.object({
   legalAddress: optionalText(300),
   plannedStoreName: optionalText(120),
   applicantNote: optionalText(SELLER_APPLICATION_RULES.applicantNoteMax),
+  /** The /vendor/apply checkbox; recorded as SELLER_APPLICATION with the application id (lib/seller-application-service.ts). */
+  acceptSellerTerms: z.literal(true),
 }).strict().superRefine((data, context) => {
   if (data.sellerType === "REGISTERED_COMPANY" && !data.legalAddress) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["legalAddress"], message: SELLER_APPLICATION_MESSAGES.legalAddress });
@@ -161,6 +164,7 @@ export function sellerApplicationIssue(error: z.ZodError): string {
   const issue = error.issues[0];
   if (!issue) return SELLER_APPLICATION_MESSAGES.invalid;
   if (issue.code === "unrecognized_keys") return SELLER_APPLICATION_MESSAGES.invalid;
+  if (issue.path[0] === "acceptSellerTerms") return SELLER_APPLICATION_MESSAGES.sellerTerms;
   return issue.code === "custom" || issue.code === "too_small" ? issue.message : SELLER_APPLICATION_MESSAGES.invalid;
 }
 

@@ -5,6 +5,7 @@
 import type { Prisma, SellerType } from "@prisma/client";
 import { claimVoenForUser, findDuplicateVoen } from "@/lib/voen-uniqueness";
 import { normalizeVoen, reapplyDecision, type ReapplyRules, type SellerApplicationInput } from "@/lib/seller-application";
+import { recordAcceptance } from "@/lib/legal-acceptance";
 
 /**
  * Records a seller created directly by an admin as an APPROVED application with source ADMIN.
@@ -312,6 +313,9 @@ export async function submitSellerApplication(db: TransactionRunner, input: { us
         },
         select: { id: true, status: true, createdAt: true },
       });
+      // The seller terms are accepted with the application (same transaction); a repeat acceptance of the same
+      // version (for example a re-application) inserts nothing and keeps the first row.
+      await recordAcceptance(tx, { userId: input.userId, document: "SELLER_TERMS", source: "SELLER_APPLICATION", vendorApplicationId: application.id });
       await tx.auditLog.create({
         data: {
           actorId: input.userId,

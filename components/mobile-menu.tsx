@@ -104,7 +104,7 @@ export function MobileMenu({
         aria-expanded={open}
         aria-controls="mobile-market-nav"
         onClick={() => setOpen((value) => !value)}
-        className="grid h-11 w-10 place-items-center rounded-xl text-bagati-deep transition hover:bg-bagati-section focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold"
+        className="grid h-11 w-11 place-items-center rounded-full text-bagati-deep transition hover:bg-bagati-section focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
       >
         {open ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
       </button>
@@ -124,7 +124,7 @@ export function MobileMenu({
           >
             <div className="flex items-center justify-between border-b border-bagati-border pb-3">
               <BrandLogo variant="compact" />
-              <button type="button" aria-label="Menyunu bağla" onClick={closeMenu} className="grid h-11 w-11 place-items-center rounded-full text-bagati-text hover:bg-bagati-section focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
+              <button type="button" aria-label="Menyunu bağla" onClick={closeMenu} className="grid h-11 w-11 place-items-center rounded-full text-bagati-text hover:bg-bagati-section focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
                 <X aria-hidden="true" size={19} />
               </button>
             </div>
@@ -140,7 +140,7 @@ export function MobileMenu({
                   return (
                     <li key={category.id} className="rounded-2xl border border-bagati-border/80 bg-bagati-page/70">
                       <div className="flex min-w-0 items-center">
-                        <Link onClick={closeMenu} href={categoryHref(category.slug)} className="group flex min-h-[60px] min-w-0 flex-1 items-center gap-2 rounded-2xl p-2 text-[.82rem] font-medium text-bagati-text transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
+                        <Link onClick={closeMenu} href={categoryHref(category.slug)} className="group flex min-h-[60px] min-w-0 flex-1 items-center gap-2 rounded-2xl p-2 text-sm font-medium text-bagati-text transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus motion-reduce:transition-none">
                           <CategoryIcon category={category} size="small" loading="lazy" />
                           <span className="line-clamp-2 min-w-0">{category.name}</span>
                         </Link>
@@ -151,7 +151,7 @@ export function MobileMenu({
                             aria-controls={panelId}
                             aria-label={`${category.name}: alt kateqoriyalar`}
                             onClick={() => setExpandedId(expanded ? null : category.id)}
-                            className="mr-1 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-bagati-muted hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold"
+                            className="mr-1 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-bagati-muted hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                           >
                             <ChevronDown aria-hidden="true" size={18} className={`transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} />
                           </button>
@@ -159,10 +159,10 @@ export function MobileMenu({
                       </div>
                       {children.length > 0 && expanded && (
                         <ul id={panelId} className="grid gap-0.5 border-t border-bagati-border/70 px-2 pb-2 pt-1">
-                          <li><Link onClick={closeMenu} href={categoryHref(category.slug)} className="flex min-h-11 items-center rounded-lg px-2 text-[.8rem] font-semibold text-bagati-deep hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">Bütün {category.name}</Link></li>
+                          <li><Link onClick={closeMenu} href={categoryHref(category.slug)} className="flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-bagati-deep hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">Bütün {category.name}</Link></li>
                           {children.map((child) => (
                             <li key={child.id} className="min-w-0">
-                              <Link onClick={closeMenu} href={categoryHref(child.slug)} className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-[.8rem] text-bagati-text hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
+                              <Link onClick={closeMenu} href={categoryHref(child.slug)} className="flex min-h-11 min-w-0 items-center gap-2 rounded-lg px-2 text-sm text-bagati-text hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
                                 <CategoryGlyph category={child} size={17} className="text-[#1f5a4f]" />
                                 <span className="min-w-0 truncate">{child.name}</span>
                                 {child.count ? <span className="ml-auto shrink-0 text-xs text-bagati-muted">{child.count}</span> : null}
@@ -179,7 +179,7 @@ export function MobileMenu({
             </section>
 
             <nav aria-label="Mağaza bölmələri" className="grid border-b border-bagati-border py-2">
-              {links.map(([href, label]) => <Link key={href} onClick={closeMenu} href={href} className="flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-bagati-text hover:bg-bagati-section focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">{label}</Link>)}
+              {links.map(([href, label]) => <Link key={href} onClick={closeMenu} href={href} className="flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-bagati-text hover:bg-bagati-section focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{label}</Link>)}
             </nav>
 
             <div className="mt-3 flex flex-wrap gap-2">
@@ -204,7 +204,7 @@ export function MobileMenu({
                 <button type="button" disabled={loggingOut} onClick={() => void logout()} className="mt-2 min-h-11 rounded-xl px-3 text-sm font-medium text-bagati-text disabled:opacity-60">
                   {loggingOut ? "Çıxış edilir…" : "Hesabdan çıx"}
                 </button>
-                {logoutError && <p role="alert" className="px-1 text-xs text-red-700">{logoutError}</p>}
+                {logoutError && <p role="alert" className="px-1 text-xs text-danger">{logoutError}</p>}
               </div>
             )}
             {cities.length > 0 && <div className="mt-4 border-t border-bagati-border pt-4"><CitySelector cities={cities} /></div>}

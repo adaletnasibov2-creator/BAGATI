@@ -20,7 +20,7 @@ export function CustomerFooter({ settings, contact }: { settings: FooterSettings
   const telephoneHref = toTelephoneHref(settings.contactPhone);
 
   return (
-    <footer className="mt-14 border-t border-white/10 bg-bagati-deep pb-[calc(72px+env(safe-area-inset-bottom))] text-[#E7EEEA] md:pb-0">
+    <footer className="bagati-on-dark mt-14 border-t-[3px] border-gold-400 bg-surface-inverse pb-[calc(72px+env(safe-area-inset-bottom))] text-[#E7EEEA] md:pb-0">
       <div className="container grid gap-x-10 gap-y-9 py-10 sm:grid-cols-2 sm:py-12 lg:grid-cols-[1.35fr_1fr_1fr_1.2fr]">
         <section aria-labelledby="footer-brand-title">
           <h2 id="footer-brand-title" className="sr-only">{settings.siteName}</h2>
@@ -120,7 +120,7 @@ export function CustomerFooter({ settings, contact }: { settings: FooterSettings
 function FooterColumn({ title, links }: { title: string; links: [string, string][] }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold text-white">{title}</h2>
+      <h2 className="text-sm font-semibold tracking-wide text-gold-200">{title}</h2>
       <div className="mt-2 grid">
         {links.map(([href, label]) => (
           <TextLink key={href + label} href={href} tone="inverse" underline={false} className="inline-flex min-h-11 items-center text-sm">

@@ -18,22 +18,22 @@ export function MobileBottomNav({ user }: { user: BottomNavUser }) {
   const accountActive = ["/account", "/login", "/register", "/vendor", "/admin"].some((path) => pathname.startsWith(path));
 
   return (
-    <nav aria-label="Mobil əsas naviqasiya" className="fixed inset-x-0 bottom-0 z-40 border-t border-bagati-border bg-white/95 shadow-[0_-8px_24px_rgba(23,58,58,.08)] backdrop-blur-xl md:hidden">
+    <nav aria-label="Mobil əsas naviqasiya" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 shadow-[0_-8px_24px_rgba(23,58,58,.08)] backdrop-blur-xl md:hidden">
       <ul className="mx-auto grid min-h-[62px] max-w-lg grid-cols-5 px-1 pb-[env(safe-area-inset-bottom)]">
         {entries.map(({ href, label, Icon, matches }) => {
           const active = matches(pathname);
           return (
             <li key={href}>
-              <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} className={`flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[.62rem] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-bagati-gold ${active ? "text-bagati-primary" : "text-bagati-muted hover:text-bagati-primary"}`}>
-                <Icon aria-hidden="true" size={19} strokeWidth={active ? 2.2 : 1.8} />
+              <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} className={`group/tab flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-control px-1 text-[0.6875rem] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-focus ${active ? "font-semibold text-primary" : "text-fg-muted hover:text-primary"}`}>
+                <span aria-hidden="true" className={`grid h-7 w-12 place-items-center rounded-full transition-colors ${active ? "bg-primary-tint" : ""}`}><Icon size={19} strokeWidth={active ? 2.2 : 1.8} /></span>
                 <span className="leading-none">{label}</span>
               </Link>
             </li>
           );
         })}
         <li>
-          <Link href={accountHref} aria-label="Hesab" aria-current={accountActive ? "page" : undefined} className={`flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[.62rem] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-bagati-gold ${accountActive ? "text-bagati-primary" : "text-bagati-muted hover:text-bagati-primary"}`}>
-            <UserRound aria-hidden="true" size={19} strokeWidth={accountActive ? 2.2 : 1.8} />
+          <Link href={accountHref} aria-label="Hesab" aria-current={accountActive ? "page" : undefined} className={`group/tab flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-control px-1 text-[0.6875rem] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-focus ${accountActive ? "font-semibold text-primary" : "text-fg-muted hover:text-primary"}`}>
+            <span aria-hidden="true" className={`grid h-7 w-12 place-items-center rounded-full transition-colors ${accountActive ? "bg-primary-tint" : ""}`}><UserRound size={19} strokeWidth={accountActive ? 2.2 : 1.8} /></span>
             <span className="leading-none">Hesab</span>
           </Link>
         </li>

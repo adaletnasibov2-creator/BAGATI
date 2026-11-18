@@ -102,7 +102,8 @@ export function ProductCard({ id, name, price, originalPrice, store, storeHref, 
           {campaignName ? <span className="font-medium text-gold-700">{campaignName}</span> : null}
         </p>
 
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0">
+        {/* Phones: the old price on its own line, so long prices never wrap differently across a row. */}
+        <div className="mt-2 flex flex-col gap-y-0 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
           <p className="text-base font-bold tabular-nums tracking-tight text-fg sm:text-[1.0625rem]">
             {price} ₼
           </p>

@@ -71,6 +71,7 @@ test("design T3: price hierarchy, tokens, CSS-only hover lift, one shared skelet
   assert.match(card, /<p className="text-base font-bold tabular-nums tracking-tight text-fg sm:text-\[1\.0625rem\]">\s*\{price\} ₼/, "current price is the strongest text");
   assert.match(card, /<del className="text-xs tabular-nums text-fg-muted">\s*<span className="sr-only">Əvvəlki qiymət: <\/span>/, "old price struck through, muted, announced");
   assert.match(card, /badgeClass\(discounted \|\| campaignName \? "gold" : "primary"\)/);
+  assert.match(card, /<div className="mt-2 flex flex-col gap-y-0 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">/, "phones: old price on its own line (no uneven wrap in 2-column grids)");
   assert.match(card, /motion-safe:hover:-translate-y-0\.5 motion-reduce:transition-none/);
   assert.doesNotMatch(card, /font-serif|font-display|bagati-gold-dark|#[0-9A-Fa-f]{6}/, "no serif and no hard-coded colours in the card");
   for (const path of ["app/(customer)/(home)/loading.tsx", "app/(customer)/products/(list)/loading.tsx"]) {

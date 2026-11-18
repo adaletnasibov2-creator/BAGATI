@@ -26,6 +26,7 @@
     "test:homepage-campaign-products": "tsx --test scripts/homepage-campaign-products.test.ts",
     "test:deals-campaigns": "tsx --test scripts/deals-campaigns.test.ts",
     "test:legal-pages": "tsx --test scripts/legal-pages.test.ts",
+    "test:seller-terms": "tsx --test scripts/seller-terms.test.ts",
     "test:auth:integration": "tsx --test scripts/auth-integration.test.ts",
     "test:epoint": "tsx --test scripts/epoint-payment.test.ts",
     "verify:smtp": "tsx scripts/verify-smtp.ts",

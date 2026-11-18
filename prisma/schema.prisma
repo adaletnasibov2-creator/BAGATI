@@ -216,6 +216,7 @@ model User {
   conversationBlocks            ConversationBlock[]             @relation("ConversationBlockCustomer")
   conversationReports           ConversationReport[]            @relation("ConversationReportReporter")
   conversationReportReviews     ConversationReport[]            @relation("ConversationReportReviewer")
+  legalAcceptances              LegalAcceptance[]
 
   @@index([role, isActive])
 }
@@ -445,6 +446,7 @@ model VendorApplication {
   user                   User                    @relation("VendorApplicationApplicant", fields: [userId], references: [id], onDelete: Cascade)
   reviewedBy             User?                   @relation("VendorApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   vendorProfile          VendorProfile?          @relation(fields: [vendorProfileId], references: [id], onDelete: SetNull)
+  legalAcceptances       LegalAcceptance[]
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
@@ -474,6 +476,39 @@ model SellerVoenVerification {
 
   @@unique([userId, voen])
   @@index([voen])
+}
+
+enum LegalDocument {
+  CUSTOMER_TERMS
+  SELLER_TERMS
+}
+
+enum LegalAcceptanceSource {
+  REGISTER_EMAIL
+  REGISTER_GOOGLE
+  CHECKOUT
+  SELLER_APPLICATION
+  SELLER_PANEL
+}
+
+/// One row per user, document and version: the user accepted that version of the legal text (lib/legal-acceptance.ts).
+/// Written only by the server, in the same transaction as the action. No IP address or user agent is stored
+/// (owner decision 2026-11-18). Rows go with the user (Cascade); no backfill for accounts created before this table.
+model LegalAcceptance {
+  id                  String                @id @default(cuid())
+  userId              String
+  document            LegalDocument
+  /// LEGAL_VERSIONS[document] at the time of acceptance (lib/legal-versions.ts), e.g. "2026-11-17".
+  version             String                @db.VarChar(32)
+  source              LegalAcceptanceSource
+  acceptedAt          DateTime              @default(now())
+  vendorApplicationId String?
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorApplication   VendorApplication?    @relation(fields: [vendorApplicationId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, document, version])
+  @@index([document, version])
+  @@index([vendorApplicationId])
 }
 
 model City {

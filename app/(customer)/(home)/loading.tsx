@@ -4,16 +4,16 @@ import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
 
 /**
  * Home page while the server renders it, in the same sizes as the real page (design T5): the hero (image strip plus
- * the reserved text panel below 1280 px, one 560-640 px block from 1280 px), the trust row, the category cards and
- * one product shelf. The (home) route group keeps this skeleton to "/" only; a loading.tsx directly in (customer)
+ * the reserved text panel below 1024 px, from 1024 px one block as tall as the real hero, --bagati-hero-h), the trust
+ * row, the category cards and one product shelf. The (home) route group keeps this skeleton to "/" only; a loading.tsx directly in (customer)
  * would also show on every other customer page.
  */
 export default function HomeLoading() {
   return <SkeletonRegion label="Ana səhifə yüklənir…" className="overflow-hidden bg-bagati-page">
     <div className="container pb-6 pt-3 sm:pb-8 sm:pt-5">
-      <div className="overflow-hidden rounded-feature bg-brand-900 xl:relative xl:min-h-[clamp(560px,44vw,640px)]">
-        <Skeleton rounded="none" className="aspect-[4/3] w-full opacity-60 sm:aspect-[2/1] lg:aspect-[5/2] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[56%]" />
-        <div className="grid min-h-[404px] content-center gap-4 p-5 sm:p-8 xl:min-h-[clamp(560px,44vw,640px)] xl:w-[46%] xl:p-11">
+      <div className="bagati-hero overflow-hidden rounded-feature bg-brand-900 lg:relative lg:h-[var(--bagati-hero-h)]">
+        <Skeleton rounded="none" className="aspect-[4/3] w-full opacity-60 sm:aspect-[2/1] lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[56%]" />
+        <div className="grid min-h-[404px] content-center gap-4 p-5 sm:p-8 lg:h-full lg:min-h-0 lg:w-[46%] lg:px-9 xl:px-11">
           <Skeleton rounded="full" className="h-3 w-28 opacity-30" />
           <Skeleton className="h-10 w-4/5 opacity-30" />
           <Skeleton className="h-10 w-3/5 opacity-30" />

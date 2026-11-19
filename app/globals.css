@@ -123,6 +123,27 @@ html {
   to { transform: scaleX(1); }
 }
 
+/* Home hero from 1024 px (owner decision 2026-11-19): the whole hero (image, title, text, both buttons, dots) fits the
+   first screen. Height = viewport height - the space above the hero - a 16 px peek of the next section, kept between
+   400 px (a 3-line title, 2 lines of text and the buttons still fit) and 600 px. The 47vw cap only binds at 1024-1279 px
+   wide on tall screens: it keeps the image box at least about 1.15:1, so uploaded banners are not cut at the sides.
+   --bagati-above-hero is measured before first paint by lib/hero-viewport.ts (announcement bar + header + section
+   padding); the fallback is the desktop header (top bar 44 + logo row 88 + nav row 53 + border 1) plus the section's
+   20 px top padding. Used with lg: only. */
+:root {
+  --bagati-above-hero: 206px;
+}
+
+.bagati-hero {
+  --bagati-hero-h: clamp(400px, calc(100vh - var(--bagati-above-hero) - 16px), min(600px, 47vw));
+}
+
+@supports (height: 100svh) {
+  .bagati-hero {
+    --bagati-hero-h: clamp(400px, calc(100svh - var(--bagati-above-hero) - 16px), min(600px, 47vw));
+  }
+}
+
 @keyframes bagati-shimmer {
   to { background-position: -200% 0; }
 }

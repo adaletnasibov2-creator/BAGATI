@@ -3,6 +3,7 @@ import { ArrowRight, ChevronRight, MapPin } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { CategoryIcon } from "@/components/category-icon";
 import { HeroCarousel } from "@/components/home/hero-carousel";
+import { HERO_PRE_PAINT_SCRIPT } from "@/lib/hero-viewport";
 import { ProductShelf } from "@/components/home/product-shelf";
 import { HomeSectionHeading } from "@/components/home/section-heading";
 import { StoreStrip } from "@/components/home/store-strip";
@@ -260,6 +261,8 @@ export default async function HomePage({ searchParams }: Props) {
     <div className="overflow-hidden bg-bagati-page text-bagati-deep">
       <section className="container pb-6 pt-3 sm:pb-8 sm:pt-5">
         <HeroCarousel banners={banners} />
+        {/* Measures the space above the hero before first paint, so from 1024 px the hero fits the first screen. */}
+        <script dangerouslySetInnerHTML={{ __html: HERO_PRE_PAINT_SCRIPT }} />
       </section>
 
       <TrustRow />

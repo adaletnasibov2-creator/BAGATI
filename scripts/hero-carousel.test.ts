@@ -60,10 +60,12 @@ test("category tiles off screen load lazily; the default stays eager", () => {
   assert.match(read("app/(customer)/(home)/page.tsx"), /<CategoryIcon category=\{category\} size="large" loading="lazy" \/>/);
 });
 
-test("hero sizes (design T5): 4:3 on phones, 2:1 from 640 px, 5:2 from 1024 px, 560-640 px tall from 1280 px; space reserved", () => {
-  assert.match(carousel, /className="relative aspect-\[4\/3\] w-full overflow-hidden bg-brand-800 sm:aspect-\[2\/1\] lg:aspect-\[5\/2\] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-\[56%\]"/);
-  // The text panel keeps a fixed minimum height and the copy is clamped, so every slide fits the same space.
-  assert.match(carousel, /min-h-\[404px\][^"]*sm:min-h-\[404px\][^"]*xl:min-h-\[clamp\(560px,44vw,640px\)\]/);
+test("hero sizes: 4:3 on phones, 2:1 from 640 px, from 1024 px a side panel whose height follows the viewport; space reserved", () => {
+  assert.match(carousel, /className="relative aspect-\[4\/3\] w-full overflow-hidden bg-brand-800 sm:aspect-\[2\/1\] lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-\[56%\]"/);
+  // The text panel keeps a fixed minimum height below 1024 px (unchanged) and fills the fixed-height hero from 1024 px;
+  // the copy is clamped, so every slide fits the same space.
+  assert.match(carousel, /min-h-\[404px\][^"]*sm:min-h-\[404px\][^"]*lg:h-full lg:min-h-0 lg:w-\[46%\]/);
+  assert.match(carousel, /className="bagati-hero relative isolate [^"]*lg:h-\[var\(--bagati-hero-h\)\]"/);
   // Phones: the pause button sits in the controls row, so the slide's buttons stay above the bottom tab bar.
   assert.match(carousel, /<span className="hidden sm:inline-flex">\{pauseButton\}<\/span>/);
   assert.match(carousel, /<span className="sm:hidden">\{pauseButton\}<\/span>/);
@@ -74,8 +76,8 @@ test("hero sizes (design T5): 4:3 on phones, 2:1 from 640 px, 5:2 from 1024 px, 
   assert.ok(statSync(resolve(root, "public/images/home/hero-electronics-devices-square.webp")).size <= 80 * 1024);
 });
 
-test("the xl edge gradient stays above the stacked images (z-[3] over z-[2] / z-[1])", () => {
-  assert.match(carousel, /className="pointer-events-none absolute inset-y-0 left-0 z-\[3\] hidden w-\[13%\]/);
+test("the lg edge gradient stays above the stacked images (z-[3] over z-[2] / z-[1])", () => {
+  assert.match(carousel, /className="pointer-events-none absolute inset-y-0 left-0 z-\[3\] hidden w-\[13%\][^"]* lg:block"/);
 });
 
 // ---------------------------------------------------------------------------------------------------------------

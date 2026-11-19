@@ -15,6 +15,7 @@ import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 import { storeMetaDescription } from "@/lib/seo";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
+import { productCardScalarSelect, productCardStockSelect, productCardStoreSelect } from "@/lib/product-card-select";
 import StorefrontBranding, { type StorefrontBrand } from "@/components/storefront-branding";
 import { isSellerVoenVerified } from "@/lib/voen-verification";
 import StorefrontContact from "@/components/storefront-contact";
@@ -197,27 +198,8 @@ export default async function StorefrontPage({
   const [productResult, promotionResult] = await Promise.all([
     prisma.product.findMany({
       where: catalogWhere,
-      include: {
-        store: {
-          select: {
-            name: true,
-            isActive: true,
-            status: true,
-            subscription: {
-              select: {
-                status: true,
-                currentPeriodEnd: true,
-                plan: { select: { slug: true, isActive: true } },
-              },
-            },
-          },
-        },
-        inventory: { select: { variantId: true, quantity: true, reserved: true } },
-        variants: {
-          where: { isActive: true },
-          select: { id: true, isActive: true, inventory: { select: { quantity: true, reserved: true } } },
-        },
-      },
+      // Only what the cards render (SCALE-FIX-2 A5), not full product rows.
+      select: { ...productCardScalarSelect, store: { select: productCardStoreSelect }, ...productCardStockSelect },
       orderBy: productCatalogOrderBy(sort),
       skip,
       take: STOREFRONT_PAGE_SIZE,
@@ -234,15 +216,7 @@ export default async function StorefrontPage({
         products: {
           where: { product: { AND: [catalogWhere, inStockProductWhere] } },
           include: {
-            product: {
-              include: {
-                inventory: { select: { variantId: true, quantity: true, reserved: true } },
-                variants: {
-                  where: { isActive: true },
-                  select: { id: true, isActive: true, inventory: { select: { quantity: true, reserved: true } } },
-                },
-              },
-            },
+            product: { select: { ...productCardScalarSelect, ...productCardStockSelect } },
           },
         },
       },

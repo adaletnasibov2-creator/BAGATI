@@ -26,6 +26,7 @@ import { publicProductVisibilityWhere, publicStoreVisibilityWhere } from "@/lib/
 import { selectHomepageCampaignProducts, type HomepageCampaign, type SelectedHomepageCampaignProduct } from "@/lib/homepage-campaign-products";
 import { findHomepageCampaignProductBatches } from "@/lib/homepage-campaign-query";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
+import { productCardPromotionLinks, productCardScalarSelect, productCardStoreNameSelect } from "@/lib/product-card-select";
 
 export const HOME_PAGE_CACHE_TTL_MS = 30_000;
 /** Keys are active city ids (the slug is resolved against the active city list first), so this is never reached. */
@@ -48,11 +49,10 @@ export type HomeProduct = {
   price: Prisma.Decimal;
   discountPrice: Prisma.Decimal | null;
   images: string[];
-  sku: string | null;
   store: { id: string; name: string };
   promotionProducts: { promotion: { id: string; storeId: string | null; name: string; startsAt: Date; endsAt: Date; isActive: boolean; discountType: string | null; discountValue: Prisma.Decimal | null } }[];
   inventory: { variantId?: string | null; quantity: number; reserved: number; lowStockThreshold: number }[];
-  variants: { isActive: boolean; options: unknown; inventory: { quantity: number; reserved: number; lowStockThreshold: number }[] }[];
+  variants: { isActive: boolean; inventory: { quantity: number; reserved: number; lowStockThreshold: number }[] }[];
 };
 export type HomeBanner = { id: string; title: string; description: string; imageUrl: string; buttonLabel: string; href: string; startsAt: Date; endsAt: Date; isActive: boolean; sortOrder: number };
 type PopularOrderRow = { productId: string; _sum: { quantity: number | null } };
@@ -76,7 +76,21 @@ export function availableStock(inventory: HomeProduct["inventory"], variants: { 
   return rows.reduce((total, row) => total + Math.max(0, row.quantity - row.reserved), 0);
 }
 
-/** The database reads the home page ran on every request before B3, unchanged. */
+/**
+ * A home shelf card (SCALE-FIX-2 A5): the card's columns only, the store's name and id (no PRO badge on home), stock
+ * rows with the low-stock threshold, and only promotions that are on and not ended (lib/product-card-select.ts).
+ */
+export function homeProductCardSelect(now: Date) {
+  return {
+    ...productCardScalarSelect,
+    store: { select: productCardStoreNameSelect },
+    inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },
+    variants: { where: { isActive: true }, select: { isActive: true, inventory: { select: { quantity: true, reserved: true, lowStockThreshold: true } } } },
+    promotionProducts: productCardPromotionLinks(now),
+  } satisfies Prisma.ProductSelect;
+}
+
+/** The database reads the home page ran on every request before B3 (same filters, order and limits). */
 export async function loadHomePageData(db: PrismaClient, city: HomeCity | null, now: Date): Promise<HomePageData> {
   const cityStoreFilter = city ? { cityId: city.id } : { cityId: "__no_active_city__" };
   const storeFilter = { ...publicStoreVisibilityWhere(), ...cityStoreFilter };
@@ -101,12 +115,7 @@ export async function loadHomePageData(db: PrismaClient, city: HomeCity | null, 
       where: productFilter,
       take: 10,
       orderBy: { createdAt: "desc" },
-      include: {
-        store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } },
-        inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },
-        variants: { where: { isActive: true }, select: { isActive: true, options: true, inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } } } },
-        promotionProducts: { include: { promotion: true } },
-      },
+      select: homeProductCardSelect(now),
     }),
     db.orderItem.groupBy({
       by: ["productId"],
@@ -120,12 +129,7 @@ export async function loadHomePageData(db: PrismaClient, city: HomeCity | null, 
       take: 40,
       // id breaks createdAt ties (bulk-created products share a timestamp), so the shelf is the same on every request.
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      include: {
-        store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } },
-        inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },
-        variants: { where: { isActive: true }, select: { isActive: true, options: true, inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } } } },
-        promotionProducts: { include: { promotion: true } },
-      },
+      select: homeProductCardSelect(now),
     }),
     db.promotion.findMany({
       where: {
@@ -179,23 +183,13 @@ export async function loadHomePageData(db: PrismaClient, city: HomeCity | null, 
     popularRows.length
       ? db.product.findMany({
         where: { ...productFilter, id: { in: popularRows.map((row) => row.productId) } },
-        include: {
-          store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } },
-          inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },
-          variants: { where: { isActive: true }, select: { isActive: true, options: true, inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } } } },
-          promotionProducts: { include: { promotion: true } },
-        },
+        select: homeProductCardSelect(now),
       })
       : Promise.resolve([]),
     featuredProductIds.length
       ? db.product.findMany({
           where: { ...productFilter, id: { in: featuredProductIds } },
-          include: {
-            store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } },
-            inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },
-            variants: { where: { isActive: true }, select: { isActive: true, options: true, inventory: { select: { quantity: true, reserved: true, lowStockThreshold: true } } } },
-            promotionProducts: { include: { promotion: true } },
-          },
+          select: homeProductCardSelect(now),
         })
       : Promise.resolve([]),
     featuredStoreIds.length

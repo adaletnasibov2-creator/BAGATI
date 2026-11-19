@@ -21,7 +21,7 @@ test("the product list page (list and search) opens no interactive transaction",
 });
 
 test("the product list keeps the same catalog call: filters, catalog search, sort, 48 per page, cursor", () => {
-  assert.match(listPage, /findPublicProductCatalogPage\(\s*createPrismaPublicProductCatalogClient\(prisma, productInclude\),\s*\{\s*citySlug: params\.city,\s*storeId: params\.store,\s*categorySlug: params\.category,\s*query: searchQuery,\s*searchFields: "catalog",\s*\}, \{ sort, now, limit: 48, paginate: true, allowMissingRecords: true, \.\.\.\(cursor \? \{ cursor \} : \{\}\) \},/);
+  assert.match(listPage, /findPublicProductCatalogPage\(\s*createPrismaPublicProductCatalogSelectClient\(prisma, productSelect\),\s*\{\s*citySlug: params\.city,\s*storeId: params\.store,\s*categorySlug: params\.category,\s*query: searchQuery,\s*searchFields: "catalog",\s*\}, \{ sort, now, limit: 48, paginate: true, allowMissingRecords: true, \.\.\.\(cursor \? \{ cursor \} : \{\}\) \},/);
 });
 
 test("the store filter on the list page reads 20 stores with plain reads", () => {

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { filterEligiblePublicProducts, resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { publicProductVisibilityWhere, publicStoreVisibilityWhere } from "@/lib/store-visibility";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
+import { productCardScalarSelect, productCardStockSelect, productCardStoreSelect } from "@/lib/product-card-select";
 import { DEALS_CAMPAIGN_PRODUCT_LIMIT, dealsCampaignHref, dealsCampaignParam, groupDealsCampaignProducts } from "@/lib/deals-campaigns";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,8 @@ async function loadDeals(city: string | undefined, campaignId: string | null, no
   const [candidates, campaigns] = await Promise.all([
     campaignId ? Promise.resolve([]) : prisma.product.findMany({
       where: { ...publicProductVisibilityWhere(city ? { city: { isActive: true, slug: city } } : undefined), discountPrice: { not: null } },
-      include: { store: { select: { name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } }, inventory: { select: { variantId: true, quantity: true, reserved: true } }, variants: { where: { isActive: true }, select: { id: true, isActive: true, inventory: { select: { quantity: true, reserved: true } } } } },
+      // Only what the cards render (SCALE-FIX-2 A5); updatedAt only orders the query.
+      select: { ...productCardScalarSelect, store: { select: productCardStoreSelect }, ...productCardStockSelect },
       orderBy: { updatedAt: "desc" }, take: 100,
     }),
     prisma.promotion.findMany({
@@ -20,7 +22,7 @@ async function loadDeals(city: string | undefined, campaignId: string | null, no
         store: { select: { name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } },
         products: {
           where: { product: { status: "ACTIVE", OR: [{ inventory: { some: { variantId: null, quantity: { gt: 0 } } } }, { variants: { some: { isActive: true, inventory: { some: { quantity: { gt: 0 } } } } } }], store: { ...publicStoreVisibilityWhere(), ...cityFilter } } },
-          include: { product: { include: { store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } }, inventory: { select: { variantId: true, quantity: true, reserved: true } }, variants: { where: { isActive: true }, select: { id: true, isActive: true, inventory: { select: { quantity: true, reserved: true } } } } } } },
+          include: { product: { select: { ...productCardScalarSelect, store: { select: productCardStoreSelect }, ...productCardStockSelect } } },
           // Order in which products were added to the campaign; id breaks ties (one create adds them all at once).
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         },

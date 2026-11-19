@@ -10,7 +10,7 @@ export type HomepageCampaignProduct = {
   images: string[];
   store: { id: string; name: string };
   inventory: { variantId?: string | null; quantity: number; reserved: number; lowStockThreshold: number }[];
-  variants: { options: unknown; inventory: { quantity: number; reserved: number; lowStockThreshold: number }[] }[];
+  variants: { inventory: { quantity: number; reserved: number; lowStockThreshold: number }[] }[];
 };
 
 export type HomepageCampaign = PromotionPriceInput & { store?: { name: string } | null };

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { productCardSelect } from "@/lib/product-card-select";
 import { prisma } from "@/lib/prisma";
 import { filterEligiblePublicProducts } from "@/lib/store-eligibility";
 import { publicProductVisibilityWhere } from "@/lib/store-visibility";
@@ -38,7 +39,7 @@ export default async function CategoriesPage({ searchParams }: Props) {
   const found = findCategoryBySlug(data.rows, slug);
   const selected = found && found.category.isActive && (!found.parent || found.parent.isActive) ? found.category : null;
   // A top-level lists itself and its subcategories; a subcategory only itself.
-  const productRows = (selected ? await prisma.product.findMany({ where: { ...publicProductVisibilityWhere(city ? { city: { isActive: true, slug: city } } : undefined), category: categoryScopeWhere(selected.slug) }, include: { store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } }, inventory: { select: { variantId: true, quantity: true, reserved: true } }, variants: { where: { isActive: true }, select: { id: true, isActive: true, inventory: { select: { quantity: true, reserved: true } } } }, promotionProducts: { include: { promotion: true } } }, orderBy: { createdAt: "desc" }, take: 16 }) : null);
+  const productRows = (selected ? await prisma.product.findMany({ where: { ...publicProductVisibilityWhere(city ? { city: { isActive: true, slug: city } } : undefined), category: categoryScopeWhere(selected.slug) }, select: productCardSelect(now) /* only what the cards render (SCALE-FIX-2 A5) */, orderBy: { createdAt: "desc" }, take: 16 }) : null);
   const eligibleProductRows = productRows ? await filterEligiblePublicProducts(productRows, prisma, now) : null;
   const products = eligibleProductRows?.map((product: any) => { const effective=calculateEffectivePrice(product.price,product.discountPrice,productPromotions(product.promotionProducts,product.store.id),now); return {...product,storeId:product.store.id,effectivePrice:effective.unitPrice.toFixed(2),campaignName:effective.promotion?.name||null}; }) || null;
   return <main className="container py-8 sm:py-10 md:py-14">

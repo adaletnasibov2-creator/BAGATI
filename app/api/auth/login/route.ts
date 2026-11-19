@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { findUserByLoginEmail } from "@/lib/login-user-lookup";
 import { createSession } from "@/lib/auth";
 import { logAuthFailure, logAuthRejection } from "@/lib/auth-logging";
 import { wrongPortalBody } from "@/lib/login-portal";
@@ -34,7 +35,7 @@ async function handlePOST(request: NextRequest) {
     return NextResponse.json({ error: "Giriş xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
   let user;
-  try { user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } }); }
+  try { user = await findUserByLoginEmail(prisma, email) /* unique-index lookup (lib/login-user-lookup.ts, SCALE-FIX-2 A8) */; }
   catch (error) {
     logAuthFailure("login_user_lookup", error);
     return NextResponse.json({ error: "Giriş xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });

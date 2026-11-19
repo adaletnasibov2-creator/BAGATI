@@ -279,7 +279,8 @@ test("login and registration email identities trim whitespace and normalize case
   const route = "app/api/auth/vendor-login/route.ts";
   return source(route).then((vendorLogin) => {
     assert.match(vendorLogin, /parsed\.data\.email\.trim\(\)\.toLowerCase\(\)/);
-    assert.match(vendorLogin, /mode: "insensitive"/);
+    // Case-insensitive match through the unique index on lower(btrim(email)) since SCALE-FIX-2 A8 (was ILIKE).
+    assert.match(vendorLogin, /findUserByLoginEmail\(prisma, email\)/);
   });
 });
 

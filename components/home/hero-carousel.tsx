@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { setAboveHero } from "@/lib/hero-viewport";
 
 type HeroBanner = {
   id: string;
@@ -25,9 +26,10 @@ type Slide = {
   secondaryHref: string;
   image: string | null;
   imageAlt: string;
-  // Focal point used when the photo is cropped to the wide strip shown below the xl breakpoint.
+  // Focal point used when the photo is cropped to the wide strip shown below the lg breakpoint.
   imagePosition?: string;
-  // Art-directed versions of the same scene for narrower viewports.
+  // Art-directed versions of the same scene for narrower viewports (the wide strip files only below 1024 px, where the
+  // image sits above the text; from 1024 px the image is a side panel of about 1.15-1.7:1 and uses the desktop file).
   sources?: { media: string; srcSet: string }[];
   visualLabel: string;
 };
@@ -50,7 +52,7 @@ const defaultSlides: Slide[] = [
     sources: [
       // Square for phones: the 4:3 flat-lay with its plain background continued above and below (no device cropped).
       { media: "(max-width: 639px)", srcSet: "/images/home/hero-electronics-devices-square.webp" },
-      { media: "(max-width: 1279px)", srcSet: "/images/home/hero-electronics-devices-tablet.webp" },
+      { media: "(max-width: 1023px)", srcSet: "/images/home/hero-electronics-devices-tablet.webp" },
     ],
     visualLabel: "Texnologiya",
   },
@@ -85,7 +87,7 @@ const defaultSlides: Slide[] = [
     imageAlt: "Divan, jurnal masası və puflar olan işıqlı qonaq otağı",
     sources: [
       { media: "(max-width: 639px)", srcSet: "/images/home/hero-home-mobile.webp" },
-      { media: "(max-width: 1279px)", srcSet: "/images/home/hero-home-tablet.webp" },
+      { media: "(max-width: 1023px)", srcSet: "/images/home/hero-home-tablet.webp" },
     ],
     visualLabel: "Ev üçün",
   },
@@ -168,6 +170,16 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
   const [shown, setShown] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
+  // From 1024 px the hero's height follows the viewport (app/globals.css .bagati-hero). The inline script after the hero
+  // measures the space above it before first paint; this repeats it after a client-side navigation (scripts in the
+  // payload do not run then) and when the window is resized. Before paint, so a navigation shows no jump either.
+  useLayoutEffect(() => {
+    const update = () => setAboveHero(document);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   const slides = buildHeroSlides(banners);
 
   useEffect(() => {
@@ -236,6 +248,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
       aria-roledescription="karusel"
       aria-label="BAGATI alış-veriş təqdimatı"
       data-active-slide={slide.id}
+      data-bagati-hero=""
       onMouseEnter={() => setInteracting(true)}
       onMouseLeave={() => setInteracting(false)}
       onFocusCapture={() => setInteracting(true)}
@@ -262,15 +275,17 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
         if (startX === null || endX === undefined || Math.abs(endX - startX) < 48) return;
         step(endX < startX ? 1 : -1);
       }}
-      className="relative isolate overflow-hidden rounded-feature bg-brand-900 shadow-overlay outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2"
+      className="bagati-hero relative isolate overflow-hidden rounded-feature bg-brand-900 shadow-overlay outline-none focus-visible:ring-2 focus-visible:ring-bagati-gold focus-visible:ring-offset-2 lg:h-[var(--bagati-hero-h)]"
       style={{ touchAction: "pan-y" }}
     >
-      {/* The photograph is not used as a text backdrop: below xl it has its own strip above the
-          copy, from xl it fills the right-hand panel. No overlay or control covers the products. */}
-      {/* Hero sizes (owner, 2026-11-16): image 4:3 on phones (so the buttons stay in the first screen of a 390x844 phone),
-          2:1 from 640 px, 5:2 from 1024 px; from 1280 px the panel fills the right side of a 600 px tall hero. The aspect ratios and min-heights reserve the space before any
-          image arrives, so nothing below moves while the photos load. */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-800 sm:aspect-[2/1] lg:aspect-[5/2] xl:absolute xl:inset-y-0 xl:right-0 xl:aspect-auto xl:w-[56%]">
+      {/* The photograph is not used as a text backdrop: below lg it has its own strip above the
+          copy, from lg it fills the right-hand panel. No overlay or control covers the products. */}
+      {/* Hero sizes (owner, 2026-11-16 and 2026-11-19): image 4:3 on phones (so the buttons stay in the first screen of a
+          390x844 phone), 2:1 from 640 px; from 1024 px the image fills the right 56% of a hero whose height follows the
+          viewport (400-600 px, --bagati-hero-h), so the whole hero fits the first screen of a laptop. The aspect ratio,
+          min-height and fixed height reserve the space before any image arrives, so nothing below moves while the
+          photos load. */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-800 sm:aspect-[2/1] lg:absolute lg:inset-y-0 lg:right-0 lg:aspect-auto lg:w-[56%]">
         {/* Every slide image that is in the DOM is stacked here. The one underneath ("shown") stays visible until the
             active one has loaded and faded in on top, so a change never shows an empty grey box. */}
         {slides.map((item, index) => {
@@ -307,12 +322,14 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
         })}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-[3] hidden w-[13%] bg-[linear-gradient(90deg,#10292a_0%,rgba(16,41,42,0.62)_38%,rgba(16,41,42,0)_100%)] xl:block"
+          className="pointer-events-none absolute inset-y-0 left-0 z-[3] hidden w-[13%] bg-[linear-gradient(90deg,#10292a_0%,rgba(16,41,42,0.62)_38%,rgba(16,41,42,0)_100%)] lg:block"
         />
       </div>
 
-      {/* Fixed minimum heights (and line clamps on the copy) keep the carousel from changing height between slides. */}
-      <div className="bagati-on-dark relative z-10 flex min-h-[404px] flex-col justify-between gap-4 p-5 sm:min-h-[404px] sm:gap-6 sm:p-8 xl:min-h-[clamp(560px,44vw,640px)] xl:w-[46%] xl:p-11">
+      {/* Fixed minimum heights (from lg the fixed hero height) and line clamps on the copy keep the carousel from changing
+          height between slides. From lg the padding, title size and spacing scale with the hero height, so a 3-line
+          title, the text and both buttons stay inside the panel at the 400 px minimum. */}
+      <div className="bagati-on-dark relative z-10 flex min-h-[404px] flex-col justify-between gap-4 p-5 sm:min-h-[404px] sm:gap-6 sm:p-8 lg:h-full lg:min-h-0 lg:w-[46%] lg:gap-3 lg:px-9 lg:py-[clamp(1.25rem,calc(var(--bagati-hero-h)*0.065),2.75rem)] xl:px-11">
         <div className="flex items-center justify-between gap-3">
           {/* Gold hairline + eyebrow: the one gold accent of the hero (decoration; the text is cream). */}
           <span className="inline-flex min-w-0 items-center gap-3 text-kicker uppercase text-gold-200">
@@ -323,7 +340,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
         </div>
 
         <div className="max-w-[560px]">
-          <h1 className="line-clamp-3 font-serif text-[2rem] font-medium leading-[1.04] tracking-[-0.025em] text-white sm:text-[3rem] xl:text-[3.5rem]">
+          <h1 className="line-clamp-3 font-serif text-[2rem] font-medium leading-[1.04] tracking-[-0.025em] text-white sm:text-[3rem] lg:text-[length:clamp(1.875rem,calc(var(--bagati-hero-h)*0.082),3.5rem)]">
             {slide.title}
             {slide.highlight && (
               <>
@@ -332,8 +349,8 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
               </>
             )}
           </h1>
-          {slide.description && <p className="mt-4 line-clamp-2 max-w-[32rem] text-body leading-6 text-white/85 sm:line-clamp-3 sm:text-body-lg">{slide.description}</p>}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          {slide.description && <p className="mt-4 line-clamp-2 max-w-[32rem] text-body leading-6 text-white/85 sm:line-clamp-3 sm:text-body-lg lg:mt-[clamp(0.75rem,calc(var(--bagati-hero-h)*0.03),1rem)] lg:line-clamp-2">{slide.description}</p>}
+          <div className="mt-6 flex flex-wrap items-center gap-3 lg:mt-[clamp(1rem,calc(var(--bagati-hero-h)*0.04),1.5rem)]">
             <Link href={slide.href} className="inline-flex min-h-12 items-center justify-center rounded-full bg-gold-100 px-6 text-body font-semibold text-fg shadow-subtle transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
               {slide.button}
             </Link>

@@ -8,7 +8,7 @@ import { ProductShelf } from "@/components/home/product-shelf";
 import { HomeSectionHeading } from "@/components/home/section-heading";
 import { StoreStrip } from "@/components/home/store-strip";
 import { TrustRow } from "@/components/home/trust-row";
-import { prisma } from "@/lib/prisma";
+import { getActiveCities } from "@/lib/active-cities";
 import { calculateEffectivePrice } from "@/lib/promotion-pricing";
 import { productPromotions } from "@/lib/promotion-pricing";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -24,11 +24,8 @@ type Props = { searchParams: Promise<{ city?: string }> };
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
   // Falls back to the default/first active city instead of an empty page when the slug is missing or inactive.
-  const activeCities = await prisma.city.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true, slug: true },
-    orderBy: { name: "asc" },
-  });
+  // The layout's cached list (lib/active-cities.ts): no second city query.
+  const activeCities = await getActiveCities();
   const city = resolveActiveCity(activeCities, params.city);
 
   // Shelves, banners, campaigns and stores come from a 30 s per-city cache (lib/home-page-data.ts, SCALE-FIX-2 B3);

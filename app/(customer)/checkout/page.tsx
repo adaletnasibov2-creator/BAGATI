@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getActiveCities } from "@/lib/active-cities";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,7 +20,7 @@ export default async function CheckoutPage(){
   const [cartResult,addressResult,cityResult,profile,termsAccepted]=await Promise.all([
     prisma.cart.findUnique({where:{userId:user.id},include:{items:{include:{product:{include:{store:{select:{id:true,name:true,freeDeliveryThreshold:true,deliveryFee:true,city:{select:{id:true,name:true}}}},promotionProducts:{where:{promotion:{isActive:true,startsAt:{lte:now},endsAt:{gte:now}}},include:{promotion:true}}}},variant:true}}}}),
     prisma.address.findMany({where:{userId:user.id},include:{city:{select:{name:true}}},orderBy:{isDefault:"desc"}}),
-    prisma.city.findMany({where:{isActive:true},select:{id:true,name:true},orderBy:{name:"asc"}}),
+    getActiveCities().then((cities)=>cities.map(({id,name})=>({id,name}))), // cached list (SCALE-FIX-2 A6)
     prisma.customerProfile.findUnique({where:{userId:user.id}}),
     // The checkbox shows only while the CURRENT customer terms are not accepted; POST /api/orders checks again.
     hasAcceptedCurrent(prisma,user.id,"CUSTOMER_TERMS"),

@@ -134,8 +134,8 @@ test("nothing per visitor goes into the cache", () => {
     "banners", "discounted", "eligibleCampaigns", "featuredProducts", "hasHomepageContent", "homepageStores",
     "newestVisible", "popular", "promotionalById", "storesAreFeatured",
   ]);
-  // The page reads no database rows other than the active city list; everything else is cached or has its own cache.
-  assert.equal(page.match(/prisma\.\w+\.\w+\(/g)?.join(","), "prisma.city.findMany(");
+  // The page reads no database rows itself: shelves, cities (A6), categories and settings are all cached.
+  assert.doesNotMatch(page, /prisma\./);
 });
 
 test("admin banner and homepage-selection saves invalidate the cache after the write commits", () => {

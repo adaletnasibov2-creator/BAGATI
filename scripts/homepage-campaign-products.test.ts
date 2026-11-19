@@ -67,7 +67,8 @@ test("one combined campaign query is split into the same batches as one query pe
 });
 
 test("the homepage runs one campaign product query, not one per campaign", () => {
-  const page = readFileSync(join(__dirname, "..", "app", "(customer)", "(home)", "page.tsx"), "utf8");
-  assert.match(page, /findHomepageCampaignProductBatches\(prisma, promotionalCampaigns, storeFilter, 10\)/);
-  assert.doesNotMatch(page, /promotionalCampaigns\.map\(\(campaign\) => prisma\.promotionProduct\.findMany/);
+  // The home page's data reads live in lib/home-page-data.ts since SCALE-FIX-2 B3 (db = the Prisma client).
+  const page = readFileSync(join(__dirname, "..", "lib", "home-page-data.ts"), "utf8");
+  assert.match(page, /findHomepageCampaignProductBatches\(db, promotionalCampaigns, storeFilter, 10\)/);
+  assert.doesNotMatch(page, /promotionalCampaigns\.map\(\(campaign\) => (prisma|db)\.promotionProduct\.findMany/);
 });

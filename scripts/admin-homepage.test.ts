@@ -122,7 +122,9 @@ test("admin payment route clearly reports that transactions are unavailable", ()
 });
 
 test("homepage reads only active scheduled banners and retains existing seller promotion display", () => {
-  const page = source("app/(customer)/(home)/page.tsx");
+  // The home page reads (and caches for 30 s) its banners and shelves through lib/home-page-data.ts (SCALE-FIX-2 B3).
+  const page = source("lib/home-page-data.ts");
+  assert.match(source("app/(customer)/(home)/page.tsx"), /<HeroCarousel banners=\{banners\} \/>/);
   assert.match(page, /where: \{ isActive: true, startsAt: \{ lte: now \}, endsAt: \{ gte: now \} \}/);
   assert.match(page, /homepageFeaturedProduct\.findMany/);
   assert.match(page, /homepageFeaturedStore\.findMany/);

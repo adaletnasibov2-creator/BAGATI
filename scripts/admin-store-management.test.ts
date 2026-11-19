@@ -344,7 +344,9 @@ test("public discovery, cart, and checkout share current store and product eligi
   assert.match(catalog, /isPublicStoreEligible/);
   for (const path of ["app/(customer)/products/(list)/page.tsx", "app/(customer)/products/[productId]/page.tsx", "app/(customer)/categories/page.tsx", "app/(customer)/new-products/page.tsx", "app/(customer)/deals/page.tsx", "app/(customer)/(home)/page.tsx", "app/api/products/route.ts", "app/api/products/[id]/route.ts", "app/(customer)/stores/[storeId]/page.tsx"]) {
     const source = readFileSync(resolve(root, path), "utf8");
-    assert.match(source, /publicProductVisibilityWhere|findPublicProductCatalogPage/);
+    // The home page's product reads live in lib/home-page-data.ts since SCALE-FIX-2 B3.
+    const data = path === "app/(customer)/(home)/page.tsx" ? readFileSync(resolve(root, "lib/home-page-data.ts"), "utf8") : source;
+    assert.match(data, /publicProductVisibilityWhere|findPublicProductCatalogPage/);
     if (path.startsWith("app/(customer)/")) assert.match(source, /export const dynamic = "force-dynamic"/);
   }
   assert.match(storefront, /publicProductVisibilityWhere\(\{ id: store\.id \}\)/);

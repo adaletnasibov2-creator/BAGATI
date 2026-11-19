@@ -3,6 +3,7 @@ import { csrfRejection } from "@/lib/csrf";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { homeBannerSchema } from "@/lib/site-content";
+import { invalidateHomePageCache } from "@/lib/home-page-data";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ bannerId: string }> }) {
   const admin = await requireRole("ADMIN");
@@ -20,6 +21,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       await tx.auditLog.create({ data: { actorId: admin.id, action: "HOME_BANNER_UPDATE", entityType: "HomeBanner", entityId: updated.id } });
       return updated;
     });
+    invalidateHomePageCache(); // the home page shows the change on the next request (lib/home-page-data.ts)
     return NextResponse.json({ item, message: "Banner yeniləndi." });
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "P2025") return NextResponse.json({ error: "Banner tapılmadı" }, { status: 404 });
@@ -39,5 +41,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return result.count;
   });
   if (!changed) return NextResponse.json({ error: "Aktiv banner tapılmadı" }, { status: 404 });
+  invalidateHomePageCache();
   return NextResponse.json({ deactivated: true, message: "Banner deaktiv edildi." });
 }

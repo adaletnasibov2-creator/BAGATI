@@ -3,6 +3,9 @@
  *  A3: the product catalog and store discovery on plain reads (no interactive transaction) return exactly the same
  *      pages, in the same order, with the same cursors, as the previous RepeatableRead transactions, for every filter
  *      and sort the list page uses; and the /api/products count equals the exact eligible count for normal data.
+ *  A7: two buyers lock the same stock row in Serializable transactions, as POST /api/orders does. The loser's error
+ *      (P2010 with SQLSTATE 40001 on this stack) is recognised by withOrderSerializationRetry and its retry succeeds;
+ *      stock never goes below zero.
  *
  * Safety: uses only BAGATI_CATALOG_IMPORT_VERIFY_DATABASE_URL (loopback, port 5433, database name containing "verify")
  * and REQUIRES BAGATI_VERIFY_SCHEMA = an already-migrated cat_* scratch schema. It creates its own rows under a random
@@ -159,6 +162,72 @@ test("A3: plain reads give the same catalog and store pages as the RepeatableRea
     await prisma.vendorProfile.deleteMany({ where: { id: { in: created.vendors } } });
     await prisma.user.deleteMany({ where: { id: { in: created.users } } });
     for (const id of created.categories) await prisma.category.deleteMany({ where: { id } });
+    if (created.city) await prisma.city.deleteMany({ where: { id: created.city } });
+    await prisma.$disconnect();
+  }
+});
+
+test("A7: a concurrent-buyer conflict on a stock row is a serialization conflict and the retry succeeds", { timeout: 120_000 }, async (t) => {
+  const prisma = await openScratch(t);
+  if (!prisma) return;
+  const tag = `sr${randomUUID().replace(/-/g, "").slice(0, 8)}`;
+  const { withOrderSerializationRetry, isOrderSerializationConflict } = await import("../lib/order-transaction-retry");
+  const created = { user: "", vendor: "", store: "", city: "" };
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  try {
+    const city = await prisma.city.create({ data: { name: `Şəhər ${tag}`, slug: `${tag}-city`, isActive: true } });
+    created.city = city.id;
+    const user = await prisma.user.create({ data: { email: `${tag}-seller@verify.invalid`, passwordHash: "x", role: "VENDOR" } });
+    created.user = user.id;
+    const vendor = await prisma.vendorProfile.create({ data: { userId: user.id, displayName: `Satıcı ${tag}`, sellerType: "INDIVIDUAL_ENTREPRENEUR", legalName: "Satıcı", voen: "7000000011", legalAddress: "Ünvan" } });
+    created.vendor = vendor.id;
+    const store = await prisma.store.create({ data: { vendorId: vendor.id, cityId: city.id, name: `Mağaza ${tag}`, slug: `${tag}-store`, status: "ACTIVE", isActive: true, legalInfoApproved: true, adminManaged: true } });
+    created.store = store.id;
+    const product = await prisma.product.create({ data: { storeId: store.id, name: `Məhsul ${tag}`, slug: `${tag}-p`, price: new Prisma.Decimal(10), status: "ACTIVE", inventory: { create: { quantity: 5 } } }, include: { inventory: true } });
+    const inventoryId = product.inventory[0].id;
+
+    // Same statements and order as the order route: read first (snapshot), lock the stock row, compare-and-set.
+    const buy = (holdMs: number) => prisma.$transaction(async (tx) => {
+      await tx.product.findUnique({ where: { id: product.id }, select: { id: true } });
+      await tx.$queryRawUnsafe('SELECT "id" FROM "Inventory" WHERE "id" = $1 FOR UPDATE', inventoryId);
+      const row = await tx.inventory.findUnique({ where: { id: inventoryId } });
+      const updated = await tx.inventory.updateMany({ where: { id: inventoryId, quantity: { gte: 1 }, reserved: row!.reserved }, data: { quantity: { decrement: 1 } } });
+      if (updated.count !== 1) throw new Error("STOCK_CHANGED");
+      if (holdMs) await sleep(holdMs);
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10_000, timeout: 20_000 });
+
+    // 1) Without retry: buyer A holds the lock; buyer B starts its snapshot, then waits for the lock and fails.
+    const first = buy(600);
+    await sleep(150);
+    const second = buy(0).then(() => null, (error: unknown) => error);
+    await first;
+    const conflict = await second;
+    assert.ok(conflict, "the second buyer must hit a conflict when its snapshot predates the first buyer's commit");
+    const code = conflict instanceof Prisma.PrismaClientKnownRequestError ? `${conflict.code} ${JSON.stringify(conflict.meta)}` : conflict instanceof Error ? conflict.message.slice(0, 80) : String(conflict);
+    // PostgreSQL 18 + Prisma 6.19 report it as P2010 with meta.code "40001" (raw FOR UPDATE), not P2034.
+    assert.equal(isOrderSerializationConflict(conflict), true, `expected a serialization conflict (P2034 or P2010/40001), got ${code}`);
+
+    // 2) With the route's retry: the same race ends with both purchases done.
+    const third = buy(600);
+    await sleep(150);
+    const fourth = withOrderSerializationRetry(() => buy(0));
+    await Promise.all([third, fourth]);
+    const stock = await prisma.inventory.findUnique({ where: { id: inventoryId } });
+    assert.equal(stock!.quantity, 5 - 3, "purchases 1, 3 and 4 succeeded; 2 was rolled back");
+
+    // 3) Never oversells: 6 buyers at once for the 2 items left, each with the retry.
+    const results = await Promise.allSettled(Array.from({ length: 6 }, () => withOrderSerializationRetry(() => buy(50))));
+    const after = await prisma.inventory.findUnique({ where: { id: inventoryId } });
+    assert.ok(after!.quantity >= 0, "no negative stock");
+    assert.equal(2 - after!.quantity, results.filter((result) => result.status === "fulfilled").length, "stock taken = successful buyers");
+  } finally {
+    if (created.store) {
+      await prisma.inventory.deleteMany({ where: { product: { storeId: created.store } } });
+      await prisma.product.deleteMany({ where: { storeId: created.store } });
+      await prisma.store.deleteMany({ where: { id: created.store } });
+    }
+    if (created.vendor) await prisma.vendorProfile.deleteMany({ where: { id: created.vendor } });
+    if (created.user) await prisma.user.deleteMany({ where: { id: created.user } });
     if (created.city) await prisma.city.deleteMany({ where: { id: created.city } });
     await prisma.$disconnect();
   }

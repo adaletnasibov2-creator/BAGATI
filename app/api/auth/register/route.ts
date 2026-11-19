@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { findUserIdsByNormalizedEmail } from "@/lib/login-user-lookup";
 import { logAuthFailure } from "@/lib/auth-logging";
 import { registerSchema } from "@/lib/validation";
 import { enqueueVerificationEmail } from "@/lib/email-outbox";
@@ -29,6 +30,15 @@ async function recordResumedAcceptance(userId: string | null) {
   } catch (error) {
     logAuthFailure("customer_registration_terms_resume", error);
   }
+}
+
+/**
+ * The account for this email, if any: one probe of the unique index on lower(btrim(email)) (SCALE-FIX-3, A8 follow-up;
+ * it was an ILIKE scan), then the row by id with the fields the resume path needs.
+ */
+async function findRegistrationUser(email: string) {
+  const [id] = await findUserIdsByNormalizedEmail(prisma, email);
+  return id ? prisma.user.findUnique({ where: { id }, select: { id: true, passwordHash: true, role: true, emailVerifiedAt: true } }) : null;
 }
 
 async function handlePOST(request: NextRequest) {
@@ -72,7 +82,7 @@ async function handlePOST(request: NextRequest) {
     return NextResponse.json({ error: "Qeydiyyat xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
   let exists;
-  try { exists = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true, emailVerifiedAt: true } }); }
+  try { exists = await findRegistrationUser(email); }
   catch (error) { logAuthFailure("customer_registration_lookup", error); return NextResponse.json({ error: "Qeydiyyat xidməti hazırda əlçatan deyil. Bir az sonra yenidən cəhd edin." }, { status: 503, headers: { "Cache-Control": "no-store" } }); }
   if (exists) {
     const userId = await resumableRegistrationUserId(exists, parsed.data.password, "CUSTOMER");
@@ -101,7 +111,7 @@ async function handlePOST(request: NextRequest) {
   }); } catch (error) {
     if (isDuplicateEmailError(error)) {
       try {
-        const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true, passwordHash: true, role: true, emailVerifiedAt: true } });
+        const existing = await findRegistrationUser(email);
         const userId = await resumableRegistrationUserId(existing, parsed.data.password, "CUSTOMER");
         await recordResumedAcceptance(userId);
         return registrationAcknowledgement(userId, "CUSTOMER", "/verify-email");

@@ -30,6 +30,8 @@ export default async function CategoryPreviewPage({ searchParams }: { searchPara
   const { category = "elektronika", view = "page" } = await searchParams;
   const found = findCategoryBySlug(previewCategoryRows, category);
   const href = (slug: string | null) => `/storefront-preview/categories${slug ? `?category=${slug}` : ""}`;
+  // The filter tree is a client component (SCALE-FIX-3): it gets the same links as a path plus kept parameters.
+  const filterLink = { path: "/storefront-preview/categories", params: [] as [string, string][] };
 
   if (view === "header") {
     // The real storefront header (same component as the customer layout) with the sample tree.
@@ -68,9 +70,9 @@ export default async function CategoryPreviewPage({ searchParams }: { searchPara
       <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald">BAGATI kataloqu</p>
       <h1 className="mt-2 text-3xl font-semibold text-ink md:text-4xl">{found?.category.name ?? "Məhsullar"}</h1>
       <p className="mt-2 text-xs text-muted">Kanonik ünvan: {found ? categoryHref(found.category.slug) : "/products"}</p>
-      <details className="mt-5 lg:hidden"><summary className="flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-white px-4 text-sm font-medium">Kateqoriyalar{found ? `: ${found.category.name}` : ""}</summary><div className="mt-2"><CategoryFilterTree tree={previewCategoryTree} selectedSlug={found?.category.slug ?? null} href={href} /></div></details>
+      <details className="mt-5 lg:hidden"><summary className="flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-white px-4 text-sm font-medium">Kateqoriyalar{found ? `: ${found.category.name}` : ""}</summary><div className="mt-2"><CategoryFilterTree tree={previewCategoryTree} selectedSlug={found?.category.slug ?? null} link={filterLink} /></div></details>
       <div className="lg:mt-8 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6">
-        <aside className="hidden lg:block" data-preview="filter-tree"><CategoryFilterTree tree={previewCategoryTree} selectedSlug={found?.category.slug ?? null} href={href} /></aside>
+        <aside className="hidden lg:block" data-preview="filter-tree"><CategoryFilterTree tree={previewCategoryTree} selectedSlug={found?.category.slug ?? null} link={filterLink} /></aside>
         <div className={`mt-8 min-w-0 lg:mt-0 ${PRODUCT_GRID_WITH_SIDEBAR_CLASS}`}>
           {sampleProducts.map((product) => <ProductCard key={product.id} id={product.id} name={product.name} price={product.price} store={product.store} storeHref="#" image={product.image} stock={3} />)}
         </div>

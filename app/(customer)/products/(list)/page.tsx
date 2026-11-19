@@ -18,7 +18,7 @@ import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
 import type { Metadata } from "next";
 import { normalizePublicSearchTerm, PRODUCT_SEARCH_MAX_LENGTH } from "@/lib/search-term";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ q?: string; city?: string; category?: string; store?: string; sort?: string; cursor?: string }> };
@@ -49,27 +49,27 @@ export default async function ProductsPage({ searchParams }: Props) {
   const decodedCursor = params.cursor ? decodeProductCatalogCursor(params.cursor) : null;
   const cursor = decodedCursor?.cursor.sort === sort ? params.cursor : undefined;
   const invalidCursor = Boolean(params.cursor && !cursor);
+  // Plain reads, no interactive transactions (SCALE-FIX-1): before, the store list and the catalog each held a pool
+  // connection in a RepeatableRead transaction for the whole scan, and under load other visitors got an error page
+  // (P2028). Each query now holds a connection only while it runs; results, order, filters and paging are unchanged.
   const [categoryData, storePage, selectedStore, products] = await Promise.all([
     getPublicCategoryData(params.city || null),
-    prisma.$transaction((tx) => findPublicStoreDiscoveryCursorPage(
-      createPrismaPublicStoreDiscoveryClient(tx), { citySlug: params.city }, { pageSize: 20 },
-    ), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead }),
+    findPublicStoreDiscoveryCursorPage(
+      createPrismaPublicStoreDiscoveryClient(prisma), { citySlug: params.city }, { pageSize: 20, allowMissingRecords: true },
+    ),
     params.store ? prisma.store.findFirst({
       where: { id: params.store, ...publicStoreListingWhere({ citySlug: params.city }, now) },
       select: { id: true, name: true },
     }) : Promise.resolve(null),
-    prisma.$transaction(
-      (tx) => findPublicProductCatalogPage(
-        createPrismaPublicProductCatalogClient(tx, productInclude),
-        {
-          citySlug: params.city,
-          storeId: params.store,
-          categorySlug: params.category,
-          query: searchQuery,
-          searchFields: "catalog",
-        }, { sort, now, limit: 48, paginate: true, ...(cursor ? { cursor } : {}) },
-      ),
-      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    findPublicProductCatalogPage(
+      createPrismaPublicProductCatalogClient(prisma, productInclude),
+      {
+        citySlug: params.city,
+        storeId: params.store,
+        categorySlug: params.category,
+        query: searchQuery,
+        searchFields: "catalog",
+      }, { sort, now, limit: 48, paginate: true, allowMissingRecords: true, ...(cursor ? { cursor } : {}) },
     ),
   ]);
   const eligibleSelectedStoreIds = selectedStore

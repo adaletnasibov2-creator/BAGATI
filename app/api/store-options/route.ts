@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createPrismaPublicStoreDiscoveryClient, findPublicStoreDiscoveryCursorPage } from "@/lib/public-store-discovery";
 
@@ -15,9 +14,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Axtarış məlumatı yanlışdır" }, { status: 400 });
   }
   try {
-    const page = await prisma.$transaction(
-      (tx) => findPublicStoreDiscoveryCursorPage(createPrismaPublicStoreDiscoveryClient(tx), { citySlug: city, query }, { pageSize: STORE_OPTION_PAGE_SIZE, cursor }),
-      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    // Plain reads, no interactive transaction (SCALE-FIX-1): no pool connection is held for the whole scan.
+    const page = await findPublicStoreDiscoveryCursorPage(
+      createPrismaPublicStoreDiscoveryClient(prisma),
+      { citySlug: city, query },
+      { pageSize: STORE_OPTION_PAGE_SIZE, cursor, allowMissingRecords: true },
     );
     return NextResponse.json({ ...page, pageSize: STORE_OPTION_PAGE_SIZE }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

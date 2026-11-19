@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createPrismaPublicProductCatalogClient, findPublicProductCatalogPage } from "@/lib/public-product-catalog";
 import { productQuerySchema } from "@/lib/validation";
 import { findPublicProductsByIds, parseProductIdsParam } from "@/lib/public-product-batch";
+import { countPublicProductsForApi, PUBLIC_PRODUCTS_API_MAX_RESULTS, publicProductsApiPageTooDeep } from "@/lib/public-products-api";
 
 const productInclude = {
   store: { select: { id: true, name: true, city: { select: { name: true, slug: true } } } },
@@ -23,12 +24,27 @@ export async function GET(request: NextRequest) {
   const parsed = productQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
   if (!parsed.success) return NextResponse.json({ error: "Sorğu parametrləri yanlışdır", details: parsed.error.flatten() }, { status: 400 });
   const { city, category, q, page, limit } = parsed.data;
-  const result = await prisma.$transaction((tx) => findPublicProductCatalogPage(
-    createPrismaPublicProductCatalogClient(tx, productInclude),
-    { citySlug: city, categorySlug: category, query: q, searchFields: "name" },
-    { sort: "newest", offset: (page - 1) * limit, limit, exactTotal: true },
-  ), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
-  return NextResponse.json({ items: result.items, page, limit, total: result.total });
+  // Offset paging re-scans every earlier row, so it stops at PUBLIC_PRODUCTS_API_MAX_RESULTS; the cursor API has no
+  // depth limit (lib/public-products-api.ts).
+  if (publicProductsApiPageTooDeep(page, limit)) {
+    return NextResponse.json({
+      error: `Bu səhifə çox dərindir: ilk ${PUBLIC_PRODUCTS_API_MAX_RESULTS} məhsuldan sonrası üçün /api/products/cursor istifadə edin.`,
+      code: "PAGE_TOO_DEEP",
+      maxResults: PUBLIC_PRODUCTS_API_MAX_RESULTS,
+    }, { status: 400 });
+  }
+  const filters = { citySlug: city, categorySlug: category, query: q, searchFields: "name" as const };
+  const now = new Date();
+  // Plain reads, no interactive transaction: no pool connection is held for the whole scan (SCALE-FIX-1).
+  const [result, total] = await Promise.all([
+    findPublicProductCatalogPage(
+      createPrismaPublicProductCatalogClient(prisma, productInclude),
+      filters,
+      { sort: "newest", now, offset: (page - 1) * limit, limit, allowMissingRecords: true },
+    ),
+    countPublicProductsForApi(prisma, filters, now),
+  ]);
+  return NextResponse.json({ items: result.items, page, limit, total });
 }
 
 export const dynamic = "force-dynamic";

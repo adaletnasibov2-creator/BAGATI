@@ -15,6 +15,7 @@ import { getPublicCategoryData } from "@/lib/public-category-tree";
 import { categoryBreadcrumbs, categorySiblingLinks, findCategoryBySlug, isPublicCategory } from "@/lib/category-tree";
 import { categoryPageMetadata } from "@/lib/category-seo";
 import { CategoryFilterTree } from "@/components/category-filter-tree";
+import { categoryFilterHref as buildCategoryFilterHref, type CategoryFilterLink } from "@/lib/category-filter-href";
 import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
 import type { Metadata } from "next";
 import { normalizePublicSearchTerm, PRODUCT_SEARCH_MAX_LENGTH } from "@/lib/search-term";
@@ -88,17 +89,18 @@ export default async function ProductsPage({ searchParams }: Props) {
     if (value) query.set("cursor", value);
     return `/products${query.size ? `?${query.toString()}` : ""}`;
   };
-  // Filter links keep search, city, store and sort, drop the cursor, and change only the category.
-  const categoryFilterHref = (slug: string | null) => {
-    const query = new URLSearchParams();
-    if (slug) query.set("category", slug);
-    if (searchQuery) query.set("q", searchQuery);
-    if (params.city) query.set("city", params.city);
-    if (params.store) query.set("store", params.store);
-    if (sort !== "newest") query.set("sort", sort);
-    return `/products${query.size ? `?${query.toString()}` : ""}`;
+  // Filter links keep search, city, store and sort, drop the cursor, and change only the category (category first).
+  const filterLink: CategoryFilterLink = {
+    path: "/products",
+    params: [
+      ...(searchQuery ? [["q", searchQuery] as [string, string]] : []),
+      ...(params.city ? [["city", params.city] as [string, string]] : []),
+      ...(params.store ? [["store", params.store] as [string, string]] : []),
+      ...(sort !== "newest" ? [["sort", sort] as [string, string]] : []),
+    ],
   };
-  const filterTree = <CategoryFilterTree tree={categoryData.tree} selectedSlug={selectedCategory ? selectedCategory.category.slug : null} href={categoryFilterHref} />;
+  const categoryFilterHref = (slug: string | null) => buildCategoryFilterHref(filterLink, slug);
+  const filterTree = <CategoryFilterTree tree={categoryData.tree} selectedSlug={selectedCategory ? selectedCategory.category.slug : null} link={filterLink} />;
   return <div className="container py-10 md:py-14">
     {selectedCategory && <CategoryBreadcrumbs crumbs={categoryBreadcrumbs(selectedCategory.category, selectedCategory.parent)} className="mb-4" />}
     <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald">BAGATI kataloqu</p><h1 className="mt-2 text-3xl font-semibold text-ink md:text-4xl">{searchQuery ? `“${searchQuery}” üçün nəticələr` : selectedCategory ? selectedCategory.category.name : "Məhsullar"}</h1>

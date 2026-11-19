@@ -30,3 +30,22 @@ export async function findUserByLoginEmail(db: LoginUserLookupClient, email: str
   return db.user.findUnique({ where: { id: rows[0].id } });
 }
 
+export type UserEmailLookupClient = Pick<PrismaClient, "$queryRaw">;
+
+/**
+ * SCALE-FIX-3 (A8 follow-up): the same index probe for registration, forgot-password and the existing-account check,
+ * which still used `email: { equals, mode: "insensitive" }` (an ILIKE scan of User, with `_`/`%` as wildcards).
+ *
+ * Returns the ids of the users whose normalised email equals the normalised input. Postgres normalises both sides with
+ * lower(btrim(...)), exactly like the unique index "User_email_normalized_key", so the result is the same however the
+ * caller cased or trimmed the input, and the index serves it (the right-hand side is a constant for the planner).
+ * Because the index is unique there is at most one id; `limit: 2` exists only so the existing-account check keeps its
+ * "ambiguous" branch unchanged. Callers then read the row by id with their own select and filters.
+ */
+export async function findUserIdsByNormalizedEmail(db: UserEmailLookupClient, email: string, limit: 1 | 2 = 1): Promise<string[]> {
+  const rows = limit === 2
+    ? await db.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE lower(btrim("email")) = lower(btrim(${email})) LIMIT 2`
+    : await db.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE lower(btrim("email")) = lower(btrim(${email})) LIMIT 1`;
+  return rows.map((row) => row.id);
+}
+

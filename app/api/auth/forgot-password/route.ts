@@ -5,6 +5,7 @@ import { z } from "zod";
 import { logAuthFailure } from "@/lib/auth-logging";
 import { authRateLimitKey, consumeAuthRateLimit, PASSWORD_RESET_RATE_LIMIT } from "@/lib/auth-rate-limit";
 import { prisma } from "@/lib/prisma";
+import { findUserIdsByNormalizedEmail } from "@/lib/login-user-lookup";
 import { generatePasswordResetToken, getPublicAppUrl, hashPasswordResetToken, PASSWORD_RESET_TTL_MS } from "@/lib/password-reset";
 import { enqueueEmail } from "@/lib/email-outbox";
 import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
@@ -28,10 +29,12 @@ async function handlePOST(request: NextRequest) {
     if (!await consumeAuthRateLimit(rateKey, PASSWORD_RESET_RATE_LIMIT.limit, PASSWORD_RESET_RATE_LIMIT.windowMs)) {
       return NextResponse.json(genericResponse, { status: 202, headers: { "Cache-Control": "no-store" } });
     }
-    const user = await prisma.user.findFirst({
-      where: { email: { equals: email, mode: "insensitive" }, isActive: true },
+    // Index probe on lower(btrim(email)) (SCALE-FIX-3, A8 follow-up; was an ILIKE scan), then the active user by id.
+    const [userId] = await findUserIdsByNormalizedEmail(prisma, email);
+    const user = userId ? await prisma.user.findFirst({
+      where: { id: userId, isActive: true },
       select: { id: true, email: true, passwordAuthEnabled: true },
-    });
+    }) : null;
     if (!user || !user.passwordAuthEnabled) return NextResponse.json(genericResponse, { status: 202, headers: { "Cache-Control": "no-store" } });
 
     const token = generatePasswordResetToken();

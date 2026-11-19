@@ -258,7 +258,8 @@ test("OAuth account creation and linking preserve legacy password state without 
   assert.match(callback, /\/auth\/google\/link/);
   assert.doesNotMatch(callback, /resultUrl\(origin, state, "link-pending"/);
   assert.doesNotMatch(callback, /createSession\(existing/);
-  assert.match(await readFile(new URL("../lib/existing-account.ts", import.meta.url), "utf8"), /take: 2/);
+  // At most two matches are read (index probe since SCALE-FIX-3), so the "ambiguous" answer is kept.
+  assert.match(await readFile(new URL("../lib/existing-account.ts", import.meta.url), "utf8"), /findUserIdsByNormalizedEmail\(prisma, email, 2\)/);
   assert.match(callback, /searchParams\.set\("portal", portal\)/);
   assert.doesNotMatch(callback, /googleAccount\.create\(\{ data: \{ googleSub: identity\.sub, userId: existing/);
   assert.match(callback, /state\.mode === "link"/);

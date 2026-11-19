@@ -1,3 +1,8 @@
+"use client";
+
+// A client component since SCALE-FIX-3 (B2): the server sends each card's props (about 0.3 KB) instead of its rendered
+// element tree with every class string (about 2.9 KB per card, 140 KB of payload for the 48 cards of /products). The
+// HTML is the same. The card code was already in the browser bundle (the favourites page renders it).
 import Link from "next/link";
 import { PRODUCT_CARD_IMAGE_SIZES } from "@/components/product-layout";
 import { FavoriteToggle } from "@/components/favorite-toggle";

@@ -1,21 +1,29 @@
+"use client";
+
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
+import { categoryFilterHref, type CategoryFilterLink } from "@/lib/category-filter-href";
 import type { PublicCategoryNode } from "@/lib/public-category-tree";
 
 /**
  * Product list category filter: expand/collapse per top-level (native <details>, works without JavaScript),
  * counts of visible products (zero counts are not shown), plain links so every filter state is a shareable URL.
+ *
+ * A client component since SCALE-FIX-3 (B2): the server sends only the category data (on /products the very same
+ * tree object the header already sends, so React references it instead of repeating it) instead of the rendered
+ * markup with an SVG icon per row (124 KB of page payload on /products before). The HTML is the same.
  */
 export function CategoryFilterTree({
   tree,
   selectedSlug,
-  href,
+  link: filterLink,
 }: {
   tree: PublicCategoryNode[];
   selectedSlug: string | null;
-  href: (slug: string | null) => string;
+  link: CategoryFilterLink;
 }) {
+  const href = (slug: string | null) => categoryFilterHref(filterLink, slug);
   const link = "flex min-h-10 min-w-0 items-center gap-2 rounded-lg px-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald";
   const current = (slug: string | null) => (selectedSlug ?? null) === slug;
   return (

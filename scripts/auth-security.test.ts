@@ -192,7 +192,8 @@ test("new and duplicate registrations receive the same non-enumerating acknowled
     assert.match(route, /consumeAuthRateLimit/);
     assert.match(route, /trustedCloudflareClientIp\(request\.headers\)/);
     assert.match(route, /registrationAcknowledgement\(null/);
-    assert.ok(route.indexOf("consumeAuthProcessRateLimit") < route.indexOf("prisma.user.findFirst"));
+    // The lookup is an index probe since SCALE-FIX-3 (A8 follow-up; was an ILIKE findFirst); still after the rate limit.
+    assert.ok(route.indexOf("consumeAuthProcessRateLimit(") < route.indexOf("await findRegistrationUser(email)"));
   }
   const [queuedResend, absentResend] = [verificationResendAcknowledgement(), verificationResendAcknowledgement()];
   assert.equal(queuedResend.status, absentResend.status);
@@ -317,7 +318,9 @@ test("recovery endpoints are generic, hashed-token based, atomic, and revoke ses
   ]);
   assert.match(requestRoute, /status: 202/);
   assert.match(requestRoute, /consumeAuthRateLimit/);
-  assert.match(requestRoute, /email: \{ equals: email, mode: "insensitive" \}/);
+  // Case-insensitive match through the unique index on lower(btrim(email)) since SCALE-FIX-3 (was ILIKE).
+  assert.match(requestRoute, /findUserIdsByNormalizedEmail\(prisma, email\)/);
+  assert.match(requestRoute, /where: \{ id: userId, isActive: true \}/);
   assert.match(requestRoute, /select: \{ id: true, email: true, passwordAuthEnabled: true \}/);
   assert.match(requestRoute, /!user\.passwordAuthEnabled/);
   assert.match(requestRoute, /Google ilə yaradılmış və şifrə girişi bağlı olan hesablar Google girişi ilə istifadə olunur/);

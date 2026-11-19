@@ -14,3 +14,21 @@ export async function register() {
     }
   }
 }
+
+/**
+ * Server-side error log (SCALE-FIX-1 A4): one structured line per render or route error, with the digest the error
+ * page shows and the Prisma error code, never the message or query string (lib/request-error-log.ts). Logging only;
+ * Next still logs the error itself and the error boundaries show the friendly page.
+ */
+export async function onRequestError(
+  error: unknown,
+  request: { path: string; method: string },
+  context: { routerKind?: string; routePath?: string; routeType?: string; renderSource?: string },
+) {
+  try {
+    const { requestErrorLogLine } = await import("./lib/request-error-log");
+    console.error(requestErrorLogLine(error, request, context));
+  } catch {
+    console.error("request_error log failed");
+  }
+}

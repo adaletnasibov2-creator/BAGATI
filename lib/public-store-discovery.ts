@@ -117,7 +117,9 @@ function beforeCursor(cursor: CandidateCursor): Prisma.StoreWhereInput {
 export async function findPublicStoreDiscoveryCursorPage(
   client: PublicStoreDiscoveryClient,
   filters: { citySlug?: string | null; query?: string | null } = {},
-  options: { now?: Date; batchSize?: number; pageSize?: number; cursor?: string; maxScanRows?: number } = {},
+  // allowMissingRecords: for plain reads without a snapshot transaction (see findPublicProductCatalogPage); a store that
+  // disappears between the scan and the record read is left out instead of failing the request. Default: throw.
+  options: { now?: Date; batchSize?: number; pageSize?: number; cursor?: string; maxScanRows?: number; allowMissingRecords?: boolean } = {},
 ): Promise<{ items: PublicStoreDiscoveryRecord[]; pageSize: number; hasNext: boolean; hasPrevious: boolean; nextCursor: string | null; previousCursor: string | null }> {
   const batchSize = options.batchSize ?? PUBLIC_STORE_DISCOVERY_BATCH_SIZE;
   const pageSize = options.pageSize ?? 24;
@@ -194,7 +196,7 @@ export async function findPublicStoreDiscoveryCursorPage(
   const rows = await client.findStoresByIds(ids);
   const byId = new Map(rows.map((row) => [row.id, row]));
   const items = ids.flatMap((id) => { const row = byId.get(id); return row ? [row] : []; });
-  if (items.length !== ids.length) throw new Error("PUBLIC_STORE_DISCOVERY_RESULT_CHANGED");
+  if (items.length !== ids.length && !options.allowMissingRecords) throw new Error("PUBLIC_STORE_DISCOVERY_RESULT_CHANGED");
   const hasNext = direction === "after" ? hasMore : Boolean(decoded);
   const hasPrevious = direction === "before" ? hasMore : Boolean(decoded);
   const nextBoundary = direction === "after" && scanContinuation ? lastScanned! : cursors.at(-1)!;

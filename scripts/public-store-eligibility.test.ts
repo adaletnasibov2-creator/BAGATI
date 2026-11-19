@@ -145,7 +145,9 @@ test("public and publication entry points use trim-aware store eligibility", () 
     ["app/(customer)/products/(list)/page.tsx", /resolvePublicStoreEligibility/],
     ["app/(customer)/products/[productId]/page.tsx", /resolvePublicStoreEligibility/],
     ["app/(customer)/stores/[storeId]/page.tsx", /isPublicStoreEligible/],
-    ["app/api/products/route.ts", /findPublicProductCatalogPage[\s\S]*exactTotal:\s*true/],
+    // Items go through the trim-aware catalog scan; since SCALE-FIX-1 it runs as plain reads (allowMissingRecords) and
+    // `total` is a bounded SQL count (lib/public-products-api.ts), no longer the exact scan of every product.
+    ["app/api/products/route.ts", /findPublicProductCatalogPage[\s\S]*allowMissingRecords:\s*true/],
     ["app/api/products/[id]/route.ts", /resolvePublicStoreEligibility/],
     ["app/api/stores/route.ts", /filterEligiblePublicStores/],
     ["app/api/admin/homepage/featured/route.ts", /filterEligiblePublicStores[\s\S]*resolvePublicStoreEligibility/],

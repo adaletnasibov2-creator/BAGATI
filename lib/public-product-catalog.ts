@@ -207,6 +207,13 @@ export async function findPublicProductCatalogPage<T extends { id: string }>(
     exactTotal?: boolean;
     batchSize?: number;
     maxScanRows?: number;
+    /**
+     * Callers that read without a snapshot transaction (plain reads, so no pool connection is held for the whole scan)
+     * set this: a product that disappears between the candidate scan and the record read is left out of the page
+     * instead of failing the request. Paging is unaffected, because cursors come from the scanned candidates.
+     * Default false: inside a RepeatableRead transaction a missing record is a bug and still throws.
+     */
+    allowMissingRecords?: boolean;
   },
 ): Promise<{ items: T[]; pageSize: number; total: number | null; hasNext: boolean; hasPrevious: boolean; nextCursor: string | null; previousCursor: string | null }> {
   const batchSize = options.batchSize ?? PUBLIC_PRODUCT_CATALOG_BATCH_SIZE;
@@ -317,7 +324,7 @@ export async function findPublicProductCatalogPage<T extends { id: string }>(
     const item = recordsById.get(id);
     return item === undefined ? [] : [item];
   });
-  if (items.length !== selectedIds.length) {
+  if (items.length !== selectedIds.length && !options.allowMissingRecords) {
     throw new Error("PUBLIC_PRODUCT_CATALOG_RESULT_CHANGED");
   }
   const isCursorPage = cursorPaging;

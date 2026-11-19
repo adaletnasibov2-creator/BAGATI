@@ -13,6 +13,8 @@ import { stockAlertCrossing, stockAlertNotification, VENDOR_NOTIFICATION_TITLES 
 import { listCustomerOrderPage, parseCustomerOrderPageSize } from "@/lib/customer-order-pagination";
 import { commissionRatesForNewOrder } from "@/lib/order-commission";
 import { customerTermsGate } from "@/lib/legal-gates";
+import { isOrderSerializationConflict, withOrderSerializationRetry } from "@/lib/order-transaction-retry";
+import { ORDER_STOCK_ERROR_MESSAGES } from "@/lib/order-stock-errors";
 const db: any = prisma;
 // acceptTerms: the checkout checkbox, shown only while the current customer terms are not accepted. The server decides
 // from the database (customerTermsGate); the flag alone never skips the check.
@@ -45,7 +47,9 @@ export async function POST(request:NextRequest) {
  // dropped here and the order is created from the address text (lib/delivery-location.ts).
  const coordinatePin=readOrderCoordinates(raw);
  try {
-  const order=await db.$transaction(async(transaction:any)=>{
+  // A serialization conflict (P2034, or P2010 with SQLSTATE 40001) retries the whole transaction up to 2 times with a short random wait;
+  // nothing else is retried and the transaction itself is unchanged (lib/order-transaction-retry.ts, SCALE-FIX-1 A7).
+  const order=await withOrderSerializationRetry(()=>db.$transaction(async(transaction:any)=>{
    const tx:any=transaction;
    const activeCustomer=await tx.user.findFirst({where:{id:user.id,role:"CUSTOMER",isActive:true},select:{id:true}});if(!activeCustomer)throw new Error("SESSION_EXPIRED");
    const address=await tx.address.findFirst({where:{id:parsed.data.addressId,userId:user.id},include:{city:{select:{id:true,name:true,isActive:true}}}});if(!address||!address.city.isActive)throw new Error("ADDRESS_INVALID");
@@ -95,12 +99,13 @@ export async function POST(request:NextRequest) {
    }
    for(const alert of stockAlerts)await tx.notification.create({data:alert});
    if(cart)await tx.cartItem.deleteMany({where:{cartId:cart.id}});return created;
-  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:20000});
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:20000}));
   return NextResponse.json({order},{status:201});
  }catch(error){
-  if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==="P2034")return NextResponse.json({error:"Sifariş zamanı uyğunluq və ya stok məlumatları dəyişdi. Səbəti yeniləyib yenidən cəhd edin.",code:"TRANSACTION_CONFLICT"},{status:409});
+  // Retries used up: the same 409 as before (also for the P2010/40001 form, which returned 500 before SCALE-FIX-1).
+  if(isOrderSerializationConflict(error))return NextResponse.json({error:"Sifariş zamanı uyğunluq və ya stok məlumatları dəyişdi. Səbəti yeniləyib yenidən cəhd edin.",code:"TRANSACTION_CONFLICT"},{status:409});
   const code=error instanceof Error?error.message:"ERROR";
-  const messages:Record<string,string>={SESSION_EXPIRED:"Sessiya bitib. Yenidən daxil olun.",ADDRESS_INVALID:"Çatdırılma ünvanı tapılmadı və ya şəhər artıq aktiv deyil.",CART_EMPTY:"Səbət boşdur.",STORE_UNAVAILABLE:"Səbətdəki mağazalardan biri hazırda sifariş qəbul etmir. Səbəti yeniləyin.",PRODUCT_UNAVAILABLE:"Məhsul artıq satışda deyil. Səbəti yeniləyin.",VARIANT_INVALID:"Seçilmiş variant artıq mövcud deyil.",PRICE_INVALID:"Məhsulun qiyməti dəyişib və ya yanlışdır. Səbəti yeniləyin.",PRICE_CHANGED:"Məhsulun qiyməti dəyişib. Səbəti və sifariş məbləğini yeniləyin.",STOCK_CHANGED:"Stok dəyişib. Səbəti yeniləyib yenidən yoxlayın."};
+  const messages:Record<string,string>={SESSION_EXPIRED:"Sessiya bitib. Yenidən daxil olun.",ADDRESS_INVALID:"Çatdırılma ünvanı tapılmadı və ya şəhər artıq aktiv deyil.",CART_EMPTY:"Səbət boşdur.",STORE_UNAVAILABLE:"Səbətdəki mağazalardan biri hazırda sifariş qəbul etmir. Səbəti yeniləyin.",PRODUCT_UNAVAILABLE:"Məhsul artıq satışda deyil. Səbəti yeniləyin.",VARIANT_INVALID:"Seçilmiş variant artıq mövcud deyil.",PRICE_INVALID:"Məhsulun qiyməti dəyişib və ya yanlışdır. Səbəti yeniləyin.",PRICE_CHANGED:"Məhsulun qiyməti dəyişib. Səbəti və sifariş məbləğini yeniləyin.",STOCK_CHANGED:"Stok dəyişib. Səbəti yeniləyib yenidən yoxlayın.",...ORDER_STOCK_ERROR_MESSAGES};
   const status=code==="CART_EMPTY"||code==="STOCK_CHANGED"?409:code==="ADDRESS_INVALID"?404:code==="SESSION_EXPIRED"?401:code in messages?409:500;
   return NextResponse.json({error:messages[code]||"Sifaris yaradilma. Bir az sonra yeniden yoxlayin.",code},{status});
  }

@@ -6,6 +6,7 @@ import { isMaintenanceExempt, maintenanceResponse } from "@/lib/maintenance";
 import { encodeMaintenanceCheck, lastMaintenanceCheck, MAINTENANCE_CHECK_HEADER, maintenanceState } from "@/lib/maintenance-state";
 import { maintenanceStateOrigin } from "@/lib/maintenance-origin";
 import { isAdminPreview } from "@/lib/maintenance-preview";
+import { isStaticAssetPath } from "@/lib/static-asset-paths";
 
 export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
@@ -55,7 +56,14 @@ export async function middleware(request: NextRequest) {
 }
 
 function personalizedDocument(pathname: string, hasSession: boolean) {
-  if (pathname.startsWith("/api/") || pathname.startsWith("/_next/")) return false;
+  if (pathname.startsWith("/api/") || pathname.startsWith("/_next/") || isStaticAssetPath(pathname)) return false;
   if (hasSession) return true;
   return ["/account", "/orders", "/vendor", "/admin", "/checkout", "/cart", "/login", "/register", "/favorites", "/auth"].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
+
+// Static files skip the middleware entirely (SCALE-FIX-1 A2; the same list as lib/static-asset-paths.ts, which
+// scripts/static-asset-caching.test.ts keeps in sync). Next needs this matcher as a literal. robots.txt and sitemap.xml
+// still pass through, so the www -> apex redirect keeps applying to them.
+export const config = {
+  matcher: ["/((?!_next/static/|_next/image|images/|uploads/|icon\\.svg$|bagati-mark\\.svg$|favicon\\.ico$|manifest\\.webmanifest$|apple-icon|.*\\.(?:woff2?|ttf|otf)$).*)"],
+};

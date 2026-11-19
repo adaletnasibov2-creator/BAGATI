@@ -3,6 +3,7 @@ import { csrfRejection } from "@/lib/csrf";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { homeBannerSchema } from "@/lib/site-content";
+import { invalidateHomePageCache } from "@/lib/home-page-data";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +28,6 @@ export async function POST(request: NextRequest) {
     await tx.auditLog.create({ data: { actorId: admin.id, action: "HOME_BANNER_CREATE", entityType: "HomeBanner", entityId: banner.id } });
     return banner;
   });
+  invalidateHomePageCache(); // the home page shows the change on the next request (lib/home-page-data.ts)
   return NextResponse.json({ item, message: "Banner yaradıldı." }, { status: 201 });
 }

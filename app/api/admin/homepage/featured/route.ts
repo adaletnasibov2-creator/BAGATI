@@ -3,6 +3,7 @@ import { csrfRejection } from "@/lib/csrf";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { homepageFeaturedSchema } from "@/lib/site-content";
+import { invalidateHomePageCache } from "@/lib/home-page-data";
 import {
   filterEligiblePublicProducts,
   filterEligiblePublicStores,
@@ -78,5 +79,6 @@ export async function PUT(request: NextRequest) {
       },
     });
   });
+  invalidateHomePageCache(); // the home page shows the change on the next request (lib/home-page-data.ts)
   return NextResponse.json({ message: "Ana səhifə seçimləri yadda saxlanıldı." });
 }

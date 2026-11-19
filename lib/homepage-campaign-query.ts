@@ -13,7 +13,7 @@ export const homepageCampaignProductSelect = {
   id: true, storeId: true, name: true, price: true, discountPrice: true, images: true,
   store: { select: { id: true, name: true } },
   inventory: { select: { variantId: true, quantity: true, reserved: true, lowStockThreshold: true } },
-  variants: { where: { isActive: true }, select: { isActive: true, options: true, inventory: { select: { quantity: true, reserved: true, lowStockThreshold: true } } } },
+  variants: { where: { isActive: true }, select: { isActive: true, inventory: { select: { quantity: true, reserved: true, lowStockThreshold: true } } } },
 } satisfies Prisma.ProductSelect;
 
 type CampaignRef = { id: string; storeId?: string | null };

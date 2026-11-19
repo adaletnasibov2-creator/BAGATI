@@ -2,7 +2,8 @@ import Link from "next/link";
 import { PRODUCT_GRID_WITH_SIDEBAR_CLASS } from "@/components/product-layout";
 import { CategoryEmptyState } from "@/components/category-empty-state";
 import { prisma } from "@/lib/prisma";
-import { createPrismaPublicProductCatalogClient, decodeProductCatalogCursor, findPublicProductCatalogPage } from "@/lib/public-product-catalog";
+import { createPrismaPublicProductCatalogSelectClient, decodeProductCatalogCursor, findPublicProductCatalogPage } from "@/lib/public-product-catalog";
+import { productListCardSelect } from "@/lib/product-card-select";
 import { createPrismaPublicStoreDiscoveryClient, findPublicStoreDiscoveryCursorPage } from "@/lib/public-store-discovery";
 import { publicStoreListingWhere } from "@/lib/store-visibility";
 import { StoreFilterSelect } from "@/components/store-filter-select";
@@ -18,7 +19,6 @@ import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
 import type { Metadata } from "next";
 import { normalizePublicSearchTerm, PRODUCT_SEARCH_MAX_LENGTH } from "@/lib/search-term";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
-import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ q?: string; city?: string; category?: string; store?: string; sort?: string; cursor?: string }> };
@@ -40,12 +40,8 @@ export default async function ProductsPage({ searchParams }: Props) {
   const search = normalizePublicSearchTerm(params.q, PRODUCT_SEARCH_MAX_LENGTH);
   const searchQuery = search.value;
   const sort = normalizeProductCatalogSort(params.sort);
-  const productInclude = {
-    store: { select: { id: true, name: true, isActive: true, status: true, subscription: { select: { status: true, currentPeriodEnd: true, plan: { select: { slug: true, isActive: true } } } } } },
-    inventory: { select: { variantId: true, quantity: true, reserved: true } },
-    variants: { where: { isActive: true }, select: { id: true, inventory: { select: { quantity: true, reserved: true } } } },
-    promotionProducts: { include: { promotion: true } },
-  } satisfies Prisma.ProductInclude;
+  // Only what the cards render (SCALE-FIX-2 A5): no full rows, only promotions that are on and not ended.
+  const productSelect = productListCardSelect(now);
   const decodedCursor = params.cursor ? decodeProductCatalogCursor(params.cursor) : null;
   const cursor = decodedCursor?.cursor.sort === sort ? params.cursor : undefined;
   const invalidCursor = Boolean(params.cursor && !cursor);
@@ -62,7 +58,7 @@ export default async function ProductsPage({ searchParams }: Props) {
       select: { id: true, name: true },
     }) : Promise.resolve(null),
     findPublicProductCatalogPage(
-      createPrismaPublicProductCatalogClient(prisma, productInclude),
+      createPrismaPublicProductCatalogSelectClient(prisma, productSelect),
       {
         citySlug: params.city,
         storeId: params.store,

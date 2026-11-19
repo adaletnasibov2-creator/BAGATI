@@ -122,6 +122,7 @@ test("/deals uses the shared rules, a defined product order, the cap and the per
 });
 
 test("homepage 'Endirimli məhsullar' candidates are ordered by createdAt with an id tie-breaker", () => {
-  const source = readFileSync(join(process.cwd(), "app/(customer)/(home)/page.tsx"), "utf8");
+  // The home page reads its shelves through lib/home-page-data.ts since SCALE-FIX-2 B3.
+  const source = readFileSync(join(process.cwd(), "lib/home-page-data.ts"), "utf8");
   assert.match(source, /discountPrice: \{ not: null \} \},\s*take: 40,\s*(\/\/[^\n]*\n\s*)?orderBy: \[\{ createdAt: "desc" \}, \{ id: "desc" \}\],/);
 });

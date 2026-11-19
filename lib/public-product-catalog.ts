@@ -164,6 +164,28 @@ export function createPrismaPublicProductCatalogClient<I extends Prisma.ProductI
   };
 }
 
+/**
+ * Same as createPrismaPublicProductCatalogClient, but the page rows are read with a `select` (only the columns the page
+ * renders, e.g. lib/product-card-select.ts) instead of full rows. The select must include `id`.
+ */
+export function createPrismaPublicProductCatalogSelectClient<S extends Prisma.ProductSelect & { id: true }>(
+  client: Pick<PrismaClient, "product"> | Pick<Prisma.TransactionClient, "product">,
+  select: S,
+): PublicProductCatalogClient<Prisma.ProductGetPayload<{ select: S }> & { id: string }> {
+  return {
+    findCandidates: ({ where, orderBy, take }) => client.product.findMany({
+      where,
+      select: candidateSelect,
+      orderBy,
+      take,
+    }),
+    findRecords: (ids) => client.product.findMany({
+      where: { id: { in: ids } },
+      select,
+    }) as unknown as Promise<(Prisma.ProductGetPayload<{ select: S }> & { id: string })[]>,
+  };
+}
+
 function orderByFor(sort: ProductCatalogSort, direction: Direction = "after"): PublicProductCatalogQuery["orderBy"] {
   const order = productCatalogOrderBy(sort);
   if (direction === "after") return order;

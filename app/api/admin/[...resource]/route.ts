@@ -19,6 +19,7 @@ import { planStoreProfileUpdate } from "@/lib/admin-store-profile";
 import { createCategory, deleteCategory, updateCategory } from "@/lib/admin-category-service";
 import { categoryAdminFailure } from "@/lib/admin-category-route";
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
+import { invalidateActiveCitiesCache } from "@/lib/active-cities";
 import { CANCELLATION_REQUEST_OPEN_MESSAGE } from "@/lib/order-cancellation-guard";
 
 const db: any = prisma;
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (section === "cities") {
     const parsed = z.object({ name: z.string().trim().min(2).max(100), slug: z.string().trim().min(2).max(120).optional(), countryCode: z.string().trim().length(2).default("AZ") }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Şəhər məlumatlarını yoxlayın" }, { status: 422 });
-    try { const item = await db.$transaction(async (tx: any) => { const created = await tx.city.create({ data: { name: parsed.data.name, slug: parsed.data.slug ? slug(parsed.data.slug) : slug(parsed.data.name), countryCode: parsed.data.countryCode.toUpperCase() } }); await tx.auditLog.create({ data: { actorId: admin.id, action: "CREATE", entityType: "City", entityId: created.id } }); return created; }); return NextResponse.json({ item }, { status: 201 }); } catch (error) { return createFailure(error, "admin_city_create", "Bu ad və ya slug artıq istifadə olunur"); }
+    try { const item = await db.$transaction(async (tx: any) => { const created = await tx.city.create({ data: { name: parsed.data.name, slug: parsed.data.slug ? slug(parsed.data.slug) : slug(parsed.data.name), countryCode: parsed.data.countryCode.toUpperCase() } }); await tx.auditLog.create({ data: { actorId: admin.id, action: "CREATE", entityType: "City", entityId: created.id } }); return created; }); invalidateActiveCitiesCache(); return NextResponse.json({ item }, { status: 201 }); } catch (error) { return createFailure(error, "admin_city_create", "Bu ad və ya slug artıq istifadə olunur"); }
   }
   if (section === "stores") {
     const parsed = z.object({ vendorId: z.string().min(1), cityId: z.string().min(1), name: z.string().trim().min(2).max(120), address: z.string().trim().max(300).nullable().optional(), description: z.string().max(3000).nullable().optional(), managementReason: z.string().trim().min(8).max(500), isActive: z.boolean().default(false) }).safeParse(body);
@@ -246,7 +247,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Brend məlumatını yoxlayın" }, { status: 422 }); const item = await db.brand.update({ where: { id }, data: { name: parsed.data.name } }); await audit(admin.id, "UPDATE", "Brand", id); return NextResponse.json({ item });
     }
     if (section === "cities") {
-      const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100).optional(), slug: z.string().trim().min(2).max(120).optional(), countryCode: z.string().length(2).optional(), isActive: z.boolean().optional() }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Şəhər məlumatlarını yoxlayın" }, { status: 422 }); const { id: cityId, ...values } = parsed.data; const item = await db.city.update({ where: { id: cityId }, data: { ...values, ...(values.slug ? { slug: slug(values.slug) } : {}) } }); await audit(admin.id, "UPDATE", "City", id); return NextResponse.json({ item });
+      const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100).optional(), slug: z.string().trim().min(2).max(120).optional(), countryCode: z.string().length(2).optional(), isActive: z.boolean().optional() }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Şəhər məlumatlarını yoxlayın" }, { status: 422 }); const { id: cityId, ...values } = parsed.data; const item = await db.city.update({ where: { id: cityId }, data: { ...values, ...(values.slug ? { slug: slug(values.slug) } : {}) } }); invalidateActiveCitiesCache(); await audit(admin.id, "UPDATE", "City", id); return NextResponse.json({ item });
     }
     if (section === "support") {
       const parsed = z.object({ id: z.string(), status: z.enum(ticketStatuses) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Müraciət statusunu yoxlayın" }, { status: 422 }); const item = await db.supportTicket.update({ where: { id }, data: { status: parsed.data.status } }); await audit(admin.id, `TICKET_${parsed.data.status}`, "SupportTicket", id); return NextResponse.json({ item });

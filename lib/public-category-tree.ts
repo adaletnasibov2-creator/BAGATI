@@ -18,6 +18,7 @@ import { publicCategoryTree, type CategoryRow } from "@/lib/category-tree";
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 import { createKeyedTtlCache } from "@/lib/keyed-ttl-cache";
+import { getActiveCities, publicCityKey } from "@/lib/active-cities";
 
 export const categoryRowSelect = {
   id: true, name: true, slug: true, parentId: true, isActive: true, sortOrder: true, iconKey: true, imageUrl: true,
@@ -144,6 +145,12 @@ export function invalidatePublicCategoryCache(): void {
 /** Per request (React cache, on the normalised key) on top of the 30 s cross-request cache. */
 const getPublicCategoryDataForKey = cache((key: string | null) => publicCategoryReader.read(key));
 
-export function getPublicCategoryData(citySlug?: string | null): Promise<PublicCategoryData> {
-  return getPublicCategoryDataForKey(normalizePublicCategoryCityKey(citySlug));
+/**
+ * A ?city= value that is not an active city's slug shares one cache key (SCALE-FIX-2 A6, lib/active-cities.ts): before,
+ * each random value forced a full category count and pushed real entries out of the cache. Its counts are the same as
+ * before (no city matches it, so every count is 0).
+ */
+export async function getPublicCategoryData(citySlug?: string | null): Promise<PublicCategoryData> {
+  const key = normalizePublicCategoryCityKey(citySlug);
+  return getPublicCategoryDataForKey(key === null ? null : publicCityKey(key, await getActiveCities()));
 }

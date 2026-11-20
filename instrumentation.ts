@@ -4,6 +4,28 @@
  * The nested `if` keeps the worker (Prisma, nodemailer) out of the Edge bundle.
  */
 export async function register() {
+  // SCALE-FIX-4: one log line with the effective pool settings (A9, no secrets), and the unpaid-order expiry loop (B5),
+  // which starts only when Epoint is configured (lib/order-expiry-runtime.ts) and is switched on in admin settings.
+  // Nested `if`s for the same reason as below: nothing here may reach the Edge bundle.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    if (process.env.NEXT_PHASE !== "phase-production-build") {
+      try {
+        const { dbPoolLogLine } = await import("./lib/db-pool-info");
+        console.info(dbPoolLogLine(process.env));
+      } catch {
+        console.error("db_pool log failed");
+      }
+      try {
+        const { readEpointConfig } = await import("./lib/payments/epoint-config");
+        if (readEpointConfig(process.env)) {
+          const { startOrderExpiryLoop } = await import("./lib/order-expiry-runtime");
+          startOrderExpiryLoop(process.env);
+        }
+      } catch {
+        console.error("Order expiry loop did not start (WORKER_FAILED).");
+      }
+    }
+  }
   if (process.env.NEXT_RUNTIME === "nodejs") {
     if (process.env.EMAIL_WORKER_ENABLED !== "true" || process.env.NEXT_PHASE === "phase-production-build") return;
     try {

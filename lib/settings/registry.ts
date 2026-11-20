@@ -490,7 +490,40 @@ const ordersCustomerCancellationEnabled: SettingDefinition<boolean> = {
   read: "ttl",
 };
 
-const orderSettings = [ordersCustomerCancellationEnabled];
+/**
+ * Unpaid-order expiry (SCALE-FIX-4 B5, owner decisions 2026-11-20). Default OFF: until Epoint is live every real order
+ * stays "Ödəniş gözləyir", which is normal. Even when ON, lib/order-expiry.ts does nothing unless Epoint is configured on
+ * the server. Read through the cached read path (30 s, fail-safe: a failed read means OFF / the default minutes).
+ */
+const ordersUnpaidExpiryEnabled: SettingDefinition<boolean> = {
+  key: "orders.unpaidExpiryEnabled",
+  group: "orders",
+  permission: "settings.content",
+  sensitive: false,
+  label: "Ödənilməmiş sifarişlərin avtomatik ləğvi",
+  description: "Açıq olanda ödənişi müəyyən müddətdə tamamlanmayan sifarişlər avtomatik ləğv edilir və stok bərpa olunur. Yalnız Epoint ödənişi işə düşdükdən sonra açın.",
+  schema: z.boolean(),
+  inputSchema: z.union([z.boolean(), z.enum(["true", "false"])]).transform((value) => value === true || value === "true"),
+  toInput: (value) => String(value),
+  display: (value) => (value ? "Açıqdır — ödənilməmiş sifarişlər müddət bitdikdə ləğv edilir" : "Söndürülüb — sifarişlər avtomatik ləğv edilmir"),
+  default: false,
+  input: { kind: "toggle" },
+  read: "ttl",
+};
+
+const ordersUnpaidExpiryMinutes = integerSetting({
+  key: "orders.unpaidExpiryMinutes",
+  group: "orders",
+  permission: "settings.content",
+  label: "Ödəniş üçün gözləmə müddəti (dəqiqə)",
+  description: "Sifariş yaradıldıqdan bu qədər dəqiqə sonra ödəniş tamamlanmayıbsa, avtomatik ləğv edilir (yalnız yuxarıdakı açar açıq olanda).",
+  min: 15,
+  max: 4320,
+  default: 60,
+  unit: "dəqiqə",
+});
+
+const orderSettings = [ordersCustomerCancellationEnabled, ordersUnpaidExpiryEnabled, ordersUnpaidExpiryMinutes];
 
 // ---- Messaging ----------------------------------------------------------------------------------------------
 
@@ -642,6 +675,8 @@ export const SETTING_KEYS = {
   maintenanceMessage: "maintenance.message",
   catalogShowEmptyCategories: "catalog.showEmptyCategories",
   ordersCustomerCancellationEnabled: "orders.customerCancellationEnabled",
+  ordersUnpaidExpiryEnabled: "orders.unpaidExpiryEnabled",
+  ordersUnpaidExpiryMinutes: "orders.unpaidExpiryMinutes",
   messagingEnabled: "messaging.enabled",
   messagingAllowContactDetails: "messaging.allowContactDetails",
   messagingCustomerMessagesPerHour: "limits.messaging.customerMessagesPerHour",

@@ -39,6 +39,7 @@ async function restoreCancelledStoreOrderInventory(
     include: { product: { select: { storeId: true, variants: { select: { id: true } } } } },
   });
   let skippedLegacyVariantItems = 0;
+  const lines: { item: { quantity: number }; inventoryId: string }[] = [];
   for (const item of items) {
     if (item.product.storeId !== storeId) continue;
     // Legacy order lines may not identify a variant. Do not guess which stock row to restore.
@@ -48,6 +49,13 @@ async function restoreCancelledStoreOrderInventory(
     }
     const inventory = await tx.inventory.findFirst({ where: { productId: item.productId, variantId: item.variantId } });
     if (!inventory) continue;
+    lines.push({ item, inventoryId: inventory.id });
+  }
+  // Lock the stock rows in inventory-id order, the same order checkout uses (app/api/orders/route.ts), so two cancels
+  // (or a cancel and a checkout) sharing products cannot deadlock (SCALE-FIX-4). The restore itself is unchanged.
+  lines.sort((a, b) => a.inventoryId.localeCompare(b.inventoryId));
+  for (const { item, inventoryId } of lines) {
+    const inventory = { id: inventoryId };
     await tx.$queryRaw`SELECT "id" FROM "Inventory" WHERE "id" = ${inventory.id} FOR UPDATE`;
     const current = await tx.inventory.findUnique({ where: { id: inventory.id } });
     if (!current) continue;

@@ -28,6 +28,9 @@ export const EMAIL_TEMPLATES = [
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[number];
 export type EmailPayload = Record<string, string | number | boolean | null>;
 
+/** ORDER_STATUS payload `reason` for an order cancelled by the unpaid-order expiry (SCALE-FIX-4 B5): adds one line. */
+export const ORDER_EXPIRED_UNPAID_REASON = "UNPAID_EXPIRED";
+
 export function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
 }
@@ -107,7 +110,7 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
     }
     case "SELLER_NEW_ORDER": subject = "Mağazanıza yeni sifariş daxil oldu"; lines = [`${value(payload, "storeName", "Mağaza")}: yeni sifariş #${value(payload, "orderRef")}.`, `Mağaza sifarişi: #${value(payload, "storeOrderRef")}`, `Məbləğ: ${azn(payload, "total")}`, "Sifarişə vendor panelindən baxın."]; break;
     case "CUSTOMER_ORDER_CONFIRMED": subject = "Sifarişiniz BAGATI-da qeydə alındı"; lines = [`Sifariş #${value(payload, "orderRef")} yaradıldı.`, `Məbləğ: ${azn(payload, "total")}`, "Sifarişinizin statusu dəyişdikdə sizə məlumat göndəriləcək."]; break;
-    case "ORDER_STATUS": subject = "Sifariş statusu yeniləndi"; lines = [`Sifariş #${value(payload, "orderRef")} — ${value(payload, "storeName", "Mağaza")}.`, `Yeni status: ${orderStatus(value(payload, "status"))}.`]; break;
+    case "ORDER_STATUS": subject = "Sifariş statusu yeniləndi"; lines = [`Sifariş #${value(payload, "orderRef")} — ${value(payload, "storeName", "Mağaza")}.`, `Yeni status: ${orderStatus(value(payload, "status"))}.`, ...(value(payload, "reason") === ORDER_EXPIRED_UNPAID_REASON ? ["Ödəniş vaxtında tamamlanmadığı üçün sifariş avtomatik ləğv edildi."] : [])]; break;
     case "SHIPMENT_UPDATE":
       subject = "Sifarişinizin çatdırılma məlumatı yeniləndi";
       lines = [`Sifariş #${value(payload, "orderRef")} — ${value(payload, "storeName", "Mağaza")}.`, `Göndəriş statusu: ${value(payload, "statusLabel", "Yenilənib")}.`, ...(value(payload, "carrier") ? [`Daşıyıcı: ${value(payload, "carrier")}`] : []), ...(value(payload, "trackingCode") ? [`İzləmə kodu: ${value(payload, "trackingCode")}`] : [])];

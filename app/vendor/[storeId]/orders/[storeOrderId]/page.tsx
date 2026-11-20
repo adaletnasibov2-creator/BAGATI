@@ -9,10 +9,13 @@ import { InteractiveMap } from "@/components/interactive-map";
 import { buildCustomerWhatsAppUrl, buildTelHref } from "@/lib/az-phone";
 import { VendorDeliveryAddressMenu } from "@/components/vendor-delivery-address-menu";
 import { buildDispatchLinks, formatCoordinates, readAddressSnapshot, sellerCanSeeDeliveryLocation } from "@/lib/delivery-location";
+import { VendorPageHeader } from "@/components/vendor-page-header";
+import { Badge } from "@/components/ui/badge";
+import { orderStatusTone } from "@/lib/vendor-status-tone";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
-const panel = "rounded-2xl border border-[#e9e4da] bg-white p-5 sm:p-6";
+const panel = "rounded-card border border-line bg-white p-5 sm:p-6";
 const textValue = (value: unknown) => typeof value === "string" ? value : "";
 function optionText(options: unknown) {
   if (!options || typeof options !== "object" || Array.isArray(options)) return "";
@@ -55,7 +58,13 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
   const dispatchLinks = locationAccess && addressLines.length ? buildDispatchLinks(deliveryView, order.order.id) : null;
 
   return <div className="mx-auto max-w-5xl space-y-5">
-    <div><Link href={`/vendor/${storeId}/orders`} className="text-sm font-medium text-[#28766f] hover:underline">← Sifarişlərə qayıt</Link><div className="mt-4 flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.15em] text-[#967844]">Sifariş təfərrüatı</p><h1 className="mt-1 text-2xl font-semibold text-[#142d38] sm:text-3xl">#{order.order.id.slice(-8).toUpperCase()}</h1><p className="mt-2 text-sm text-slate-500">Yaradılıb: {new Date(order.order.createdAt).toLocaleString("az-AZ")}</p><p className="mt-1 text-sm text-slate-500">Ödəniş: {paymentStatusLabel(order.order.payments[0]?.status)}{order.order.payments[0] ? ` · ${Number(order.order.payments[0].amount).toFixed(2)} ${order.order.payments[0].currency}` : ""}</p></div><span className="rounded-full bg-[#f3f1eb] px-3 py-2 text-sm font-medium text-[#536273]">{statusLabel(order.status)}</span></div></div>
+    <VendorPageHeader
+      back={<Link href={`/vendor/${storeId}/orders`} className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:text-primary-hover">← Sifarişlərə qayıt</Link>}
+      eyebrow="Sifariş təfərrüatı"
+      title={`#${order.order.id.slice(-8).toUpperCase()}`}
+      description={<>Yaradılıb: {new Date(order.order.createdAt).toLocaleString("az-AZ")} <span aria-hidden="true">·</span> Ödəniş: {paymentStatusLabel(order.order.payments[0]?.status)}{order.order.payments[0] ? ` · ${Number(order.order.payments[0].amount).toFixed(2)} ${order.order.payments[0].currency}` : ""}</>}
+      action={<Badge tone={orderStatusTone(order.status)} size="md">{statusLabel(order.status)}</Badge>}
+    />
 
     <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
       <div className="space-y-5">

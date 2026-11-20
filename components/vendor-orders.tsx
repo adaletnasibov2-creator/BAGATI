@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { allowedVendorOrderTransitions, statusLabel, VENDOR_ORDER_STATUSES } from "@/lib/order-status";
+import { VendorPageHeader } from "@/components/vendor-page-header";
+import { Badge } from "@/components/ui/badge";
+import { orderStatusTone, paymentStatusTone } from "@/lib/vendor-status-tone";
 
 type VendorOrder = {
   id: string;
@@ -81,20 +84,18 @@ export default function VendorOrders({ storeId }: { storeId: string }) {
   }
 
   return <section className="space-y-5">
-    <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-      <div><p className="text-sm font-medium text-[#967844]">SİFARİŞLƏRİN İDARƏ EDİLMƏSİ</p><h1 className="mt-1 text-3xl font-semibold text-[#142d38]">Sifarişlər</h1><p className="mt-2 text-sm text-slate-500">Bu mağazaya aid {result.total} sifariş</p></div>
-      <div className="grid gap-3 sm:grid-cols-2">
+    <VendorPageHeader eyebrow="SİFARİŞLƏRİN İDARƏ EDİLMƏSİ" title="Sifarişlər" description={`Bu mağazaya aid ${result.total} sifariş`}/>
+    <div className="grid gap-3 rounded-card border border-line bg-white p-4 sm:grid-cols-2 sm:p-5">
       <label className="grid gap-1 text-sm text-slate-600">Axtar
-        <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Sifariş nömrəsi və ya məhsul adı" className="min-h-11 min-w-52 rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5"/>
+        <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Sifariş nömrəsi və ya məhsul adı" className="min-h-11 w-full min-w-0 rounded-control border border-line-strong bg-white px-3 py-2.5 text-fg transition-colors hover:border-primary focus:border-primary"/>
       </label>
       <label className="grid gap-1 text-sm text-slate-600">Status üzrə süzgəc
-        <select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }} className="min-h-11 min-w-52 rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5">
+        <select value={status} onChange={event => { setStatus(event.target.value); setPage(1); }} className="min-h-11 w-full min-w-0 rounded-control border border-line-strong bg-white px-3 py-2.5 text-fg transition-colors hover:border-primary focus:border-primary">
           <option value="">Bütün statuslar</option>
           {[...legacyStatuses, ...VENDOR_ORDER_STATUSES].map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}
         </select>
       </label>
-      </div>
-    </header>
+    </div>
     {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {loading ? <div className="rounded-2xl border border-[#e9e4da] bg-white p-8 text-center text-sm text-slate-500">Sifarişlər yüklənir…</div> : result.items.length ? <div className="space-y-3">
       {result.items.map(order => {
@@ -102,7 +103,7 @@ export default function VendorOrders({ storeId }: { storeId: string }) {
         return <article key={order.id} className="rounded-2xl border border-[#e9e4da] bg-white p-4 shadow-[0_8px_24px_rgba(11,23,38,.03)] sm:p-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
             <div><Link href={`/vendor/${storeId}/orders/${order.id}`} className="font-semibold text-[#173c40] hover:underline">Sifariş #{order.order.id.slice(-8).toUpperCase()}</Link><p className="mt-1 text-xs text-slate-500">{new Date(order.createdAt).toLocaleString("az-AZ")}</p></div>
-            <div className="flex items-center justify-between gap-3 sm:justify-end"><span className="flex flex-wrap gap-1.5"><span className="rounded-full bg-[#f3f1eb] px-3 py-1.5 text-xs font-medium text-[#536273]">{statusLabel(order.status)}</span>{order.payment && <span className={`rounded-full px-3 py-1.5 text-xs font-medium ${order.payment.status === "PAID" ? "bg-emerald-50 text-emerald-700" : order.payment.status === "FAILED" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}>{order.payment.label}</span>}</span><b className="text-sm text-[#142d38]">{(Number(order.subtotal) + Number(order.deliveryFee ?? 0)).toFixed(2)} ₼</b></div>
+            <div className="flex items-center justify-between gap-3 sm:justify-end"><span className="flex flex-wrap gap-1.5"><Badge tone={orderStatusTone(order.status)}>{statusLabel(order.status)}</Badge>{order.payment && <Badge tone={paymentStatusTone(order.payment.status)}>{order.payment.label}</Badge>}</span><b className="text-sm text-[#142d38]">{(Number(order.subtotal) + Number(order.deliveryFee ?? 0)).toFixed(2)} ₼</b></div>
           </div>
           <div className="mt-4 grid gap-1 text-sm text-slate-600">{order.items.slice(0, 3).map(item => <p key={item.id} className="truncate">{item.productName}{item.variant ? ` · ${item.variant.name}` : ""} × {item.quantity}</p>)}{order.items.length > 3 && <p className="text-xs text-slate-500">və daha {order.items.length - 3} məhsul</p>}</div>
           <div className="mt-4 flex flex-col gap-2 border-t border-[#eeeae2] pt-4 sm:flex-row sm:items-center sm:justify-between">

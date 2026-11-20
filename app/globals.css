@@ -86,6 +86,26 @@ body:has(> .bagati-public),
   font-family: var(--bagati-font-sans);
 }
 
+/* Seller panel (SELLER-DESIGN-1). components/vendor-theme.tsx renders the .bagati-vendor wrapper on every /vendor page
+   behind the seller login and defines the same two font variables. Fonts, the AA muted colour and the green focus
+   outline follow the public site; the small text sizes (12/14 px) and every width stay as they were, so the panel
+   keeps its scale. Admin never renders the wrapper. */
+body:has(> .bagati-vendor),
+.bagati-vendor {
+  --bagati-muted-green: #56706a;
+  --bagati-muted: #56706a;
+  --bagati-font-sans: var(--bagati-font-inter, ui-sans-serif), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bagati-font-serif: var(--bagati-font-fraunces, Georgia), Georgia, "Times New Roman", serif;
+  --bagati-focus-outline: var(--bagati-primary);
+  font-family: var(--bagati-font-sans);
+}
+
+/* Seller panel page titles in Fraunces; section titles opt in with `font-display`. */
+:where(body:has(> .bagati-vendor), .bagati-vendor) :where(h1) {
+  font-family: var(--bagati-font-serif);
+  font-optical-sizing: auto;
+}
+
 /* Focus outline on dark public surfaces (header top bar, footer, hero, seller banner): gold #c79a52 is 4.80:1 on
    #173a3a, where green would be invisible. Coloured bars whose background varies use the text colour. */
 .bagati-on-dark {

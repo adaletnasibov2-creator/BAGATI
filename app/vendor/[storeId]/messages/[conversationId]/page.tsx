@@ -9,6 +9,7 @@ import { listMessages } from "@/lib/messaging-service";
 import { getConversationView } from "@/lib/messaging-views";
 import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
+import { VendorPageHeader } from "@/components/vendor-page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +24,8 @@ export default async function VendorConversationPage({ params }: { params: Promi
   if (!view) notFound();
   const page = await listMessages(prisma, { conversationId: view.id, actor });
   return <div className="mx-auto max-w-3xl">
-    <Link href={storeInboxHref(access.storeId)} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-[#173c40]"><ChevronLeft size={16} aria-hidden="true"/>Söhbətlər</Link>
-    <header className="mt-1 grid gap-3">
-      <h1 className="text-xl font-semibold text-[#142d38]">{view.counterpart}</h1>
+    <div className="grid gap-3">
+      <VendorPageHeader back={<Link href={storeInboxHref(access.storeId)} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:text-primary-hover"><ChevronLeft size={16} aria-hidden="true"/>Söhbətlər</Link>} eyebrow="Müştəri söhbətləri" title={view.counterpart}/>
       <ConversationContextCard
         context={view.context}
         product={view.product}
@@ -33,7 +33,7 @@ export default async function VendorConversationPage({ params }: { params: Promi
         productHref={view.product ? `/vendor/${encodeURIComponent(access.storeId)}/products/${encodeURIComponent(view.product.id)}` : null}
         orderHref={view.order ? `/vendor/${encodeURIComponent(access.storeId)}/orders/${encodeURIComponent(view.order.storeOrderId)}` : null}
       />
-    </header>
+    </div>
     <div className="mt-4">
       <ConversationThread
         api={storeThreadApi(access.storeId, view.id)}

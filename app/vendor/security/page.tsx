@@ -8,6 +8,8 @@ import VendorLogoutButton from "@/components/vendor-logout-button";
 import { currentUser } from "@/lib/auth";
 import { vendorAreaRedirectPath } from "@/lib/vendor-area";
 import { prisma } from "@/lib/prisma";
+import { VendorTheme } from "@/components/vendor-theme";
+import { VendorPageHeader } from "@/components/vendor-page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -20,34 +22,34 @@ export default async function VendorSecurityPage({ searchParams }: { searchParam
     prisma.user.findUnique({ where: { id: user.id }, select: { passwordAuthEnabled: true } }),
   ]);
   return (
-    <main className="min-h-screen bg-[#F7F5EF] text-[#16202C]">
-      <header className="border-b border-[#E8E7E2] bg-white">
+    <VendorTheme><main className="min-h-screen bg-surface-page text-fg-body">
+      <header className="border-b border-line bg-white">
         <div className="container flex items-center justify-between py-4">
           <BrandLogo variant="compact" />
           <div className="flex items-center gap-4">
-            <Link href="/vendor" className="text-sm text-[#85621d]">Satıcı paneli</Link>
+            <Link href="/vendor" className="text-sm font-medium text-primary hover:text-primary-hover">Satıcı paneli</Link>
             <VendorLogoutButton />
           </div>
         </div>
       </header>
       <section className="container max-w-2xl py-10">
-        <h1 className="text-3xl font-semibold text-[#0B1726]">Hesabın təhlükəsizliyi</h1>
-        <div className="mt-6 rounded-2xl border border-[#E8E7E2] bg-white p-6">
+        <VendorPageHeader eyebrow="Satıcı portalı" title="Hesabın təhlükəsizliyi"/>
+        <div className="mt-6 rounded-card border border-line bg-white p-6">
           <h2 className="font-semibold">Şifrə</h2>
           {accountSecurity?.passwordAuthEnabled
             ? <PasswordChangeForm />
-            : <p className="mt-2 text-sm text-[#667085]">Bu hesab Google ilə idarə olunur; BAGATI şifrəsi dəyişdirilmir.</p>}
-          <div className="mt-7 border-t border-[#E8E7E2] pt-6">
+            : <p className="mt-2 text-sm text-fg-secondary">Bu hesab Google ilə idarə olunur; BAGATI şifrəsi dəyişdirilmir.</p>}
+          <div className="mt-7 border-t border-line pt-6">
             <h2 className="font-semibold">Google hesabı</h2>
             {googleAccount
               ? <GoogleUnlinkButton canUnlink={Boolean(accountSecurity?.passwordAuthEnabled)} />
               : <GoogleOAuthButton intent="vendor" mode="link" nextPath="/vendor/security" errorCode={oauth} portal={portal} />}
           </div>
-          <p className="mt-6 border-t border-[#E8E7E2] pt-5 text-sm text-[#667085]">
+          <p className="mt-6 border-t border-line pt-5 text-sm text-fg-secondary">
             Google hesabını bağlamaq üçün daxil olduğunuz BAGATI hesabı ilə eyni, Google tərəfindən təsdiqlənmiş e-poçt istifadə olunur.
           </p>
         </div>
       </section>
-    </main>
+    </main></VendorTheme>
   );
 }

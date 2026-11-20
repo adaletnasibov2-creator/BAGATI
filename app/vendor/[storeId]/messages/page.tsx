@@ -4,6 +4,7 @@ import { requireStoreMessagingEnabled } from "@/lib/messaging-pages";
 import { listConversations, unreadConversationCount } from "@/lib/messaging-service";
 import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
+import { VendorPageHeader } from "@/components/vendor-page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,9 @@ export default async function VendorConversationsPage({ params, searchParams }: 
     unreadConversationCount(prisma, actor),
   ]);
   return <div className="space-y-5">
-    <section className="rounded-2xl border border-[#e9e4da] bg-white p-5 sm:p-7">
-      <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Müştəri söhbətləri</p>
-      <h1 className="mt-1 text-xl font-semibold text-[#142d38]">Söhbətlər</h1>
-      <p className="mt-1 text-sm text-slate-600">{unread ? `${unread} söhbətdə oxunmamış mesaj var` : "Oxunmamış mesaj yoxdur"}</p>
-      <p className="mt-4 rounded-xl bg-[#f8f7f4] p-3 text-xs leading-5 text-slate-600">
+    <VendorPageHeader eyebrow="Müştəri söhbətləri" title="Söhbətlər" description={unread ? `${unread} söhbətdə oxunmamış mesaj var` : "Oxunmamış mesaj yoxdur"}/>
+    <section className="rounded-card border border-line bg-white p-4 sm:p-5">
+      <p className="text-xs leading-5 text-fg-secondary">
         Hesaba daxil olmuş müştərilər məhsul, sifariş və ya mağaza haqqında buradan yazır; siz cavab verirsiniz. Müştərinin e-poçtu və telefonu göstərilmir, mesajlarda da telefon və e-poçt paylaşmayın.
       </p>
     </section>

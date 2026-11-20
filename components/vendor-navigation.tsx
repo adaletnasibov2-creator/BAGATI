@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Bell, Boxes, ChevronRight, CircleDollarSign, ClipboardList, FileSpreadsheet, LayoutDashboard, Menu, MessageSquare, MessagesSquare, Package, Plus, RotateCcw, Settings2, ShieldCheck, Star, Store, Tags, X } from "lucide-react";
+import { cx, focusRing } from "@/components/ui/cx";
+import { BarChart3, Bell, Boxes, CircleDollarSign, ClipboardList, FileSpreadsheet, LayoutDashboard, Menu, MessageSquare, MessagesSquare, Package, Plus, RotateCcw, Settings2, ShieldCheck, Star, Store, Tags, X } from "lucide-react";
 
 type NavLink = { path: string; label: string; Icon: typeof Store; badge?: "unread" | "inquiries" | "conversations" };
 const groups: { title: string; links: NavLink[] }[] = [
@@ -44,25 +45,32 @@ export function VendorNavigation({ storeId, canUseBulkImport = false, unread = 0
     if (path === "products" && pathname.startsWith(`${base}/products/new`)) return false;
     return pathname === `${base}/${path}` || pathname.startsWith(`${base}/${path}/`);
   };
-  const nav = (mobile = false) => <nav aria-label="Satıcı paneli" className="space-y-5">
-    {groups.map((group) => <div key={group.title}>
-      <p className="mb-1.5 px-3 text-[.62rem] font-semibold uppercase tracking-[.16em] text-[#8A6A37]">{group.title}</p>
-      <ul className="space-y-1">{group.links.filter(({ path }) => (path !== "imports" || canUseBulkImport) && (path !== "messages" || conversations !== null)).map(({ path, label, Icon, badge }) => {
+  // Grouped sections with a hairline between them; the active link is a green tint with a bar on the left, bold
+  // text and aria-current, so it does not rely on colour alone. Icons sit in a fixed 20 px box, so labels align.
+  const nav = (mobile = false) => <nav aria-label="Satıcı paneli" className="divide-y divide-line">
+    {groups.map((group) => <div key={group.title} className="py-3 first:pt-0 last:pb-0">
+      <p className="mb-1.5 px-3 text-kicker uppercase text-gold-700">{group.title}</p>
+      <ul className="space-y-0.5">{group.links.filter(({ path }) => (path !== "imports" || canUseBulkImport) && (path !== "messages" || conversations !== null)).map(({ path, label, Icon, badge }) => {
         const active = isActive(path);
-        return <li key={path}><Link href={`${base}${path ? `/${path}` : ""}`} onClick={() => mobile && setOpen(false)} aria-current={active ? "page" : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c9973a] ${active ? "bg-[#142d38] font-semibold text-white shadow-sm" : "text-[#536273] hover:bg-[#f2f0e9] hover:text-[#142d38]"}`}>
-          <Icon size={17} aria-hidden="true"/><span className="min-w-0 flex-1">{label}</span>
+        return <li key={path}><Link href={`${base}${path ? `/${path}` : ""}`} onClick={() => mobile && setOpen(false)} aria-current={active ? "page" : undefined} className={cx(
+          "relative flex min-h-11 items-center gap-3 rounded-control px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none",
+          focusRing,
+          active
+            ? "bg-primary-tint font-semibold text-primary before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-primary"
+            : "text-fg-secondary hover:bg-primary-subtle hover:text-fg",
+        )}>
+          <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center"><Icon size={18}/></span><span className="min-w-0 flex-1">{label}</span>
           {(() => {
             const count = badge === "unread" ? unread : badge === "inquiries" ? newInquiries : badge === "conversations" ? conversations ?? 0 : 0;
-            return count > 0 && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${active ? "bg-white text-[#142d38]" : "bg-[#c9973a] text-white"}`} aria-label={badge === "inquiries" ? `${count} yeni mesaj` : badge === "conversations" ? `${count} oxunmamış söhbət` : `${count} oxunmamış`}>{count > 99 ? "99+" : count}</span>;
+            return count > 0 && <span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[10px] font-semibold text-white" aria-label={badge === "inquiries" ? `${count} yeni mesaj` : badge === "conversations" ? `${count} oxunmamış söhbət` : `${count} oxunmamış`}>{count > 99 ? "99+" : count}</span>;
           })()}
-          {active && <ChevronRight size={14} aria-hidden="true"/>}
         </Link></li>;
       })}</ul>
     </div>)}
   </nav>;
   return <>
-    <aside className="fixed inset-y-[73px] left-0 z-20 hidden w-[248px] flex-col border-r border-[#e4e8e4] bg-white px-4 py-5 lg:flex"><div className="min-h-0 flex-1 overflow-y-auto">{nav()}</div></aside>
-    <div className="sticky top-[72px] z-30 border-b border-[#e8e4da] bg-[#f7f5ef]/95 px-4 py-2 backdrop-blur lg:hidden"><button type="button" aria-expanded={open} aria-controls="vendor-mobile-navigation" onClick={() => setOpen((value) => !value)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#ded9cf] bg-white px-4 text-sm font-medium text-[#142d38]">{open ? <X size={17}/> : <Menu size={17}/>} {open ? "Menyunu bağla" : "Panel menyusu"}</button></div>
-    {open && <div id="vendor-mobile-navigation" role="dialog" aria-modal="true" aria-label="Satıcı paneli menyusu" className="fixed inset-0 z-50 flex flex-col bg-white p-4 text-[#16202c] lg:hidden"><div className="mb-5 flex items-center justify-between border-b border-[#e8e4da] pb-4"><div><p className="text-xs uppercase tracking-[.16em] text-[#967844]">BAGATI satıcı paneli</p><p className="mt-1 font-semibold">Menyu</p></div><button type="button" aria-label="Menyunu bağla" onClick={() => setOpen(false)} className="grid h-11 w-11 place-items-center rounded-xl border"><X size={19}/></button></div><div className="min-h-0 flex-1 overflow-y-auto">{nav(true)}</div></div>}
+    <aside className="fixed inset-y-[73px] left-0 z-20 hidden w-[248px] flex-col border-r border-line bg-white px-4 py-5 lg:flex"><div className="min-h-0 flex-1 overflow-y-auto">{nav()}</div></aside>
+    <div className="sticky top-[72px] z-30 border-b border-line bg-[#f7f8f6]/95 px-4 py-2 backdrop-blur lg:hidden"><button type="button" aria-expanded={open} aria-controls="vendor-mobile-navigation" onClick={() => setOpen((value) => !value)} className={cx("inline-flex min-h-11 items-center gap-2 rounded-full border border-line-strong bg-white px-4 text-sm font-medium text-fg transition-colors hover:border-primary", focusRing)}>{open ? <X size={17} aria-hidden="true"/> : <Menu size={17} aria-hidden="true"/>} {open ? "Menyunu bağla" : "Panel menyusu"}</button></div>
+    {open && <div id="vendor-mobile-navigation" role="dialog" aria-modal="true" aria-label="Satıcı paneli menyusu" className="fixed inset-0 z-50 flex flex-col bg-white p-4 text-fg-body lg:hidden"><div className="mb-4 flex items-center justify-between border-b border-line pb-4"><div><p className="text-kicker uppercase text-gold-700">BAGATI satıcı paneli</p><p className="mt-1 font-display text-h3 text-fg">Menyu</p></div><button type="button" aria-label="Menyunu bağla" onClick={() => setOpen(false)} className={cx("grid h-11 w-11 place-items-center rounded-full border border-line-strong text-fg hover:border-primary", focusRing)}><X size={19} aria-hidden="true"/></button></div><div className="min-h-0 flex-1 overflow-y-auto">{nav(true)}</div></div>}
   </>;
 }

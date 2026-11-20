@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Activity, AlertTriangle, ArrowUpRight, BadgeCheck, ClipboardList, Package, PackageCheck, Plus, RotateCcw, ShoppingBag, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, ArrowUpRight, BadgeCheck, Boxes, ClipboardList, Package, PackageCheck, Plus, RotateCcw, ShoppingBag, Store, TrendingUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
@@ -12,6 +12,13 @@ import { missingSellerLegalFields, sellerRequirementLabels } from "@/lib/seller-
 import { buildVendorStoreSetup, subscriptionStatusLabels } from "@/lib/vendor-store-setup";
 import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-notifications";
 import { Bell, CheckCircle2, Circle } from "lucide-react";
+import { VendorPageHeader } from "@/components/vendor-page-header";
+import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { cx, focusRing } from "@/components/ui/cx";
+import { approvalTone, orderStatusTone, productStatusTone } from "@/lib/vendor-status-tone";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
@@ -79,50 +86,96 @@ export default async function VendorOverview({ params }: Props) {
     productCount: productTotal, activeProductCount: activeProducts,
   });
   const productStatusLabels: Record<string, string> = { DRAFT: "Qaralama", ACTIVE: "Aktiv", ARCHIVED: "Arxivdə" };
-  const approvalTones: Record<string, string> = { success: "bg-emerald-50 text-emerald-800", pending: "bg-amber-50 text-amber-800", danger: "bg-red-50 text-red-700", neutral: "bg-[#f1f0eb] text-[#536273]" };
   const outOfStock = stockRows.filter((item: any) => item.quantity - item.reserved <= 0).length;
   const lowStock = stockRows.filter((item: any) => item.quantity - item.reserved > 0 && item.quantity - item.reserved <= item.lowStockThreshold).length;
   const warnings = stockRows.filter((item: any) => Math.max(0, item.quantity - item.reserved) <= item.lowStockThreshold).slice(0, 6);
   const salesAmount = Number(salesToday._sum.subtotal || 0);
-  const cards = [
-    { label: "Yeni sifarişlər (cavab gözləyir)", value: newOrders, href: "orders", Icon: ClipboardList, tone: newOrders ? "rose" : "navy" },
-    { label: "Bu g\u00FCn sifari\u015Fl\u0259r", value: today, href: "orders", Icon: ClipboardList, tone: "navy" },
-    { label: "G\u00F6zl\u0259y\u0259n sifari\u015Fl\u0259r", value: pending, href: "orders", Icon: Activity, tone: "gold" },
-    { label: "Yeni qaytar\u0131lma sor\u011Fular\u0131", value: returnRequests, href: "returns", Icon: RotateCcw, tone: "rose" },
-    { label: "M\u0259hsullar", value: productTotal, href: "products", Icon: Package, tone: "neutral" },
-    { label: "Aktiv m\u0259hsullar", value: activeProducts, href: "products", Icon: BadgeCheck, tone: "teal" },
-    { label: "Tamamlanm\u0131\u015F sifari\u015Fl\u0259r", value: completed, href: "orders", Icon: PackageCheck, tone: "neutral" },
-    { label: "Az stok", value: lowStock, href: "inventory", Icon: AlertTriangle, tone: "gold" },
-    { label: "Stokda yoxdur", value: outOfStock, href: "inventory", Icon: ShoppingBag, tone: "rose" },
-    { label: "Bu g\u00FCn t\u0259hvil verilmi\u015F sat\u0131\u015F", value: `${salesAmount.toFixed(2)} AZN`, href: "sales", Icon: TrendingUp, tone: "teal" },
-  ] as const;
-  const tones: Record<string, string> = { navy: "bg-[#e9eef1] text-[#173c40]", gold: "bg-[#f4ecd9] text-[#8c6b2b]", neutral: "bg-[#f1f0eb] text-[#536273]", teal: "bg-[#e4efeb] text-[#28766f]", rose: "bg-[#f8e9e7] text-[#a44940]" };
+  // Three groups instead of ten equal cards. `attention` is set only while the number is above 0.
+  const groups: { id: string; title: string; cards: StatCardData[] }[] = [
+    { id: "orders", title: "Sifarişlər", cards: [
+      { label: "Yeni sifarişlər (cavab gözləyir)", value: newOrders, href: "orders", Icon: ClipboardList, attention: newOrders > 0 ? "warning" : null },
+      { label: "Bu gün sifarişlər", value: today, href: "orders", Icon: ClipboardList },
+      { label: "Gözləyən sifarişlər", value: pending, href: "orders", Icon: Activity },
+      { label: "Yeni qaytarılma sorğuları", value: returnRequests, href: "returns", Icon: RotateCcw, attention: returnRequests > 0 ? "warning" : null },
+    ] },
+    { id: "products", title: "Məhsullar", cards: [
+      { label: "Məhsullar", value: productTotal, href: "products", Icon: Package },
+      { label: "Aktiv məhsullar", value: activeProducts, href: "products", Icon: BadgeCheck },
+      { label: "Az stok", value: lowStock, href: "inventory", Icon: AlertTriangle, attention: lowStock > 0 ? "warning" : null },
+      { label: "Stokda yoxdur", value: outOfStock, href: "inventory", Icon: ShoppingBag, attention: outOfStock > 0 ? "danger" : null },
+    ] },
+    { id: "sales", title: "Satış", cards: [
+      { label: "Bu gün təhvil verilmiş satış", value: `${salesAmount.toFixed(2)} AZN`, href: "sales", Icon: TrendingUp },
+      { label: "Tamamlanmış sifarişlər", value: completed, href: "orders", Icon: PackageCheck },
+    ] },
+  ];
+  const quickActions = [
+    { label: "Məhsul əlavə et", href: "products/new", Icon: Plus },
+    { label: "Sifarişlər", href: "orders", Icon: ClipboardList },
+    { label: "Anbar qalığı", href: "inventory", Icon: Boxes },
+    { label: "Mağazam", href: "profile", Icon: Store },
+  ];
+  const panel = cx(cardClass({ padding: "none" }), "overflow-hidden");
+  const rowLink = `transition-colors hover:bg-primary-subtle ${focusRing} focus-visible:outline-offset-[-2px]`;
+  const panelHead = (eyebrow: string, title: string, link: { href: string; label: string }) => <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+    <div className="min-w-0"><p className="text-kicker uppercase text-gold-700">{eyebrow}</p><h2 className="mt-1 font-display text-h3 text-fg">{title}</h2></div>
+    <Link className={`inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-medium text-primary hover:bg-primary-subtle ${focusRing}`} href={link.href}>{link.label} <ArrowUpRight size={15} aria-hidden="true"/></Link>
+  </div>;
 
   return <div className="space-y-7">
-    <section className="relative overflow-hidden rounded-[24px] bg-[#122b37] p-5 text-white shadow-[0_16px_40px_rgba(18,43,55,.12)] sm:p-7 lg:p-8">
-      <div aria-hidden="true" className="absolute -right-14 -top-28 h-72 w-72 rounded-full border border-[#e6c77d]/20 sm:right-[6%] sm:top-[-55%] sm:h-96 sm:w-96"/>
-      <div className="relative flex flex-wrap items-end justify-between gap-5">
-        <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#e6c77d]">BAGATI satıcı paneli</p><h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Salam, {store.name}</h1><p className="mt-2 text-sm text-white/70">{store.city.name} <span aria-hidden="true">·</span> {store.isActive ? "İctimai görünürlük aktivdir" : "İctimai görünürlük deaktivdir"}</p><div className="mt-2 text-sm"><p className={readinessBlockers.length ? "font-medium text-amber-200" : "font-medium text-emerald-200"}>{readinessBlockers.length ? "İctimai satışa hazır deyil" : "İctimai satışa hazırdır"}</p>{readinessBlockers.length > 0 && <ul className="mt-1 list-inside list-disc text-white/80">{readinessBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul>}</div></div>
-        <div className="flex flex-wrap gap-2"><Link href={`/vendor/${storeId}/orders`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-medium text-white transition hover:bg-white/10"><ClipboardList size={16}/> Sifarişlər</Link><Link href={`/vendor/${storeId}/products/new`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#e6c77d] px-4 text-sm font-semibold text-[#142d38] transition hover:bg-[#f0d895]"><Plus size={17}/> Məhsul əlavə et</Link></div>
-      </div>
+    <VendorPageHeader
+      eyebrow="BAGATI satıcı paneli"
+      title={<>Salam, {store.name}</>}
+      description={<>{store.city.name} <span aria-hidden="true">·</span> {store.isActive ? "İctimai görünürlük aktivdir" : "İctimai görünürlük deaktivdir"}</>}
+      action={<><ButtonLink href={`/vendor/${storeId}/orders`} variant="secondary" size="sm"><ClipboardList size={16} aria-hidden="true"/> Sifarişlər</ButtonLink><ButtonLink href={`/vendor/${storeId}/products/new`} size="sm"><Plus size={17} aria-hidden="true"/> Məhsul əlavə et</ButtonLink></>}
+    />
+    <div className={readinessBlockers.length ? "rounded-card border border-gold-200 bg-[#faf5ec] p-4 sm:px-5" : "rounded-card border border-brand-100 bg-primary-subtle p-4 sm:px-5"}>
+      <p className={`flex items-center gap-2 text-sm font-semibold ${readinessBlockers.length ? "text-gold-700" : "text-primary"}`}>{readinessBlockers.length ? <AlertTriangle size={16} aria-hidden="true"/> : <CheckCircle2 size={16} aria-hidden="true"/>}{readinessBlockers.length ? "İctimai satışa hazır deyil" : "İctimai satışa hazırdır"}</p>
+      {readinessBlockers.length > 0 && <ul className="mt-2 list-inside list-disc space-y-0.5 text-sm text-fg-body">{readinessBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul>}
+    </div>
+
+    <section aria-labelledby="quick-actions-heading">
+      <h2 id="quick-actions-heading" className="text-kicker uppercase text-gold-700">Tez əməliyyatlar</h2>
+      <ul className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">{quickActions.map(({ label, href, Icon }) => <li key={href}><Link href={`/vendor/${storeId}/${href}`} className={`group flex min-h-16 items-center gap-3 rounded-card border border-line bg-white p-3 text-sm font-semibold text-fg transition-[border-color,box-shadow] duration-150 hover:border-brand-200 hover:shadow-subtle motion-reduce:transition-none sm:p-4 ${focusRing}`}><span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-subtle text-primary ring-1 ring-inset ring-brand-100 transition-colors group-hover:bg-primary group-hover:text-white"><Icon size={18}/></span><span className="min-w-0">{label}</span></Link></li>)}</ul>
     </section>
-    <section aria-labelledby="setup-heading" className="rounded-2xl border border-[#e9e4da] bg-white p-5 sm:p-6">
+
+    <section aria-labelledby="setup-heading" className={cardClass({ padding: "md" })}>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-[#967844]">Mağaza qurulumu</p><h2 id="setup-heading" className="mt-1 font-semibold text-[#142d38]">{setup.completed === setup.total ? "Mağazanız tam hazırdır" : `${setup.completed} / ${setup.total} addım tamamlanıb`}</h2></div>
-        <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${approvalTones[setup.approval.tone]}`}>Status: {setup.approval.label}</span><span className="rounded-full bg-[#f7f5ef] px-3 py-1 text-xs text-[#536273]">Abunəlik: {store.subscription ? `${store.subscription.plan.name} · ${subscriptionStatusLabels[store.subscription.status] ?? "Status məlum deyil"}` : "seçilməyib"}</span></div>
+        <div><p className="text-kicker uppercase text-gold-700">Mağaza qurulumu</p><h2 id="setup-heading" className="mt-1 font-display text-h3 text-fg">{setup.completed === setup.total ? "Mağazanız tam hazırdır" : `${setup.completed} / ${setup.total} addım tamamlanıb`}</h2></div>
+        <div className="flex flex-wrap items-center gap-2"><Badge tone={approvalTone(setup.approval.tone)}>Status: {setup.approval.label}</Badge><Badge tone="neutral">Abunəlik: {store.subscription ? `${store.subscription.plan.name} · ${subscriptionStatusLabels[store.subscription.status] ?? "Status məlum deyil"}` : "seçilməyib"}</Badge></div>
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#eeeae2]" role="progressbar" aria-label="Mağaza qurulumu" aria-valuemin={0} aria-valuemax={100} aria-valuenow={setup.percent}><div className="h-full rounded-full bg-[#28766f] transition-all" style={{ width: `${setup.percent}%` }}/></div>
-      <ol className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{setup.steps.map((step, index) => <li key={step.key} className={`flex gap-3 rounded-xl border p-3 ${step.done ? "border-[#e2eee9] bg-[#f6faf8]" : step.key === setup.nextStep?.key ? "border-[#d9a441]/60 bg-[#fdf9ef]" : "border-[#eeeae2]"}`}>
-        {step.done ? <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-[#28766f]" aria-hidden="true"/> : <Circle size={18} className="mt-0.5 shrink-0 text-slate-300" aria-hidden="true"/>}
-        <div className="min-w-0"><p className="text-sm font-medium text-[#243647]">{index + 1}. {step.label}<span className="sr-only">{step.done ? " — tamamlanıb" : " — tamamlanmayıb"}</span></p><p className="mt-0.5 break-words text-xs text-slate-500">{step.detail}</p>{!step.done && <Link href={`/vendor/${storeId}/${step.href}`} className="mt-1.5 inline-flex min-h-8 items-center text-xs font-semibold text-[#28766f] hover:underline">{step.actionLabel} →</Link>}</div>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-sunken" role="progressbar" aria-label="Mağaza qurulumu" aria-valuemin={0} aria-valuemax={100} aria-valuenow={setup.percent}><div className="h-full rounded-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${setup.percent}%` }}/></div>
+      <ol className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{setup.steps.map((step, index) => <li key={step.key} className={`flex gap-3 rounded-control border p-3 ${step.done ? "border-brand-100 bg-primary-subtle" : step.key === setup.nextStep?.key ? "border-gold-400 bg-[#faf5ec]" : "border-line"}`}>
+        {step.done ? <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true"/> : <Circle size={18} className="mt-0.5 shrink-0 text-line-strong" aria-hidden="true"/>}
+        <div className="min-w-0"><p className="text-sm font-medium text-fg">{index + 1}. {step.label}<span className="sr-only">{step.done ? " — tamamlanıb" : " — tamamlanmayıb"}</span></p><p className="mt-0.5 break-words text-xs text-fg-muted">{step.detail}</p>{!step.done && <Link href={`/vendor/${storeId}/${step.href}`} className={`mt-1.5 inline-flex min-h-8 items-center rounded-sm text-xs font-semibold text-primary hover:underline ${focusRing}`}>{step.actionLabel} →</Link>}</div>
       </li>)}</ol>
     </section>
-    <section aria-label="Mağaza göstəriciləri" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({ label, value, href, Icon, tone })=><Link key={label} href={`/vendor/${storeId}/${href}`} className="group rounded-2xl border border-[#e9e4da] bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#cbb47e] hover:shadow-[0_12px_28px_rgba(11,23,38,.06)] sm:p-5"><div className="flex items-start justify-between gap-3"><span className={`grid h-10 w-10 place-items-center rounded-xl ${tones[tone]}`}><Icon size={18}/></span><ArrowUpRight size={16} className="text-slate-300 transition group-hover:text-[#967844]"/></div><p className="mt-4 text-xs leading-5 text-slate-500">{label}</p><p className="mt-1 text-2xl font-semibold tracking-tight text-[#142d38]">{value}</p></Link>)}</section>
+
+    <div className="grid gap-x-5 gap-y-7 xl:grid-cols-2">{groups.map((group) => <section key={group.id} aria-labelledby={`stats-${group.id}`} className={group.cards.length < 4 ? "xl:col-span-2" : undefined}>
+      <h2 id={`stats-${group.id}`} className="font-display text-h3 text-fg">{group.title}</h2>
+      <div className={`mt-3 grid gap-3 sm:grid-cols-2 ${group.cards.length < 4 ? "xl:grid-cols-4" : ""}`}>{group.cards.map((card) => <StatCard key={card.label} card={card} storeId={storeId}/>)}</div>
+    </section>)}</div>
+
     <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
-      <section className="overflow-hidden rounded-2xl border border-[#e9e4da] bg-white"><div className="flex items-center justify-between gap-3 border-b border-[#eeeae2] px-5 py-4"><div><p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-[#967844]">Son fəaliyyət</p><h2 className="mt-1 font-semibold text-[#142d38]">Son sifarişlər</h2></div><Link className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-[#28766f]" href={`/vendor/${storeId}/orders`}>Hamısını <ArrowUpRight size={15}/></Link></div><div className="divide-y divide-[#eeeae2]">{recentOrders.length ? recentOrders.map((order:any)=><Link key={order.id} href={`/vendor/${storeId}/orders/${order.id}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition hover:bg-[#fbfaf8]"><span><span className="block text-sm font-semibold text-[#142d38]">#{order.order.id.slice(-8).toUpperCase()}</span><span className="mt-1 block text-xs text-slate-500">{new Date(order.createdAt).toLocaleString("az-AZ")}</span></span><span className="flex items-center gap-3"><span className="rounded-full bg-[#f3f1eb] px-2.5 py-1 text-xs font-medium text-[#536273]">{statusLabel(order.status)}</span><b className="text-sm">{Number(order.subtotal).toFixed(2)} AZN</b></span></Link>) : <div className="p-7 text-center"><ClipboardList className="mx-auto text-slate-300" size={25}/><p className="mt-2 text-sm font-medium text-[#344254]">Hələ sifariş yoxdur</p><p className="mt-1 text-xs text-slate-500">Yeni sifarişlər bu bölmədə görünəcək.</p></div>}</div></section>
-      <section className="overflow-hidden rounded-2xl border border-[#e9e4da] bg-white"><div className="flex items-center justify-between gap-3 border-b border-[#eeeae2] px-5 py-4"><div><p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-[#967844]">Stok nəzarəti</p><h2 className="mt-1 font-semibold text-[#142d38]">Anbar xəbərdarlıqları</h2></div><Link href={`/vendor/${storeId}/inventory`} aria-label="Anbara bax" className="grid h-10 w-10 place-items-center rounded-xl text-[#28766f] hover:bg-[#f4f7f4]"><ArrowUpRight size={17}/></Link></div><div className="divide-y divide-[#eeeae2]">{warnings.length ? warnings.map((item:any)=><Link key={item.id} href={`/vendor/${storeId}/inventory`} className="flex items-center justify-between gap-3 px-5 py-3.5 hover:bg-[#fbfaf8]"><span className="min-w-0"><span className="block truncate text-sm font-medium text-[#243647]">{item.product.name}</span><span className="mt-1 block truncate text-xs text-slate-500">Məhsul kodu: {item.product.sku||"—"}</span></span><span className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${item.quantity-item.reserved<=0?"bg-red-50 text-red-700":"bg-amber-50 text-amber-800"}`}>{Math.max(0,item.quantity-item.reserved)} ədəd</span></Link>) : <div className="p-7 text-center"><BadgeCheck className="mx-auto text-[#28766f]" size={25}/><p className="mt-2 text-sm font-medium text-[#344254]">Aşağı ehtiyatlı məhsul yoxdur</p><p className="mt-1 text-xs text-slate-500">Stok yeniləndikcə xəbərdarlıqlar burada görünəcək.</p></div>}</div></section>
+      <section className={panel}>{panelHead("Son fəaliyyət", "Son sifarişlər", { href: `/vendor/${storeId}/orders`, label: "Hamısını" })}<div className="divide-y divide-line">{recentOrders.length ? recentOrders.map((order:any)=><Link key={order.id} href={`/vendor/${storeId}/orders/${order.id}`} className={`flex flex-wrap items-center justify-between gap-3 px-5 py-4 ${rowLink}`}><span><span className="block text-sm font-semibold text-fg">#{order.order.id.slice(-8).toUpperCase()}</span><span className="mt-1 block text-xs text-fg-muted">{new Date(order.createdAt).toLocaleString("az-AZ")}</span></span><span className="flex items-center gap-3"><Badge tone={orderStatusTone(order.status)}>{statusLabel(order.status)}</Badge><b className="text-sm text-fg">{Number(order.subtotal).toFixed(2)} AZN</b></span></Link>) : <div className="p-7 text-center"><ClipboardList className="mx-auto text-line-strong" size={25} aria-hidden="true"/><p className="mt-2 text-sm font-medium text-fg">Hələ sifariş yoxdur</p><p className="mt-1 text-xs text-fg-muted">Yeni sifarişlər bu bölmədə görünəcək.</p></div>}</div></section>
+      <section className={panel}>{panelHead("Stok nəzarəti", "Anbar xəbərdarlıqları", { href: `/vendor/${storeId}/inventory`, label: "Anbar qalığı" })}<div className="divide-y divide-line">{warnings.length ? warnings.map((item:any)=><Link key={item.id} href={`/vendor/${storeId}/inventory`} className={`flex items-center justify-between gap-3 px-5 py-3.5 ${rowLink}`}><span className="min-w-0"><span className="block truncate text-sm font-medium text-fg">{item.product.name}</span><span className="mt-1 block truncate text-xs text-fg-muted">Məhsul kodu: {item.product.sku||"—"}</span></span><Badge tone={item.quantity-item.reserved<=0?"danger":"gold"} className="shrink-0">{Math.max(0,item.quantity-item.reserved)} ədəd</Badge></Link>) : <div className="p-7 text-center"><BadgeCheck className="mx-auto text-primary" size={25} aria-hidden="true"/><p className="mt-2 text-sm font-medium text-fg">Aşağı ehtiyatlı məhsul yoxdur</p><p className="mt-1 text-xs text-fg-muted">Stok yeniləndikcə xəbərdarlıqlar burada görünəcək.</p></div>}</div></section>
     </div>
-    <section className="overflow-hidden rounded-2xl border border-[#e9e4da] bg-white"><div className="flex items-center justify-between gap-3 border-b border-[#eeeae2] px-5 py-4"><div><p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-[#967844]">Xəbərlər</p><h2 className="mt-1 font-semibold text-[#142d38]">Son bildirişlər</h2></div><Link href={`/vendor/${storeId}/notifications`} className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-[#28766f]">Hamısı <ArrowUpRight size={15}/></Link></div>{recentNotifications.length ? <ul className="divide-y divide-[#eeeae2]">{recentNotifications.map((item: any) => { const href = vendorNotificationHref(storeId, item.title, item.storeId === storeId); const body = <><span className="flex items-center gap-2 text-sm font-medium text-[#243647]">{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-[#c9973a]" aria-label="Oxunmayıb"/>}{item.title}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{item.body}</span><span className="mt-0.5 block text-[11px] text-slate-400">{new Date(item.createdAt).toLocaleString("az-AZ")}</span></>; return <li key={item.id}>{href ? <Link href={href} className="block px-5 py-3 hover:bg-[#fbfaf8]">{body}</Link> : <div className="px-5 py-3">{body}</div>}</li>; })}</ul> : <div className="p-6 text-center"><Bell className="mx-auto text-slate-300" size={22} aria-hidden="true"/><p className="mt-2 text-sm text-slate-500">Hələ bildiriş yoxdur.</p></div>}</section>
-    <section className="overflow-hidden rounded-2xl border border-[#e9e4da] bg-white"><div className="flex items-center justify-between gap-3 border-b border-[#eeeae2] px-5 py-4"><div><p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-[#967844]">Kataloq</p><h2 className="mt-1 font-semibold text-[#142d38]">Son məhsullar</h2></div><Link href={`/vendor/${storeId}/products`} className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-[#28766f]">Kataloqa bax <ArrowUpRight size={15}/></Link></div>{products.length ? <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">{products.map((product:any)=><Link key={product.id} href={`/vendor/${storeId}/products/${product.id}`} className="group flex min-w-0 items-center gap-3 rounded-xl border border-transparent bg-[#f8f7f4] p-3 transition hover:border-[#d9a441]/50 hover:bg-white"><div className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-center text-[9px] text-slate-500">{product.images?.[0]?<Image src={product.images[0]} alt="" fill sizes="56px" unoptimized={/^https?:\/\//i.test(product.images[0])} className="object-cover"/>:"Şəkil yoxdur"}</div><span className="min-w-0"><span className="block truncate text-sm font-medium text-[#243647] group-hover:text-[#28766f]">{product.name}</span><span className="mt-1 block text-xs text-slate-500">{Number(product.price).toFixed(2)} AZN <span aria-hidden="true">·</span> {productStatusLabels[product.status] ?? "Status məlum deyil"}</span></span></Link>)}</div> : <div className="p-7 text-center"><Package className="mx-auto text-slate-300" size={25}/><p className="mt-2 text-sm font-medium">Məhsul yoxdur</p><p className="mt-1 text-xs text-slate-500">Kataloqunuzu ilk məhsulla yaradın.</p><Link href={`/vendor/${storeId}/products/new`} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#173c40] px-4 text-sm font-medium text-white"><Plus size={15}/> Məhsul əlavə et</Link></div>}</section>
+    <section className={panel}>{panelHead("Xəbərlər", "Son bildirişlər", { href: `/vendor/${storeId}/notifications`, label: "Hamısı" })}{recentNotifications.length ? <ul className="divide-y divide-line">{recentNotifications.map((item: any) => { const href = vendorNotificationHref(storeId, item.title, item.storeId === storeId); const body = <><span className="flex items-center gap-2 text-sm font-medium text-fg">{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-gold-400" aria-label="Oxunmayıb"/>}{item.title}</span><span className="mt-0.5 block truncate text-xs text-fg-muted">{item.body}</span><span className="mt-0.5 block text-[11px] text-fg-muted">{new Date(item.createdAt).toLocaleString("az-AZ")}</span></>; return <li key={item.id}>{href ? <Link href={href} className={`block px-5 py-3 ${rowLink}`}>{body}</Link> : <div className="px-5 py-3">{body}</div>}</li>; })}</ul> : <div className="p-6 text-center"><Bell className="mx-auto text-line-strong" size={22} aria-hidden="true"/><p className="mt-2 text-sm text-fg-muted">Hələ bildiriş yoxdur.</p></div>}</section>
+    <section className={panel}>{panelHead("Kataloq", "Son məhsullar", { href: `/vendor/${storeId}/products`, label: "Kataloqa bax" })}{products.length ? <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">{products.map((product:any)=><Link key={product.id} href={`/vendor/${storeId}/products/${product.id}`} className={`group flex min-w-0 items-center gap-3 rounded-control border border-transparent bg-surface-page p-3 transition-colors hover:border-brand-200 hover:bg-white ${focusRing}`}><div className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-control bg-white text-center text-[9px] text-fg-muted">{product.images?.[0]?<Image src={product.images[0]} alt="" fill sizes="56px" unoptimized={/^https?:\/\//i.test(product.images[0])} className="object-cover"/>:"Şəkil yoxdur"}</div><span className="min-w-0"><span className="block truncate text-sm font-medium text-fg group-hover:text-primary">{product.name}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-fg-muted">{Number(product.price).toFixed(2)} AZN <Badge tone={productStatusTone(product.status)}>{productStatusLabels[product.status] ?? "Status məlum deyil"}</Badge></span></span></Link>)}</div> : <EmptyState className="rounded-none border-0" titleAs="h3" icon={<Package size={24}/>} title="Məhsul yoxdur" description="Kataloqunuzu ilk məhsulla yaradın." action={<ButtonLink href={`/vendor/${storeId}/products/new`} size="sm"><Plus size={15} aria-hidden="true"/> Məhsul əlavə et</ButtonLink>}/>}</section>
   </div>;
+}
+
+type StatCardData = { label: string; value: number | string; href: string; Icon: typeof Package; attention?: "warning" | "danger" | null };
+
+/** One number. `attention` (set only while the number is above 0) turns the card gold or red and swaps in a warning icon. */
+function StatCard({ card, storeId }: { card: StatCardData; storeId: string }) {
+  const { label, value, href, Icon, attention } = card;
+  const surface = attention === "danger" ? "border-[#f1b9b9] bg-danger-subtle hover:border-danger" : attention === "warning" ? "border-gold-400 bg-[#faf5ec] hover:border-gold-600" : "border-line bg-white hover:border-brand-200";
+  const icon = attention === "danger" ? "bg-white text-danger ring-[#f5c6c6]" : attention === "warning" ? "bg-white text-gold-700 ring-gold-200" : "bg-primary-subtle text-primary ring-brand-100";
+  const number = attention === "danger" ? "text-danger" : attention === "warning" ? "text-gold-700" : "text-fg";
+  return <Link href={`/vendor/${storeId}/${href}`} data-attention={attention ?? undefined} className={`group flex min-h-[7.5rem] flex-col rounded-card border p-4 transition-[border-color,box-shadow] duration-150 hover:shadow-subtle motion-reduce:transition-none sm:p-5 ${surface} ${focusRing}`}>
+    <span className="flex items-start justify-between gap-3"><span aria-hidden="true" className={`grid h-10 w-10 place-items-center rounded-full ring-1 ring-inset ${icon}`}>{attention ? <AlertTriangle size={18}/> : <Icon size={18}/>}</span><ArrowUpRight size={16} aria-hidden="true" className="text-line-strong transition-colors group-hover:text-primary"/></span>
+    <span className="mt-auto pt-3 text-xs leading-5 text-fg-secondary">{label}</span>
+    <span className={`mt-0.5 text-2xl font-semibold tracking-tight ${number}`}>{value}</span>
+  </Link>;
 }

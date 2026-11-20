@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { presentStockQuantity } from "@/lib/stock-quantity";
+import { Badge } from "@/components/ui/badge";
 
 type Adjustment = { id: string; delta: number; reason: string; createdAt: string };
 type Row = {
@@ -101,7 +102,7 @@ export default function VendorInventoryPanel({ storeId }: { storeId: string }) {
         return <article key={row.id} className="rounded-2xl border border-[#e9e4da] bg-white p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0"><Link href={`/vendor/${storeId}/products/${row.productId}`} className="break-words font-semibold text-[#173c40] hover:underline">{row.product.name}</Link><p className="mt-1 break-words text-sm text-slate-600">{label(row)}{row.variant && !row.variant.isActive ? " · Satışdan çıxarılıb" : ""}</p><p className="mt-1 text-xs text-slate-500">Məhsul kodu: {row.variant?.sku || row.product.sku || "—"}</p></div>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${level === "out" ? "bg-red-50 text-red-700" : level === "low" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"}`}>{level === "out" ? "Stokda yoxdur" : level === "low" ? "Az qalıb" : "Mövcuddur"} · {available} ədəd satışa açıq</span>
+            <Badge tone={level === "out" ? "danger" : level === "low" ? "gold" : "primary"}>{level === "out" ? "Stokda yoxdur" : level === "low" ? "Az qalıb" : "Mövcuddur"} · {available} ədəd satışa açıq</Badge>
           </div>
           <form key={`${row.id}:${row.quantity}:${row.lowStockThreshold}:${row.updatedAt ?? ""}`} onSubmit={(event) => void save(event, row)} className="mt-3 grid gap-2 sm:grid-cols-[120px_140px_1fr_auto] sm:items-end">
             <label className="grid gap-1 text-xs text-slate-500">Ümumi miqdar<input className={input} name="quantity" type="number" min={row.reserved} step="1" inputMode="numeric" defaultValue={row.quantity} required/></label>

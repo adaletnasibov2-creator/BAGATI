@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import { ChevronDown, Heart, Menu, ShoppingBag, UserRound, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
@@ -36,6 +37,16 @@ export function MobileMenu({
     setOpen(false);
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
+
+  // DESIGN-T6: a route change from outside the drawer (browser Back/Forward) closes it too; links inside already do.
+  const pathname = usePathname();
+  useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("popstate", close);
+    return () => window.removeEventListener("popstate", close);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

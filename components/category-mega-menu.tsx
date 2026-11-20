@@ -5,6 +5,7 @@ import { useRef, useState, type MouseEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { CategoryGlyph, CategoryIcon } from "@/components/category-icon";
 import { categoryHref } from "@/lib/category-tree";
+import { useDismissibleDetails } from "@/components/use-dismissible-details";
 
 type MenuSubcategory = { id: string; name: string; slug: string; iconKey?: string | null; imageUrl?: string | null; parentIconKey?: string | null; count?: number };
 export type MegaMenuCategory = MenuSubcategory & { parentId?: string | null; children?: MenuSubcategory[] };
@@ -19,6 +20,8 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
   const panelRef = useRef<HTMLDivElement>(null);
   const active = categories.find((category) => category.id === activeId && category.children?.length);
   const panelId = "mega-menu-subcategories";
+  // Closes on route change, on a link click inside, on an outside click and on Escape (focus back to the button).
+  const menu = useDismissibleDetails(() => setActiveId(null));
 
   function toggle(event: MouseEvent<HTMLButtonElement>, id: string) {
     const opening = activeId !== id;
@@ -28,7 +31,7 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
   }
 
   return (
-    <details className="group relative" onToggle={(event) => { if (!(event.currentTarget as HTMLDetailsElement).open) setActiveId(null); }}>
+    <details ref={menu.ref} className="group relative" onToggle={menu.onToggle} onClick={menu.onClick}>
       <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-bagati-text transition-colors hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bagati-gold [&::-webkit-details-marker]:hidden">
         Kateqoriyalar
         <ChevronDown aria-hidden="true" size={14} className="transition-transform group-open:rotate-180 motion-reduce:transition-none" />

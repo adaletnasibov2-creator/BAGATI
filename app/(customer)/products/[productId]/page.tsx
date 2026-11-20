@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { categoryHref } from "@/lib/category-tree";
 import { notFound } from "next/navigation";
-import { ChevronRight, MapPin, MessageCircle, Store } from "lucide-react";
+import { ChevronRight, MapPin, MessageCircle, RotateCcw, Store, Truck } from "lucide-react";
+import { buttonClass } from "@/components/ui/button";
 import { Prisma } from "@prisma/client";
-import ProductVariantPurchase from "@/components/product-variant-purchase";
+import ProductVariantPurchase, { PRODUCT_BUY_BAR_SLOT_ID } from "@/components/product-variant-purchase";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
 import { calculateEffectivePrice, productPromotions, type PromotionPriceInput } from "@/lib/promotion-pricing";
@@ -125,21 +126,21 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
 
   return (
     <div className="container py-6 md:py-10">
-      <nav aria-label="Breadcrumb" className="mb-6 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-        <Link href="/" className="shrink-0 hover:text-emerald">Ana səhifə</Link>
+      <nav aria-label="Breadcrumb" className="mb-6 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
+        <Link href="/" className="shrink-0 hover:text-primary">Ana səhifə</Link>
         {publicCategory?.parent && <>
           <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
-          <Link href={categoryHref(publicCategory.parent.slug)} className="shrink-0 hover:text-emerald">{publicCategory.parent.name}</Link>
+          <Link href={categoryHref(publicCategory.parent.slug)} className="shrink-0 hover:text-primary">{publicCategory.parent.name}</Link>
         </>}
         {publicCategory ? <>
           <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
-          <Link href={categoryHref(publicCategory.slug)} className="shrink-0 hover:text-emerald">{publicCategory.name}</Link>
+          <Link href={categoryHref(publicCategory.slug)} className="shrink-0 hover:text-primary">{publicCategory.name}</Link>
         </> : <>
           <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
-          <Link href="/products" className="shrink-0 hover:text-emerald">Məhsullar</Link>
+          <Link href="/products" className="shrink-0 hover:text-primary">Məhsullar</Link>
         </>}
         <ChevronRight aria-hidden="true" size={14} className="shrink-0"/>
-        <span aria-current="page" className="min-w-0 truncate text-ink">{product.name}</span>
+        <span aria-current="page" className="min-w-0 truncate text-fg">{product.name}</span>
       </nav>
 
       <ProductVariantPurchase
@@ -167,23 +168,24 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
       />
 
       <div className="mt-10 grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
-        <section className="rounded-3xl border border-[#E5EAE6] bg-white p-5 sm:p-7" aria-labelledby="product-description-title">
-          <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Məhsul haqqında</p>
-          <h2 id="product-description-title" className="mt-2 text-xl font-semibold text-[#233432]">Təsvir və məlumat</h2>
-          <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-muted">
+        <section className="rounded-feature border border-line bg-white p-5 sm:p-7" aria-labelledby="product-description-title">
+          <p className="text-kicker uppercase text-gold-700">Məhsul haqqında</p>
+          <h2 id="product-description-title" className="mt-2 font-display text-h2 text-fg">Təsvir və məlumat</h2>
+          <p className="mt-4 max-w-[68ch] whitespace-pre-wrap break-words text-body-lg leading-8 text-fg-body">
             {product.description || "Satıcı bu məhsul üçün əlavə təsvir təqdim etməyib."}
           </p>
-          {publicCategory && <p className="mt-5 border-t border-line pt-4 text-sm text-muted">
-            Kateqoriya: {publicCategory.parent && <><Link href={categoryHref(publicCategory.parent.slug)} className="font-medium text-ink hover:text-emerald">{publicCategory.parent.name}</Link>{" › "}</>}<Link href={categoryHref(publicCategory.slug)} className="font-medium text-ink hover:text-emerald">{publicCategory.name}</Link>
+          {publicCategory && <p className="mt-6 border-t border-line pt-4 text-sm text-fg-secondary">
+            Kateqoriya: {publicCategory.parent && <><Link href={categoryHref(publicCategory.parent.slug)} className="font-medium text-fg hover:text-primary">{publicCategory.parent.name}</Link>{" › "}</>}<Link href={categoryHref(publicCategory.slug)} className="font-medium text-fg hover:text-primary">{publicCategory.name}</Link>
           </p>}
         </section>
 
-        <section className="rounded-3xl border border-[#E5EAE6] bg-white p-5 sm:p-7" aria-labelledby="product-store-title">
-          <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Satıcı mağazası</p>
-          <Link id="product-store-title" href={`/stores/${product.store.id}`} className="mt-2 inline-flex items-center gap-2 text-lg font-semibold text-[#233432] hover:text-emerald">
-            <Store aria-hidden="true" size={18}/>{product.store.name}
+        <section className="rounded-feature border border-line bg-white p-5 sm:p-7" aria-labelledby="product-store-title">
+          <p className="text-kicker uppercase text-gold-700">Satıcı mağazası</p>
+          <Link id="product-store-title" href={`/stores/${product.store.id}`} className="mt-3 flex min-h-11 items-center gap-3 rounded-control font-display text-h3 text-fg hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary-subtle text-primary ring-1 ring-inset ring-brand-100"><Store size={19}/></span>
+            <span className="min-w-0 break-words">{product.store.name}</span>
           </Link>
-          <p className="mt-2 flex items-start gap-2 text-sm text-muted">
+          <p className="mt-3 flex items-start gap-2 text-sm text-fg-secondary">
             <MapPin aria-hidden="true" size={16} className="mt-0.5 shrink-0"/>
             <span>{product.store.city.name}{product.store.address ? ` · ${product.store.address}` : ""}</span>
           </p>
@@ -191,49 +193,54 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
             <iframe
               title={`${product.store.name} xəritə mövqeyi`}
               loading="lazy"
-              className="mt-5 h-48 w-full rounded-2xl border-0"
+              className="mt-5 h-48 w-full rounded-card border-0"
               src={`https://www.openstreetmap.org/export/embed.html?bbox=${product.store.longitude - 0.01}%2C${product.store.latitude - 0.01}%2C${product.store.longitude + 0.01}%2C${product.store.latitude + 0.01}&layer=mapnik&marker=${product.store.latitude}%2C${product.store.longitude}`}
             />
-          ) : <p className="mt-5 rounded-xl bg-[#F4F7F4] p-3 text-xs text-muted">Mağaza xəritə mövqeyini hələ əlavə etməyib.</p>}
-          {product.store.mapUrl && <a href={product.store.mapUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block min-h-11 text-sm font-medium leading-11 text-emerald">Mağaza xəritəsinə bax →</a>}
-          {askHref && <Link href={askHref} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#2F6F68] px-4 text-sm font-semibold text-[#2F6F68] transition hover:bg-[#EFF4F1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]"><MessageCircle aria-hidden="true" size={17}/>Bu məhsul haqqında soruş</Link>}
+          ) : <p className="mt-5 rounded-control bg-surface-page p-3 text-xs text-fg-muted">Mağaza xəritə mövqeyini hələ əlavə etməyib.</p>}
+          {product.store.mapUrl && <a href={product.store.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus mt-3">Mağaza xəritəsinə bax →</a>}
+          {askHref && <Link href={askHref} className={`mt-4 ${buttonClass({ variant: "secondary", size: "sm", fullWidth: true })}`}><MessageCircle aria-hidden="true" size={17}/>Bu məhsul haqqında soruş</Link>}
         </section>
       </div>
 
       <section className="mt-5 grid gap-5 md:grid-cols-2" aria-label="Çatdırılma və qaytarılma məlumatı">
-        <article className="rounded-2xl border border-[#E5EAE6] bg-[#F7F8F6] p-5">
-          <h2 className="font-semibold text-[#233432]">Çatdırılma məlumatı</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">{siteSettings.deliveryInfo || "Çatdırılma şərtləri sifariş və mağazaya görə göstərilir."}</p>
-          <Link href="/delivery-returns" className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-emerald">Ətraflı məlumat →</Link>
+        <article className="rounded-card border border-line bg-surface-page p-5 sm:p-6">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-fg"><Truck aria-hidden="true" size={18} className="text-primary"/>Çatdırılma məlumatı</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-fg-secondary">{siteSettings.deliveryInfo || "Çatdırılma şərtləri sifariş və mağazaya görə göstərilir."}</p>
+          <Link href="/delivery-returns" className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus mt-2">Ətraflı məlumat →</Link>
         </article>
-        <article className="rounded-2xl border border-[#E5EAE6] bg-[#F7F8F6] p-5">
-          <h2 className="font-semibold text-[#233432]">Qaytarılma məlumatı</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">{siteSettings.returnsInfo || "Qaytarılma barədə məlumat mövcud deyil."}</p>
-          <Link href="/delivery-returns" className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-emerald">Ətraflı məlumat →</Link>
+        <article className="rounded-card border border-line bg-surface-page p-5 sm:p-6">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-fg"><RotateCcw aria-hidden="true" size={18} className="text-primary"/>Qaytarılma məlumatı</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-fg-secondary">{siteSettings.returnsInfo || "Qaytarılma barədə məlumat mövcud deyil."}</p>
+          <Link href="/delivery-returns" className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus mt-2">Ətraflı məlumat →</Link>
         </article>
       </section>
 
-      <section className="mt-8 rounded-3xl border border-[#E5EAE6] bg-white p-5 sm:p-7" aria-labelledby="product-reviews-title">
+      <section className="mt-8 rounded-feature border border-line bg-white p-5 sm:p-7" aria-labelledby="product-reviews-title">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Alıcı rəyləri</p>
-          <h2 id="product-reviews-title" className="mt-2 text-xl font-semibold text-[#233432]">
-            Rəylər <span className="text-sm font-normal text-muted">({product._count.reviews})</span>
+          <p className="text-kicker uppercase text-gold-700">Alıcı rəyləri</p>
+          <h2 id="product-reviews-title" className="mt-2 font-display text-h2 text-fg">
+            Rəylər <span className="font-sans text-sm font-normal text-fg-muted">({product._count.reviews})</span>
           </h2>
         </div>
         {product.reviews.length ? (
           <div className="mt-5 divide-y divide-line">
             {product.reviews.map(review => (
               <article key={review.id} className="py-4 first:pt-0">
-                <p className="text-sm tracking-widest text-[#9a783d]" aria-label={`${review.rating} / 5`}>
-                  {"★".repeat(review.rating)}<span className="text-[#d8d5cd]">{"★".repeat(Math.max(0, 5 - review.rating))}</span>
+                <p className="text-sm tracking-widest text-gold-700" aria-label={`${review.rating} / 5`}>
+                  {"★".repeat(review.rating)}<span className="text-line-strong">{"★".repeat(Math.max(0, 5 - review.rating))}</span>
                 </p>
-                <p className="mt-2 text-sm leading-6 text-[#344254]">{review.comment || "Mətnsiz rəy"}</p>
-                <time className="mt-2 block text-xs text-muted" dateTime={review.createdAt.toISOString()}>{review.createdAt.toLocaleDateString("az-AZ")}</time>
+                <p className="mt-2 text-sm leading-6 text-fg-body">{review.comment || "Mətnsiz rəy"}</p>
+                <time className="mt-2 block text-xs text-fg-muted" dateTime={review.createdAt.toISOString()}>{review.createdAt.toLocaleDateString("az-AZ")}</time>
               </article>
             ))}
           </div>
-        ) : <p className="mt-4 rounded-xl bg-[#F4F7F4] p-4 text-sm text-muted">Bu məhsul üçün hələ rəy yoxdur.</p>}
+        ) : <p className="mt-4 rounded-control bg-surface-page p-4 text-sm text-fg-muted">Bu məhsul üçün hələ rəy yoxdur.</p>}
       </section>
+
+      {/* Mobile buy bar slot (DESIGN-T6): sticky above the mobile bottom nav (<768 px), at the screen bottom at 768-1023 px,
+          hidden from 1024 px. Its height is reserved, so the portalled bar causes no layout shift; being sticky (not
+          fixed) it rests here, before the footer, at the end of the page. */}
+      <div id={PRODUCT_BUY_BAR_SLOT_ID} className="sticky bottom-[calc(62px+env(safe-area-inset-bottom))] z-30 -mx-[14px] mt-8 min-h-[76px] border-t border-line bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(23,58,58,0.08)] backdrop-blur sm:-mx-7 sm:px-7 md:bottom-0 lg:hidden"/>
     </div>
   );
 }

@@ -23,6 +23,8 @@ import { messageEntryForViewer } from "@/lib/messaging-pages";
 import { buildTelHref, buildWhatsAppUrl, normalizeAzPhone } from "@/lib/az-phone";
 import { formatStoreAddress, openStreetMapUrl, safePublicMapUrl } from "@/lib/store-public-contact";
 import { calculateEffectivePrice } from "@/lib/promotion-pricing";
+import { EmptyState } from "@/components/ui/empty-state";
+import { buttonClass } from "@/components/ui/button";
 import { normalizeProductCatalogSort, productCatalogOrderBy } from "@/lib/catalog-sort";
 
 export const dynamic = "force-dynamic";
@@ -267,76 +269,81 @@ export default async function StorefrontPage({
       hasAbout: Boolean(description),
       productCount: storeProductCount,
       messageHref,
+      description,
+      address: formatStoreAddress(store.address, store.city.name),
     } satisfies StorefrontBrand}/>
 
     {storeProductCount === 0
-      ? <section id="store-products" className="mt-6 scroll-mt-6 rounded-2xl border border-dashed border-[#D9D3C5] bg-white px-5 py-10 text-center sm:px-10">
-        <span aria-hidden="true" className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#F0F4F0] text-[#2F5D50]"><PackageOpen size={26}/></span>
-        <h2 className="mt-4 text-xl font-semibold text-ink">Mağaza hələ məhsul yayımlamayıb</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">Satıcı məhsullarını hazırlayır. Axtardığınız məhsul barədə soruşmaq istəyirsinizsə, satıcıya birbaşa yazın.</p>
-        <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
-          {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">WhatsApp ilə yaz</a>}
-          <a href={messageHref ?? "#store-message"} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-white px-5 text-sm font-semibold text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">{messageHref ? "Mağazaya yaz" : "Mesaj yaz"}</a>
-          <Link href="/stores" className="inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-medium text-emerald hover:underline">Digər mağazalara bax</Link>
-        </div>
+      ? <section id="store-products" className="mt-6 scroll-mt-6">
+        <EmptyState
+          className="border-dashed"
+          icon={<PackageOpen size={26}/>}
+          title="Mağaza hələ məhsul yayımlamayıb"
+          description="Satıcı məhsullarını hazırlayır. Axtardığınız məhsul barədə soruşmaq istəyirsinizsə, satıcıya birbaşa yazın."
+          action={<div className="flex flex-col justify-center gap-2 sm:flex-row">
+            {whatsappUrl && <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className={buttonClass({ size: "sm" })}>WhatsApp ilə yaz</a>}
+            <a href={messageHref ?? "#store-message"} className={buttonClass({ variant: "secondary", size: "sm" })}>{messageHref ? "Mağazaya yaz" : "Mesaj yaz"}</a>
+            <Link href="/stores" className={buttonClass({ variant: "ghost", size: "sm" })}>Digər mağazalara bax</Link>
+          </div>}
+        />
       </section>
       : <>
     {availableCategories.length > 0 && <nav id="store-categories" aria-label="Mağaza kateqoriyaları" className="mt-5 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
       <Link
         href={storefrontPageHref(store.id, 1, { ...filterParams, category: "" })}
         aria-current={!category ? "page" : undefined}
-        className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52] ${!category ? "bg-ink text-white" : "border border-line bg-white text-muted hover:text-emerald"}`}
+        className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${!category ? "bg-primary text-white" : "border border-line-strong bg-white text-fg-secondary hover:border-primary hover:text-primary"}`}
       >Bütün məhsullar</Link>
       {availableCategories.map((item) => <Link
         key={item.id}
         href={storefrontPageHref(store.id, 1, { ...filterParams, category: item.slug })}
         aria-current={category === item.slug ? "page" : undefined}
-        className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52] ${category === item.slug ? "bg-ink text-white" : "border border-line bg-white text-muted hover:text-emerald"}`}
+        className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${category === item.slug ? "bg-primary text-white" : "border border-line-strong bg-white text-fg-secondary hover:border-primary hover:text-primary"}`}
       >{item.name}</Link>)}
     </nav>}
 
     <section id="store-products" className="mt-6 scroll-mt-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#967844]">Mağazanın kataloqu</p>
-          <h2 className="mt-1 text-2xl font-semibold text-ink">Məhsullar</h2>
-          <p className="mt-1 text-sm text-muted">{catalogCount} {hasFilters ? "uyğun məhsul" : "yayımlanmış məhsul"}</p>
+          <p className="text-kicker uppercase text-gold-700">Mağazanın kataloqu</p>
+          <h2 className="mt-1 font-display text-h2 text-fg">Məhsullar</h2>
+          <p className="mt-1 text-sm text-fg-secondary">{catalogCount} {hasFilters ? "uyğun məhsul" : "yayımlanmış məhsul"}</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <form action={`/stores/${store.id}`} className="flex min-w-0 flex-1 gap-2 sm:w-auto">
             {category && <input type="hidden" name="category" value={category}/>}
             {hasNonDefaultSort && <input type="hidden" name="sort" value={sort}/>}
-            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 sm:w-72">
-              <Search size={17} aria-hidden="true" className="shrink-0 text-muted"/>
+            <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-full border border-line-strong bg-white px-4 transition-colors focus-within:border-primary focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus hover:border-primary sm:w-72">
+              <Search size={17} aria-hidden="true" className="shrink-0 text-fg-muted"/>
               <input
                 name="q"
                 defaultValue={query}
                 maxLength={MAX_STOREFRONT_SEARCH_LENGTH}
                 aria-label={`${store.name} mağazasında axtar`}
                 placeholder="Məhsul axtar"
-                className="w-full py-3 text-sm outline-none"
+                className="w-full bg-transparent py-2.5 text-sm text-fg outline-none placeholder:text-fg-muted"
               />
             </label>
-            <button className="min-h-11 rounded-xl bg-ink px-4 text-sm font-medium text-white hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Axtar</button>
+            <button className={buttonClass({ size: "sm" })}>Axtar</button>
           </form>
           <form action={`/stores/${store.id}`} className="flex min-w-0 gap-2">
             {query && <input type="hidden" name="q" value={query}/>}
             {category && <input type="hidden" name="category" value={category}/>}
             <label htmlFor="store-product-sort" className="sr-only">Məhsulları çeşidlə</label>
-            <select id="store-product-sort" name="sort" defaultValue={sort} className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-white px-3 text-sm sm:w-48 sm:flex-none">
+            <select id="store-product-sort" name="sort" defaultValue={sort} className="min-h-11 min-w-0 flex-1 cursor-pointer rounded-full border border-line-strong bg-white px-4 text-sm text-fg transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:w-48 sm:flex-none">
               <option value="newest">Ən yenilər</option>
               <option value="name">Ada görə</option>
             </select>
-            <button className="min-h-11 rounded-xl border border-line bg-white px-3 text-sm font-medium text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Tətbiq et</button>
+            <button className={buttonClass({ variant: "secondary", size: "sm" })}>Tətbiq et</button>
           </form>
         </div>
       </div>
-      {queryTooLong && <p role="alert" className="mt-3 text-sm text-red-700">Axtarış mətni 80 simvoldan uzun ola bilməz; ilk 80 simvol üzrə axtarılır.</p>}
+      {queryTooLong && <p role="alert" className="mt-3 text-sm font-medium text-danger">Axtarış mətni 80 simvoldan uzun ola bilməz; ilk 80 simvol üzrə axtarılır.</p>}
       {hasCatalogSelection && <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-        {query && <span className="rounded-full bg-[#F0F4F0] px-3 py-1 text-[#52645D]">Axtarış: “{query}”</span>}
-        {category && <span className="rounded-full bg-[#F0F4F0] px-3 py-1 text-[#52645D]">Kateqoriya: {availableCategories.find((item) => item.slug === category)?.name ?? category}</span>}
-        {hasNonDefaultSort && <span className="rounded-full bg-[#F0F4F0] px-3 py-1 text-[#52645D]">Çeşidləmə: ada görə</span>}
-        <Link href={`/stores/${store.id}#store-products`} className="inline-flex min-h-11 items-center font-medium text-emerald hover:underline">Seçimləri sıfırla</Link>
+        {query && <span className="rounded-full bg-primary-subtle px-3 py-1 text-fg-body">Axtarış: “{query}”</span>}
+        {category && <span className="rounded-full bg-primary-subtle px-3 py-1 text-fg-body">Kateqoriya: {availableCategories.find((item) => item.slug === category)?.name ?? category}</span>}
+        {hasNonDefaultSort && <span className="rounded-full bg-primary-subtle px-3 py-1 text-fg-body">Çeşidləmə: ada görə</span>}
+        <Link href={`/stores/${store.id}#store-products`} className="inline-flex min-h-11 items-center rounded-sm font-medium text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Seçimləri sıfırla</Link>
       </div>}
       <div className="mt-5">
         <ProductGrid
@@ -348,9 +355,9 @@ export default async function StorefrontPage({
         />
       </div>
       {totalPages > 1 && <nav aria-label="Məhsul səhifələri" className="mt-7 flex flex-wrap items-center justify-center gap-2">
-        {currentPage > 1 && <Link href={storefrontPageHref(store.id, currentPage - 1, filterParams)} rel="prev" className="inline-flex min-h-11 items-center rounded-full border border-line bg-white px-4 text-sm font-medium text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Əvvəlki</Link>}
-        <span aria-current="page" className="inline-flex min-h-11 items-center rounded-full bg-[#173A3A] px-4 text-sm font-medium text-white">{currentPage} / {totalPages}</span>
-        {currentPage < totalPages && <Link href={storefrontPageHref(store.id, currentPage + 1, filterParams)} rel="next" className="inline-flex min-h-11 items-center rounded-full border border-line bg-white px-4 text-sm font-medium text-ink hover:border-[#93ADA0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">Növbəti</Link>}
+        {currentPage > 1 && <Link href={storefrontPageHref(store.id, currentPage - 1, filterParams)} rel="prev" className={buttonClass({ variant: "secondary", size: "sm" })}>Əvvəlki</Link>}
+        <span aria-current="page" className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-white">{currentPage} / {totalPages}</span>
+        {currentPage < totalPages && <Link href={storefrontPageHref(store.id, currentPage + 1, filterParams)} rel="next" className={buttonClass({ variant: "secondary", size: "sm" })}>Növbəti</Link>}
       </nav>}
     </section>
     </>}
@@ -367,6 +374,6 @@ export default async function StorefrontPage({
       coordinates,
       messageHref,
     }}/>
-    <div className="mt-8 text-right"><a href="#top" className="inline-flex min-h-11 items-center text-sm text-muted hover:underline">Səhifənin əvvəlinə ↑</a></div>
+    <div className="mt-8 text-right"><a href="#top" className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-fg-secondary hover:text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Səhifənin əvvəlinə ↑</a></div>
   </div>;
 }

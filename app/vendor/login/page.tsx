@@ -10,8 +10,9 @@ export default async function VendorLoginPage({ searchParams }: { searchParams: 
   if (oauth === "link-pending") redirect("/auth/google/link");
   const notice = verified === "1" ? "Email ünvanınız təsdiqləndi. İndi satıcı hesabınıza daxil ola bilərsiniz." : undefined;
   return (
-    <div className="container grid min-h-[68vh] place-items-center py-10">
-      <section className="w-full max-w-md rounded-[26px] border border-[#E8E7E2] bg-white p-6 shadow-[0_12px_34px_rgba(11,23,38,.06)] sm:p-9">
+    // DESIGN-T8: the same card as the customer /login (texts unchanged). The public fonts stay off under app/vendor.
+    <div className="container grid min-h-[68vh] place-items-center py-10 sm:py-14">
+      <section className="w-full max-w-md rounded-[28px] border border-[#E6E9EC] border-t-[3px] border-t-[#C49A50] bg-white p-6 shadow-[0_24px_70px_rgba(11,23,38,.09)] sm:p-9">
         <BrandLogo variant="full" />
 
         <div className="mt-8">
@@ -19,7 +20,7 @@ export default async function VendorLoginPage({ searchParams }: { searchParams: 
             Satıcı hesabı
           </p>
 
-          <h1 className="mt-2 text-3xl font-semibold text-[#0B1726]">
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0B1726]">
             Satıcı panelinə giriş
           </h1>
 

@@ -5,6 +5,9 @@ import Link from "next/link";
 import { finishAuthNavigation } from "@/lib/auth-client";
 import { isLoginPortal, publicLoginPortalLink, SELLER_APPLY_LOGIN_PATH } from "@/lib/login-portal";
 import { GoogleOAuthButton } from "@/components/google-oauth-button";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
+import { TextLink } from "@/components/ui/text-link";
 
 export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: string; notice?: string; portal?: string | null }) {
   const [email, setEmail] = useState("");
@@ -71,41 +74,18 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
 
   const portalLink = publicLoginPortalLink(portalHint);
   return <>
-    {notice && <p role="status" className="mt-6 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</p>}
+    {notice && <p role="status" className="mt-6 rounded-control bg-primary-tint px-4 py-3 text-sm text-primary">{notice}</p>}
     <GoogleOAuthButton intent="vendor" mode="login" nextPath="/vendor" errorCode={oauthError} portal={portal}/>
     <form onSubmit={submit} className="mt-7 space-y-4">
-      <label className="block text-sm font-medium text-[#0B1726]">
-        E-poçt
-        <input
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-[#E1DED4] bg-white px-4 py-3 outline-none focus:border-[#D9A441]"
-        />
-      </label>
-
-      <label className="block text-sm font-medium text-[#0B1726]">
-        Şifrə
-        <input
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-[#E1DED4] bg-white px-4 py-3 outline-none focus:border-[#D9A441]"
-        />
-      </label>
-
-      <Link href="/forgot-password" className="block text-right text-sm font-medium text-[#9A701E]">
-        Şifrəmi unutdum
-      </Link>
+      {/* DESIGN-T8: the same shared fields, links and button as the customer login form; texts unchanged. */}
+      <Input id="vendor-login-email" label="E-poçt" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)}/>
+      <Input id="vendor-login-password" label="Şifrə" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)}/>
+      <div className="-mt-1 text-right"><TextLink href="/forgot-password" underline={false} className="inline-flex min-h-11 items-center text-sm">Şifrəmi unutdum</TextLink></div>
 
       {error && (
         <div
           role="alert"
-          className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="text-sm text-danger"
         >
           <p>{error}</p>
           {applyHint
@@ -114,34 +94,18 @@ export function VendorLoginForm({ oauthError, notice, portal }: { oauthError?: s
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="w-full rounded-full bg-[#0B1726] px-5 py-3.5 font-medium text-white transition hover:bg-[#17324A] disabled:opacity-50"
-      >
-        {busy ? "Yoxlanılır..." : "Satıcı kimi daxil ol"}
-      </button>
+      <Button type="submit" size="lg" fullWidth disabled={busy} loading={busy} loadingLabel="Yoxlanılır...">Satıcı kimi daxil ol</Button>
 
-      <p className="text-center text-sm text-[#667085]">
+      <p className="text-center text-sm text-muted">
         Satıcı hesabınız yoxdur?{" "}
-        <Link
-          href="/vendor/apply"
-          className="font-medium text-[#9A701E]"
-        >
-          Satıcı olmaq istəyirəm
-        </Link>
+        <TextLink href="/vendor/apply">Satıcı olmaq istəyirəm</TextLink>
       </p>
 
-      <p className="text-center text-sm text-[#667085]">
-        Müştəri hesabınıza <Link href="/login" className="font-medium text-[#9A701E]">müştəri girişindən</Link> daxil olun.
+      <p className="text-center text-sm text-muted">
+        Müştəri hesabınıza <TextLink href="/login">müştəri girişindən</TextLink> daxil olun.
       </p>
 
-      <Link
-        href="/"
-        className="block text-center text-sm text-[#667085]"
-      >
-        Ana səhifəyə qayıt
-      </Link>
+      <TextLink href="/" underline={false} className="mx-auto flex min-h-11 w-fit items-center text-sm">Ana səhifəyə qayıt</TextLink>
     </form>
   </>;
 }

@@ -49,3 +49,11 @@ export function paymentStatusTone(status: string | null | undefined): BadgeTone 
   if (status === "FAILED") return "danger";
   return "gold";
 }
+
+/** Seller application on /vendor/apply (DESIGN-T8): waiting for the admin = gold, approved = primary, rejected = danger. */
+export function sellerApplicationTone(status: string): BadgeTone {
+  if (status === "PENDING") return "gold";
+  if (status === "APPROVED") return "primary";
+  if (status === "REJECTED") return "danger";
+  return "neutral";
+}

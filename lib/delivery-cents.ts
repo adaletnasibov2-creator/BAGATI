@@ -43,3 +43,14 @@ export function lineTotalCents(unitPrice: string | number, quantity: number): nu
   const cents = toCents(unitPrice);
   return cents === null || !Number.isInteger(quantity) || quantity < 0 ? 0 : cents * quantity;
 }
+
+/**
+ * CART-POLISH: how much more the store's items must cost before its own free-delivery threshold is reached, in
+ * cents, from the same StoreDeliveryCents the totals use (threshold minus store subtotal). null when nothing should be
+ * shown: delivery is already free, the store's fee is 0 (nothing to save), or the amount would be 0 or less.
+ */
+export function remainingForFreeDeliveryCents(delivery: StoreDeliveryCents): number | null {
+  if (delivery.freeDelivery || delivery.deliveryFeeCents <= 0) return null;
+  const remaining = delivery.freeDeliveryThresholdCents - delivery.subtotalCents;
+  return remaining > 0 ? remaining : null;
+}

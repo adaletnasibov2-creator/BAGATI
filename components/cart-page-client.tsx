@@ -8,7 +8,7 @@ import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { cx, focusRing } from "@/components/ui/cx";
-import { centsToFixed, lineTotalCents, storeDeliveryCents, type StoreDeliveryCents } from "@/lib/delivery-cents";
+import { centsToFixed, lineTotalCents, remainingForFreeDeliveryCents, storeDeliveryCents, type StoreDeliveryCents } from "@/lib/delivery-cents";
 
 type CartItem = {
   id: string; productId: string; variantId: string | null; quantity: number;
@@ -77,7 +77,7 @@ export function CartPageClient() {
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
       <div className="min-w-0 space-y-5">{groups.map(group => <section key={group.store.id} data-cart-store="" className="overflow-hidden rounded-card border border-line bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-page px-5 py-4">
-          <div className="min-w-0"><p className="text-xs text-fg-muted">Mağaza</p><Link href={`/stores/${group.store.id}`} className={cx("rounded-sm font-semibold text-fg hover:text-primary", focusRing)}>{group.store.name}</Link><p className="mt-1 text-xs text-fg-muted">Mağaza üzrə cəm: <b className="text-fg">{money(group.delivery.subtotalCents / 100)}</b></p></div>
+          <div className="min-w-0"><p className="text-xs text-fg-muted">Mağaza</p><Link href={`/stores/${group.store.id}`} className={cx("rounded-sm font-semibold text-fg hover:text-primary", focusRing)}>{group.store.name}</Link></div>
           <Link href={`/stores/${group.store.id}`} className={cx("inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-primary hover:text-primary-hover", focusRing)}>Mağazaya bax →</Link>
         </div>
         <ul className="divide-y divide-line">{group.items.map(item => {
@@ -104,6 +104,8 @@ export function CartPageClient() {
         <div data-cart-store-delivery="" className="border-t border-line bg-surface-page px-5 py-4 text-sm">
           <div className="flex justify-between gap-3 text-fg-secondary"><span>Çatdırılma</span><b className="text-fg">{group.delivery.freeDelivery ? "PULSUZ" : money(group.delivery.deliveryFeeCents / 100)}</b></div>
           {!group.delivery.freeDelivery && <p className="mt-1 text-xs text-fg-muted">{centsToFixed(group.delivery.freeDeliveryThresholdCents)} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur.</p>}
+          {/* CART-POLISH: the gap to the store's own threshold (threshold minus store subtotal, in cents); hidden when delivery is already free, the fee is 0 or nothing is left. */}
+          {remainingForFreeDeliveryCents(group.delivery) !== null && <p data-cart-free-delivery-remaining="" className="mt-1 text-xs font-medium text-primary">Pulsuz çatdırılmaya {centsToFixed(remainingForFreeDeliveryCents(group.delivery)!)} AZN qaldı</p>}
           <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-fg"><span>Mağaza cəmi:</span><span>{money(group.delivery.storeTotalCents / 100)}</span></p>
         </div></section>)}</div>
       <aside className="h-fit space-y-4 lg:sticky lg:top-36">

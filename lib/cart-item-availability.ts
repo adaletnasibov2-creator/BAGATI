@@ -6,8 +6,9 @@ import { resolveVariantInventory, type PurchasableVariant, type VariantInventory
  * changed: it still calls resolveVariantInventory itself and refuses with its own error codes.
  *
  * resolveVariantInventory throws VARIANT_OUT_OF_STOCK for any product (with or without variants) whose stock is
- * below the cart quantity; only that case is "Stokda yoxdur". Real variant problems (missing, inactive or required
- * variant, no inventory row) keep "Seçilən variant artıq əlçatan deyil".
+ * below the cart quantity. CART-POLISH: with nothing left that is "Stokda yoxdur"; with some stock left (but less
+ * than the quantity) it is the existing "Mövcud stok: N" pattern, so the customer knows how many to keep. Real
+ * variant problems (missing, inactive or required variant, no inventory row) keep "Seçilən variant artıq əlçatan deyil".
  */
 export const CART_UNAVAILABLE_REASONS = {
   storeOrProduct: "Mağaza və ya məhsul əlçatan deyil",
@@ -15,6 +16,11 @@ export const CART_UNAVAILABLE_REASONS = {
   variant: "Seçilən variant artıq əlçatan deyil",
   price: "Məhsul qiymətini yoxlamaq lazımdır",
 } as const;
+
+/** The existing stock line of the cart ("Mövcud stok: N"), used when some stock is left but less than the quantity. */
+export function availableStockNote(available: number): string {
+  return `Mövcud stok: ${available}`;
+}
 
 export function cartItemAvailability(input: {
   productId: string;
@@ -37,7 +43,7 @@ export function cartItemAvailability(input: {
   }
   const purchasable = input.eligible && variantPurchasable && input.priceValid;
   const unavailableReason = !input.eligible ? CART_UNAVAILABLE_REASONS.storeOrProduct
-    : outOfStock ? CART_UNAVAILABLE_REASONS.outOfStock
+    : outOfStock ? (available > 0 ? availableStockNote(available) : CART_UNAVAILABLE_REASONS.outOfStock)
     : !variantPurchasable ? CART_UNAVAILABLE_REASONS.variant
     : !input.priceValid ? CART_UNAVAILABLE_REASONS.price
     : null;

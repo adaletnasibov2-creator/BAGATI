@@ -102,21 +102,37 @@ export function parseContent(body: string): Block[] {
   return blocks;
 }
 
-function renderInline(pieces: Inline[], keyPrefix: string): ReactNode[] {
+function renderInline(pieces: Inline[], keyPrefix: string, linkClass = "font-medium text-bagati-primary underline underline-offset-2"): ReactNode[] {
   return pieces.map((piece, index) => {
     const key = `${keyPrefix}-${index}`;
     if (piece.type === "bold") return <strong key={key}>{piece.text}</strong>;
     if (piece.type === "link") {
       const external = piece.href.startsWith("https://");
-      return <a key={key} href={piece.href} className="font-medium text-bagati-primary underline underline-offset-2" {...(external ? { rel: "noopener noreferrer nofollow" } : {})}>{piece.text}</a>;
+      return <a key={key} href={piece.href} className={linkClass} {...(external ? { rel: "noopener noreferrer nofollow" } : {})}>{piece.text}</a>;
     }
     return piece.text;
   });
 }
 
-/** React elements for a page body. Safe for any input (tested with XSS attempts). */
-export function ContentBody({ body, className = "" }: { body: string; className?: string }) {
+/** Link style inside the public reading layout (`.legal-prose`, DESIGN-T9): tokens and the green focus ring. */
+const PROSE_LINK = "rounded-sm font-medium text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+
+/**
+ * React elements for a page body. Safe for any input (tested with XSS attempts).
+ * `unstyled` (public pages, DESIGN-T9): the same elements without their own classes and without the wrapper, so the
+ * shared `.legal-prose` typography styles them. The default (admin preview) is unchanged.
+ */
+export function ContentBody({ body, className = "", unstyled = false }: { body: string; className?: string; unstyled?: boolean }) {
   const blocks = parseContent(body);
+  if (unstyled) return <>{blocks.map((block, index) => {
+    const key = `b${index}`;
+    if (block.type === "heading") return block.level === 2 ? <h2 key={key}>{renderInline(block.inline, key, PROSE_LINK)}</h2> : <h3 key={key}>{renderInline(block.inline, key, PROSE_LINK)}</h3>;
+    if (block.type === "list") {
+      const items = block.items.map((item, itemIndex) => <li key={`${key}-${itemIndex}`}>{renderInline(item, `${key}-${itemIndex}`, PROSE_LINK)}</li>);
+      return block.ordered ? <ol key={key}>{items}</ol> : <ul key={key}>{items}</ul>;
+    }
+    return <p key={key}>{renderInline(block.inline, key, PROSE_LINK)}</p>;
+  })}</>;
   return <div className={`grid gap-4 leading-7 text-bagati-secondary ${className}`}>
     {blocks.map((block, index) => {
       const key = `b${index}`;

@@ -49,11 +49,11 @@ export function VendorNavigation({ storeId, canUseBulkImport = false, unread = 0
   // text and aria-current, so it does not rely on colour alone. Icons sit in a fixed 20 px box, so labels align.
   const nav = (mobile = false) => <nav aria-label="Satıcı paneli" className="divide-y divide-line">
     {groups.map((group) => <div key={group.title} className="py-3 first:pt-0 last:pb-0">
-      <p className="mb-1.5 px-3 text-kicker uppercase text-gold-700">{group.title}</p>
+      <p className="mb-1.5 px-2.5 text-kicker uppercase text-gold-700">{group.title}</p>
       <ul className="space-y-0.5">{group.links.filter(({ path }) => (path !== "imports" || canUseBulkImport) && (path !== "messages" || conversations !== null)).map(({ path, label, Icon, badge }) => {
         const active = isActive(path);
         return <li key={path}><Link href={`${base}${path ? `/${path}` : ""}`} onClick={() => mobile && setOpen(false)} aria-current={active ? "page" : undefined} className={cx(
-          "relative flex min-h-11 items-center gap-3 rounded-control px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none",
+          "relative flex min-h-11 items-center gap-2.5 rounded-control px-2.5 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none",
           focusRing,
           active
             ? "bg-primary-tint font-semibold text-primary before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-primary"
@@ -69,7 +69,7 @@ export function VendorNavigation({ storeId, canUseBulkImport = false, unread = 0
     </div>)}
   </nav>;
   return <>
-    <aside className="fixed inset-y-[73px] left-0 z-20 hidden w-[248px] flex-col border-r border-line bg-white px-4 py-5 lg:flex"><div className="min-h-0 flex-1 overflow-y-auto">{nav()}</div></aside>
+    <aside className="fixed inset-y-[73px] left-0 z-20 hidden w-[248px] flex-col border-r border-line bg-white px-3 py-5 lg:flex"><div className="min-h-0 flex-1 overflow-y-auto">{nav()}</div></aside>
     <div className="sticky top-[72px] z-30 border-b border-line bg-[#f7f8f6]/95 px-4 py-2 backdrop-blur lg:hidden"><button type="button" aria-expanded={open} aria-controls="vendor-mobile-navigation" onClick={() => setOpen((value) => !value)} className={cx("inline-flex min-h-11 items-center gap-2 rounded-full border border-line-strong bg-white px-4 text-sm font-medium text-fg transition-colors hover:border-primary", focusRing)}>{open ? <X size={17} aria-hidden="true"/> : <Menu size={17} aria-hidden="true"/>} {open ? "Menyunu bağla" : "Panel menyusu"}</button></div>
     {open && <div id="vendor-mobile-navigation" role="dialog" aria-modal="true" aria-label="Satıcı paneli menyusu" className="fixed inset-0 z-50 flex flex-col bg-white p-4 text-fg-body lg:hidden"><div className="mb-4 flex items-center justify-between border-b border-line pb-4"><div><p className="text-kicker uppercase text-gold-700">BAGATI satıcı paneli</p><p className="mt-1 font-display text-h3 text-fg">Menyu</p></div><button type="button" aria-label="Menyunu bağla" onClick={() => setOpen(false)} className={cx("grid h-11 w-11 place-items-center rounded-full border border-line-strong text-fg hover:border-primary", focusRing)}><X size={19} aria-hidden="true"/></button></div><div className="min-h-0 flex-1 overflow-y-auto">{nav(true)}</div></div>}
   </>;

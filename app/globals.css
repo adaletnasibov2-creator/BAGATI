@@ -106,6 +106,12 @@ body:has(> .bagati-vendor),
   font-optical-sizing: auto;
 }
 
+/* Seller forms with a sticky save bar (components/vendor-form.tsx, SELLER-DESIGN-2): when the browser scrolls a field into
+   view (Tab focus, its own validation, scrollIntoView), keep it above the bar, so focus is never hidden (WCAG 2.4.11). */
+html:has([data-vendor-sticky-actions]) {
+  scroll-padding-bottom: 9rem;
+}
+
 /* Focus outline on dark public surfaces (header top bar, footer, hero, seller banner): gold #c79a52 is 4.80:1 on
    #173a3a, where green would be invisible. Coloured bars whose background varies use the text colour. */
 .bagati-on-dark {

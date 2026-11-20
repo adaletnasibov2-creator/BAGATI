@@ -6,6 +6,7 @@ import { allowedVendorOrderTransitions, statusLabel, VENDOR_ORDER_STATUSES } fro
 import { VendorPageHeader } from "@/components/vendor-page-header";
 import { Badge } from "@/components/ui/badge";
 import { orderStatusTone, paymentStatusTone } from "@/lib/vendor-status-tone";
+import { buttonClass } from "@/components/ui/button";
 
 type VendorOrder = {
   id: string;
@@ -96,27 +97,27 @@ export default function VendorOrders({ storeId }: { storeId: string }) {
         </select>
       </label>
     </div>
-    {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    {error && <p role="alert" className="rounded-control border border-[#f1b9b9] bg-danger-subtle p-3 text-sm font-medium text-danger">{error}</p>}
     {loading ? <div className="rounded-2xl border border-[#e9e4da] bg-white p-8 text-center text-sm text-slate-500">Sifarişlər yüklənir…</div> : result.items.length ? <div className="space-y-3">
       {result.items.map(order => {
         const transitions = allowedVendorOrderTransitions(order.status);
         return <article key={order.id} className="rounded-2xl border border-[#e9e4da] bg-white p-4 shadow-[0_8px_24px_rgba(11,23,38,.03)] sm:p-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-            <div><Link href={`/vendor/${storeId}/orders/${order.id}`} className="font-semibold text-[#173c40] hover:underline">Sifariş #{order.order.id.slice(-8).toUpperCase()}</Link><p className="mt-1 text-xs text-slate-500">{new Date(order.createdAt).toLocaleString("az-AZ")}</p></div>
+            <div><Link href={`/vendor/${storeId}/orders/${order.id}`} className="font-semibold text-primary hover:underline">Sifariş #{order.order.id.slice(-8).toUpperCase()}</Link><p className="mt-1 text-xs text-slate-500">{new Date(order.createdAt).toLocaleString("az-AZ")}</p></div>
             <div className="flex items-center justify-between gap-3 sm:justify-end"><span className="flex flex-wrap gap-1.5"><Badge tone={orderStatusTone(order.status)}>{statusLabel(order.status)}</Badge>{order.payment && <Badge tone={paymentStatusTone(order.payment.status)}>{order.payment.label}</Badge>}</span><b className="text-sm text-[#142d38]">{(Number(order.subtotal) + Number(order.deliveryFee ?? 0)).toFixed(2)} ₼</b></div>
           </div>
           <div className="mt-4 grid gap-1 text-sm text-slate-600">{order.items.slice(0, 3).map(item => <p key={item.id} className="truncate">{item.productName}{item.variant ? ` · ${item.variant.name}` : ""} × {item.quantity}</p>)}{order.items.length > 3 && <p className="text-xs text-slate-500">və daha {order.items.length - 3} məhsul</p>}</div>
           <div className="mt-4 flex flex-col gap-2 border-t border-[#eeeae2] pt-4 sm:flex-row sm:items-center sm:justify-between">
             {transitions.length ? <label className="flex items-center gap-2 text-xs text-slate-500">Statusu dəyiş
-              <select aria-label={`Sifariş ${order.order.id} üçün yeni status`} disabled={busyId === order.id} defaultValue="" onChange={event => { if (event.target.value) void updateStatus(order.id, event.target.value); }} className="min-h-10 rounded-lg border border-[#ded9cf] bg-white px-2 text-sm text-[#243647]">
+              <select aria-label={`Sifariş ${order.order.id} üçün yeni status`} disabled={busyId === order.id} defaultValue="" onChange={event => { if (event.target.value) void updateStatus(order.id, event.target.value); }} className="min-h-11 rounded-control border border-line-strong bg-white px-3 text-sm text-fg transition-colors hover:border-primary focus:border-primary">
                 <option value="" disabled>Keçid seçin</option>{transitions.map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}
               </select>
             </label> : <span className="text-xs text-slate-500">Status dəyişdirilə bilməz</span>}
-            <Link href={`/vendor/${storeId}/orders/${order.id}`} className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#d9d4c9] px-4 text-sm font-medium text-[#173c40] transition hover:bg-[#f8f7f4]">Ətraflı</Link>
+            <Link href={`/vendor/${storeId}/orders/${order.id}`} className={buttonClass({ variant: "secondary", size: "sm" })}>Ətraflı</Link>
           </div>
         </article>;
       })}
     </div> : <div className="rounded-2xl border border-[#e9e4da] bg-white p-8 text-center"><p className="font-medium text-[#243647]">{query ? "Axtarışa uyğun sifariş tapılmadı." : status ? "Bu statusda sifariş yoxdur." : "Hələ sifariş yoxdur."}</p><p className="mt-1 text-sm text-slate-500">Yeni sifarişlər bu bölmədə görünəcək.</p></div>}
-    <footer className="flex flex-wrap items-center justify-between gap-3 text-sm"><span className="text-slate-500">{result.total ? `${(result.page - 1) * result.pageSize + 1}–${Math.min(result.page * result.pageSize, result.total)} / ${result.total}` : "0 sifariş"}</span><div className="flex gap-2"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))} className="min-h-10 rounded-lg border bg-white px-3 disabled:opacity-40">Əvvəlki</button><button type="button" disabled={page >= result.totalPages || loading} onClick={() => setPage(value => value + 1)} className="min-h-10 rounded-lg border bg-white px-3 disabled:opacity-40">Növbəti</button></div></footer>
+    <footer className="flex flex-wrap items-center justify-between gap-3 text-sm"><span className="text-slate-500">{result.total ? `${(result.page - 1) * result.pageSize + 1}–${Math.min(result.page * result.pageSize, result.total)} / ${result.total}` : "0 sifariş"}</span><div className="flex gap-2"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(value => Math.max(1, value - 1))} className={buttonClass({ variant: "secondary", size: "sm" })}>Əvvəlki</button><button type="button" disabled={page >= result.totalPages || loading} onClick={() => setPage(value => value + 1)} className={buttonClass({ variant: "secondary", size: "sm" })}>Növbəti</button></div></footer>
   </section>;
 }

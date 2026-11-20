@@ -215,15 +215,15 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
         </article>
       </section>
 
-      <section className="mt-8 rounded-feature border border-line bg-white p-5 sm:p-7" aria-labelledby="product-reviews-title">
+      {/* Customer reviews only when real reviews exist (DESIGN-T7 fix c): no empty section, no rating claim. */}
+      {product.reviews.length > 0 && <section className="mt-8 rounded-feature border border-line bg-white p-5 sm:p-7" aria-labelledby="product-reviews-title">
         <div>
           <p className="text-kicker uppercase text-gold-700">Alıcı rəyləri</p>
           <h2 id="product-reviews-title" className="mt-2 font-display text-h2 text-fg">
             Rəylər <span className="font-sans text-sm font-normal text-fg-muted">({product._count.reviews})</span>
           </h2>
         </div>
-        {product.reviews.length ? (
-          <div className="mt-5 divide-y divide-line">
+        <div className="mt-5 divide-y divide-line">
             {product.reviews.map(review => (
               <article key={review.id} className="py-4 first:pt-0">
                 <p className="text-sm tracking-widest text-gold-700" aria-label={`${review.rating} / 5`}>
@@ -233,9 +233,8 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
                 <time className="mt-2 block text-xs text-fg-muted" dateTime={review.createdAt.toISOString()}>{review.createdAt.toLocaleDateString("az-AZ")}</time>
               </article>
             ))}
-          </div>
-        ) : <p className="mt-4 rounded-control bg-surface-page p-4 text-sm text-fg-muted">Bu məhsul üçün hələ rəy yoxdur.</p>}
-      </section>
+        </div>
+      </section>}
 
       {/* Mobile buy bar slot (DESIGN-T6): sticky above the mobile bottom nav (<768 px), at the screen bottom at 768-1023 px,
           hidden from 1024 px. Its height is reserved, so the portalled bar causes no layout shift; being sticky (not

@@ -330,6 +330,23 @@ model EmailVerification {
   @@index([expiresAt])
 }
 
+/// Single-use link that verifies a store's extra notification email (SELLER-ALERTS). Only the SHA-256 hash of the
+/// random token is stored. `email` is the address the link was sent to: it verifies only while the store still has
+/// exactly that address. Expires after 24 hours.
+model StoreNotificationEmailToken {
+  id        String    @id @default(cuid())
+  storeId   String
+  email     String    @db.VarChar(254)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, usedAt])
+  @@index([expiresAt])
+}
+
 model EmailOutbox {
   id              String            @id @default(cuid())
   dedupeKey       String            @unique
@@ -522,49 +539,54 @@ model City {
 }
 
 model Store {
-  id                        String                          @id @default(cuid())
-  vendorId                  String
-  cityId                    String
-  name                      String
-  slug                      String                          @unique
-  description               String?
-  logoUrl                   String?
-  bannerUrl                 String?
-  theme                     String                          @default("forest")
-  status                    StoreStatus                     @default(DRAFT)
-  origin                    StoreOrigin                     @default(LEGACY_UNKNOWN)
-  isActive                  Boolean                         @default(false)
-  address                   String?
-  latitude                  Float?
-  longitude                 Float?
-  mapUrl                    String?
-  contactPhone              String?
-  contactEmail              String?
-  reviewNote                String?
-  legalInfoApproved         Boolean                         @default(false)
-  adminManaged              Boolean                         @default(false)
-  managedByAdminId          String?
-  managementReason          String?
-  freeDeliveryThreshold     Decimal                         @default(30.00) @db.Decimal(12, 2)
-  deliveryFee               Decimal                         @default(0.00) @db.Decimal(12, 2)
-  createdAt                 DateTime                        @default(now())
-  updatedAt                 DateTime                        @updatedAt
-  vendor                    VendorProfile                   @relation(fields: [vendorId], references: [id])
-  managedByAdmin            User?                           @relation("AdminManagedStores", fields: [managedByAdminId], references: [id], onDelete: SetNull)
-  city                      City                            @relation(fields: [cityId], references: [id])
-  products                  Product[]
-  storeOrders               StoreOrder[]
-  promotions                Promotion[]
-  homepageFeatured          HomepageFeaturedStore?
-  commissions               Commission[]
-  notifications             Notification[]
-  subscription              StoreSubscription?
-  complimentaryEntitlements StoreComplimentaryEntitlement[]
-  returnRequests            ReturnRequest[]
-  catalogImportJobs         ImportJob[]
-  inquiries                 StoreInquiry[]
-  conversations             Conversation[]
-  conversationBlocks        ConversationBlock[]
+  id                          String                          @id @default(cuid())
+  vendorId                    String
+  cityId                      String
+  name                        String
+  slug                        String                          @unique
+  description                 String?
+  logoUrl                     String?
+  bannerUrl                   String?
+  theme                       String                          @default("forest")
+  status                      StoreStatus                     @default(DRAFT)
+  origin                      StoreOrigin                     @default(LEGACY_UNKNOWN)
+  isActive                    Boolean                         @default(false)
+  address                     String?
+  latitude                    Float?
+  longitude                   Float?
+  mapUrl                      String?
+  contactPhone                String?
+  contactEmail                String?
+  reviewNote                  String?
+  legalInfoApproved           Boolean                         @default(false)
+  adminManaged                Boolean                         @default(false)
+  managedByAdminId            String?
+  managementReason            String?
+  freeDeliveryThreshold       Decimal                         @default(30.00) @db.Decimal(12, 2)
+  deliveryFee                 Decimal                         @default(0.00) @db.Decimal(12, 2)
+  /// Optional extra address for new-order emails (SELLER-ALERTS). Stored lower-cased. Receives order emails only while
+  /// notificationEmailVerifiedAt is set; changing the address clears it. The seller's account email always receives them.
+  notificationEmail           String?                         @db.VarChar(254)
+  notificationEmailVerifiedAt DateTime?
+  createdAt                   DateTime                        @default(now())
+  updatedAt                   DateTime                        @updatedAt
+  vendor                      VendorProfile                   @relation(fields: [vendorId], references: [id])
+  managedByAdmin              User?                           @relation("AdminManagedStores", fields: [managedByAdminId], references: [id], onDelete: SetNull)
+  city                        City                            @relation(fields: [cityId], references: [id])
+  products                    Product[]
+  storeOrders                 StoreOrder[]
+  promotions                  Promotion[]
+  homepageFeatured            HomepageFeaturedStore?
+  commissions                 Commission[]
+  notifications               Notification[]
+  subscription                StoreSubscription?
+  complimentaryEntitlements   StoreComplimentaryEntitlement[]
+  returnRequests              ReturnRequest[]
+  catalogImportJobs           ImportJob[]
+  inquiries                   StoreInquiry[]
+  conversations               Conversation[]
+  conversationBlocks          ConversationBlock[]
+  notificationEmailTokens     StoreNotificationEmailToken[]
 
   @@index([vendorId, cityId])
   @@index([cityId, isActive])

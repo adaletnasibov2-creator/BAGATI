@@ -130,6 +130,7 @@ test("password, verify and Google-link forms: shared fields and buttons, no outl
   assert.match(reset, /window\.history\.replaceState\(null, "", `\$\{cleanUrl\.pathname\}\$\{cleanUrl\.search\}`\);/);
   assert.match(reset, /referrerPolicy: "no-referrer",\n\s*body: JSON\.stringify\(\{ token: activeToken, password \}\),/);
   assert.doesNotMatch(reset, /console\./, "the token is never logged");
+  assert.match(read("app/reset-password/page.tsx"), /<div className="min-h-\[17rem\]"><ResetPasswordForm token=\{token\} \/><\/div>/, "no layout shift when the form decides its state");
   const frame = 'className="w-full max-w-md rounded-[28px] border border-[#E6E9EC] border-t-[3px] border-t-[#C49A50] bg-white p-6 shadow-[0_24px_70px_rgba(11,23,38,.09)] sm:p-9"';
   for (const path of ["app/(customer)/login/page.tsx", "app/forgot-password/page.tsx", "app/reset-password/page.tsx", "app/(customer)/verify-email/page.tsx", "app/vendor/verify-email/page.tsx", "app/vendor/login/page.tsx", "app/auth/google/link/page.tsx"]) {
     assert.ok(read(path).includes(frame), `${path}: same card frame as /login`);

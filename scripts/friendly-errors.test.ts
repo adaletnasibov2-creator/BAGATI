@@ -30,7 +30,10 @@ test("the panel: Azerbaijani text, retry button, link home, digest only, 44 px t
   assert.match(panel, /href="\/"[^>]*>Ana səhifəyə qayıt</);
   assert.match(panel, /Xəta kodu: <span className="font-mono">\{digest\}<\/span>/);
   assert.match(panel, /router\.refresh\(\);\s*reset\(\);/, "retry fetches the page again, then re-renders the segment");
-  assert.equal(panel.match(/min-h-11/g)?.length, 2, "retry button and the home link");
+  // DESIGN-T9: both are the shared button (default size md = min-h-12, at least 44 px) instead of hand-written classes.
+  assert.match(panel, /<Button onClick=\{retry\} loading=\{retrying\} loadingLabel="Yüklənir…">\{"Yenidən cəhd et"\}<\/Button>/, "retry button");
+  assert.match(panel, /<ButtonLink href="\/" variant="secondary">Ana səhifəyə qayıt<\/ButtonLink>/, "the home link");
+  assert.match(read("components/ui/button.tsx"), /md: "min-h-12 px-5 text-body"/, "default button size is 48 px");
   assert.match(panel, /role="alert"/);
   assert.doesNotMatch(panel, /\.message|\.stack/);
 });

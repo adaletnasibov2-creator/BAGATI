@@ -51,7 +51,8 @@ export function Header({
             <SearchForm categories={categories} />
           </div>
 
-          <div className="hidden shrink-0 md:block">
+          {/* From 1024 px the city sits next to search; at 768-1023 px it moves to the section row below, so search gets the room (DESIGN-T7). */}
+          <div className="hidden shrink-0 lg:block">
             <CitySelector cities={cities} />
           </div>
 
@@ -72,6 +73,7 @@ export function Header({
           <Link href="/stores" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Mağazalar</Link>
           <Link href="/deals" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Endirimlər</Link>
           <Link href="/new-products" className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">Yeni məhsullar</Link>
+          {cities.length > 0 && <div data-header-city-tablet="" className="ml-auto shrink-0 lg:hidden"><CitySelector cities={cities} /></div>}
         </nav>
 
         {/* Mobile: search plus the city selector (the city was only reachable inside the menu before). */}

@@ -62,9 +62,13 @@ test("form UX: shared fields, inline errors, focus on the first invalid field, c
   assert.match(form, /name="phone" type="tel" inputMode="tel" required maxLength=\{40\} defaultValue=\{defaults\.phone\} autoComplete="tel"/);
   assert.match(form, /const found = sellerApplicationFieldErrors\(\{ \.\.\.values, acceptSellerTerms: acceptSellerTerms \|\| undefined \}\);/);
   assert.match(form, /className="mt-5 grid gap-5 md:grid-cols-2"/, "two columns for short fields from 768 px");
+  assert.match(form, /"mt-5 rounded-control border bg-surface-page p-4 \[&_label\]:min-h-11"/, "consent row is a 44 px touch target");
   assert.match(form, /<LegalConsentCheckbox id="vendor-apply-accept-terms" checked=\{acceptSellerTerms\}[^\n]*error=\{termsError\} parts=\{SELLER_CONSENT_PARTS\}\/>/);
   assert.match(form, /<Button type="submit" loading=\{busy\} loadingLabel="Göndərilir…" className="mt-5 w-full sm:w-auto">Müraciəti göndər<\/Button>/);
-  assert.match(form, /aria-describedby="voen-help voen-error"/);
+  assert.match(form, /aria-describedby=\{cx\("voen-help voen-error", voenServerError && "voen-server-error"\)\}/);
+  // 409 DUPLICATE_VOEN names the field: its server text goes under VÖEN and VÖEN gets focus.
+  assert.match(form, /if \(!response\.ok && result\.field === "voen" && result\.error\) \{\n\s*setVoenServerError\(result\.error\); setBusy\(false\);\n\s*document\.getElementById\(fieldId\("voen"\)\)\?\.focus\(\);/);
+  assert.match(read("lib/seller-application-http.ts"), /case "DUPLICATE_VOEN": return applicantJson\(\{ error: VOEN_IN_USE_MESSAGE, code: error\.code, field: "voen" \}, 409\);/);
   assert.match(form, /aria-describedby=\{cx\("vendor-apply-note-count"/, "note counter tied to the textarea");
   // Same request as before: field names, JSON body, the consent flag.
   assert.match(form, /fetch\("\/api\/vendor\/apply", \{ method: "POST", headers: \{ "Content-Type": "application\/json" \}, body: JSON\.stringify\(values\) \}\)/);

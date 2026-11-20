@@ -49,6 +49,7 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
   const [note, setNote] = useState("");
   const [voen, setVoen] = useState(defaults.voen);
   const [voenTouched, setVoenTouched] = useState(false);
+  const [voenServerError, setVoenServerError] = useState("");
   const [acceptSellerTerms, setAcceptSellerTerms] = useState(false);
   const [termsError, setTermsError] = useState("");
   const voenCheck = parseVoen(voen);
@@ -69,6 +70,12 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
     try {
       const response = await fetch("/api/vendor/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
       const result = await response.json().catch(() => ({}));
+      // The server names the field for a VÖEN already in use (409 DUPLICATE_VOEN): show its text under VÖEN.
+      if (!response.ok && result.field === "voen" && result.error) {
+        setVoenServerError(result.error); setBusy(false);
+        document.getElementById(fieldId("voen"))?.focus();
+        return;
+      }
       if (!response.ok) throw new Error(result.error || "Müraciəti göndərmək mümkün olmadı.");
       router.refresh();
     } catch (reason) {
@@ -96,9 +103,10 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
       <Input id={fieldId("legalName")} name="legalName" required minLength={2} maxLength={200} defaultValue={defaults.legalName} autoComplete={company ? "organization" : "name"} className="md:col-span-2" label={<>{company ? "Şirkətin hüquqi adı" : "Sahibkarın adı və soyadı"}<Required/></>} error={fieldError("legalName")}/>
       <div className="grid content-start gap-1.5">
         <label htmlFor={fieldId("voen")} className="text-sm font-medium text-fg">VÖEN<Required/></label>
-        <input id={fieldId("voen")} name="voen" required inputMode="numeric" autoComplete="off" maxLength={40} value={voen} onChange={(event) => setVoen(event.target.value)} onBlur={() => setVoenTouched(true)} placeholder="10 rəqəm" aria-invalid={voenTouched && !voenCheck.ok} aria-describedby="voen-help voen-error" className={controlClass(voenTouched && !voenCheck.ok)}/>
+        <input id={fieldId("voen")} name="voen" required inputMode="numeric" autoComplete="off" maxLength={40} value={voen} onChange={(event) => { setVoen(event.target.value); setVoenServerError(""); }} onBlur={() => setVoenTouched(true)} placeholder="10 rəqəm" aria-invalid={(voenTouched && !voenCheck.ok) || Boolean(voenServerError)} aria-describedby={cx("voen-help voen-error", voenServerError && "voen-server-error")} className={controlClass((voenTouched && !voenCheck.ok) || Boolean(voenServerError))}/>
         <span id="voen-help" className="text-xs text-fg-muted">{VOEN_HELP} {VOEN_ADMIN_NOTE}</span>
         {voenTouched && !voenCheck.ok && <span id="voen-error" role="alert" className="text-sm font-medium text-danger">{voenCheck.error}</span>}
+        {voenServerError && <span id="voen-server-error" role="alert" className="text-sm font-medium text-danger">{voenServerError}</span>}
       </div>
       <Input id={fieldId("phone")} name="phone" type="tel" inputMode="tel" required maxLength={40} defaultValue={defaults.phone} autoComplete="tel" placeholder="+994 55 123 45 67" className="content-start" label={<>Telefon<Required/></>} error={fieldError("phone")}/>
     </SectionCard>
@@ -118,7 +126,8 @@ export default function VendorApplyForm({ defaults }: { defaults: VendorApplyDef
       </div>
       {/* From 1024 px the same steps are in the "Müraciət necə işləyir" side card. */}
       <p className="mt-5 text-sm leading-6 text-fg-secondary lg:hidden">Müraciət göndərildikdən sonra admin məlumatları yoxlayır. Təsdiqə qədər hesabınız müştəri hesabı olaraq qalır. Təsdiqdən sonra satıcı panelində mağaza qaralaması yarada bilərsiniz; mağaza ictimai satış üçün ayrıca yoxlanılır.</p>
-      <div className={cx("mt-5 rounded-control border bg-surface-page p-4", termsError ? "border-danger" : "border-line")}>
+      {/* The whole label row toggles the box; at least 44 px tall here (touch target) without changing the shared component. */}
+      <div className={cx("mt-5 rounded-control border bg-surface-page p-4 [&_label]:min-h-11", termsError ? "border-danger" : "border-line")}>
         <LegalConsentCheckbox id="vendor-apply-accept-terms" checked={acceptSellerTerms} onChange={(checked) => { setAcceptSellerTerms(checked); if (checked) setTermsError(""); }} error={termsError} parts={SELLER_CONSENT_PARTS}/>
       </div>
       {error && <p role="alert" className="mt-5 rounded-control bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">{error}</p>}

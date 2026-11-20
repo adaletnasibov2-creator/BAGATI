@@ -20,12 +20,15 @@ export function CategoryPicker({
   onChange,
   name,
   label = "Kateqoriya",
+  appearance = "default",
 }: {
   categories: PickerCategory[];
   initialId?: string | null;
   onChange?: (value: { categoryId: string | null; parentId: string | null; name: string }) => void;
   name?: boolean;
   label?: string;
+  /** "vendor": the seller-panel look (SELLER-DESIGN-2). "default" (admin, preview) renders exactly as before. */
+  appearance?: "default" | "vendor";
 }) {
   const rows = useMemo(() => categories.map((category) => ({ isActive: true, iconKey: null, imageUrl: null, ...category })), [categories]);
   const tree = useMemo(() => buildCategoryTree(rows), [rows]);
@@ -52,28 +55,29 @@ export function CategoryPicker({
   }
 
   const button = "flex min-h-12 min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173c40]";
+  const look = appearance === "vendor" ? VENDOR_LOOK : { ...DEFAULT_LOOK, button };
   return (
-    <fieldset className="grid min-w-0 gap-2 text-sm sm:col-span-2">
-      <legend className="mb-1">{label}</legend>
+    <fieldset className={look.fieldset}>
+      <legend className={look.legend}>{label}</legend>
       {name && <><input type="hidden" name="categoryId" value={valueId ?? ""} /><input type="hidden" name="categoryParentId" value={value?.parentId ?? ""} /></>}
       {!top || !top.children.length ? (
         <div role="group" aria-label="Üst kateqoriya" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {tree.map((node) => {
             const selected = node.id === topId;
             return (
-              <button key={node.id} type="button" aria-pressed={selected} onClick={() => pickTop(node.id)} className={`${button} ${selected ? "border-[#173c40] bg-[#f1f6f3] font-semibold" : "border-[#ded9cf] bg-white hover:bg-[#f8f7f4]"}`}>
+              <button key={node.id} type="button" aria-pressed={selected} onClick={() => pickTop(node.id)} className={`${look.button} ${selected ? look.topSelected : look.idle}`}>
                 <CategoryIcon category={node} size="small" className="!h-8 !w-8 !rounded-lg" />
                 <span className="min-w-0 flex-1 truncate">{node.name}</span>
-                {node.children.length > 0 && <span className="shrink-0 text-xs text-slate-500">{node.children.length}</span>}
-                {selected && <Check aria-hidden="true" size={16} className="shrink-0 text-[#173c40]" />}
+                {node.children.length > 0 && <span className={look.count}>{node.children.length}</span>}
+                {selected && <Check aria-hidden="true" size={16} className={look.check} />}
               </button>
             );
           })}
         </div>
       ) : (
-        <div className="grid gap-2 rounded-2xl border border-[#e7e3d9] bg-[#fbfaf7] p-3">
+        <div className={look.panel}>
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <button type="button" onClick={() => { setTopId(null); if (!keptLegacyTop) choose(null, null); }} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm text-[#173c40] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#173c40]">
+            <button type="button" onClick={() => { setTopId(null); if (!keptLegacyTop) choose(null, null); }} className={look.back}>
               <ChevronLeft aria-hidden="true" size={16} />Üst kateqoriyalar
             </button>
             <span className="inline-flex min-w-0 items-center gap-2 font-semibold"><CategoryIcon category={top} size="small" className="!h-7 !w-7 !rounded-lg" /><span className="truncate">{top.name}</span></span>
@@ -82,10 +86,10 @@ export function CategoryPicker({
             {top.children.map((child) => {
               const selected = child.id === valueId;
               return (
-                <button key={child.id} type="button" aria-pressed={selected} onClick={() => choose(child.id, top.id)} className={`${button} ${selected ? "border-[#173c40] bg-white font-semibold" : "border-[#ded9cf] bg-white hover:bg-[#f8f7f4]"}`}>
+                <button key={child.id} type="button" aria-pressed={selected} onClick={() => choose(child.id, top.id)} className={`${look.button} ${selected ? look.childSelected : look.idle}`}>
                   <CategoryGlyph category={{ ...child, parentIconKey: top.iconKey }} size={18} className="text-[#1f5a4f]" />
                   <span className="min-w-0 flex-1 truncate">{child.name}</span>
-                  {selected && <Check aria-hidden="true" size={16} className="shrink-0 text-[#173c40]" />}
+                  {selected && <Check aria-hidden="true" size={16} className={look.check} />}
                 </button>
               );
             })}
@@ -97,7 +101,37 @@ export function CategoryPicker({
           ) : null}
         </div>
       )}
-      <p className="text-xs text-slate-500" aria-live="polite">Seçilib: {value ? (value.parentId ? `${rows.find((row) => row.id === value.parentId)?.name ?? ""} › ${value.name}` : value.name) : "—"}</p>
+      <p className={look.selectedLine} aria-live="polite">Seçilib: {value ? (value.parentId ? `${rows.find((row) => row.id === value.parentId)?.name ?? ""} › ${value.name}` : value.name) : "—"}</p>
     </fieldset>
   );
 }
+
+// Class sets. DEFAULT_LOOK holds the exact strings the picker always used (admin and the preview page are unchanged).
+const DEFAULT_LOOK = {
+  fieldset: "grid min-w-0 gap-2 text-sm sm:col-span-2",
+  legend: "mb-1",
+  button: "",
+  topSelected: "border-[#173c40] bg-[#f1f6f3] font-semibold",
+  childSelected: "border-[#173c40] bg-white font-semibold",
+  idle: "border-[#ded9cf] bg-white hover:bg-[#f8f7f4]",
+  count: "shrink-0 text-xs text-slate-500",
+  check: "shrink-0 text-[#173c40]",
+  panel: "grid gap-2 rounded-2xl border border-[#e7e3d9] bg-[#fbfaf7] p-3",
+  back: "inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm text-[#173c40] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#173c40]",
+  selectedLine: "text-xs text-slate-500",
+};
+
+// Seller panel: token colours, 12 px radius, green focus ring, the selected tile tinted with a primary border.
+const VENDOR_LOOK = {
+  fieldset: "grid min-w-0 gap-2.5 text-sm sm:col-span-2",
+  legend: "mb-1.5 text-sm font-medium text-fg",
+  button: "flex min-h-12 min-w-0 items-center gap-2.5 rounded-control border px-3 py-2 text-left text-sm text-fg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+  topSelected: "border-primary bg-primary-subtle font-semibold ring-1 ring-inset ring-primary",
+  childSelected: "border-primary bg-white font-semibold ring-1 ring-inset ring-primary",
+  idle: "border-line bg-white hover:border-primary hover:bg-primary-subtle",
+  count: "shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-xs text-fg-secondary",
+  check: "shrink-0 text-primary",
+  panel: "grid gap-3 rounded-control border border-line bg-surface-page p-3",
+  back: "inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-medium text-primary hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus",
+  selectedLine: "text-xs text-fg-muted",
+};

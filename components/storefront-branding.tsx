@@ -48,7 +48,9 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
     </div>
 
     <div className="px-4 pb-4 sm:px-8 sm:pb-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+      {/* The row wraps when the name column would get narrower than 18rem (768 px with two buttons), so a font swap of the
+          name cannot re-wrap it and move the page (DESIGN-T7 CLS check). */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-6 lg:flex-nowrap">
         {/* Only the logo overlaps the cover; the name block stays in normal flow, so it is never clipped. */}
         <div className="relative -mt-10 h-20 w-20 shrink-0 overflow-hidden rounded-card border-4 border-white bg-surface-page shadow-card sm:-mt-14 sm:h-28 sm:w-28">
           <StorefrontImage
@@ -58,7 +60,7 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
             fallback={<span className="grid h-full w-full place-items-center text-3xl font-semibold" style={{ color: colors.accent, backgroundColor: colors.accentSoft }}>{initial}</span>}
           />
         </div>
-        <div className="min-w-0 flex-1 sm:pt-4">
+        <div className="min-w-0 flex-1 sm:min-w-[18rem] sm:pt-4">
           <h1 className="break-words font-display text-h1 text-fg">{store.name}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-secondary">
             {store.sellerVerified && <>

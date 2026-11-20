@@ -136,6 +136,8 @@ test("every account page uses the one AccountShell (navigation + shared header);
   assert.match(nav, /const items = messagesUnread === null \? links : \[\.\.\.links\.slice\(0, 2\), messagesLink, \.\.\.links\.slice\(2\)\];/);
   assert.match(nav, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(nav, /focus-visible:outline-focus/);
+  // The mobile pill row bleeds exactly to the container gutter (14 px up to 640 px, 28 px above): no sideways scroll at 390.
+  assert.match(nav, /-mx-\[14px\] flex gap-2 overflow-x-auto px-\[14px\] pb-1 min-\[641px\]:-mx-7 min-\[641px\]:px-7/);
 });
 
 test("AccountPageHeader: kicker (Hesabım link by default), Fraunces h1, description and action", () => {
@@ -161,7 +163,9 @@ test("account content: order cards with status badges, address cards, shared emp
   assert.match(addresses, /\{item\.recipientName\} · \{item\.phone\}/, "broken '?' separator from the initial import fixed");
   assert.doesNotMatch(addresses, /\} \? \{item\.phone\}|" \? "\+item\.postalCode/);
   assert.match(read("components/notifications.tsx"), /<EmptyState icon=\{<Bell size=\{24\}\/>\} title="Bildiriş yoxdur" description="Yeni bildirişlər burada görünəcək\."\/>/);
-  assert.match(read("components/favorites-client.tsx"), /<EmptyState icon=\{<Heart size=\{24\}\/>\} title="Sevimli məhsul yoxdur"/);
+  const favorites = read("components/favorites-client.tsx");
+  assert.match(favorites, /<EmptyState className="flex min-h-\[18rem\] flex-col justify-center" icon=\{<Heart size=\{24\}\/>\} title="Sevimli məhsul yoxdur"/);
+  assert.match(favorites, /<SkeletonRegion label="Sevimlilər yüklənir…"><Skeleton rounded="card" className="min-h-\[18rem\]"\/><\/SkeletonRegion>/, "same height as the empty state: no shift");
   for (const path of ["components/address-book-client.tsx", "components/profile-form.tsx", "components/customer-returns.tsx"]) {
     assert.match(read(path), /controlClass\(\)/, `${path}: shared inputs`);
     assert.match(read(path), /buttonClass\(/, `${path}: shared buttons`);

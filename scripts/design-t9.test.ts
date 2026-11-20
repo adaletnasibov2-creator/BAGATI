@@ -50,7 +50,8 @@ for (const [name, pinned] of Object.entries(MAIN_HASHES)) {
 }
 
 test("the reading layout adds no visible text: page text = title + document (owner decision: no kicker, no contents list)", () => {
-  const markup = renderToStaticMarkup(h(LegalDocument, { title: "Başlıq" }, h("p", null, "Mətn."), h("h2", null, "1. Bölmə"), h("ul", null, h("li", null, "Bənd"))));
+  // children inside the props object: LegalDocument declares `children` as required (typecheck).
+  const markup = renderToStaticMarkup(h(LegalDocument, { title: "Başlıq", children: [h("p", { key: "p" }, "Mətn."), h("h2", { key: "h" }, "1. Bölmə"), h("ul", { key: "u" }, h("li", null, "Bənd"))] }));
   assert.equal(decode(markup.replace(/<[^>]+>/g, "")), "BaşlıqMətn.1. BölməBənd");
   assert.match(markup, /<h2 id="bolme-1">1\. Bölmə<\/h2>/, "headings get an anchor id only");
   assert.match(markup, /<div data-legal-document="" class="container py-8 md:py-12"><div class="mx-auto grid max-w-\[72ch\] gap-6">/, "readable column ~72ch");

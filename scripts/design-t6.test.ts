@@ -160,6 +160,11 @@ test("cart: grouped by store, 44 px stepper, remove button, summary card, EmptyS
   assert.match(cart, /fetch\(`\/api\/cart\/items\/\$\{item\.id\}`, quantity === undefined \? \{ method: "DELETE" \} : \{ method: "PATCH"/);
   assert.match(cart, /href=\{canCheckout \? "\/checkout" : "\/cart"\}/);
   assert.match(cart, />Sifarişi rəsmiləşdir<\/Link>/);
+  // No layout shift on load (measured 0.03-0.18 before): loading, empty and loaded views share one tall box, and the
+  // loading view is a cart-shaped skeleton under the same heading.
+  assert.match(cart, /const CART_PAGE = "container min-h-\[80svh\] py-10 md:py-14";/);
+  assert.equal(cart.match(/<div className=\{CART_PAGE\}>/g)?.length, 3);
+  assert.match(cart, /<SkeletonRegion label="Səbət yüklənir…"/);
 });
 
 test("checkout: four step sections, shared inputs, consent wording and handling unchanged, summary + submit", () => {

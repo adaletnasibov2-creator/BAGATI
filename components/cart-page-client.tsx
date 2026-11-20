@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { ErrorState, LoadingState } from "@/components/state-panel";
+import { ErrorState } from "@/components/state-panel";
+import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { cx, focusRing } from "@/components/ui/cx";
@@ -16,6 +17,8 @@ type CartItem = {
   product: { name: string; price: string; images: string[]; store: { id: string; name: string; cityId: string }; inventory: { variantId: string | null; quantity: number; reserved: number }[] };
 };
 type Cart = { id: string; items: CartItem[] } | null;
+/** Loading and loaded cart share this box: the same padding and a minimum height, so the footer does not jump. */
+const CART_PAGE = "container min-h-[80svh] py-10 md:py-14";
 const money = (value: number) => new Intl.NumberFormat("az-AZ", { style: "currency", currency: "AZN", maximumFractionDigits: 2 }).format(value);
 
 export function CartPageClient() {
@@ -48,11 +51,20 @@ export function CartPageClient() {
     finally { setBusy(null); }
   }
 
-  if (loading) return <div className="container py-12"><LoadingState label="Səbət yüklənir"/></div>;
+  // Loading: the same heading and a skeleton shaped like the cart (rows + summary), in a box as tall as the loaded page,
+  // so nothing jumps when the cart arrives (DESIGN-T6: the old small box caused a layout shift of up to 0.18 at 390 px).
+  if (loading) return <div className={CART_PAGE}>
+    <p className="text-kicker uppercase text-gold-700">Sifarişə hazırlıq</p>
+    <h1 className="mt-2 font-display text-h1 text-fg">Səbət</h1>
+    <SkeletonRegion label="Səbət yüklənir…" className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+      <div className="space-y-5"><Skeleton rounded="card" className="h-72"/><Skeleton rounded="card" className="h-40"/></div>
+      <Skeleton rounded="card" className="h-80"/>
+    </SkeletonRegion>
+  </div>;
   if (error && !cart) return <div className="container py-12"><ErrorState message={error}/><button type="button" onClick={() => void load()} className={`mt-4 ${buttonClass({ variant: "secondary", size: "sm" })}`}>Yenidən cəhd et</button></div>;
-  if (!cart?.items.length) return <div className="container py-10 md:py-14"><h1 className="font-display text-h1 text-fg">Səbət</h1><EmptyState className="mt-8" icon={<ShoppingBag size={24}/>} title="Səbətiniz boşdur" description="Mağazalara baxın və bəyəndiyiniz məhsulları səbətə əlavə edin." action={<ButtonLink href="/products" size="sm"><ShoppingBag aria-hidden="true" size={17}/> Məhsullara bax</ButtonLink>}/></div>;
+  if (!cart?.items.length) return <div className={CART_PAGE}><h1 className="font-display text-h1 text-fg">Səbət</h1><EmptyState className="mt-8" icon={<ShoppingBag size={24}/>} title="Səbətiniz boşdur" description="Mağazalara baxın və bəyəndiyiniz məhsulları səbətə əlavə edin." action={<ButtonLink href="/products" size="sm"><ShoppingBag aria-hidden="true" size={17}/> Məhsullara bax</ButtonLink>}/></div>;
 
-  return <div className="container py-10 md:py-14">
+  return <div className={CART_PAGE}>
     <p className="text-kicker uppercase text-gold-700">Sifarişə hazırlıq</p>
     <h1 className="mt-2 font-display text-h1 text-fg">Səbət <span className="font-sans text-lg font-normal text-fg-muted">({cart.items.length})</span></h1>
     {error && <div className="mt-5"><ErrorState message={error}/></div>}

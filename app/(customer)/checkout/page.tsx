@@ -1,11 +1,12 @@
-import Link from "next/link";
 import { getActiveCities } from "@/lib/active-cities";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CheckoutForm } from "@/components/checkout-form";
 import { readEpointConfig } from "@/lib/payments/epoint-config";
-import { EmptyState } from "@/components/state-panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ButtonLink } from "@/components/ui/button";
+import { ShoppingBag } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { calculateStoreDelivery } from "@/lib/delivery";
 import { calculateVariantEffectivePrice } from "@/lib/product-variants";
@@ -26,7 +27,7 @@ export default async function CheckoutPage(){
     hasAcceptedCurrent(prisma,user.id,"CUSTOMER_TERMS"),
   ]);
   const items=(cartResult?.items??[]) as CartLine[];const addresses=addressResult as AddressView[];const cities=cityResult as CityView[];
-  if(!items.length)return <div className="container py-12"><h1 className="text-3xl font-semibold">Sifarişin rəsmiləşdirilməsi</h1><div className="mt-7"><EmptyState title="Səbətiniz boşdur" detail="Sifarişə davam etmək üçün əvvəlcə məhsul seçin."/></div><Link href="/products" className="mt-5 inline-block text-sm font-medium text-emerald">Məhsullara bax →</Link></div>;
+  if(!items.length)return <div className="container py-10 md:py-14"><h1 className="font-display text-h1 text-fg">Sifarişin rəsmiləşdirilməsi</h1><EmptyState className="mt-8" icon={<ShoppingBag size={24}/>} title="Səbətiniz boşdur" description="Sifarişə davam etmək üçün əvvəlcə məhsul seçin." action={<ButtonLink href="/products" size="sm">Məhsullara bax →</ButtonLink>}/></div>;
   const grouped=new Map<string,{id:string;name:string;cityId:string;cityName:string;freeDeliveryThreshold:unknown;deliveryFee:unknown;subtotal:Prisma.Decimal;items:{id:string;productId:string;name:string;variantName:string|null;variantOptions:unknown;quantity:number;unitPrice:number;basePrice:number;campaignName:string|null;lineTotal:number}[]}>();
   for(const item of items){
     const store=item.product.store;
@@ -36,5 +37,5 @@ export default async function CheckoutPage(){
     group.subtotal=group.subtotal.add(lineTotal);
     group.items.push({id:item.id,productId:item.product.id,name:item.product.name,variantName:item.variant?.name||null,variantOptions:item.variant?.options||null,quantity:item.quantity,unitPrice:effective.unitPrice.toNumber(),basePrice:effective.basePrice.toNumber(),campaignName:effective.promotion?.name||null,lineTotal:lineTotal.toNumber()});
     grouped.set(store.id,group);
-  }  const stores=[...grouped.values()].map(group=>{const delivery=calculateStoreDelivery(group.subtotal,{freeDeliveryThreshold:group.freeDeliveryThreshold as Prisma.Decimal.Value,deliveryFee:group.deliveryFee as Prisma.Decimal.Value});return {...group,subtotal:group.subtotal.toNumber(),deliveryFee:delivery.deliveryFee.toNumber(),freeDelivery:delivery.freeDelivery,freeDeliveryThreshold:delivery.freeDeliveryThreshold.toNumber(),storeTotal:group.subtotal.add(delivery.deliveryFee).toNumber()}});const subtotal=stores.reduce((sum,store)=>sum+store.subtotal,0),deliveryTotal=stores.reduce((sum,store)=>sum+store.deliveryFee,0),total=stores.reduce((sum,store)=>sum+store.storeTotal,0);const name=[profile?.firstName,profile?.lastName].filter(Boolean).join(" ");  return <div className="container py-10 md:py-14"><p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald">Son addım</p><h1 className="mt-2 mb-8 text-3xl font-semibold text-ink md:text-4xl">Sifarişi rəsmiləşdir</h1><CheckoutForm addresses={addresses} cities={cities} stores={stores} subtotal={subtotal} deliveryTotal={deliveryTotal} total={total} customerName={name} email={user.email} epointEnabled={Boolean(readEpointConfig())} termsRequired={!termsAccepted}/></div>;
+  }  const stores=[...grouped.values()].map(group=>{const delivery=calculateStoreDelivery(group.subtotal,{freeDeliveryThreshold:group.freeDeliveryThreshold as Prisma.Decimal.Value,deliveryFee:group.deliveryFee as Prisma.Decimal.Value});return {...group,subtotal:group.subtotal.toNumber(),deliveryFee:delivery.deliveryFee.toNumber(),freeDelivery:delivery.freeDelivery,freeDeliveryThreshold:delivery.freeDeliveryThreshold.toNumber(),storeTotal:group.subtotal.add(delivery.deliveryFee).toNumber()}});const subtotal=stores.reduce((sum,store)=>sum+store.subtotal,0),deliveryTotal=stores.reduce((sum,store)=>sum+store.deliveryFee,0),total=stores.reduce((sum,store)=>sum+store.storeTotal,0);const name=[profile?.firstName,profile?.lastName].filter(Boolean).join(" ");  return <div className="container py-10 md:py-14"><p className="text-kicker uppercase text-gold-700">Son addım</p><h1 className="mt-2 mb-8 font-display text-h1 text-fg">Sifarişi rəsmiləşdir</h1><CheckoutForm addresses={addresses} cities={cities} stores={stores} subtotal={subtotal} deliveryTotal={deliveryTotal} total={total} customerName={name} email={user.email} epointEnabled={Boolean(readEpointConfig())} termsRequired={!termsAccepted}/></div>;
 }

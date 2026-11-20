@@ -14,6 +14,8 @@ import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-co
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 import { storeMetaDescription } from "@/lib/seo";
+import { getSiteSettings } from "@/lib/site-settings";
+import { shareImage, sharePreviewMetadata } from "@/lib/share-preview";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
 import { productCardScalarSelect, productCardStockSelect, productCardStoreSelect } from "@/lib/product-card-select";
 import StorefrontBranding, { type StorefrontBrand } from "@/components/storefront-branding";
@@ -119,19 +121,23 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { storeId } = await params;
   const store = await getPublicStore(storeId);
+  // Not public (draft, suspended, unknown): nothing about the store in the head; the page itself is a 404.
   if (!store) return {};
 
   // The store's own description, else the seo.storeDescriptionTemplate setting with {store} replaced (max 160).
-  const template = await getSetting<string>(SETTING_KEYS.seoStoreDescriptionTemplate);
+  const [template, settings, branding] = await Promise.all([
+    getSetting<string>(SETTING_KEYS.seoStoreDescriptionTemplate),
+    getSiteSettings(),
+    getStorefrontBrandingCompatibility(store.id),
+  ]);
   const description = storeMetaDescription({ template: template ?? "", storeName: store.name, storeDescription: store.description });
+  // Share image: the banner, else the logo, only when the page itself shows it (same isOwnedStoreAssetUrl rule).
+  const banner = branding?.bannerUrl && isOwnedStoreAssetUrl(store.id, branding.bannerUrl) ? branding.bannerUrl : null;
+  const logo = store.logoUrl && isOwnedStoreAssetUrl(store.id, store.logoUrl) ? store.logoUrl : null;
   return {
     title: store.name,
     description,
-    openGraph: {
-      title: store.name,
-      description,
-      type: "website",
-    },
+    ...sharePreviewMetadata({ title: store.name, description, path: `/stores/${store.id}`, siteName: settings.siteName, image: shareImage([banner, logo], store.name) }),
   };
 }
 

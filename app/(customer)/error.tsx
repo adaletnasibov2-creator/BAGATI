@@ -7,5 +7,5 @@ import { ErrorRecovery } from "@/components/error-recovery";
  * footer instead of Next's bare "Application error". The server logs the error with its digest (instrumentation.ts).
  */
 export default function CustomerError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  return <ErrorRecovery digest={error.digest} reset={reset} />;
+  return <ErrorRecovery digest={error.digest} reset={reset} inLayout />;
 }

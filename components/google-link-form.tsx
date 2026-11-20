@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { finishAuthNavigation } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 
 type Challenge = { status: "ready"; role: "CUSTOMER" | "VENDOR"; emailHint: string; destination: string } | { status: string };
 
@@ -80,21 +82,10 @@ function GoogleLinkForm({ destination }: { destination: string }) {
 
   return (
     <form onSubmit={submit} className="mt-8 space-y-4">
-      <label className="block text-sm font-medium text-[#16202C]">
-        BAGATI şifrəsi
-        <input
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="mt-1.5 w-full rounded-xl border border-[#E1DED4] bg-white px-4 py-3 outline-none focus:border-[#C49A50]"
-        />
-      </label>
-      {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      <button disabled={busy} className="w-full rounded-full bg-[#0B1726] px-5 py-3.5 font-medium text-white disabled:opacity-60">
-        {busy ? "Təsdiqlənir…" : "Təsdiqlə və davam et"}
-      </button>
+      {/* DESIGN-T9: shared field and button (visible focus ring); request and texts unchanged. */}
+      <Input id="google-link-password" label="BAGATI şifrəsi" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+      {error && <p role="alert" className="rounded-control bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">{error}</p>}
+      <Button type="submit" size="lg" fullWidth disabled={busy} loading={busy} loadingLabel="Təsdiqlənir…">Təsdiqlə və davam et</Button>
     </form>
   );
 }

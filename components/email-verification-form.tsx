@@ -1,7 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
+import { TextLink } from "@/components/ui/text-link";
 
 type VerificationRole = "CUSTOMER" | "VENDOR";
 
@@ -73,42 +75,33 @@ export function EmailVerificationForm({
       {hasContext ? (
         <>
           <form onSubmit={submit} className="space-y-4">
-            <label className="block text-sm font-medium text-[#16202C]">
-              6 rəqəmli təsdiq kodu
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                required
-                value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="mt-1.5 w-full rounded-xl border border-[#E1DED4] bg-white px-4 py-3 text-center text-xl tracking-[.4em] outline-none focus:border-[#D9A441]"
-              />
-            </label>
-            <p className="text-sm text-[#667085]">Kod yaradıldığı vaxtdan 10 dəqiqə ərzində qüvvədədir.</p>
-            {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-            {message && <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</p>}
-            <button disabled={busy || code.length !== 6} className="w-full rounded-full bg-[#0B1726] px-5 py-3.5 font-medium text-white disabled:opacity-50">
-              {busy ? "Yoxlanılır…" : "Təsdiqlə"}
-            </button>
+            {/* DESIGN-T9: shared field and buttons (visible focus ring); requests and texts unchanged. */}
+            <Input
+              id="verify-code"
+              label="6 rəqəmli təsdiq kodu"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              controlClassName="text-center text-xl tracking-[.4em]"
+            />
+            <p className="text-sm text-fg-secondary">Kod yaradıldığı vaxtdan 10 dəqiqə ərzində qüvvədədir.</p>
+            {error && <p role="alert" className="rounded-control bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">{error}</p>}
+            {message && <p role="status" className="rounded-control bg-primary-tint px-4 py-3 text-sm text-primary">{message}</p>}
+            <Button type="submit" size="lg" fullWidth disabled={busy || code.length !== 6} loading={busy} loadingLabel="Yoxlanılır…">Təsdiqlə</Button>
           </form>
-          <button
-            type="button"
-            onClick={resend}
-            disabled={resending}
-            className="mt-4 w-full rounded-full border border-[#D8D2C5] px-5 py-3 text-sm font-medium text-[#72541F] disabled:opacity-50"
-          >
-            {resending ? "Sorğu göndərilir…" : "Yeni kod istə"}
-          </button>
+          <Button variant="secondary" fullWidth onClick={resend} loading={resending} loadingLabel="Sorğu göndərilir…" className="mt-4">Yeni kod istə</Button>
         </>
       ) : (
-        <div className="rounded-2xl bg-[#F7F5EF] p-5 text-sm leading-6 text-[#667085]">
+        <div className="rounded-control bg-surface-page p-5 text-sm leading-6 text-fg-secondary">
           Təsdiq sessiyası mövcud deyil və ya vaxtı bitib. Qeydiyyat və ya giriş səhifəsindən yenidən davam edin.
         </div>
       )}
-      <Link href={loginPath} className="mt-5 block text-center text-sm font-medium text-[#85621d]">Giriş səhifəsinə qayıt</Link>
+      <TextLink href={loginPath} underline={false} className="mx-auto mt-3 flex min-h-11 w-fit items-center text-sm">Giriş səhifəsinə qayıt</TextLink>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import { BrandLogo } from "@/components/brand-logo";
 import { ForgotPasswordForm } from "@/components/forgot-password-form";
 import { PublicTheme } from "@/components/public-theme";
@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
         <h1 className="mt-8 text-3xl font-semibold tracking-tight text-[#0B1726]">Şifrəni bərpa et</h1>
         <p className="mt-3 text-sm leading-6 text-[#667085]">Hesab e-poçtunuzu yazın. Ünvan aktiv hesabla uyğun gəlsə, bərpa keçidi göndəriləcək.</p>
         <ForgotPasswordForm />
-        <Link href="/login" className="mt-6 block text-center text-sm font-medium text-[#9A701E]">Giriş səhifəsinə qayıt</Link>
+        <TextLink href="/login" underline={false} className="mx-auto mt-4 flex min-h-11 w-fit items-center text-sm">Giriş səhifəsinə qayıt</TextLink>
       </section>
     </main></PublicTheme>
   );

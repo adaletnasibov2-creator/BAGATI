@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
+import { TextLink } from "@/components/ui/text-link";
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const [activeToken, setActiveToken] = useState(token);
@@ -55,28 +57,21 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   if (!tokenReady) {
-    return <p role="status" className="mt-7 text-sm text-[#667085]">Bərpa keçidi yoxlanılır…</p>;
+    return <p role="status" className="mt-7 text-sm text-fg-secondary">Bərpa keçidi yoxlanılır…</p>;
   }
 
   if (!activeToken) {
-    return <div className="mt-7 space-y-4"><p role="alert" className="text-sm text-red-700">Bərpa keçidi tapılmadı və ya yanlışdır.</p><Link href="/forgot-password" className="text-sm font-medium text-[#9A701E]">Yeni keçid istə</Link></div>;
+    return <div className="mt-7 space-y-4"><p role="alert" className="rounded-control bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">Bərpa keçidi tapılmadı və ya yanlışdır.</p><TextLink href="/forgot-password" className="inline-flex min-h-11 items-center text-sm">Yeni keçid istə</TextLink></div>;
   }
 
   return (
     <form onSubmit={submit} className="mt-7 space-y-4">
-      <label className="block text-sm font-medium text-[#0B1726]">
-        Yeni şifrə
-        <input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#E1DED4] bg-white px-4 py-3 outline-none focus:border-[#D9A441]" />
-      </label>
-      <label className="block text-sm font-medium text-[#0B1726]">
-        Yeni şifrəni təkrar yazın
-        <input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#E1DED4] bg-white px-4 py-3 outline-none focus:border-[#D9A441]" />
-      </label>
-      {message && <p role="status" className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">{message} <Link href="/login" className="font-medium underline">Daxil ol</Link></p>}
-      {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      <button type="submit" disabled={busy} className="w-full rounded-full bg-[#0B1726] px-5 py-3.5 font-medium text-white disabled:opacity-50">
-        {busy ? "Yenilənir…" : "Şifrəni yenilə"}
-      </button>
+      {/* DESIGN-T9: shared fields and button (visible focus ring); the token handling above is unchanged. */}
+      <Input id="reset-password" label="Yeni şifrə" type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} />
+      <Input id="reset-password-confirm" label="Yeni şifrəni təkrar yazın" type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+      {message && <p role="status" className="rounded-control bg-primary-tint px-4 py-3 text-sm text-primary">{message} <TextLink href="/login">Daxil ol</TextLink></p>}
+      {error && <p role="alert" className="rounded-control bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">{error}</p>}
+      <Button type="submit" size="lg" fullWidth disabled={busy} loading={busy} loadingLabel="Yenilənir…">Şifrəni yenilə</Button>
     </form>
   );
 }

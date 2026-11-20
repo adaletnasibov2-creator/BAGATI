@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import { BrandLogo } from "@/components/brand-logo";
 import { ResetPasswordForm } from "@/components/reset-password-form";
 import { PublicTheme } from "@/components/public-theme";
@@ -19,8 +19,10 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
         <BrandLogo variant="full" />
         <h1 className="mt-8 text-3xl font-semibold tracking-tight text-[#0B1726]">Yeni şifrə təyin et</h1>
         <p className="mt-3 text-sm leading-6 text-[#667085]">Yeni şifrəniz ən azı 12 simvol olmalıdır. Bərpa keçidi 30 dəqiqə sonra qüvvədən düşür.</p>
-        <ResetPasswordForm token={token} />
-        <Link href="/login" className="mt-6 block text-center text-sm font-medium text-[#9A701E]">Giriş səhifəsinə qayıt</Link>
+        {/* DESIGN-T9: the form decides its state after load (token from the fragment); this box keeps the card the same
+            height for "yoxlanılır", "no link" and the form, so the centred card does not jump. */}
+        <div className="min-h-[17rem]"><ResetPasswordForm token={token} /></div>
+        <TextLink href="/login" underline={false} className="mx-auto mt-4 flex min-h-11 w-fit items-center text-sm">Giriş səhifəsinə qayıt</TextLink>
       </section>
     </main></PublicTheme>
   );

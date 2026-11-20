@@ -140,7 +140,8 @@ test("Məhsullarım: the header is no longer split across a flex row; the add bu
   assert.doesNotMatch(section, /<div className="flex flex-wrap items-end justify-between gap-4">\{heading\}/);
   assert.doesNotMatch(section, /<div>\{heading\}<\/div>/);
   assert.match(section, /const heading=<VendorPageHeader eyebrow="SATIŞ İDARƏETMƏSİ" title=\{title\} description="Məlumatlar yalnız bu mağazaya aiddir\." action=\{section==="products"\?<ButtonLink href=\{`\/vendor\/\$\{storeId\}\/products\/new`\} size="sm">\+ Məhsul əlavə et<\/ButtonLink>:undefined\}\/>;/);
-  assert.match(section, /if\(section==="products"\)return <>\{heading\}<div className=/);
+  // SELLER-DESIGN-2: the products branch is a block now; the header still comes first, outside any flex row.
+  assert.match(section, /if\(section==="products"\)\{const items=data\.items,[^;]+;return <>\{heading\}\n/);
 });
 
 // ---------------------------------------------------------------------------------------------------------------

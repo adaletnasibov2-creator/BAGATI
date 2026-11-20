@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 /** Withdraw the applicant's own PENDING application, after an explicit confirmation step. */
 /** `confirmText` comes from the server page (built from the configured wait in hours). */
@@ -25,16 +26,16 @@ export default function VendorApplyWithdraw({ applicationId, confirmText }: { ap
     }
   }
 
-  return <div className="mt-5 border-t border-[#eeeae2] pt-4">
+  return <div className="mt-5 border-t border-line pt-5">
     {!confirming
-      ? <button type="button" onClick={() => setConfirming(true)} className="rounded-xl border border-[#ded9cf] px-4 py-2.5 text-sm font-medium text-slate-700">Müraciəti geri götür</button>
-      : <div className="grid gap-3">
+      ? <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>Müraciəti geri götür</Button>
+      : <div className="grid gap-3 rounded-control bg-surface-page p-4">
         <p className="text-sm text-slate-700">{confirmText}</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={busy} onClick={withdraw} className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Göndərilir…" : "Bəli, geri götür"}</button>
-          <button type="button" disabled={busy} onClick={() => setConfirming(false)} className="rounded-xl border border-[#ded9cf] px-4 py-2.5 text-sm">İmtina</button>
+          <Button variant="danger" size="sm" loading={busy} loadingLabel="Göndərilir…" onClick={withdraw}>Bəli, geri götür</Button>
+          <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirming(false)}>İmtina</Button>
         </div>
       </div>}
-    {error && <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    {error && <p role="alert" className="mt-3 rounded-control bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">{error}</p>}
   </div>;
 }

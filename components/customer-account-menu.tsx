@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { LogOut, UserRound } from "lucide-react";
 import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
+import { useDismissibleDetails } from "@/components/use-dismissible-details";
 
 type AccountIdentity = { email: string; displayName: string; role: "CUSTOMER" | "VENDOR" | "ADMIN" };
 
@@ -12,6 +13,8 @@ export function CustomerAccountMenu({ user, messagesUnread = null }: { user: Acc
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
+  // Same closing rules as the category menu: route change, link click, outside click, Escape (DESIGN-T6).
+  const menu = useDismissibleDetails();
   async function logout() {
     if (submitting.current) return;
     submitting.current = true; setBusy(true); setError("");
@@ -28,7 +31,7 @@ export function CustomerAccountMenu({ user, messagesUnread = null }: { user: Acc
   const links = user.role === "VENDOR" ? [["/vendor", "Satıcı kabineti"]]
     : user.role === "ADMIN" ? [["/admin", "İdarəetmə paneli"]]
     : [["/account", "Hesab icmalı"], ["/orders", "Sifarişlərim"], ...(messagesUnread === null ? [] : [["/account/messages", "Mesajlarım"]]), ["/account/returns", "Qaytarılma sorğuları"], ["/account/addresses", "Ünvanlarım"], ["/favorites", "Sevimlilər"], ["/account/notifications", "Bildirişlər"], ["/account/security", "Təhlükəsizlik"]];
-  return <details className="group relative">
+  return <details ref={menu.ref} className="group relative" onToggle={menu.onToggle} onClick={menu.onClick}>
     <summary aria-label={`${user.displayName}, ${roleLabel}`} className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full px-2 text-sm font-semibold text-fg-body transition-colors hover:bg-primary-subtle sm:px-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E5EEE8] text-xs font-bold text-[#42645C]" aria-hidden="true">{initials}</span><span className="hidden max-w-36 truncate lg:inline">{user.displayName}</span>{messagesUnread ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#C9973A] px-1 text-[10px] font-semibold text-white" aria-label={`${messagesUnread} oxunmamış söhbət`}>{messagesUnread > 9 ? "9+" : messagesUnread}</span> : null}</summary>
     <div className="absolute right-0 z-50 mt-2 w-64 rounded-card border border-line bg-white p-2 shadow-overlay">
       <p className="truncate px-3 pt-2 text-sm font-semibold text-fg">{user.displayName}</p><p className="truncate px-3 pb-2 text-xs text-fg-muted">{user.email}</p><p className="px-3 pb-2 text-xs font-medium uppercase tracking-wide text-fg-muted">{roleLabel}</p>

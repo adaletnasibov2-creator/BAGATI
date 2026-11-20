@@ -20,7 +20,9 @@ test("cart page: one card per store (store link, its items, the store's item sub
   assert.match(cart, /const group = map\.get\(item\.product\.store\.id\) \?\? \{ store: item\.product\.store, items: \[\] \}/, "grouped by store id");
   assert.match(cart, /<section key=\{group\.store\.id\} data-cart-store=""/);
   assert.match(cart, /<Link href=\{`\/stores\/\$\{group\.store\.id\}`\}[^>]*>\{group\.store\.name\}<\/Link>/);
-  assert.match(cart, /Mağaza üzrə cəm: <b className="text-fg">\{money\(group\.delivery\.subtotalCents \/ 100\)\}<\/b>/);
+  // CART-POLISH (owner decision): the top "Mağaza üzrə cəm" line is removed; each card ends with "Mağaza cəmi:".
+  assert.doesNotMatch(cart, /Mağaza üzrə cəm/);
+  assert.match(cart, /<span>Mağaza cəmi:<\/span><span>\{money\(group\.delivery\.storeTotalCents \/ 100\)\}<\/span>/);
   assert.match(cart, /\{groups\.length\} mağazadan məhsullar<\/p>/);
   // Updated consciously by CART-DELIVERY (owner decision 2026-11-20): the cart now shows each store's delivery and a
   // total including delivery, /api/cart returns the two delivery settings, and the misleading note

@@ -49,5 +49,7 @@ test("wiring: root metadata and the store page read the SEO settings through the
   assert.match(layout, /return rootMetadata\(\{ siteName: settings\.siteName, logoUrl: settings\.logoUrl, description: description \?\? "", ogTitle, ogDescription \}\);/);
   const store = read("app/(customer)/stores/[storeId]/page.tsx");
   assert.match(store, /storeMetaDescription\(\{ template: template \?\? "", storeName: store\.name, storeDescription: store\.description \}\)/);
-  assert.match(store, /openGraph: \{\s*title: store\.name,\s*description,/);
+  // CART-POLISH + SHARE-PREVIEW: og:title / og:description (and the rest of the share preview) come from
+  // lib/share-preview.ts, still from store.name and the same settings-based description.
+  assert.match(store, /\.\.\.sharePreviewMetadata\(\{ title: store\.name, description, path: `\/stores\/\$\{store\.id\}`, siteName: settings\.siteName,/);
 });

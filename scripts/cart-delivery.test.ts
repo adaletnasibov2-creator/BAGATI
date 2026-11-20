@@ -101,7 +101,8 @@ test("availability: too little stock is 'Stokda yoxdur' (simple product and vari
   const base = { productId: "p1", eligible: true, priceValid: true };
   const simple = cartItemAvailability({ ...base, variantId: null, variants: [], inventory: [inv(null, 0)], quantity: 1 });
   assert.deepEqual(simple, { available: 0, purchasable: false, unavailableReason: "Stokda yoxdur" });
-  assert.equal(cartItemAvailability({ ...base, variantId: null, variants: [], inventory: [inv(null, 2)], quantity: 3 }).unavailableReason, "Stokda yoxdur", "less than the quantity");
+  // CART-POLISH (owner decision): some stock left but less than the quantity -> the existing "Mövcud stok: N" pattern.
+  assert.equal(cartItemAvailability({ ...base, variantId: null, variants: [], inventory: [inv(null, 2)], quantity: 3 }).unavailableReason, "Mövcud stok: 2", "less than the quantity");
   assert.equal(cartItemAvailability({ ...base, variantId: null, variants: [], inventory: [inv(null, 5, 5)], quantity: 1 }).unavailableReason, "Stokda yoxdur", "all reserved");
   const variants = [{ id: "v1", productId: "p1", isActive: true }, { id: "v2", productId: "p1", isActive: false }];
   assert.equal(cartItemAvailability({ ...base, variantId: "v1", variants, inventory: [inv("v1", 0)], quantity: 1 }).unavailableReason, "Stokda yoxdur", "active variant, no stock");

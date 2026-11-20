@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { categoryHref } from "@/lib/category-tree";
 import { notFound } from "next/navigation";
 import { ChevronRight, MapPin, MessageCircle, RotateCcw, Store, Truck } from "lucide-react";
@@ -12,6 +14,8 @@ import { calculateVariantEffectivePrice } from "@/lib/product-variants";
 import { publicProductVisibilityWhere } from "@/lib/store-visibility";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { messageEntryForViewer } from "@/lib/messaging-pages";
+import { shortenMetaText } from "@/lib/seo";
+import { shareImage, sharePreviewMetadata } from "@/lib/share-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -50,38 +54,65 @@ type ProductRecord = {
   _count: { reviews: number };
 };
 
+/**
+ * The page's product query (public visibility filter). Wrapped in React cache so the page and generateMetadata share
+ * one database read per request (CART-POLISH + SHARE-PREVIEW).
+ */
+const getPublicProductRecord = cache((productId: string) =>
+  prisma.product.findFirst({
+    where: { id: productId, ...publicProductVisibilityWhere() },
+    include: {
+      store: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          mapUrl: true,
+          deliveryFee: true,
+          freeDeliveryThreshold: true,
+          city: { select: { name: true } },
+        },
+      },
+      category: { select: { name: true, slug: true, isActive: true, parent: { select: { name: true, slug: true, isActive: true } } } },
+      variants: { include: { inventory: true } },
+      inventory: true,
+      promotionProducts: { include: { promotion: true } },
+      reviews: {
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, rating: true, comment: true, createdAt: true },
+      },
+      _count: { select: { reviews: true } },
+    },
+  }));
+
+/**
+ * Title, description and share preview (CART-POLISH + SHARE-PREVIEW). The same visibility filter and store
+ * eligibility as the page below: a product that is not public returns nothing (the page itself is a 404), so its
+ * name and image never reach the head. Only fields the page shows: name, description, the first image.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ productId: string }> }): Promise<Metadata> {
+  const { productId } = await params;
+  const product = await getPublicProductRecord(productId) as ProductRecord | null;
+  if (!product) return {};
+  const eligibleStoreIds = await resolvePublicStoreEligibility([product.store.id], prisma, new Date());
+  if (!eligibleStoreIds.has(product.store.id)) return {};
+  const settings = await getSiteSettings();
+  const description = product.description?.trim() ? shortenMetaText(product.description) : undefined;
+  return {
+    title: product.name,
+    ...(description ? { description } : {}),
+    ...sharePreviewMetadata({ title: product.name, description, path: `/products/${product.id}`, siteName: settings.siteName, image: shareImage([product.images[0]], product.name) }),
+  };
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = await params;
   const now = new Date();
   const [productResult, siteSettings] = await Promise.all([
-    prisma.product.findFirst({
-      where: { id: productId, ...publicProductVisibilityWhere() },
-      include: {
-        store: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            latitude: true,
-            longitude: true,
-            mapUrl: true,
-            deliveryFee: true,
-            freeDeliveryThreshold: true,
-            city: { select: { name: true } },
-          },
-        },
-        category: { select: { name: true, slug: true, isActive: true, parent: { select: { name: true, slug: true, isActive: true } } } },
-        variants: { include: { inventory: true } },
-        inventory: true,
-        promotionProducts: { include: { promotion: true } },
-        reviews: {
-          take: 5,
-          orderBy: { createdAt: "desc" },
-          select: { id: true, rating: true, comment: true, createdAt: true },
-        },
-        _count: { select: { reviews: true } },
-      },
-    }),
+    getPublicProductRecord(productId),
     getSiteSettings(),
   ]);
   const product = productResult as (ProductRecord & { promotionProducts: { promotion: PromotionPriceInput }[] }) | null;

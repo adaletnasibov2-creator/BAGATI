@@ -206,7 +206,10 @@ test("site rules: no online/card payment, free-delivery or rating claims added; 
   // CART-DELIVERY (owner decision 2026-11-20): the cart shows the checkout's two conditional delivery texts, only from
   // the store's real threshold: "PULSUZ" when it is reached, the threshold sentence when a fee applies.
   const cart = read("components/cart-page-client.tsx");
-  assert.equal(freeMentions(cart), 2, "components/cart-page-client.tsx");
+  // CART-POLISH (owner-approved text): + "Pulsuz çatdırılmaya {amount} AZN qaldı", shown only while a fee applies and
+  // the store's own threshold is not reached (remainingForFreeDeliveryCents). Counted in source incl. comments.
+  assert.equal(freeMentions(cart), 3, "components/cart-page-client.tsx");
+  assert.match(cart, /\{remainingForFreeDeliveryCents\(group\.delivery\) !== null && <p[^>]*>Pulsuz çatdırılmaya \{centsToFixed\(remainingForFreeDeliveryCents\(group\.delivery\)!\)\} AZN qaldı<\/p>\}/);
   assert.match(cart, /\{group\.delivery\.freeDelivery \? "PULSUZ" : money\(group\.delivery\.deliveryFeeCents \/ 100\)\}/);
   assert.match(cart, /\{!group\.delivery\.freeDelivery && <p[^>]*>\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/);
   // Ratings: the buy box and the gallery have none; the only stars on the product page are the existing review list.

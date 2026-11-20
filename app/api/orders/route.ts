@@ -9,6 +9,7 @@ import { createOrderAddressSnapshot } from "@/lib/order-address-snapshot";
 import { readOrderCoordinates } from "@/lib/delivery-location";
 import { calculateVariantEffectivePrice, orderVariantSnapshot, quantityAfterSale, resolveVariantInventory } from "@/lib/product-variants";
 import { enqueueEmail } from "@/lib/email-outbox";
+import { queueSellerNewOrderEmails, type SellerOrderEmailOrder } from "@/lib/seller-order-emails";
 import { stockAlertCrossing, stockAlertNotification, VENDOR_NOTIFICATION_TITLES } from "@/lib/vendor-notifications";
 import { listCustomerOrderPage, parseCustomerOrderPageSize } from "@/lib/customer-order-pagination";
 import { commissionRatesForNewOrder } from "@/lib/order-commission";
@@ -91,8 +92,6 @@ export async function POST(request:NextRequest) {
    const customer=await tx.user.findUnique({where:{id:user.id},select:{email:true}});
    if(customer)await enqueueEmail(tx,{eventKey:`order-confirmed:${created.id}:${customer.email}`,recipient:customer.email,template:"CUSTOMER_ORDER_CONFIRMED",payload:{orderRef:created.id,total:Number(created.total)}});
    for(const storeOrder of created.storeOrders){
-    const sellerEmail=storeOrder.store.vendor.user.email;
-    await enqueueEmail(tx,{eventKey:`seller-new-order:${storeOrder.id}:${sellerEmail}`,recipient:sellerEmail,template:"SELLER_NEW_ORDER",payload:{storeName:storeOrder.store.name,orderRef:created.id,storeOrderRef:storeOrder.id,total:Number(storeOrder.subtotal)+Number(storeOrder.deliveryFee)}});
     // In-app seller notification; created in this transaction so a rolled-back or retried checkout cannot duplicate it.
     const sellerUserId=storeOrder.store.vendor.user.id;
     if(sellerUserId)await tx.notification.create({data:{userId:sellerUserId,storeId:storeOrder.storeId,title:VENDOR_NOTIFICATION_TITLES.newOrder,body:`Sifariş #${created.id.slice(-8).toUpperCase()} · ${storeOrder.items.length} məhsul · ${(Number(storeOrder.subtotal)+Number(storeOrder.deliveryFee)).toFixed(2)} AZN. Sifarişi təsdiqləyin və ya rədd edin.`}});
@@ -100,6 +99,9 @@ export async function POST(request:NextRequest) {
    for(const alert of stockAlerts)await tx.notification.create({data:alert});
    if(cart)await tx.cartItem.deleteMany({where:{cartId:cart.id}});return created;
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:20000}));
+  // SELLER_NEW_ORDER emails (SELLER-ALERTS): queued AFTER the commit and not awaited, so queuing can never fail, roll
+  // back or slow the order. Best effort, one row per StoreOrder per recipient (lib/seller-order-emails.ts).
+  void queueSellerNewOrderEmails(prisma,order as SellerOrderEmailOrder).catch(()=>undefined);
   return NextResponse.json({order},{status:201});
  }catch(error){
   // Retries used up: the same 409 as before (also for the P2010/40001 form, which returned 500 before SCALE-FIX-1).

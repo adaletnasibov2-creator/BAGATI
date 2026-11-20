@@ -24,6 +24,7 @@ export const EMAIL_TEMPLATES = [
   "CANCELLATION_REQUEST_DECISION",
   "MESSAGE_TO_STORE",
   "MESSAGE_TO_CUSTOMER",
+  "STORE_NOTIFICATION_EMAIL_VERIFY",
 ] as const;
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[number];
 export type EmailPayload = Record<string, string | number | boolean | null>;
@@ -69,6 +70,22 @@ export function safeReplyTo(raw: string): string | undefined {
   return address;
 }
 
+/** An http(s) link without credentials, else null (same rule as the password-reset link). */
+function safeLink(raw: string): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") && !parsed.username && !parsed.password ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** SELLER_NEW_ORDER subject; the store name cannot add header lines. */
+export function sellerNewOrderSubject(storeName: string, orderRef: string): string {
+  return `Yeni sifariş: ${storeName} · №${orderRef}`.replace(/[\r\n]+/g, " ").slice(0, 200);
+}
+
 export function buildTransactionalEmail(template: EmailTemplate, payload: EmailPayload, from: string, to: string, messageId: string): SendMailOptions {
   let subject = "BAGATI hesab yeniləməsi";
   let lines: string[] = ["BAGATI marketplace hesabınızda yenilik var."];
@@ -76,6 +93,7 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
   let passwordResetUrl: string | undefined;
   let trackingUrl: string | undefined;
   let replyTo: string | undefined;
+  let actionLink: { url: string; label: string } | undefined;
   switch (template) {
     case "EMAIL_VERIFICATION":
       verificationCode = value(payload, "code");
@@ -108,7 +126,39 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
       else { subject = "Mağaza fəaliyyəti bərpa edildi"; lines = [`${value(payload, "storeName", "Mağaza")} yenidən aktivləşdirildi.`]; }
       break;
     }
-    case "SELLER_NEW_ORDER": subject = "Mağazanıza yeni sifariş daxil oldu"; lines = [`${value(payload, "storeName", "Mağaza")}: yeni sifariş #${value(payload, "orderRef")}.`, `Mağaza sifarişi: #${value(payload, "storeOrderRef")}`, `Məbləğ: ${azn(payload, "total")}`, "Sifarişə vendor panelindən baxın."]; break;
+    case "SELLER_NEW_ORDER": {
+      // SELLER-ALERTS: store name, order number, the store's items, subtotal / delivery / total and a panel link.
+      // Never customer data. Rows queued before this change (no itemLines) keep their old wording.
+      if (payload.itemLines === undefined) { subject = "Mağazanıza yeni sifariş daxil oldu"; lines = [`${value(payload, "storeName", "Mağaza")}: yeni sifariş #${value(payload, "orderRef")}.`, `Mağaza sifarişi: #${value(payload, "storeOrderRef")}`, `Məbləğ: ${azn(payload, "total")}`, "Sifarişə vendor panelindən baxın."]; break; }
+      const storeName = value(payload, "storeName", "Mağaza");
+      subject = sellerNewOrderSubject(storeName, value(payload, "orderRef"));
+      lines = [
+        `${storeName} mağazanıza yeni sifariş gəldi.`,
+        `Sifariş №${value(payload, "orderRef")}`,
+        "Məhsullar:",
+        ...value(payload, "itemLines").split("\n").filter(Boolean).map((line) => `• ${line}`),
+        `Ara cəm: ${azn(payload, "subtotal")}`,
+        `Çatdırılma: ${azn(payload, "deliveryFee")}`,
+        `Mağaza cəmi: ${azn(payload, "total")}`,
+        "Alıcının məlumatlarını və sifarişin təfərrüatını satıcı panelində görə bilərsiniz.",
+      ];
+      const panelUrl = safeLink(value(payload, "panelUrl"));
+      if (panelUrl) actionLink = { url: panelUrl, label: "Sifarişlərə bax" };
+      break;
+    }
+    case "STORE_NOTIFICATION_EMAIL_VERIFY": {
+      // SELLER-ALERTS part B: confirms the store's extra notification address. Single-use link, 24 hours.
+      const verifyUrl = safeLink(value(payload, "verifyUrl"));
+      if (!verifyUrl) throw new Error("Invalid notification email verification payload.");
+      subject = "BAGATI — bildiriş e-poçtunu təsdiqləyin";
+      lines = [
+        `${value(payload, "storeName", "Mağaza")} mağazası bu ünvanı yeni sifariş bildirişləri üçün əlavə etdi.`,
+        "Təsdiqləmək üçün aşağıdakı keçidi açın. Keçid 24 saat ərzində yalnız bir dəfə istifadə edilə bilər.",
+        "Bu sorğunu siz etməmisinizsə, məktubu nəzərə almayın.",
+      ];
+      actionLink = { url: verifyUrl, label: "E-poçtu təsdiqlə" };
+      break;
+    }
     case "CUSTOMER_ORDER_CONFIRMED": subject = "Sifarişiniz BAGATI-da qeydə alındı"; lines = [`Sifariş #${value(payload, "orderRef")} yaradıldı.`, `Məbləğ: ${azn(payload, "total")}`, "Sifarişinizin statusu dəyişdikdə sizə məlumat göndəriləcək."]; break;
     case "ORDER_STATUS": subject = "Sifariş statusu yeniləndi"; lines = [`Sifariş #${value(payload, "orderRef")} — ${value(payload, "storeName", "Mağaza")}.`, `Yeni status: ${orderStatus(value(payload, "status"))}.`, ...(value(payload, "reason") === ORDER_EXPIRED_UNPAID_REASON ? ["Ödəniş vaxtında tamamlanmadığı üçün sifariş avtomatik ləğv edildi."] : [])]; break;
     case "SHIPMENT_UPDATE":
@@ -161,10 +211,11 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
   const htmlLines = lines.map((line) => `<p style="margin:12px 0;font-size:15px;line-height:1.65;color:#344254">${escapeHtml(line)}</p>`).join("");
   const link = trackingUrl ? `<p style="margin:18px 0"><a href="${escapeHtml(trackingUrl)}" rel="noopener noreferrer" style="color:#176b63">Göndərişi izləyin</a></p>` : "";
   const codeHtml = verificationCode ? `<p style="margin:24px 0;padding:18px;text-align:center;border-radius:12px;background:#f7f5ef;color:#0b1726;font-size:32px;font-weight:bold;letter-spacing:8px">${escapeHtml(verificationCode)}</p>` : "";
+  const action = actionLink ? `<p style="margin:18px 0"><a href="${escapeHtml(actionLink.url)}" rel="noopener noreferrer" style="color:#176b63">${escapeHtml(actionLink.label)}</a></p>` : "";
   const resetLink = passwordResetUrl ? `<p style="margin:18px 0"><a href="${escapeHtml(passwordResetUrl)}" rel="noopener noreferrer" style="color:#176b63">Şifrəni yenilə</a></p>` : "";
   return {
-    from, to, subject, text: [...lines, ...(passwordResetUrl ? [passwordResetUrl] : []), ...(trackingUrl ? [trackingUrl] : [])].join("\n\n"),
-    html: `<!doctype html><html lang="az"><body style="margin:0;background:#f7f5ef;font-family:Arial,sans-serif;color:#16202c"><main style="max-width:560px;margin:32px auto;padding:32px;background:#fff;border:1px solid #e8e7e2;border-radius:20px"><p style="margin:0;color:#9a701e;font-size:12px;font-weight:bold;letter-spacing:3px">BAGATI</p><h1 style="font-size:23px;margin:24px 0 16px">${escapeHtml(subject)}</h1>${htmlLines}${codeHtml}${resetLink}${link}<p style="margin-top:28px;border-top:1px solid #eee;padding-top:18px;font-size:12px;color:#718096">Bu, BAGATI marketplace tərəfindən göndərilən avtomatik məlumat məktubudur.</p></main></body></html>`,
+    from, to, subject, text: [...lines, ...(passwordResetUrl ? [passwordResetUrl] : []), ...(trackingUrl ? [trackingUrl] : []), ...(actionLink ? [`${actionLink.label}: ${actionLink.url}`] : [])].join("\n\n"),
+    html: `<!doctype html><html lang="az"><body style="margin:0;background:#f7f5ef;font-family:Arial,sans-serif;color:#16202c"><main style="max-width:560px;margin:32px auto;padding:32px;background:#fff;border:1px solid #e8e7e2;border-radius:20px"><p style="margin:0;color:#9a701e;font-size:12px;font-weight:bold;letter-spacing:3px">BAGATI</p><h1 style="font-size:23px;margin:24px 0 16px">${escapeHtml(subject)}</h1>${htmlLines}${codeHtml}${resetLink}${link}${action}<p style="margin-top:28px;border-top:1px solid #eee;padding-top:18px;font-size:12px;color:#718096">Bu, BAGATI marketplace tərəfindən göndərilən avtomatik məlumat məktubudur.</p></main></body></html>`,
     messageId: `<${messageId}@${senderDomain(from)}>`,
     ...(replyTo ? { replyTo } : {}),
   };

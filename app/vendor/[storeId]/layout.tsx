@@ -13,6 +13,7 @@ import { storeConversationsBadge } from "@/lib/messaging-pages";
 import { SellerTermsCard } from "@/components/seller-terms-card";
 import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
 import { VendorTheme } from "@/components/vendor-theme";
+import { VendorOrderAlerts } from "@/components/vendor-order-alerts";
 import { Badge } from "@/components/ui/badge";
 import { focusRing } from "@/components/ui/cx";
 import { subscriptionStatusTone } from "@/lib/vendor-status-tone";
@@ -44,6 +45,7 @@ export default async function VendorLayout({ children, params }: Readonly<{ chil
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div className="hidden items-center gap-2 lg:flex"><Badge tone={store.isActive ? "primary" : "gold"} className="whitespace-nowrap">{store.isActive ? "Satış aktivdir" : `Mağaza: ${storeStatusLabels[store.status] ?? "Status məlum deyil"}`}</Badge><Badge tone={store.subscription ? subscriptionStatusTone(store.subscription.status) : "neutral"} className="max-w-40 whitespace-nowrap"><span className="truncate">{subscriptionText}</span></Badge></div>
           <details className="relative min-w-0"><summary className={`max-w-[38vw] cursor-pointer list-none rounded-control border border-line px-2 py-2 text-right transition-colors hover:border-brand-200 sm:max-w-none sm:px-3 ${focusRing}`}><span className="block max-w-44 truncate text-sm font-semibold text-fg">{store.name} <span aria-hidden="true">⌄</span></span><span className="block truncate text-xs text-fg-muted">{store.city.name}</span></summary>{stores.length > 1 && <div className="absolute right-0 z-50 mt-2 max-h-80 w-64 overflow-auto rounded-card border border-line bg-white p-2 shadow-overlay">{stores.map((item: {id:string;name:string;city:{name:string}}) => <Link key={item.id} href={`/vendor/${item.id}`} className={`block rounded-control px-3 py-2.5 text-sm hover:bg-primary-subtle ${item.id === storeId ? "font-semibold text-primary" : "text-fg-secondary"}`}>{item.name}<span className="block text-xs font-normal text-fg-muted">{item.city.name}</span></Link>)}<Link href="/vendor/stores/new" className="mt-1 block border-t border-line px-3 py-3 text-sm font-medium text-primary">+ Yeni mağaza</Link></div>}</details>
+          <VendorOrderAlerts storeId={storeId}/>
           <Link href={`/vendor/${storeId}/notifications`} aria-label={`Bildirişlər${unread ? `, ${unread} oxunmamış` : ""}`} className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-fg transition-colors hover:bg-primary-subtle ${focusRing}`}><Bell size={18} aria-hidden="true"/>{unread > 0 && <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-semibold text-white">{unread > 9 ? "9+" : unread}</span>}</Link>
           <div className="hidden text-right sm:block"><p className="max-w-40 truncate text-xs font-semibold text-fg">{access.user.displayName}</p><p className="max-w-40 truncate text-[11px] text-fg-muted">{access.user.email}</p></div>
           <VendorLogoutButton/>

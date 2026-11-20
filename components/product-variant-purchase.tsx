@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
+import { ChevronRight, MapPin, Minus, PackageCheck, Plus, ShoppingBag, Store, Truck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { buttonClass } from "@/components/ui/button";
+import { cx, focusRing } from "@/components/ui/cx";
 import ProductGallery from "@/components/product-gallery";
 import { FavoriteToggle } from "@/components/favorite-toggle";
 import { getProductDiscount } from "@/lib/product-card-pricing";
@@ -71,60 +75,85 @@ export default function ProductVariantPurchase({ productId, name, productImages,
     finally { setBusy(false); }
   }
 
+  const canAdd = !(busy || (hasVariants && (!complete || !selectedVariant || !selectedVariant.isActive || selectedStock < 1)) || selectedStock < 1);
+  const stockText = hasVariants && !complete ? "Əvvəlcə variant seçimlərini tamamlayın." : hasVariants && !selectedVariant ? "Bu seçim mövcud deyil." : selectedStock > 0 ? `Stokda ${selectedStock} ədəd` : "Tükənib";
+  const setClampedQuantity = (value: number) => setQuantity(Number.isFinite(value) ? Math.max(1, Math.min(maxQuantity || 1, Math.floor(value))) : 1);
+  const addLabel = busy ? "Əlavə olunur…" : "Səbətə əlavə et";
+  const price = <>
+    <span className="text-[1.75rem] font-semibold leading-none tracking-tight text-fg sm:text-[2rem]">{priceIsDiscounted ? currentPrice : currentBase} ₼</span>
+    {priceIsDiscounted && <span className="text-base text-fg-muted line-through">{currentBase} ₼</span>}
+  </>;
+
+  // Mobile buy bar: rendered into the sticky slot at the end of the product page (app/(customer)/products/[productId]),
+  // which reserves its height, so nothing moves when it appears and it never covers the footer.
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setSlot(document.getElementById(PRODUCT_BUY_BAR_SLOT_ID)); }, []);
+
   return <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)] lg:items-start lg:gap-10">
-    <div className="min-w-0">
+    <div className="min-w-0 lg:sticky lg:top-6">
       <ProductGallery key={selectedVariant?.id || "product-images"} images={selectedImages} name={name}/>
-      {productImages.length > 1 && <p className="mt-2 text-center text-xs text-muted">Şəkillərə toxunaraq digər görünüşlərə baxın</p>}
+      {productImages.length > 1 && <p className="mt-2 text-center text-xs text-fg-muted">Şəkillərə toxunaraq digər görünüşlərə baxın</p>}
     </div>
-    <section className="min-w-0 rounded-3xl border border-[#E5EAE6] bg-white p-5 shadow-[0_12px_36px_-30px_rgba(18,46,46,.45)] sm:p-7" aria-labelledby="product-title">
+    <section className="min-w-0 rounded-feature border border-line bg-white p-5 shadow-card sm:p-7" aria-labelledby="product-title">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          {category && <Link href={category.href} className="text-xs font-semibold uppercase tracking-[.14em] text-[#8A6A37] hover:text-emerald">{category.name}</Link>}
-          <h1 id="product-title" className="mt-2 break-words text-2xl font-semibold leading-tight tracking-tight text-[#233432] sm:text-3xl">{name}</h1>
+          {category && <Link href={category.href} className={cx("rounded-sm text-kicker uppercase text-gold-700 hover:text-primary", focusRing)}>{category.name}</Link>}
+          <h1 id="product-title" className="mt-2 break-words font-display text-h1 text-fg">{name}</h1>
         </div>
         <FavoriteToggle productId={productId}/>
       </div>
-      <Link href={`/stores/${store.id}`} className="mt-5 inline-flex min-h-11 max-w-full items-center gap-2 rounded-full bg-[#F4F7F4] px-3.5 py-2 text-sm font-medium text-[#315A51] hover:bg-[#EAF1EC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]">
-        <MapPin aria-hidden="true" size={16} className="shrink-0"/>
-        <span className="truncate">{store.name}</span>
-        <span aria-hidden="true" className="text-[#A7B2AC]">·</span>
-        <span className="shrink-0 text-[#697875]">{store.city}</span>
-      </Link>
-      {sku && <p className="mt-3 text-xs text-muted">SKU: {sku}</p>}
+      {sku && <p className="mt-2 text-xs text-fg-muted">SKU: {sku}</p>}
 
-      <div className="mt-6 border-y border-[#E8EDE9] py-5">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          {priceIsDiscounted && <span className="text-3xl font-semibold tracking-tight text-[#173A3A]">{currentPrice} ₼</span>}
-          <span className={priceIsDiscounted ? "text-lg text-muted line-through" : "text-3xl font-semibold tracking-tight text-[#173A3A]"}>{currentBase} ₼</span>
-          {priceIsDiscounted && <span className="rounded-full bg-[#F3E9D5] px-3 py-1 text-xs font-semibold text-[#70552E]">{currentCampaign ? `Kampaniya: ${currentCampaign}` : "Endirim"}</span>}
+      <div className="mt-5 border-y border-line py-5">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+          {price}
+          {priceIsDiscounted && <Badge tone="gold" size="md">{currentCampaign ? `Kampaniya: ${currentCampaign}` : "Endirim"}</Badge>}
         </div>
-        <p className="mt-2 text-xs text-muted">Yekun çatdırılma haqqı sifariş zamanı hesablanır.</p>
+        <p className="mt-2 text-xs text-fg-muted">Yekun çatdırılma haqqı sifariş zamanı hesablanır.</p>
       </div>
 
       {hasVariants && axes.map(axis => <fieldset key={axis.name} className="mt-5">
-        <legend className="text-sm font-semibold text-[#233432]">{axis.name} seçin{selection[axis.name] ? <span className="font-normal text-muted"> · {selection[axis.name]}</span> : ""}</legend>
-        <div className="mt-2 flex flex-wrap gap-2">{axis.values.map(value => {
+        <legend className="text-sm font-semibold text-fg">{axis.name} seçin{selection[axis.name] ? <span className="font-normal text-fg-muted"> · {selection[axis.name]}</span> : ""}</legend>
+        <div className="mt-2.5 flex flex-wrap gap-2">{axis.values.map(value => {
         const axisIndex = axes.findIndex(item => item.name === axis.name);
         const available = variants.some(variant => variant.isActive && variant.available > 0 && valueOf(variant, axis.name) === value && axes.slice(0, axisIndex).every(previous => !selection[previous.name] || valueOf(variant, previous.name) === selection[previous.name]));
         const active = selection[axis.name] === value;
-        return <button key={value} type="button" disabled={!available && !active} aria-pressed={active} onClick={() => choose(axis.name, value)} className={`min-h-11 rounded-xl border px-3.5 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52] motion-reduce:transition-none ${active ? "border-[#173c40] bg-[#173c40] text-white" : "border-[#DDE5E0] bg-white text-[#344C46] hover:border-[#93ADA0]"} disabled:cursor-not-allowed disabled:opacity-45`}>{value}{!available ? " · Tükənib" : ""}</button>;
+        return <button key={value} type="button" disabled={!available && !active} aria-pressed={active} onClick={() => choose(axis.name, value)} className={cx("min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:border-dashed disabled:text-fg-muted disabled:opacity-60", focusRing, active ? "border-primary bg-primary text-white" : "border-line-strong bg-white text-fg hover:border-primary hover:text-primary")}>{value}{!available ? " · Tükənib" : ""}</button>;
         })}</div>
       </fieldset>)}
-      {hasVariants && selectedVariant && <p className="mt-2 text-xs text-muted">{selectedVariant.name}</p>}
-      <div className="mt-6 flex items-center gap-3">
-        <label className="sr-only" htmlFor="product-quantity">Miqdar</label>
-        <input id="product-quantity" type="number" min={1} max={Math.max(maxQuantity, 1)} step={1} value={quantity} onChange={event => {
-          const value = event.currentTarget.valueAsNumber;
-          setQuantity(Number.isFinite(value) ? Math.max(1, Math.min(maxQuantity || 1, Math.floor(value))) : 1);
-        }} className="h-12 w-[5.25rem] rounded-xl border border-[#DDE5E0] bg-white px-3 text-center text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]"/>
-        <button type="button" onClick={() => void add()} disabled={busy || (hasVariants && (!complete || !selectedVariant || !selectedVariant.isActive || selectedStock < 1)) || selectedStock < 1} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#173A3A] px-5 py-3 font-medium text-white transition-colors hover:bg-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"><ShoppingBag aria-hidden="true" size={17}/>{busy ? "Əlavə olunur…" : "Səbətə əlavə et"}</button>
+      {hasVariants && selectedVariant && <p className="mt-2 text-xs text-fg-muted">{selectedVariant.name}</p>}
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="flex h-12 shrink-0 items-center rounded-full border border-line-strong bg-white">
+          <button type="button" aria-label="Miqdarı azalt" disabled={quantity <= 1} onClick={() => setClampedQuantity(quantity - 1)} className={cx("grid h-12 w-11 place-items-center rounded-l-full text-fg transition-colors hover:text-primary disabled:text-fg-muted disabled:opacity-50", focusRing)}><Minus aria-hidden="true" size={16}/></button>
+          <label className="sr-only" htmlFor="product-quantity">Miqdar</label>
+          <input id="product-quantity" type="number" inputMode="numeric" min={1} max={Math.max(maxQuantity, 1)} step={1} value={quantity} onChange={event => setClampedQuantity(event.currentTarget.valueAsNumber)} className={cx("h-10 w-12 border-0 bg-transparent text-center text-base font-semibold text-fg [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none", focusRing)}/>
+          <button type="button" aria-label="Miqdarı artır" disabled={quantity >= Math.max(maxQuantity, 1)} onClick={() => setClampedQuantity(quantity + 1)} className={cx("grid h-12 w-11 place-items-center rounded-r-full text-fg transition-colors hover:text-primary disabled:text-fg-muted disabled:opacity-50", focusRing)}><Plus aria-hidden="true" size={16}/></button>
+        </div>
+        <button type="button" onClick={() => void add()} disabled={!canAdd} className={cx(buttonClass({ size: "lg" }), "min-w-0 flex-1")}><ShoppingBag aria-hidden="true" size={18}/>{addLabel}</button>
       </div>
-      <p className="mt-2 text-sm text-muted" aria-live="polite">{hasVariants && !complete ? "Əvvəlcə variant seçimlərini tamamlayın." : hasVariants && !selectedVariant ? "Bu seçim mövcud deyil." : selectedStock > 0 ? `Stokda ${selectedStock} ədəd` : "Tükənib"}</p>
-      {message && <p role="status" className="mt-2 text-sm text-muted">{message}</p>}
-      <div className="mt-6 grid gap-3 border-t border-[#E8EDE9] pt-5 text-sm text-[#52645D] sm:grid-cols-2 lg:grid-cols-1">
-        <div className="flex items-start gap-3"><Truck aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-[#52766A]"/><p>Çatdırılma haqqı <strong className="font-semibold text-[#233432]">{store.deliveryFee} ₼</strong>; mağaza sifarişlərində <strong className="font-semibold text-[#233432]">{store.freeDeliveryThreshold} ₼</strong>-dan etibarən pulsuzdur.</p></div>
-        <Link href="/delivery-returns" className="flex min-h-11 items-center gap-3 rounded-xl text-[#315A51] hover:text-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]"><PackageCheck aria-hidden="true" size={18} className="shrink-0"/><span>Çatdırılma və qaytarılma şərtləri</span></Link>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {(!hasVariants || selectedVariant) && <span aria-hidden="true" className={cx("h-2.5 w-2.5 shrink-0 rounded-full", selectedStock > 0 ? "bg-primary" : "bg-danger")}/>}
+        <p className={cx("text-sm font-medium", selectedStock > 0 ? "text-primary" : "text-fg-secondary")} aria-live="polite">{stockText}</p>
+      </div>
+      {message && <p role="status" className="mt-3 rounded-control bg-primary-subtle px-3 py-2 text-sm font-medium text-primary">{message}</p>}
+
+      <Link href={`/stores/${store.id}`} className={cx("mt-6 flex min-h-14 items-center gap-3 rounded-card border border-line bg-surface-page px-4 py-3 transition-colors hover:border-brand-200 hover:bg-primary-subtle", focusRing)}>
+        <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-primary ring-1 ring-inset ring-brand-100"><Store size={18}/></span>
+        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-fg">{store.name}</span><span className="flex items-center gap-1 text-xs text-fg-muted"><MapPin aria-hidden="true" size={13} className="shrink-0"/>{store.city}</span></span>
+        <ChevronRight aria-hidden="true" size={18} className="shrink-0 text-fg-muted"/>
+      </Link>
+      <div className="mt-4 grid gap-3 text-sm text-fg-secondary">
+        <div className="flex items-start gap-3"><Truck aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-primary"/><p>Çatdırılma haqqı <strong className="font-semibold text-fg">{store.deliveryFee} ₼</strong>; mağaza sifarişlərində <strong className="font-semibold text-fg">{store.freeDeliveryThreshold} ₼</strong>-dan etibarən pulsuzdur.</p></div>
+        <Link href="/delivery-returns" className={cx("flex min-h-11 items-center gap-3 rounded-control font-medium text-primary hover:text-primary-hover", focusRing)}><PackageCheck aria-hidden="true" size={18} className="shrink-0"/><span>Çatdırılma və qaytarılma şərtləri</span></Link>
       </div>
     </section>
+    {slot && createPortal(<div data-product-buy-bar="" className="flex items-center gap-3">
+      <div className="min-w-0 flex-1"><p className="flex flex-wrap items-baseline gap-x-2 leading-tight"><span className="text-lg font-semibold text-fg">{priceIsDiscounted ? currentPrice : currentBase} ₼</span>{priceIsDiscounted && <span className="text-xs text-fg-muted line-through">{currentBase} ₼</span>}</p><p className="truncate text-xs text-fg-muted">{stockText}</p></div>
+      <button type="button" onClick={() => void add()} disabled={!canAdd} className={cx(buttonClass({ size: "md" }), "shrink-0")}><ShoppingBag aria-hidden="true" size={17}/>{addLabel}</button>
+    </div>, slot)}
   </div>;
 }
+
+/** The page renders an element with this id (sticky, height reserved); the buy bar is portalled into it on mobile. */
+export const PRODUCT_BUY_BAR_SLOT_ID = "product-buy-bar-slot";

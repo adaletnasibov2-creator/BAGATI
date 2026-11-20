@@ -112,6 +112,14 @@ html:has([data-vendor-sticky-actions]) {
   scroll-padding-bottom: 9rem;
 }
 
+/* Product page buy bar (DESIGN-T6): below 1024 px the bar (76 px) sits above the mobile bottom nav (62 px), so a control
+   scrolled into view (Tab, the browser's own scrolling) is kept above both. */
+@media (max-width: 1023px) {
+  html:has(#product-buy-bar-slot) {
+    scroll-padding-bottom: 9rem;
+  }
+}
+
 /* Focus outline on dark public surfaces (header top bar, footer, hero, seller banner): gold #c79a52 is 4.80:1 on
    #173a3a, where green would be invisible. Coloured bars whose background varies use the text colour. */
 .bagati-on-dark {

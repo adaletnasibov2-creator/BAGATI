@@ -43,7 +43,7 @@ export default function VendorImageUploader({ storeId, initialUrls = [], name = 
 
   // Dropzone: the file input covers the whole box (transparent), so a click opens the picker and a dropped file goes
   // through the same onChange upload as before (same limits, same messages).
-  return <section className="grid min-w-0 gap-3 sm:col-span-2">
+  return <section className="grid min-w-0 gap-3">
     <div><h3 className="text-sm font-semibold text-fg">{label}</h3><p className="mt-1 text-xs leading-5 text-fg-muted">JPEG, PNG və ya WebP · hər fayl maksimum 5 MB · ən çox 12 şəkil</p></div>
     {name && <input type="hidden" name={name} value={urls.join("\n")}/>}
     <label data-vendor-dropzone="" className={`relative flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-control border-2 border-dashed px-4 py-6 text-center transition-colors focus-within:border-primary focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus ${busy ? "border-brand-200 bg-primary-subtle" : "border-line-strong bg-surface-page hover:border-primary hover:bg-primary-subtle"}`}>

@@ -21,7 +21,7 @@ export const vendorInput = cx(
 /** Multi-line variant: same look, room for 4 lines. */
 export const vendorTextarea = cx(vendorInput, "min-h-28 resize-y");
 /** Label wrapper: the label text, then the control, then optional help (`vendorHint`). */
-export const vendorLabel = "grid min-w-0 gap-1.5 text-sm font-medium text-fg";
+export const vendorLabel = "grid min-w-0 content-start gap-1.5 text-sm font-medium text-fg";
 /** Help text under a control: readable size and contrast (muted green #56706a in the seller scope). */
 export const vendorHint = "text-xs font-normal leading-5 text-fg-muted";
 /** "(istəyə bağlı)" and similar notes inside a label. */
@@ -58,7 +58,7 @@ export function VendorFormSection({ title, eyebrow, description, aside, bodyClas
       </div>
       {aside && <div className="flex shrink-0 flex-wrap items-center gap-2">{aside}</div>}
     </div>
-    <div className={cx("grid gap-5 p-5 sm:p-7", bodyClassName)}>{children}</div>
+    <div className={cx("grid grid-cols-1 gap-5 p-5 sm:p-7", bodyClassName)}>{children}</div>
   </section>;
 }
 

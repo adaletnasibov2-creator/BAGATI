@@ -17,7 +17,7 @@ type StoreProfile = { id:string; name:string; slug:string; description:string|nu
 type City = {id:string;name:string};
 const input=vendorInput;
 // One card per group of fields (SELLER-DESIGN-2).
-const card="grid min-w-0 gap-4 rounded-card border border-line bg-white p-5 sm:p-7";
+const card="grid min-w-0 grid-cols-1 gap-4 rounded-card border border-line bg-white p-5 sm:p-7";
 const storeStatusLabels:Record<string,string>={DRAFT:"Qaralama",PENDING_REVIEW:"Yoxlama gözləyir",ACTIVE:"Aktiv",SUSPENDED:"Dayandırılıb",REJECTED:"Rədd edilib"};
 const subscriptionStatusLabels:Record<string,string>={PENDING:"Ödəniş gözləyir",ACTIVE:"Aktiv",PAST_DUE:"Ödəniş gecikib",SUSPENDED:"Dayandırılıb",CANCELLED:"Ləğv edilib",EXPIRED:"Bitib"};
 

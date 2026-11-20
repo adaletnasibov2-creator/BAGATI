@@ -40,7 +40,7 @@ test("VendorFormSection: a card with kicker, Fraunces title, description and a b
   const markup = renderToStaticMarkup(h(VendorFormSection, { eyebrow: "Məhsul kartı", title: "Ümumi məlumat", description: "Bir sətir.", bodyClassName: "sm:grid-cols-2", children: h("input", { name: "x" }) }));
   assert.match(markup, /^<section data-vendor-form-section="" class="min-w-0 rounded-card border border-line bg-white">/);
   assert.match(markup, /<p class="text-kicker uppercase text-gold-700">Məhsul kartı<\/p><h2 class="font-display text-h3 text-fg mt-1">Ümumi məlumat<\/h2><p class="mt-1 max-w-3xl text-sm font-normal text-fg-secondary">Bir sətir\.<\/p>/);
-  assert.match(markup, /<div class="grid gap-5 p-5 sm:p-7 sm:grid-cols-2"><input name="x"\/><\/div><\/section>$/);
+  assert.match(markup, /<div class="grid grid-cols-1 gap-5 p-5 sm:p-7 sm:grid-cols-2"><input name="x"\/><\/div><\/section>$/);
 });
 
 test("VendorStickyActions: sticks to the bottom in normal flow, full main width, status next to the buttons", () => {
@@ -51,6 +51,8 @@ test("VendorStickyActions: sticks to the bottom in normal flow, full main width,
   assert.match(read("app/vendor/[storeId]/layout.tsx"), /p-4 sm:p-7 lg:ml-\[248px\] lg:p-9 xl:p-10/);
   assert.match(markup, /<div class="min-w-0 sm:flex-1" aria-live="polite"><p role="alert">Xəta<\/p><\/div><div class="flex flex-wrap items-center gap-2 sm:justify-end"><button type="submit">Yadda saxla<\/button><\/div>/);
   assert.doesNotMatch(markup, /position:\s*fixed|fixed /, "not fixed: it never covers the last field");
+  // A field scrolled into view (Tab, validation) stays above the bar: WCAG 2.4.11. Only pages with the bar get it.
+  assert.match(read("app/globals.css"), /html:has\(\[data-vendor-sticky-actions\]\) \{\n  scroll-padding-bottom: 9rem;\n\}/);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -105,6 +107,9 @@ test("image uploader: a dropzone box (same input, limits and messages) and the �
   assert.match(uploader, /JPEG, PNG və ya WebP · hər fayl maksimum 5 MB · ən çox 12 şəkil/);
   assert.match(uploader, /\{index === 0 && <span className="absolute left-1\.5 top-1\.5"><Badge tone="primary" className="shadow-subtle">Əsas şəkil<\/Badge><\/span>\}/);
   for (const label of ["Şəkli sola çək", "Şəkli sağa çək", "Şəkli sil"]) assert.ok(uploader.includes(`aria-label="${label}"`), label);
+  // No column span: inside a variant row (one column) a span made a second column and split the row (seen in screenshots).
+  assert.doesNotMatch(uploader, /col-span/);
+  assert.match(uploader, /return <section className="grid min-w-0 gap-3">/);
 });
 
 test("variants: the 'has options' checkbox is a clear card row; the logic is untouched", () => {
@@ -189,7 +194,7 @@ test("orders and returns only inherit the shared input and button styles", () =>
   }
 });
 
-test("scope: admin, the public site and the root layout never use the seller form pieces; globals.css is unchanged", () => {
+test("scope: admin, the public site and the root layout never use the seller form pieces; globals.css only gains the seller scroll padding", () => {
   const outside = [...walk("app/admin"), ...walk("app/(customer)"), "app/layout.tsx", "components/admin-shell.tsx", "components/public-theme.tsx", "components/header.tsx", "components/customer-footer.tsx", ...walk("components").filter((path) => /components\/admin-/.test(path))];
   for (const path of outside) assert.doesNotMatch(read(path), /vendor-form|VendorFormSection|VendorStickyActions/, path);
   // The seller pieces are imported only by seller components.

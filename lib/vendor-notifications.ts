@@ -13,6 +13,7 @@ export const VENDOR_NOTIFICATION_TITLES = {
   storeRejected: "Mağaza müraciəti rədd edildi",
   storeSuspended: "Mağaza dayandırıldı",
   orderCancelledByCustomer: "Sifariş müştəri tərəfindən ləğv edildi",
+  orderExpiredUnpaid: "Sifariş ödənilmədiyi üçün ləğv edildi",
   cancellationRequest: "Yeni ləğv müraciəti",
   cancellationRequestWithdrawn: "Ləğv müraciəti geri götürüldü",
 } as const;
@@ -48,6 +49,7 @@ const routes: [title: string, section: string][] = [
   [VENDOR_NOTIFICATION_TITLES.newReturn, "returns"],
   [VENDOR_NOTIFICATION_TITLES.returnCancelled, "returns"],
   [VENDOR_NOTIFICATION_TITLES.orderCancelledByCustomer, "orders"],
+  [VENDOR_NOTIFICATION_TITLES.orderExpiredUnpaid, "orders"],
   [VENDOR_NOTIFICATION_TITLES.cancellationRequest, "orders"],
   [VENDOR_NOTIFICATION_TITLES.cancellationRequestWithdrawn, "orders"],
 ];

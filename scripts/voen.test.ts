@@ -155,7 +155,9 @@ test("seller-facing VÖEN fields: help text, admin-verification note, same rule 
   const apply = read("components/vendor-apply-form.tsx");
   assert.match(apply, /<span id="voen-help"[^>]*>\{VOEN_HELP\} \{VOEN_ADMIN_NOTE\}<\/span>/);
   assert.match(apply, /\{voenTouched && !voenCheck\.ok && <span id="voen-error" role="alert"[^>]*>\{voenCheck\.error\}<\/span>\}/);
-  assert.match(apply, /if \(!voenCheck\.ok\) \{ setVoenTouched\(true\); setError\(voenCheck\.error\); return; \}/, "not sent when the format is wrong");
+  // DESIGN-T8: the form runs the server schema (which includes the VÖEN rule) and stops at the first invalid field.
+  assert.match(apply, /if \(!voenCheck\.ok\) setVoenTouched\(true\);/, "the VÖEN error shows on submit");
+  assert.match(apply, /if \(first\) \{ setError\(""\); document\.getElementById\(fieldId\(first\)\)\?\.focus\(\); return; \}/, "not sent when the format is wrong");
   const editor = read("components/vendor-store-profile-editor.tsx");
   assert.match(editor, /event\.currentTarget\.setCustomValidity\(value\.trim\(\)&&changed&&!parsed\.ok\?parsed\.error:""\)/, "checked only when changed, like the server");
   assert.match(editor, /\{VOEN_HELP\} \{VOEN_ADMIN_NOTE\} VÖEN dəyişsə, yenidən yoxlanılır\./);

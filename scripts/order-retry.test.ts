@@ -81,7 +81,9 @@ test("stock errors: 409 with Azerbaijani messages instead of 500", () => {
 
 test("the checkout form shows the message, reloads the cart data and links to the cart for stock problems", () => {
   assert.deepEqual(ORDER_STOCK_ERROR_CODES, ["STOCK_CHANGED", "VARIANT_OUT_OF_STOCK", "VARIANT_REQUIRED", "VARIANT_INACTIVE", "VARIANT_INVENTORY_MISSING"]);
-  assert.match(form, /if\(ORDER_STOCK_ERROR_CODES\.includes\(data\.code\)\)\{setStockProblem\(true\);router\.refresh\(\)\}/);
+  // CART-DELIVERY: every stock code still reloads the cart data and offers the cart link; item refusals were added.
+  assert.match(form, /const CART_PROBLEM_CODES=\[\.\.\.ORDER_STOCK_ERROR_CODES,"STORE_UNAVAILABLE","PRODUCT_UNAVAILABLE","VARIANT_INVALID"\];/);
+  assert.match(form, /if\(CART_PROBLEM_CODES\.includes\(data\.code\)\)\{setStockProblem\(true\);router\.refresh\(\)\}/);
   assert.match(form, /\{error&&<div className="mt-3"><ErrorState message=\{error\}\/>\{stockProblem&&<Link href="\/cart" className="[^"]*min-h-11[^"]*">Səbətə keç<\/Link>\}<\/div>\}/);
   assert.match(form, /async function placeOrder\(\)\{setError\(""\);setStockProblem\(false\);/);
   assert.doesNotMatch(read("lib/order-stock-errors.ts"), /@prisma\/client|import /, "browser-safe module");

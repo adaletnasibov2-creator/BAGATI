@@ -8,13 +8,14 @@ import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { cx, focusRing } from "@/components/ui/cx";
+import { centsToFixed, lineTotalCents, storeDeliveryCents, type StoreDeliveryCents } from "@/lib/delivery-cents";
 
 type CartItem = {
   id: string; productId: string; variantId: string | null; quantity: number;
   variant: { name: string; options?: Record<string, unknown>; images?: string[] } | null;
   available: number; effectivePrice: string; effectiveBasePrice: string; activePromotionName: string | null;
   purchasable: boolean; unavailableReason: string | null;
-  product: { name: string; price: string; images: string[]; store: { id: string; name: string; cityId: string }; inventory: { variantId: string | null; quantity: number; reserved: number }[] };
+  product: { name: string; price: string; images: string[]; store: { id: string; name: string; cityId: string; deliveryFee: string; freeDeliveryThreshold: string }; inventory: { variantId: string | null; quantity: number; reserved: number }[] };
 };
 type Cart = { id: string; items: CartItem[] } | null;
 /** Loading and loaded cart share this box: the same padding and a minimum height, so the footer does not jump. */
@@ -34,12 +35,17 @@ export function CartPageClient() {
     finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);
+  // CART-DELIVERY: per store the same delivery as the checkout and the order (lib/delivery-cents.ts = the rules of
+  // calculateStoreDelivery, in whole cents). Totals cover every item shown, also unavailable ones, exactly like the
+  // checkout page; ordering stays blocked until those are removed or fixed.
   const groups = useMemo(() => {
     const map = new Map<string, { store: CartItem["product"]["store"]; items: CartItem[] }>();
     for (const item of cart?.items ?? []) { const group = map.get(item.product.store.id) ?? { store: item.product.store, items: [] }; group.items.push(item); map.set(item.product.store.id, group); }
-    return [...map.values()];
+    return [...map.values()].map((group): { store: CartItem["product"]["store"]; items: CartItem[]; delivery: StoreDeliveryCents } => ({ ...group, delivery: storeDeliveryCents(group.items.reduce((sum, item) => sum + lineTotalCents(item.effectivePrice, item.quantity), 0), { deliveryFee: group.store.deliveryFee, freeDeliveryThreshold: group.store.freeDeliveryThreshold }) }));
   }, [cart]);
-  const subtotal = (cart?.items ?? []).reduce((sum, item) => sum + Math.max(0, Number(item.effectivePrice) || 0) * item.quantity, 0);
+  const subtotalCents = groups.reduce((sum, group) => sum + group.delivery.subtotalCents, 0);
+  const deliveryCents = groups.reduce((sum, group) => sum + group.delivery.deliveryFeeCents, 0);
+  const totalCents = subtotalCents + deliveryCents;
   const canCheckout = (cart?.items ?? []).every(item => item.purchasable && item.available >= item.quantity);
 
   async function update(item: CartItem, quantity?: number) {
@@ -71,7 +77,7 @@ export function CartPageClient() {
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
       <div className="min-w-0 space-y-5">{groups.map(group => <section key={group.store.id} data-cart-store="" className="overflow-hidden rounded-card border border-line bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-page px-5 py-4">
-          <div className="min-w-0"><p className="text-xs text-fg-muted">Mağaza</p><Link href={`/stores/${group.store.id}`} className={cx("rounded-sm font-semibold text-fg hover:text-primary", focusRing)}>{group.store.name}</Link><p className="mt-1 text-xs text-fg-muted">Mağaza üzrə cəm: <b className="text-fg">{money(group.items.reduce((sum, item) => sum + Math.max(0, Number(item.effectivePrice) || 0) * item.quantity, 0))}</b></p></div>
+          <div className="min-w-0"><p className="text-xs text-fg-muted">Mağaza</p><Link href={`/stores/${group.store.id}`} className={cx("rounded-sm font-semibold text-fg hover:text-primary", focusRing)}>{group.store.name}</Link><p className="mt-1 text-xs text-fg-muted">Mağaza üzrə cəm: <b className="text-fg">{money(group.delivery.subtotalCents / 100)}</b></p></div>
           <Link href={`/stores/${group.store.id}`} className={cx("inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-primary hover:text-primary-hover", focusRing)}>Mağazaya bax →</Link>
         </div>
         <ul className="divide-y divide-line">{group.items.map(item => {
@@ -93,13 +99,22 @@ export function CartPageClient() {
             </div>
             <div className="hidden items-center gap-4 sm:flex"><QuantityControl item={item} available={available} busy={busy === item.id} onUpdate={update}/><span className="w-28 text-right font-semibold text-fg">{money(current * item.quantity)}</span><RemoveButton item={item} busy={busy === item.id} onUpdate={update}/></div>
           </li>;
-        })}</ul></section>)}</div>
+        })}</ul>
+        {/* Delivery of this store: the checkout's texts and numbers (the fee, or none once the store's own threshold is reached). */}
+        <div data-cart-store-delivery="" className="border-t border-line bg-surface-page px-5 py-4 text-sm">
+          <div className="flex justify-between gap-3 text-fg-secondary"><span>Çatdırılma</span><b className="text-fg">{group.delivery.freeDelivery ? "PULSUZ" : money(group.delivery.deliveryFeeCents / 100)}</b></div>
+          {!group.delivery.freeDelivery && <p className="mt-1 text-xs text-fg-muted">{centsToFixed(group.delivery.freeDeliveryThresholdCents)} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur.</p>}
+          <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-fg"><span>Mağaza cəmi:</span><span>{money(group.delivery.storeTotalCents / 100)}</span></p>
+        </div></section>)}</div>
       <aside className="h-fit space-y-4 lg:sticky lg:top-36">
         <section data-cart-summary="" className="rounded-card border border-line bg-white p-5 shadow-card sm:p-6">
           <h2 className="font-display text-h3 text-fg">Sifariş xülasəsi</h2>
-          <div className="mt-5 flex justify-between gap-3 text-sm text-fg-secondary"><span>{groups.length} mağazadan məhsullar</span><span>{money(subtotal)}</span></div>
-          <div className="mt-4 flex justify-between border-t border-line pt-4 text-lg font-semibold text-fg"><span>Cəmi</span><span>{money(subtotal)}</span></div>
-          <p className="mt-3 text-xs leading-5 text-fg-muted">Çatdırılma xərci ünvan və sifariş təsdiqi mərhələsində dəqiqləşdiriləcək.</p>
+          <p className="mt-3 text-sm text-fg-muted">{groups.length} mağazadan məhsullar</p>
+          <dl className="mt-4 space-y-2.5 text-sm text-fg-secondary">
+            <div className="flex justify-between gap-3"><dt>Ara cəm</dt><dd className="font-medium text-fg">{money(subtotalCents / 100)}</dd></div>
+            <div className="flex justify-between gap-3"><dt>Çatdırılma</dt><dd className="font-medium text-fg">{money(deliveryCents / 100)}</dd></div>
+            <div className="flex justify-between gap-3 border-t border-line pt-4 text-lg font-semibold text-fg"><dt>Cəmi</dt><dd>{money(totalCents / 100)}</dd></div>
+          </dl>
           <Link aria-disabled={!canCheckout} href={canCheckout ? "/checkout" : "/cart"} className={`mt-5 ${buttonClass({ size: "lg", fullWidth: true })}`} onClick={event => { if (!canCheckout) event.preventDefault(); }}>Sifarişi rəsmiləşdir</Link>
           {!canCheckout && <p role="alert" className="mt-2 text-xs font-medium text-danger">Mövcud olmayan və ya stoku dəyişmiş məhsulları silin və ya miqdarını yeniləyin.</p>}
           <Link href="/products" className={cx("mt-3 flex min-h-11 items-center justify-center rounded-full text-sm font-medium text-fg-secondary hover:text-primary", focusRing)}>Alış-verişə davam et</Link>

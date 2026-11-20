@@ -174,10 +174,13 @@ test("checkout: four step sections, shared inputs, consent wording and handling 
   assert.match(form, /\{termsRequired&&<div className="[^"]*"><LegalConsentCheckbox id="checkout-accept-terms" checked=\{acceptTerms\}/);
   assert.match(form, /parts=\{CUSTOMER_CONSENT_PARTS\}/);
   assert.match(form, /if\(data\.code==="TERMS_REQUIRED"\)\{setTermsRequired\(true\);setAcceptTerms\(false\);setTermsError\(data\.error\|\|TERMS_ERROR\);return\}/);
-  assert.match(form, /if\(ORDER_STOCK_ERROR_CODES\.includes\(data\.code\)\)\{setStockProblem\(true\);router\.refresh\(\)\}/);
+  // CART-DELIVERY: the stock codes plus the item refusals (STORE_UNAVAILABLE, ...) all show "Səbətə keç".
+  assert.match(form, /const CART_PROBLEM_CODES=\[\.\.\.ORDER_STOCK_ERROR_CODES,"STORE_UNAVAILABLE","PRODUCT_UNAVAILABLE","VARIANT_INVALID"\];/);
+  assert.match(form, /if\(CART_PROBLEM_CODES\.includes\(data\.code\)\)\{setStockProblem\(true\);router\.refresh\(\)\}/);
   assert.match(form, /const TERMS_ERROR="Sifarişi tamamlamaq üçün İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin\.";/);
   assert.match(form, /data-checkout-summary=""/);
-  assert.match(form, /<button type="button" onClick=\{placeOrder\} disabled=\{busy\|\|!stores\.length\|\|!selected\}/);
+  // CART-DELIVERY: also disabled while any item cannot be ordered (the same notes as the cart).
+  assert.match(form, /<button type="button" onClick=\{placeOrder\} disabled=\{busy\|\|!stores\.length\|\|!selected\|\|hasUnavailable\}/);
   // The legal checkbox component itself is not touched (wording stays exactly as it is).
   assert.doesNotMatch(read("components/legal-consent-checkbox.tsx"), /DESIGN-T6/);
   const summary = renderToStaticMarkup(h(CartSummary, { subtotal: "20.00", deliveryFee: "3.00", total: "23.00", totalLabel: "Sifarişin cəmi" }));
@@ -199,7 +202,13 @@ test("site rules: no online/card payment, free-delivery or rating claims added; 
   assert.equal(freeMentions(read("components/product-variant-purchase.tsx")), 1);
   assert.match(read("components/product-variant-purchase.tsx"), /<strong className="font-semibold text-fg">\{store\.freeDeliveryThreshold\} ₼<\/strong>-dan etibarən pulsuzdur\./);
   assert.equal(freeMentions(read("components/checkout-form.tsx")), 3);
-  for (const path of ["components/cart-page-client.tsx", "components/product-gallery.tsx", "app/(customer)/products/[productId]/page.tsx", "app/(customer)/checkout/page.tsx"]) assert.equal(freeMentions(read(path)), 0, path);
+  for (const path of ["components/product-gallery.tsx", "app/(customer)/products/[productId]/page.tsx", "app/(customer)/checkout/page.tsx"]) assert.equal(freeMentions(read(path)), 0, path);
+  // CART-DELIVERY (owner decision 2026-11-20): the cart shows the checkout's two conditional delivery texts, only from
+  // the store's real threshold: "PULSUZ" when it is reached, the threshold sentence when a fee applies.
+  const cart = read("components/cart-page-client.tsx");
+  assert.equal(freeMentions(cart), 2, "components/cart-page-client.tsx");
+  assert.match(cart, /\{group\.delivery\.freeDelivery \? "PULSUZ" : money\(group\.delivery\.deliveryFeeCents \/ 100\)\}/);
+  assert.match(cart, /\{!group\.delivery\.freeDelivery && <p[^>]*>\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/);
   // Ratings: the buy box and the gallery have none; the only stars on the product page are the existing review list.
   for (const path of ["components/product-variant-purchase.tsx", "components/product-gallery.tsx", "components/cart-page-client.tsx", "components/checkout-form.tsx"]) assert.doesNotMatch(read(path), /rating|review|★/i, path);
   assert.doesNotMatch(read("components/product-card.tsx"), /rating|reviews/i, "cards stay without ratings");

@@ -20,11 +20,13 @@ test("cart page: one card per store (store link, its items, the store's item sub
   assert.match(cart, /const group = map\.get\(item\.product\.store\.id\) \?\? \{ store: item\.product\.store, items: \[\] \}/, "grouped by store id");
   assert.match(cart, /<section key=\{group\.store\.id\} data-cart-store=""/);
   assert.match(cart, /<Link href=\{`\/stores\/\$\{group\.store\.id\}`\}[^>]*>\{group\.store\.name\}<\/Link>/);
-  assert.match(cart, /Mağaza üzrə cəm: <b className="text-fg">\{money\(group\.items\.reduce/);
-  assert.match(cart, /<span>\{groups\.length\} mağazadan məhsullar<\/span><span>\{money\(subtotal\)\}<\/span>/);
-  // The cart shows no delivery fee: /api/cart does not return the store's delivery settings.
-  assert.match(cart, /Çatdırılma xərci ünvan və sifariş təsdiqi mərhələsində dəqiqləşdiriləcək\./);
-  assert.match(read("app/api/cart/route.ts"), /store: \{ select: \{ id: true, name: true, cityId: true \} \}/);
+  assert.match(cart, /Mağaza üzrə cəm: <b className="text-fg">\{money\(group\.delivery\.subtotalCents \/ 100\)\}<\/b>/);
+  assert.match(cart, /\{groups\.length\} mağazadan məhsullar<\/p>/);
+  // Updated consciously by CART-DELIVERY (owner decision 2026-11-20): the cart now shows each store's delivery and a
+  // total including delivery, /api/cart returns the two delivery settings, and the misleading note
+  // "Çatdırılma xərci ünvan və sifariş təsdiqi mərhələsində dəqiqləşdiriləcək." is gone (scripts/cart-delivery.test.ts).
+  assert.doesNotMatch(cart, /Çatdırılma xərci ünvan və sifariş təsdiqi mərhələsində dəqiqləşdiriləcək\./);
+  assert.match(read("app/api/cart/route.ts"), /store: \{ select: \{ id: true, name: true, cityId: true, deliveryFee: true, freeDeliveryThreshold: true \} \}/);
 });
 
 test("checkout page and order creation use the same price and delivery helpers, grouped by store", () => {
@@ -63,7 +65,8 @@ test("campaign prices are rounded to 2 decimals, so the cart's 2-decimal price e
 });
 
 test("no Epoint 500 AZN warning exists in the cart or checkout today (audit fact, CART-GROUPS c)", () => {
-  for (const path of ["components/cart-page-client.tsx", "components/checkout-form.tsx", "app/(customer)/checkout/page.tsx", "components/cart-summary.tsx"]) {
+  // Kept unchanged by CART-DELIVERY: the owner waits for Epoint's documentation before any 500 AZN warning or limit.
+  for (const path of ["components/cart-page-client.tsx", "components/checkout-form.tsx", "app/(customer)/checkout/page.tsx", "components/cart-summary.tsx", "lib/delivery-cents.ts", "lib/cart-item-availability.ts", "app/api/cart/route.ts"]) {
     assert.doesNotMatch(read(path), /\b500\b/, path);
   }
 });

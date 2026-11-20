@@ -4,9 +4,10 @@ import { ChevronLeft } from "lucide-react";
 import { ConversationContextCard } from "@/components/conversation-list";
 import { NewConversationForm } from "@/components/new-conversation-form";
 import { customerThreadHref, newConversationHref } from "@/lib/messaging-client";
-import { requireCustomerMessagingPage } from "@/lib/messaging-pages";
+import { customerMessagesBadge, requireCustomerMessagingPage } from "@/lib/messaging-pages";
 import { resolveNewConversationTarget } from "@/lib/messaging-views";
 import { prisma } from "@/lib/prisma";
+import { AccountShell } from "@/components/account-shell";
 
 export const dynamic = "force-dynamic";
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -30,16 +31,12 @@ export default async function NewConversationPage({ searchParams }: { searchPara
   const productHref = target.product ? `/products/${encodeURIComponent(target.product.id)}` : null;
   const orderHref = target.order ? `/orders/${encodeURIComponent(target.order.orderId)}` : null;
   // The shared .container sets its own max-width, so the reading width is limited by an inner wrapper.
-  return <div className="container py-5 md:py-10"><div className="mx-auto max-w-3xl">
-    <Link href={productHref ?? orderHref ?? `/stores/${encodeURIComponent(target.store.id)}`} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-emerald"><ChevronLeft size={16} aria-hidden="true"/>Geri</Link>
-    <header className="mt-1 grid gap-3">
-      <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#967844]">Mağazaya yaz</p>
-      <h1 className="text-xl font-semibold text-ink sm:text-2xl">{target.store.name}</h1>
-      <ConversationContextCard context={target.context} product={target.product} order={target.order} productHref={productHref} orderHref={orderHref}/>
-    </header>
-    <div className="mt-4 rounded-2xl border border-[#E5E1D7] bg-white p-4 sm:p-5">
+  const messagesUnread = await customerMessagesBadge(user.id);
+  return <AccountShell messagesUnread={messagesUnread} back={<Link href={productHref ?? orderHref ?? `/stores/${encodeURIComponent(target.store.id)}`} className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"><ChevronLeft size={16} aria-hidden="true"/>Geri</Link>} eyebrow="Mağazaya yaz" title={target.store.name}><div className="max-w-3xl">
+    <ConversationContextCard context={target.context} product={target.product} order={target.order} productHref={productHref} orderHref={orderHref}/>
+    <div className="mt-4 rounded-card border border-line bg-white p-4 sm:p-5">
       <NewConversationForm storeId={target.store.id} context={target.context} contextId={target.contextId} allowContactDetails={settings.allowContactDetails}/>
-      <p className="mt-3 text-xs leading-5 text-muted">Mağazanın cavabı “Mesajlarım” bölməsinə gələcək; yeni cavab barədə sizə e-poçtla xəbər veriləcək.</p>
+      <p className="mt-3 text-xs leading-5 text-fg-muted">Mağazanın cavabı “Mesajlarım” bölməsinə gələcək; yeni cavab barədə sizə e-poçtla xəbər veriləcək.</p>
     </div>
-  </div></div>;
+  </div></AccountShell>;
 }

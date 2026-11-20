@@ -4,10 +4,11 @@ import { ChevronLeft } from "lucide-react";
 import { ConversationContextCard } from "@/components/conversation-list";
 import { ConversationThread } from "@/components/conversation-thread";
 import { customerInboxHref, customerThreadApi } from "@/lib/messaging-client";
-import { requireCustomerMessagingPage } from "@/lib/messaging-pages";
+import { customerMessagesBadge, requireCustomerMessagingPage } from "@/lib/messaging-pages";
 import { listMessages } from "@/lib/messaging-service";
 import { getConversationView } from "@/lib/messaging-views";
 import { prisma } from "@/lib/prisma";
+import { AccountShell } from "@/components/account-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +22,9 @@ export default async function CustomerConversationPage({ params }: { params: Pro
   if (!view) notFound();
   const page = await listMessages(prisma, { conversationId: view.id, actor });
   // The shared .container sets its own max-width, so the reading width is limited by an inner wrapper.
-  return <div className="container py-5 md:py-10"><div className="mx-auto max-w-3xl">
-    <Link href={customerInboxHref} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-emerald"><ChevronLeft size={16} aria-hidden="true"/>Mesajlarım</Link>
-    <header className="mt-1 grid gap-3">
-      <h1 className="text-xl font-semibold text-ink sm:text-2xl"><Link href={`/stores/${encodeURIComponent(view.store.id)}`} className="hover:text-emerald">{view.store.name}</Link></h1>
+  const messagesUnread = await customerMessagesBadge(user.id);
+  return <AccountShell messagesUnread={messagesUnread} back={<Link href={customerInboxHref} className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"><ChevronLeft size={16} aria-hidden="true"/>Mesajlarım</Link>} eyebrow="Mesajlarım" title={<Link href={`/stores/${encodeURIComponent(view.store.id)}`} className="rounded-sm hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">{view.store.name}</Link>}><div className="max-w-3xl">
+    <div className="grid gap-3">
       <ConversationContextCard
         context={view.context}
         product={view.product}
@@ -32,7 +32,7 @@ export default async function CustomerConversationPage({ params }: { params: Pro
         productHref={view.product ? `/products/${encodeURIComponent(view.product.id)}` : null}
         orderHref={view.order ? `/orders/${encodeURIComponent(view.order.orderId)}` : null}
       />
-    </header>
+    </div>
     <div className="mt-4">
       <ConversationThread
         api={customerThreadApi(view.id)}
@@ -46,5 +46,5 @@ export default async function CustomerConversationPage({ params }: { params: Pro
         allowContactDetails={settings.allowContactDetails}
       />
     </div>
-  </div></div>;
+  </div></AccountShell>;
 }

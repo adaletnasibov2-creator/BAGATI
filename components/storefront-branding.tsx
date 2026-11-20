@@ -22,9 +22,14 @@ export type StorefrontBrand = {
   productCount: number;
   /** Logged-in customer with messaging ON: "Mağazaya yaz" opens a conversation. Otherwise the anonymous form (#store-message). */
   messageHref?: string | null;
+  /** The store's own short description (shown at most 2 lines here; the full text is in "Mağaza haqqında"). */
+  description?: string | null;
+  /** The store's address with the city (lib/store-public-contact formatStoreAddress), only when the store has one. */
+  address?: string | null;
 };
 
-const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C79A52]";
+// Green focus ring of the public design system (DESIGN-T7; gold on white was 2.57:1).
+const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 export default function StorefrontBranding({ store }: { store: StorefrontBrand }) {
   const colors = getStorefrontTheme(store.theme);
@@ -33,7 +38,7 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
   // One button, two targets: a conversation for a logged-in customer (messaging ON), otherwise the anonymous form.
   const messageButtonClass = `inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold sm:flex-none ${store.whatsappUrl ? "border bg-white" : "text-white shadow-sm"} ${focusRing}`;
   const messageButtonStyle = store.whatsappUrl ? { color: colors.accent, borderColor: colors.accent } : { backgroundColor: colors.accent };
-  return <header id="top" className="overflow-hidden rounded-[26px] border border-line bg-white shadow-[0_12px_36px_rgba(23,58,58,.07)]">
+  return <header id="top" className="overflow-hidden rounded-feature border border-line bg-white shadow-card">
     {/* Fixed aspect ratio: the cover never pushes or hides the content below it. */}
     <div className="relative isolate aspect-[16/7] w-full overflow-hidden sm:aspect-[4/1] lg:aspect-auto lg:h-72" style={{ backgroundColor: colors.accentSoft }}>
       {store.bannerUrl
@@ -43,9 +48,11 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
     </div>
 
     <div className="px-4 pb-4 sm:px-8 sm:pb-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+      {/* The row wraps when the name column would get narrower than 18rem (768 px with two buttons), so a font swap of the
+          name cannot re-wrap it and move the page (DESIGN-T7 CLS check). */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-6 lg:flex-nowrap">
         {/* Only the logo overlaps the cover; the name block stays in normal flow, so it is never clipped. */}
-        <div className="relative -mt-10 h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-[#F6F4EF] shadow-md sm:-mt-14 sm:h-28 sm:w-28">
+        <div className="relative -mt-10 h-20 w-20 shrink-0 overflow-hidden rounded-card border-4 border-white bg-surface-page shadow-card sm:-mt-14 sm:h-28 sm:w-28">
           <StorefrontImage
             src={store.logoUrl}
             alt={`${store.name} loqosu`}
@@ -53,15 +60,16 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
             fallback={<span className="grid h-full w-full place-items-center text-3xl font-semibold" style={{ color: colors.accent, backgroundColor: colors.accentSoft }}>{initial}</span>}
           />
         </div>
-        <div className="min-w-0 flex-1 sm:pt-4">
-          <h1 className="break-words text-2xl font-semibold leading-tight text-ink sm:text-3xl">{store.name}</h1>
-          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+        <div className="min-w-0 flex-1 sm:min-w-[18rem] sm:pt-4">
+          <h1 className="break-words font-display text-h1 text-fg">{store.name}</h1>
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-secondary">
             {store.sellerVerified && <>
               <span data-seller-verified className="inline-flex items-center gap-1.5 font-medium" style={{ color: colors.accent }}><BadgeCheck size={16} aria-hidden="true"/>Təsdiqlənmiş satıcı</span>
               <span aria-hidden="true" className="text-line">•</span>
             </>}
-            <span className="inline-flex items-center gap-1.5"><MapPin size={15} aria-hidden="true"/>{store.cityName}</span>
+            <span className="inline-flex items-center gap-1.5"><MapPin size={15} aria-hidden="true"/>{store.address || store.cityName}</span>
           </p>
+          {store.description && <p data-store-short-description="" className="mt-2 line-clamp-2 max-w-2xl break-words text-sm leading-6 text-fg-secondary">{store.description}</p>}
         </div>
         <div className="flex flex-wrap gap-2 sm:shrink-0 sm:pt-4">
           {store.whatsappUrl && <a href={store.whatsappUrl} target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 whitespace-nowrap text-sm font-semibold text-white shadow-sm sm:flex-none ${focusRing}`} style={{ backgroundColor: colors.accent }}><MessageCircle size={16} aria-hidden="true"/>WhatsApp ilə yaz</a>}
@@ -72,10 +80,10 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
       </div>
 
       <nav aria-label="Mağaza bölmələri" className="mt-4 flex gap-1 overflow-x-auto border-t border-line pt-2 text-sm font-medium sm:gap-2">
-        <a href="#store-products" className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 hover:bg-[#F4F2EC] ${focusRing}`} style={{ color: colors.accent }}>Məhsullar <span className="rounded-full bg-[#F0F4F0] px-2 py-0.5 text-xs text-[#52645D]">{store.productCount}</span></a>
-        {store.hasAbout && <a href="#store-about" className={`inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-muted hover:bg-[#F4F2EC] hover:text-ink ${focusRing}`}>Haqqında</a>}
-        <a href="#store-contact" className={`inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-muted hover:bg-[#F4F2EC] hover:text-ink ${focusRing}`}>Əlaqə</a>
-        <Link href="/stores" className={`ml-auto hidden min-h-11 shrink-0 items-center sm:inline-flex rounded-lg px-3 text-muted hover:bg-[#F4F2EC] hover:text-ink ${focusRing}`}>Bütün mağazalar</Link>
+        <a href="#store-products" className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 hover:bg-primary-subtle ${focusRing}`} style={{ color: colors.accent }}>Məhsullar <span className="rounded-full bg-primary-tint px-2 py-0.5 text-xs font-semibold text-primary">{store.productCount}</span></a>
+        {store.hasAbout && <a href="#store-about" className={`inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-fg-secondary hover:bg-primary-subtle hover:text-fg ${focusRing}`}>Haqqında</a>}
+        <a href="#store-contact" className={`inline-flex min-h-11 shrink-0 items-center rounded-lg px-3 text-fg-secondary hover:bg-primary-subtle hover:text-fg ${focusRing}`}>Əlaqə</a>
+        <Link href="/stores" className={`ml-auto hidden min-h-11 shrink-0 items-center sm:inline-flex rounded-lg px-3 text-fg-secondary hover:bg-primary-subtle hover:text-fg ${focusRing}`}>Bütün mağazalar</Link>
       </nav>
     </div>
   </header>;

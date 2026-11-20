@@ -23,6 +23,7 @@ export type SettingFieldView = {
   currentInput: string;
   currentDisplay: string;
   defaultDisplay: string;
+  toggleLabels?: { on: string; off: string } | null;
   isDefault: boolean;
   version: number;
   changedBy: string | null;
@@ -274,7 +275,7 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
         : links ? <LinksEditor value={linkForm} onChange={setLinkForm} maxItems={links.maxItems} labelMax={links.labelMax} />
         : toggle ? <label className="flex w-full items-center gap-3 text-sm text-slate-800">
           <input type="checkbox" role="switch" aria-checked={value === "true"} checked={value === "true"} onChange={(event) => setValue(event.target.checked ? "true" : "false")} className="h-5 w-5 accent-red-700" />
-          <span>{value === "true" ? "Açıq (yadda saxladıqda sayt bağlanır)" : "Söndürülüb"}</span>
+          <span>{value === "true" ? view.toggleLabels?.on ?? "Açıq" : view.toggleLabels?.off ?? "Söndürülüb"}</span>
         </label>
         : <label className={`grid min-w-0 gap-1 text-sm text-slate-700 ${small ? "" : "w-full"}`}>
           Yeni dəyər{view.input.kind === "percent" ? " (faizlə, məsələn 10)" : ""}

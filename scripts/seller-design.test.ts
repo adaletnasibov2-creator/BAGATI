@@ -26,7 +26,8 @@ const cssBlock = (css: string, selector: string) => css.slice(css.indexOf(select
 
 // Pages behind the seller login. Login, register, e-mail verification and the customer "become a seller" form are
 // entry pages, not the panel; [...section] is the old catch-all placeholder.
-const ENTRY_PAGES = new Set(["app/vendor/login/page.tsx", "app/vendor/register/page.tsx", "app/vendor/verify-email/page.tsx", "app/vendor/apply/page.tsx", "app/vendor/[...section]/page.tsx"]);
+// SELLER-ALERTS: the notification-email verify page is opened from an email link without login, like verify-email.
+const ENTRY_PAGES = new Set(["app/vendor/login/page.tsx", "app/vendor/register/page.tsx", "app/vendor/verify-email/page.tsx", "app/vendor/apply/page.tsx", "app/vendor/[...section]/page.tsx", "app/vendor/notification-email/verify/page.tsx"]);
 const panelPages = () => walk("app/vendor").filter((path) => path.endsWith("/page.tsx") && !ENTRY_PAGES.has(path));
 // A page that hands its whole body to one client component: the header lives in that component.
 const DELEGATES: Record<string, string[]> = {

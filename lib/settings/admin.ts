@@ -34,6 +34,8 @@ export type AdminSettingView = {
   currentInput: string;
   currentDisplay: string;
   defaultDisplay: string;
+  /** On/off switches: the text shown next to the switch for each state (DESIGN-T7). null for other inputs. */
+  toggleLabels: { on: string; off: string } | null;
   isDefault: boolean;
   version: number;
   changedBy: string | null;
@@ -46,6 +48,14 @@ export type AdminSettingView = {
   reason: { min: number; max: number };
   history: AdminSettingHistoryItem[];
 };
+
+/** Maintenance keeps its warning; every other switch uses the on/off text of its own setting (owner decision 2026-11-20). */
+export const MAINTENANCE_TOGGLE_ON_LABEL = "Açıq (yadda saxladıqda sayt bağlanır)";
+export function toggleLabels(definition: { key: string; input: SettingInput; display: (value: never) => string }): { on: string; off: string } | null {
+  if (definition.input.kind !== "toggle") return null;
+  const display = definition.display as (value: boolean) => string;
+  return { on: definition.key === "maintenance.enabled" ? MAINTENANCE_TOGGLE_ON_LABEL : display(true), off: display(false) };
+}
 
 export async function loadAdminSettingsGroup(db: Prisma.TransactionClient, group: SettingGroupId) {
   const definitions = SETTING_DEFINITIONS.filter((definition) => definition.group === group);
@@ -86,6 +96,7 @@ export async function loadAdminSettingsGroup(db: Prisma.TransactionClient, group
       currentInput: value === null ? "" : definition.toInput(value),
       currentDisplay: definition.display(value),
       defaultDisplay: definition.display(definition.default),
+      toggleLabels: toggleLabels(definition),
       isDefault: stored === null || storedValueInvalid,
       version: row?.version ?? 0,
       changedBy: row ? row.updatedBy?.email ?? "silinmiş istifadəçi" : null,

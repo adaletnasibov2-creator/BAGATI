@@ -3,10 +3,14 @@
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { MESSAGE_LIMITS, validateMessageBody } from "@/lib/messaging";
+import { Button } from "@/components/ui/button";
+import { cx } from "@/components/ui/cx";
+import { controlClass } from "@/components/ui/field";
 
 /**
  * Text box with a character counter. The same rules as the server run first in the browser (length, control
  * characters, phone / e-mail unless allowed), so most mistakes are shown before sending; the server decides.
+ * DESIGN-T10: the shared control style and button (visible focus ring, busy spinner); texts and behaviour unchanged.
  */
 export function MessageComposer({
   allowContactDetails,
@@ -42,7 +46,7 @@ export function MessageComposer({
   }
 
   if (disabled) {
-    return <p role="status" className="rounded-xl border border-[#E5E1D7] bg-[#F7F5EF] p-3 text-sm text-[#5B6672]">{disabledText}</p>;
+    return <p role="status" className="rounded-control border border-line bg-surface-sunken p-3 text-sm text-fg-secondary">{disabledText}</p>;
   }
   return <form onSubmit={submit} className="grid gap-2" noValidate>
     <label htmlFor="message-body" className="sr-only">Mesaj</label>
@@ -55,17 +59,17 @@ export function MessageComposer({
       placeholder={placeholder}
       aria-invalid={error ? true : undefined}
       aria-describedby="message-body-help"
-      className="min-h-24 w-full resize-y rounded-xl border border-[#D9E0DC] bg-white px-3 py-2.5 text-base text-[#16202C] outline-none transition focus:border-[#2F6F68] focus:ring-2 focus:ring-[#2F6F68]/20 sm:text-sm"
+      className={cx(controlClass(Boolean(error)), "min-h-24 resize-y")}
     />
     <div id="message-body-help" className="flex items-start justify-between gap-3 text-xs">
-      <p className={error ? "text-red-700" : "text-[#6B7680]"} role={error ? "alert" : undefined}>
+      <p className={error ? "font-medium text-danger" : "text-fg-muted"} role={error ? "alert" : undefined}>
         {error || "Telefon nömrəsi və e-poçt paylaşmayın; bütün yazışma burada qalır."}
       </p>
-      <span className={`shrink-0 tabular-nums ${length > MESSAGE_LIMITS.bodyMax * 0.9 ? "text-amber-700" : "text-[#6B7680]"}`}>{length}/{MESSAGE_LIMITS.bodyMax}</span>
+      <span className={`shrink-0 tabular-nums ${length > MESSAGE_LIMITS.bodyMax * 0.9 ? "text-amber-700" : "text-fg-muted"}`}>{length}/{MESSAGE_LIMITS.bodyMax}</span>
     </div>
-    <button type="submit" disabled={busy || !text.trim()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#173A3A] px-5 text-sm font-semibold text-white transition hover:bg-[#2F6F68] disabled:opacity-50 sm:justify-self-end">
-      <Send size={16} aria-hidden="true"/>{busy ? "Göndərilir…" : submitLabel}
-    </button>
+    <Button type="submit" size="sm" pill={false} loading={busy} loadingLabel="Göndərilir…" disabled={!text.trim()} className="sm:justify-self-end">
+      <Send size={16} aria-hidden="true"/>{submitLabel}
+    </Button>
   </form>;
 }
 

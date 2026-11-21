@@ -1,6 +1,12 @@
 "use client";
 import { FormEvent, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 
+/**
+ * Password change (customer account, seller panel, admin). DESIGN-T10: the shared field and button (visible focus
+ * ring, busy spinner); texts, field names, limits and the API call are unchanged.
+ */
 export function PasswordChangeForm() {
   const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -13,11 +19,10 @@ export function PasswordChangeForm() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Şifrə dəyişdirilmədi."); }
     finally { setBusy(false); }
   }
-  const field = "rounded-xl border border-[#ded9cf] px-4 py-3 outline-none focus:border-[#bd9a5e]";
-  return <form onSubmit={submit} className="mt-5 grid max-w-xl gap-4">
-    <label className="grid gap-1.5 text-sm font-medium">Cari şifrə<input className={field} type="password" name="currentPassword" autoComplete="current-password" required maxLength={128}/></label>
-    <label className="grid gap-1.5 text-sm font-medium">Yeni şifrə<input className={field} type="password" name="newPassword" autoComplete="new-password" required minLength={12} maxLength={128}/><span className="text-xs font-normal text-slate-500">Ən azı 12 simvol.</span></label>
-    {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}{message && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
-    <button disabled={busy} className="w-fit rounded-xl bg-[#142d38] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Yadda saxlanır…" : "Şifrəni dəyiş"}</button>
+  return <form onSubmit={submit} className="mt-5 grid max-w-xl gap-4" aria-busy={busy || undefined}>
+    <Input id="password-change-current" label="Cari şifrə" type="password" name="currentPassword" autoComplete="current-password" required maxLength={128}/>
+    <Input id="password-change-new" label="Yeni şifrə" hint="Ən azı 12 simvol." type="password" name="newPassword" autoComplete="new-password" required minLength={12} maxLength={128}/>
+    {error && <p role="alert" className="rounded-control bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">{error}</p>}{message && <p role="status" className="rounded-control bg-primary-tint px-4 py-3 text-sm text-primary">{message}</p>}
+    <Button type="submit" loading={busy} loadingLabel="Yadda saxlanır…" pill={false} className="w-fit">Şifrəni dəyiş</Button>
   </form>;
 }

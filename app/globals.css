@@ -112,6 +112,16 @@ html:has([data-vendor-sticky-actions]) {
   scroll-padding-bottom: 9rem;
 }
 
+/* Public mobile bottom nav (components/mobile-bottom-nav.tsx, 62 px + safe area, below 768 px), DESIGN-T10: a control
+   scrolled into view by Tab or the browser's own validation stays above the bar, so focus is never hidden (WCAG 2.4.11).
+   Found on /login and /register at 390 px, where the submit button ended under the bar. The product page rule below is
+   more specific and keeps its larger padding. */
+@media (max-width: 767px) {
+  html:has([data-mobile-bottom-nav]) {
+    scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* Product page buy bar (DESIGN-T6): below 1024 px the bar (76 px) sits above the mobile bottom nav (62 px), so a control
    scrolled into view (Tab, the browser's own scrolling) is kept above both. */
 @media (max-width: 1023px) {

@@ -18,7 +18,7 @@ export function MobileBottomNav({ user }: { user: BottomNavUser }) {
   const accountActive = ["/account", "/login", "/register", "/vendor", "/admin"].some((path) => pathname.startsWith(path));
 
   return (
-    <nav aria-label="Mobil əsas naviqasiya" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 shadow-[0_-8px_24px_rgba(23,58,58,.08)] backdrop-blur-xl md:hidden">
+    <nav aria-label="Mobil əsas naviqasiya" data-mobile-bottom-nav="" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 shadow-[0_-8px_24px_rgba(23,58,58,.08)] backdrop-blur-xl md:hidden">
       <ul className="mx-auto grid min-h-[62px] max-w-lg grid-cols-5 px-1 pb-[env(safe-area-inset-bottom)]">
         {entries.map(({ href, label, Icon, matches }) => {
           const active = matches(pathname);

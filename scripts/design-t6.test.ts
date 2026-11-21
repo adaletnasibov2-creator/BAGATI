@@ -211,7 +211,9 @@ test("site rules: no online/card payment, free-delivery or rating claims added; 
   assert.equal(freeMentions(cart), 3, "components/cart-page-client.tsx");
   assert.match(cart, /\{remainingForFreeDeliveryCents\(group\.delivery\) !== null && <p[^>]*>Pulsuz çatdırılmaya \{centsToFixed\(remainingForFreeDeliveryCents\(group\.delivery\)!\)\} AZN qaldı<\/p>\}/);
   assert.match(cart, /\{group\.delivery\.freeDelivery \? "PULSUZ" : money\(group\.delivery\.deliveryFeeCents \/ 100\)\}/);
-  assert.match(cart, /\{!group\.delivery\.freeDelivery && <p[^>]*>\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/);
+  // SMALL-FIXES-1 B (owner decision): the threshold sentence needs a fee above 0 too (showFreeDeliveryThresholdNote);
+  // a fee-0 store keeps "AZN 0.00" without the sentence. The word count above is unchanged.
+  assert.match(cart, /\{showFreeDeliveryThresholdNote\(group\.delivery\) && <p[^>]*>\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/);
   // Ratings: the buy box and the gallery have none; the only stars on the product page are the existing review list.
   for (const path of ["components/product-variant-purchase.tsx", "components/product-gallery.tsx", "components/cart-page-client.tsx", "components/checkout-form.tsx"]) assert.doesNotMatch(read(path), /rating|review|★/i, path);
   assert.doesNotMatch(read("components/product-card.tsx"), /rating|reviews/i, "cards stay without ratings");

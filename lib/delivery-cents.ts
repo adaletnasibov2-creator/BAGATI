@@ -54,3 +54,12 @@ export function remainingForFreeDeliveryCents(delivery: StoreDeliveryCents): num
   const remaining = delivery.freeDeliveryThresholdCents - delivery.subtotalCents;
   return remaining > 0 ? remaining : null;
 }
+
+/**
+ * SMALL-FIXES-1 B: the "{threshold} AZN və yuxarı …" sentence under "Çatdırılma" is shown only when it promises a
+ * real saving: delivery is not free yet AND the store's fee is above 0. A fee-0 store (the temporary 0.00 default)
+ * still shows "Çatdırılma AZN 0.00" but no threshold sentence. Used by the cart and the checkout.
+ */
+export function showFreeDeliveryThresholdNote(delivery: { freeDelivery: boolean; deliveryFeeCents: number }): boolean {
+  return !delivery.freeDelivery && delivery.deliveryFeeCents > 0;
+}

@@ -8,7 +8,7 @@ import { Skeleton, SkeletonRegion } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { cx, focusRing } from "@/components/ui/cx";
-import { centsToFixed, lineTotalCents, remainingForFreeDeliveryCents, storeDeliveryCents, type StoreDeliveryCents } from "@/lib/delivery-cents";
+import { centsToFixed, lineTotalCents, remainingForFreeDeliveryCents, showFreeDeliveryThresholdNote, storeDeliveryCents, type StoreDeliveryCents } from "@/lib/delivery-cents";
 
 type CartItem = {
   id: string; productId: string; variantId: string | null; quantity: number;
@@ -103,7 +103,7 @@ export function CartPageClient() {
         {/* Delivery of this store: the checkout's texts and numbers (the fee, or none once the store's own threshold is reached). */}
         <div data-cart-store-delivery="" className="border-t border-line bg-surface-page px-5 py-4 text-sm">
           <div className="flex justify-between gap-3 text-fg-secondary"><span>Çatdırılma</span><b className="text-fg">{group.delivery.freeDelivery ? "PULSUZ" : money(group.delivery.deliveryFeeCents / 100)}</b></div>
-          {!group.delivery.freeDelivery && <p className="mt-1 text-xs text-fg-muted">{centsToFixed(group.delivery.freeDeliveryThresholdCents)} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur.</p>}
+          {showFreeDeliveryThresholdNote(group.delivery) && <p className="mt-1 text-xs text-fg-muted">{centsToFixed(group.delivery.freeDeliveryThresholdCents)} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur.</p>}
           {/* CART-POLISH: the gap to the store's own threshold (threshold minus store subtotal, in cents); hidden when delivery is already free, the fee is 0 or nothing is left. */}
           {remainingForFreeDeliveryCents(group.delivery) !== null && <p data-cart-free-delivery-remaining="" className="mt-1 text-xs font-medium text-primary">Pulsuz çatdırılmaya {centsToFixed(remainingForFreeDeliveryCents(group.delivery)!)} AZN qaldı</p>}
           <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-fg"><span>Mağaza cəmi:</span><span>{money(group.delivery.storeTotalCents / 100)}</span></p>

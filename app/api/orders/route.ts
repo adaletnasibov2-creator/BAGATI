@@ -16,6 +16,7 @@ import { commissionRatesForNewOrder } from "@/lib/order-commission";
 import { customerTermsGate } from "@/lib/legal-gates";
 import { isOrderSerializationConflict, withOrderSerializationRetry } from "@/lib/order-transaction-retry";
 import { ORDER_STOCK_ERROR_MESSAGES } from "@/lib/order-stock-errors";
+import { orderCreateResponse } from "@/lib/order-create-response";
 const db: any = prisma;
 // acceptTerms: the checkout checkbox, shown only while the current customer terms are not accepted. The server decides
 // from the database (customerTermsGate); the flag alone never skips the check.
@@ -102,7 +103,8 @@ export async function POST(request:NextRequest) {
   // SELLER_NEW_ORDER emails (SELLER-ALERTS): queued AFTER the commit and not awaited, so queuing can never fail, roll
   // back or slow the order. Best effort, one row per StoreOrder per recipient (lib/seller-order-emails.ts).
   void queueSellerNewOrderEmails(prisma,order as SellerOrderEmailOrder).catch(()=>undefined);
-  return NextResponse.json({order},{status:201});
+  // Only the order id goes back to the browser: `order` still holds seller data (account email) used above.
+  return NextResponse.json(orderCreateResponse(order as SellerOrderEmailOrder),{status:201});
  }catch(error){
   // Retries used up: the same 409 as before (also for the P2010/40001 form, which returned 500 before SCALE-FIX-1).
   if(isOrderSerializationConflict(error))return NextResponse.json({error:"Sifariş zamanı uyğunluq və ya stok məlumatları dəyişdi. Səbəti yeniləyib yenidən cəhd edin.",code:"TRANSACTION_CONFLICT"},{status:409});

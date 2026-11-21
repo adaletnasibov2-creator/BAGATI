@@ -11,7 +11,8 @@ import { getPublicCategoryData } from "@/lib/public-category-tree";
 import { categoryBreadcrumbs, categoryHref, categorySiblingLinks, findCategoryBySlug, isPublicCategory } from "@/lib/category-tree";
 import { CategoryEmptyState } from "@/components/category-empty-state";
 import { categoryScopeWhere } from "@/lib/category-where";
-import { categoryPageMetadata } from "@/lib/category-seo";
+import { categorySharePreviewMetadata } from "@/lib/share-preview";
+import { getSiteSettings } from "@/lib/site-settings";
 import { CategoryGlyph } from "@/components/category-icon";
 import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
 import type { Metadata } from "next";
@@ -21,13 +22,14 @@ type Props = { searchParams: Promise<{ category?: string; city?: string }> };
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const { category: slug } = await searchParams;
   if (!slug) return { title: "Kateqoriyalar", description: "BAGATI kataloqunun bütün kateqoriyaları və alt kateqoriyaları." };
-  const data = await getPublicCategoryData();
+  const [data, settings] = await Promise.all([getPublicCategoryData(), getSiteSettings()]);
   const lookup = findCategoryBySlug(data.rows, slug);
   // A deactivated category is "not found" publicly: its name never appears in the title.
   const found = lookup && isPublicCategory(data.rows, lookup.category.id) ? lookup : null;
   const visibleCount = found ? data.tree.flatMap((top) => [top, ...top.children]).find((node) => node.id === found.category.id)?.count ?? 0 : 0;
   // Canonical points at the clean /products?category=<slug> URL for the same listing.
-  return categoryPageMetadata({ category: found?.category ?? null, parent: found?.parent ?? null, visibleCount });
+  // SMALL-FIXES-1 D: + share preview (og/twitter) for a public category only; a hidden one stays bare.
+  return categorySharePreviewMetadata({ category: found?.category ?? null, parent: found?.parent ?? null, visibleCount, siteName: settings.siteName });
 }
 
 export default async function CategoriesPage({ searchParams }: Props) {

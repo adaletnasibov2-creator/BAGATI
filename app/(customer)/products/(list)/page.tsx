@@ -13,7 +13,8 @@ import { calculateEffectivePrice, productPromotions } from "@/lib/promotion-pric
 import { normalizeProductCatalogSort } from "@/lib/catalog-sort";
 import { getPublicCategoryData } from "@/lib/public-category-tree";
 import { categoryBreadcrumbs, categorySiblingLinks, findCategoryBySlug, isPublicCategory } from "@/lib/category-tree";
-import { categoryPageMetadata } from "@/lib/category-seo";
+import { categorySharePreviewMetadata } from "@/lib/share-preview";
+import { getSiteSettings } from "@/lib/site-settings";
 import { CategoryFilterTree } from "@/components/category-filter-tree";
 import { categoryFilterHref as buildCategoryFilterHref, type CategoryFilterLink } from "@/lib/category-filter-href";
 import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
@@ -28,12 +29,13 @@ type Props = { searchParams: Promise<{ q?: string; city?: string; category?: str
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
   if (!params.category) return { title: "Məhsullar" };
-  const data = await getPublicCategoryData();
+  const [data, settings] = await Promise.all([getPublicCategoryData(), getSiteSettings()]);
   const lookup = findCategoryBySlug(data.rows, params.category);
   // A deactivated category is "not found" publicly: its name never appears in the title.
   const found = lookup && isPublicCategory(data.rows, lookup.category.id) ? lookup : null;
   const visibleCount = found ? data.tree.flatMap((top) => [top, ...top.children]).find((node) => node.id === found.category.id)?.count ?? 0 : 0;
-  return categoryPageMetadata({ category: found?.category ?? null, parent: found?.parent ?? null, visibleCount });
+  // SMALL-FIXES-1 D: + share preview (og/twitter) for a public category only; a hidden one stays bare.
+  return categorySharePreviewMetadata({ category: found?.category ?? null, parent: found?.parent ?? null, visibleCount, siteName: settings.siteName });
 }
 export default async function ProductsPage({ searchParams }: Props) {
   const params = await searchParams;

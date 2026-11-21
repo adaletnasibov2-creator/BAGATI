@@ -19,6 +19,8 @@ export const STORE_HOURS_TEXTS = {
   help: "Bu, mağazanın iş saatlarıdır. Sifarişlər istənilən vaxt qəbul olunur.",
   inside: "İndi iş saatıdır",
   outside: "İndi iş saatı deyil",
+  /** STORE-HOURS-2 (owner-approved): only when the hours are refused (one field only, equal times, wrong format). */
+  error: "Açılış və bağlanış saatını birlikdə yazın; saatlar eyni ola bilməz.",
 } as const;
 
 /** "09:30" -> 570 minutes after midnight; anything else -> null. */

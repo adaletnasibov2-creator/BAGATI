@@ -36,7 +36,7 @@ import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
 import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
 import { LEGAL_GATE_MESSAGES, SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
-import { normalizeStoreHoursInput } from "@/lib/store-hours";
+import { normalizeStoreHoursInput, STORE_HOURS_TEXTS } from "@/lib/store-hours";
 
 const statuses = ["NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "DELIVERED", "CANCELLED", "RETURNED"] as const;
 const db: any = prisma;
@@ -464,7 +464,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
    // both together or neither (both empty = removed). A request without them leaves the saved hours unchanged.
    const hoursSent=b?.openingTime!==undefined||b?.closingTime!==undefined;
    const hours=hoursSent?normalizeStoreHoursInput({openingTime:b?.openingTime,closingTime:b?.closingTime}):null;
-   if(hours&&!hours.ok)return NextResponse.json({error:"Mağaza və hüquqi məlumatları yoxlayın",field:"storeHours"},{status:422});
+   if(hours&&!hours.ok)return NextResponse.json({error:STORE_HOURS_TEXTS.error,field:"storeHours"},{status:422});
    if(d.mapUrl&&!/^https:\/\//i.test(d.mapUrl))return NextResponse.json({error:"Xəritə linki HTTPS olmalıdır"},{status:422});
    if(d.logoUrl&&!isOwnedStoreAssetUrl(storeId,d.logoUrl))return NextResponse.json({error:"Yalnız bu mağaza üçün yüklənmiş loqodan istifadə edin"},{status:422});
    if(d.bannerUrl&&!isOwnedStoreAssetUrl(storeId,d.bannerUrl))return NextResponse.json({error:"Yalnız bu mağaza üçün yüklənmiş örtük şəklindən istifadə edin"},{status:422});

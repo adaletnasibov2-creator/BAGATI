@@ -63,6 +63,8 @@ test("approved texts are exact; no 'Açıq' / 'Bağlı' and no delivery or answe
     help: "Bu, mağazanın iş saatlarıdır. Sifarişlər istənilən vaxt qəbul olunur.",
     inside: "İndi iş saatıdır",
     outside: "İndi iş saatı deyil",
+    // STORE-HOURS-2: owner-approved error text for refused hours only.
+    error: "Açılış və bağlanış saatını birlikdə yazın; saatlar eyni ola bilməz.",
   });
   for (const file of ["lib/store-hours.ts", "components/store-hours-dot.tsx"]) {
     const code = read(file).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
@@ -178,7 +180,13 @@ test("seller API: both fields validated on the server as a pair, saved together,
   // Read straight from the body, not through the zod object `d`, so the raw values can never reach `...values`.
   assert.match(route, /const hoursSent=b\?\.openingTime!==undefined\|\|b\?\.closingTime!==undefined;/);
   assert.match(route, /const hours=hoursSent\?normalizeStoreHoursInput\(\{openingTime:b\?\.openingTime,closingTime:b\?\.closingTime\}\):null;/);
-  assert.match(route, /if\(hours&&!hours\.ok\)return NextResponse\.json\(\{error:"Mağaza və hüquqi məlumatları yoxlayın",field:"storeHours"\},\{status:422\}\);/);
+  // STORE-HOURS-2: refused hours get the approved hours text (was the generic message); status 422 and field unchanged.
+  assert.match(route, /if\(hours&&!hours\.ok\)return NextResponse\.json\(\{error:STORE_HOURS_TEXTS\.error,field:"storeHours"\},\{status:422\}\);/);
+  // Every other profile validation error keeps the existing generic message.
+  assert.match(route, /if\(!s\.success\)return NextResponse\.json\(\{error:contactPhoneIssue\(s\.error\)\?\?"Mağaza və hüquqi məlumatları yoxlayın"\},\{status:422\}\);/);
+  assert.equal(route.match(/STORE_HOURS_TEXTS\.error/g)?.length, 1, "the hours text is used only for refused hours");
+  // The seller form shows the API's error text as is (role="alert"), so no form change is needed for the new text.
+  assert.match(read("components/vendor-store-profile-editor.tsx"), /if\(!response\.ok\)throw new Error\(data\.error\|\|"Sorğu yerinə yetirilmədi\."\);/);
   const lf = route.replace(/\r\n/g, "\n");
   const schemaStart = lf.indexOf('if(section==="profile"){\n   const s=z.object({');
   const schemaEnd = lf.indexOf("}).safeParse(b);\n   if(!s.success)return NextResponse.json({error:contactPhoneIssue");

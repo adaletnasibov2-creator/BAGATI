@@ -14,6 +14,7 @@ import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-co
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 import { storeMetaDescription } from "@/lib/seo";
+import { storeHoursOf } from "@/lib/store-hours";
 import { getSiteSettings } from "@/lib/site-settings";
 import { canonicalMetadata, shareImage, sharePreviewMetadata } from "@/lib/share-preview";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
@@ -55,6 +56,9 @@ const storeSelect = {
   latitude: true,
   longitude: true,
   contactPhone: true,
+  // STORE-HOURS: information only (line + dot in the header).
+  openingTime: true,
+  closingTime: true,
   // contactEmail is intentionally NOT selected: the store's email must never reach the public page or the browser.
   city: { select: { name: true, isActive: true } },
   vendor: {
@@ -279,6 +283,7 @@ export default async function StorefrontPage({
       messageHref,
       description,
       address: formatStoreAddress(store.address, store.city.name),
+      hours: storeHoursOf(store),
     } satisfies StorefrontBrand}/>
 
     {storeProductCount === 0

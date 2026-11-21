@@ -53,6 +53,8 @@ function storeRecord(id: string, name: string): PublicStoreDiscoveryRecord {
     logoUrl: null,
     latitude: null,
     longitude: null,
+    openingTime: null,
+    closingTime: null,
     city: { name: "Baku", slug: "baku" },
   };
 }
@@ -238,7 +240,8 @@ test("bounded store API response includes the legacy item fields and cursor meta
   const page = await findPublicStoreDiscoveryCursorPage(mockDiscoveryClient([candidate("store-01")]).client, {}, { pageSize: 20 });
   const payload = publicStoreDiscoveryCursorResponse(page);
   assert.deepEqual(Object.keys(payload).sort(), ["hasNext", "hasPrevious", "items", "nextCursor", "pageSize", "previousCursor"].sort());
-  assert.deepEqual(Object.keys(payload.items[0]).sort(), ["city", "description", "id", "latitude", "logoUrl", "longitude", "name", "slug"].sort());
+  // STORE-HOURS: + openingTime / closingTime (public information, already shown on the store page).
+  assert.deepEqual(Object.keys(payload.items[0]).sort(), ["city", "closingTime", "description", "id", "latitude", "logoUrl", "longitude", "name", "openingTime", "slug"].sort());
   assert.equal(payload.items[0].slug, "store-01");
   assert.equal(payload.items[0].city.slug, "baku");
 });

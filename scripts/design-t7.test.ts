@@ -73,12 +73,14 @@ test("store header: cover and logo with fallbacks, Fraunces name, city/address, 
   assert.match(branding, /aspect-\[16\/7\] w-full overflow-hidden sm:aspect-\[4\/1\] lg:aspect-auto lg:h-72/, "fixed cover box: no layout shift");
   assert.match(branding, /fallback=\{<CoverFallback/);
   assert.match(branding, /fallback=\{<span className="grid h-full w-full place-items-center text-3xl font-semibold"/, "logo initial fallback");
-  assert.match(branding, /<h1 className="break-words font-display text-h1 text-fg">\{store\.name\}<\/h1>/);
+  // STORE-HOURS: + min-w-0 (the h1 now sits in a flex row next to the hours dot).
+  assert.match(branding, /<h1 className="min-w-0 break-words font-display text-h1 text-fg">\{store\.name\}<\/h1>/);
   assert.match(branding, /\{store\.address \|\| store\.cityName\}/);
   assert.match(branding, /\{store\.description && <p data-store-short-description="" className="mt-2 line-clamp-2/);
   assert.doesNotMatch(branding, /#C79A52/, "old gold accent replaced by tokens");
   const page = read("app/(customer)/stores/[storeId]/page.tsx");
-  assert.match(page, /description,\n\s*address: formatStoreAddress\(store\.address, store\.city\.name\),\n\s*\} satisfies StorefrontBrand\}\/>/);
+  // STORE-HOURS: + hours (information-only line and dot); \r?\n for a CRLF working copy on Windows.
+  assert.match(page, /description,\r?\n\s*address: formatStoreAddress\(store\.address, store\.city\.name\),\r?\n\s*hours: storeHoursOf\(store\),\r?\n\s*\} satisfies StorefrontBrand\}\/>/);
   for (const path of ["components/storefront-branding.tsx", "components/storefront-contact.tsx", "app/(customer)/stores/[storeId]/page.tsx"]) {
     assert.doesNotMatch(read(path), /outline-\[#C79A52\]/, `${path}: green focus ring`);
   }

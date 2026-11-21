@@ -568,6 +568,10 @@ model Store {
   /// notificationEmailVerifiedAt is set; changing the address clears it. The seller's account email always receives them.
   notificationEmail           String?                         @db.VarChar(254)
   notificationEmailVerifiedAt DateTime?
+  /// Optional opening hours, ONE range for every day, "HH:MM" (STORE-HOURS). Both set or both NULL, never equal; a closing
+  /// time earlier than the opening time is overnight. Information only: never read by order/cart/checkout/payment/email.
+  openingTime                 String?                         @db.VarChar(5)
+  closingTime                 String?                         @db.VarChar(5)
   createdAt                   DateTime                        @default(now())
   updatedAt                   DateTime                        @updatedAt
   vendor                      VendorProfile                   @relation(fields: [vendorId], references: [id])

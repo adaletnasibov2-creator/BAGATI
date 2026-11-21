@@ -46,6 +46,9 @@ const storeSelect = {
   logoUrl: true,
   latitude: true,
   longitude: true,
+  // STORE-HOURS: information-only dot on /stores cards; same query, no extra read.
+  openingTime: true,
+  closingTime: true,
   city: { select: { name: true, slug: true } },
 } satisfies Prisma.StoreSelect;
 

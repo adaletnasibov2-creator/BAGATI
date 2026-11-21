@@ -19,6 +19,9 @@ import { CategoryFilterTree } from "@/components/category-filter-tree";
 import { categoryFilterHref as buildCategoryFilterHref, type CategoryFilterLink } from "@/lib/category-filter-href";
 import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
 import type { Metadata } from "next";
+import { buttonClass } from "@/components/ui/button";
+import { cx, focusRing } from "@/components/ui/cx";
+import { controlClass } from "@/components/ui/field";
 import { normalizePublicSearchTerm, PRODUCT_SEARCH_MAX_LENGTH } from "@/lib/search-term";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 
@@ -108,12 +111,13 @@ export default async function ProductsPage({ searchParams }: Props) {
     <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald">BAGATI kataloqu</p><h1 className="mt-2 text-3xl font-semibold text-ink md:text-4xl">{searchQuery ? `“${searchQuery}” üçün nəticələr` : selectedCategory ? selectedCategory.category.name : "Məhsullar"}</h1>
     {search.tooLong && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{"Axtar\u0131\u015f s\u00f6z\u00fc " + PRODUCT_SEARCH_MAX_LENGTH + " simvoldan uzun ola bilm\u0259z. Q\u0131sa axtar\u0131\u015f daxil edin."}</p>}
     {invalidCursor && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Səhifə keçidi etibarsızdır. İlk səhifə göstərilir.</p>}
-    <form action="/products" className="mt-7 grid gap-3 rounded-2xl border border-line bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
-      <input name="q" maxLength={PRODUCT_SEARCH_MAX_LENGTH} defaultValue={searchQuery} placeholder="Məhsul axtar" className="rounded-xl border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-emerald" aria-label="Məhsul axtar"/>
-      {params.category ? <p className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl border border-line bg-paper px-4 text-sm"><input type="hidden" name="category" value={params.category}/><span className="min-w-0 truncate">Kateqoriya: <b>{selectedCategory?.category.name ?? params.category}</b></span><Link href={categoryFilterHref(null)} aria-label="Kateqoriya filtrini sil" className="ml-auto shrink-0 text-muted hover:text-ink">×</Link></p> : <span className="hidden lg:block" aria-hidden="true"/>}
+    {/* DESIGN-T10: shared control style and button (visible focus ring); texts, field names and the GET form unchanged. */}
+    <form action="/products" data-products-search-form="" className="mt-7 grid gap-3 rounded-card border border-line bg-white p-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+      <input name="q" maxLength={PRODUCT_SEARCH_MAX_LENGTH} defaultValue={searchQuery} placeholder="Məhsul axtar" className={controlClass()} aria-label="Məhsul axtar"/>
+      {params.category ? <p className="flex min-h-12 min-w-0 items-center gap-2 rounded-control border border-line bg-surface-sunken px-4 text-sm"><input type="hidden" name="category" value={params.category}/><span className="min-w-0 truncate">Kateqoriya: <b>{selectedCategory?.category.name ?? params.category}</b></span><Link href={categoryFilterHref(null)} aria-label="Kateqoriya filtrini sil" className={cx("ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-sm text-lg text-fg-muted hover:text-fg", focusRing)}>×</Link></p> : <span className="hidden lg:block" aria-hidden="true"/>}
       <StoreFilterSelect initialOptions={storeOptions} initialSelected={visibleSelectedStore?.id ?? ""} city={params.city ?? ""} />
-      <select name="sort" defaultValue={sort} aria-label="Məhsulları sırala" className="rounded-xl border border-line bg-white px-4 py-3 text-sm"><option value="newest">Ən yenilər</option><option value="name">Ad: A–Z</option></select>
-      {params.city && <input type="hidden" name="city" value={params.city}/>}<button className="rounded-xl bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-emerald">Axtar və filtrlə</button>
+      <select name="sort" defaultValue={sort} aria-label="Məhsulları sırala" className={cx(controlClass(), "cursor-pointer")}><option value="newest">Ən yenilər</option><option value="name">Ad: A–Z</option></select>
+      {params.city && <input type="hidden" name="city" value={params.city}/>}<button type="submit" className={buttonClass({ pill: false })}>Axtar və filtrlə</button>
     </form>
     <details className="mt-5 lg:hidden">
       <summary className="flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-white px-4 text-sm font-medium">Kateqoriyalar{selectedCategory ? `: ${selectedCategory.category.name}` : ""}</summary>

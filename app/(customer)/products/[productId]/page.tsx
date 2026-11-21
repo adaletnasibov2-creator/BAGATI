@@ -15,7 +15,7 @@ import { publicProductVisibilityWhere } from "@/lib/store-visibility";
 import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { messageEntryForViewer } from "@/lib/messaging-pages";
 import { shortenMetaText } from "@/lib/seo";
-import { shareImage, sharePreviewMetadata } from "@/lib/share-preview";
+import { canonicalMetadata, shareImage, sharePreviewMetadata } from "@/lib/share-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +105,8 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
     title: product.name,
     ...(description ? { description } : {}),
     ...sharePreviewMetadata({ title: product.name, description, path: `/products/${product.id}`, siteName: settings.siteName, image: shareImage([product.images[0]], product.name) }),
+    // SMALL-FIXES-1 C: rel=canonical = og:url (absolute from APP_BASE_URL).
+    ...canonicalMetadata(`/products/${product.id}`),
   };
 }
 

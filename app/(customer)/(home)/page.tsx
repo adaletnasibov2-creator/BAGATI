@@ -16,10 +16,28 @@ import { getPublicCategoryData } from "@/lib/public-category-tree";
 import type { HomepageCampaign } from "@/lib/homepage-campaign-products";
 import { resolveActiveCity } from "@/lib/city-resolution";
 import { availableStock, getHomePageData, type HomeProduct } from "@/lib/home-page-data";
+import type { Metadata } from "next";
+import { getSetting } from "@/lib/settings/read";
+import { SETTING_KEYS } from "@/lib/settings/registry";
+import { homeSharePreviewMetadata } from "@/lib/share-preview";
 
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ city?: string }> };
+
+/**
+ * SMALL-FIXES-1 D: share preview (og:* / twitter:*) for the home page from the existing settings only (same cached
+ * reads as the root layout). The <title> and description stay the root defaults; og:url is the site root.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const [settings, description, ogTitle, ogDescription] = await Promise.all([
+    getSiteSettings(),
+    getSetting<string>(SETTING_KEYS.seoDefaultDescription),
+    getSetting<string>(SETTING_KEYS.seoDefaultOgTitle),
+    getSetting<string>(SETTING_KEYS.seoDefaultOgDescription),
+  ]);
+  return homeSharePreviewMetadata({ siteName: settings.siteName, description: description ?? null, ogTitle: ogTitle ?? null, ogDescription: ogDescription ?? null });
+}
 
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;

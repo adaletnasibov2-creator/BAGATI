@@ -15,7 +15,7 @@ import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 import { storeMetaDescription } from "@/lib/seo";
 import { getSiteSettings } from "@/lib/site-settings";
-import { shareImage, sharePreviewMetadata } from "@/lib/share-preview";
+import { canonicalMetadata, shareImage, sharePreviewMetadata } from "@/lib/share-preview";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
 import { productCardScalarSelect, productCardStockSelect, productCardStoreSelect } from "@/lib/product-card-select";
 import StorefrontBranding, { type StorefrontBrand } from "@/components/storefront-branding";
@@ -138,6 +138,8 @@ export async function generateMetadata({
     title: store.name,
     description,
     ...sharePreviewMetadata({ title: store.name, description, path: `/stores/${store.id}`, siteName: settings.siteName, image: shareImage([banner, logo], store.name) }),
+    // SMALL-FIXES-1 C: rel=canonical = og:url (same /stores/{id} form, absolute from APP_BASE_URL).
+    ...canonicalMetadata(`/stores/${store.id}`),
   };
 }
 

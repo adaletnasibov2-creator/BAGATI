@@ -6,7 +6,8 @@
  * a valid base, og:url and og:image are left out rather than pointing at localhost. Images must end up https.
  */
 import type { Metadata } from "next";
-import { absoluteSiteUrl } from "@/lib/category-seo";
+import { absoluteSiteUrl, categoryPageMetadata } from "@/lib/category-seo";
+import { categoryHref } from "@/lib/category-tree";
 
 /**
  * Fallback share image: the existing brand mark in public/ (1664×928, close to the 1.91:1 share format). It is the
@@ -70,5 +71,45 @@ export function sharePreviewMetadata(input: {
       ...(input.description ? { description: input.description } : {}),
       ...(images ? { images: images.map((image) => image.url) } : {}),
     },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// SMALL-FIXES-1 C + D
+
+/**
+ * rel=canonical for a public store or product page: the same absolute URL as og:url (same `path`, same base rule).
+ * Without a valid APP_BASE_URL it is left out, like og:url. Non-public pages never call this (their metadata is {}).
+ */
+export function canonicalMetadata(path: string, base: string | undefined = process.env.APP_BASE_URL): Pick<Metadata, "alternates"> {
+  const url = absoluteSiteUrl(path, base);
+  return url ? { alternates: { canonical: url } } : {};
+}
+
+/**
+ * Home page share preview from the existing site settings only: the admin's Open Graph title/description when set,
+ * else the site name and the default SEO description. og:url is the site root; image = the default share image.
+ * The page's <title> is not set here (the root layout's default title stays).
+ */
+export function homeSharePreviewMetadata(input: { siteName: string; description: string | null; ogTitle: string | null; ogDescription: string | null; base?: string }): Pick<Metadata, "openGraph" | "twitter"> {
+  const title = input.ogTitle?.trim() || input.siteName;
+  const description = input.ogDescription?.trim() || input.description?.trim() || undefined;
+  return sharePreviewMetadata({ title, description, path: "/", siteName: input.siteName, image: shareImage([], title, input.base ?? process.env.APP_BASE_URL), base: input.base });
+}
+
+/**
+ * Category page: categoryPageMetadata (title, description, canonical, noindex) plus the full share preview.
+ * Only for a public category: an unknown, inactive or hidden one keeps the bare "not found" metadata, so its name
+ * and image never reach the head. Image: the category's own photo when it is an owned/https URL, else the default.
+ */
+export function categorySharePreviewMetadata(input: Parameters<typeof categoryPageMetadata>[0] & { category: { name: string; slug: string; isActive: boolean; imageUrl?: string | null } | null; siteName: string }): Metadata {
+  const metadata = categoryPageMetadata(input);
+  if (!input.category) return metadata;
+  const title = typeof metadata.title === "string" ? metadata.title : input.category.name;
+  const description = typeof metadata.description === "string" ? metadata.description : undefined;
+  const base = input.base ?? process.env.APP_BASE_URL;
+  return {
+    ...metadata,
+    ...sharePreviewMetadata({ title, description, path: categoryHref(input.category.slug), siteName: input.siteName, image: shareImage([input.category.imageUrl], title, base), base }),
   };
 }

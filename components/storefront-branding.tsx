@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { BadgeCheck, Mail, MapPin, MessageCircle, Store } from "lucide-react";
+import { BadgeCheck, Clock, Mail, MapPin, MessageCircle, Store } from "lucide-react";
 import StorefrontImage from "@/components/storefront-image";
 import { getStorefrontTheme } from "@/lib/storefront-themes";
+import { StoreHoursDot } from "@/components/store-hours-dot";
+import { storeHoursLine, type StoreHours } from "@/lib/store-hours";
 
 /**
  * Public store header. Deliberately has no email field: the store's email address must never reach
@@ -26,6 +28,8 @@ export type StorefrontBrand = {
   description?: string | null;
   /** The store's address with the city (lib/store-public-contact formatStoreAddress), only when the store has one. */
   address?: string | null;
+  /** STORE-HOURS: the store's own valid hours (lib/store-hours storeHoursOf), else null: then no line and no dot. */
+  hours?: StoreHours | null;
 };
 
 // Green focus ring of the public design system (DESIGN-T7; gold on white was 2.57:1).
@@ -61,13 +65,22 @@ export default function StorefrontBranding({ store }: { store: StorefrontBrand }
           />
         </div>
         <div className="min-w-0 flex-1 sm:min-w-[18rem] sm:pt-4">
-          <h1 className="break-words font-display text-h1 text-fg">{store.name}</h1>
+          {/* STORE-HOURS: the dot sits next to the name, outside the h1 (the heading stays the store name only). */}
+          <div className="flex items-center gap-2.5">
+            <h1 className="min-w-0 break-words font-display text-h1 text-fg">{store.name}</h1>
+            {store.hours && <StoreHoursDot openingTime={store.hours.openingTime} closingTime={store.hours.closingTime}/>}
+          </div>
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-secondary">
             {store.sellerVerified && <>
               <span data-seller-verified className="inline-flex items-center gap-1.5 font-medium" style={{ color: colors.accent }}><BadgeCheck size={16} aria-hidden="true"/>Təsdiqlənmiş satıcı</span>
               <span aria-hidden="true" className="text-line">•</span>
             </>}
             <span className="inline-flex items-center gap-1.5"><MapPin size={15} aria-hidden="true"/>{store.address || store.cityName}</span>
+            {/* Static text from the server (the same at every minute, so cache-safe); the dot above is decided in the browser. */}
+            {store.hours && <>
+              <span aria-hidden="true" className="text-line">•</span>
+              <span data-store-hours-line="" className="inline-flex items-center gap-1.5"><Clock size={15} aria-hidden="true"/>{storeHoursLine(store.hours)}</span>
+            </>}
           </p>
           {store.description && <p data-store-short-description="" className="mt-2 line-clamp-2 max-w-2xl break-words text-sm leading-6 text-fg-secondary">{store.description}</p>}
         </div>

@@ -36,6 +36,7 @@ import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
 import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
 import { LEGAL_GATE_MESSAGES, SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
+import { normalizeStoreHoursInput, STORE_HOURS_TEXTS } from "@/lib/store-hours";
 
 const statuses = ["NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "DELIVERED", "CANCELLED", "RETURNED"] as const;
 const db: any = prisma;
@@ -79,7 +80,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
     select:{
      id:true,name:true,slug:true,description:true,logoUrl:true,cityId:true,address:true,latitude:true,longitude:true,mapUrl:true,
      contactPhone:true,contactEmail:true,freeDeliveryThreshold:true,deliveryFee:true,status:true,isActive:true,
-     legalInfoApproved:true,reviewNote:true,
+     legalInfoApproved:true,reviewNote:true,openingTime:true,closingTime:true,
      city:{select:{id:true,name:true}},
      subscription:{select:{status:true,plan:{select:{name:true,monthlyPrice:true}}}},
      vendor:{select:{displayName:true,phone:true,sellerType:true,legalName:true,voen:true,legalAddress:true,user:{select:{email:true,isActive:true}}}},
@@ -459,6 +460,11 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
    if(!s.success)return NextResponse.json({error:contactPhoneIssue(s.error)??"Mağaza və hüquqi məlumatları yoxlayın"},{status:422});
    const d=s.data;
    if((d.latitude===null)!==(d.longitude===null))return NextResponse.json({error:"Koordinatlar birlikdə daxil edilməlidir"},{status:422});
+   // STORE-HOURS: read straight from the body (not part of `d`, so never spread into the update): "HH:MM" or empty,
+   // both together or neither (both empty = removed). A request without them leaves the saved hours unchanged.
+   const hoursSent=b?.openingTime!==undefined||b?.closingTime!==undefined;
+   const hours=hoursSent?normalizeStoreHoursInput({openingTime:b?.openingTime,closingTime:b?.closingTime}):null;
+   if(hours&&!hours.ok)return NextResponse.json({error:STORE_HOURS_TEXTS.error,field:"storeHours"},{status:422});
    if(d.mapUrl&&!/^https:\/\//i.test(d.mapUrl))return NextResponse.json({error:"Xəritə linki HTTPS olmalıdır"},{status:422});
    if(d.logoUrl&&!isOwnedStoreAssetUrl(storeId,d.logoUrl))return NextResponse.json({error:"Yalnız bu mağaza üçün yüklənmiş loqodan istifadə edin"},{status:422});
    if(d.bannerUrl&&!isOwnedStoreAssetUrl(storeId,d.bannerUrl))return NextResponse.json({error:"Yalnız bu mağaza üçün yüklənmiş örtük şəklindən istifadə edin"},{status:422});
@@ -467,7 +473,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
    const owned=await db.store.findFirst({
     where:{id:storeId,vendor:{userId:access.user.id}},
     select:{
-      id:true,status:true,vendorId:true,name:true,slug:true,description:true,logoUrl:true,
+      id:true,status:true,vendorId:true,name:true,slug:true,description:true,logoUrl:true,openingTime:true,closingTime:true,
      vendor:{select:{sellerType:true,legalName:true,voen:true,legalAddress:true}},
     },
    });
@@ -487,6 +493,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     return NextResponse.json({error:"Mağaza örtüyü və rəng mövzusu bazada hələ saxlanıla bilmir. Admin mağaza görünüşü miqrasiyasını ayrıca tətbiq etdikdən sonra yenidən cəhd edin.",code:"STOREFRONT_BRANDING_MIGRATION_REQUIRED"},{status:409});
    }
    const {logoUrl,bannerUrl,theme,sellerType,legalName,voen,legalAddress,...values}=d;
+   const hoursPatch=hours&&hours.ok?hours.value:null;
    const legalPatch={
     ...(sellerType!==undefined?{sellerType:sellerType||null}:{}),
     ...(legalName!==undefined?{legalName:legalName||null}:{}),
@@ -504,6 +511,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     ...((logoUrl||null)!==owned.logoUrl?["logoUrl"]:[]),
     ...(branding.available&&(bannerUrl||null)!==branding.bannerUrl?["bannerUrl"]:[]),
     ...(branding.available&&theme!==undefined&&theme!==branding.theme?["theme"]:[]),
+    ...(hoursPatch&&(hoursPatch.openingTime!==owned.openingTime||hoursPatch.closingTime!==owned.closingTime)?["businessHours"]:[]),
    ];
     try{
     const store=await db.$transaction(async(tx:any)=>{
@@ -518,6 +526,7 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
       ...(logoUrl!==undefined?{logoUrl:logoUrl||null}:{}),
       ...(branding.available&&bannerUrl!==undefined?{bannerUrl:bannerUrl||null}:{}),
       ...(branding.available&&theme!==undefined?{theme}:{}),
+      ...(hoursPatch?{openingTime:hoursPatch.openingTime,closingTime:hoursPatch.closingTime}:{}),
       ...(["DRAFT","REJECTED"].includes(owned.status)?{status:"DRAFT",isActive:false}:{}),
      },
       select:{id:true,name:true,slug:true},

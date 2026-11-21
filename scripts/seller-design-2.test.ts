@@ -161,7 +161,8 @@ test("Mağazam: grouped cards, logo and cover upload boxes with preview, setup b
   const editor = read("components/vendor-store-profile-editor.tsx");
   const form = editor.slice(editor.indexOf("<form ref={profileForm} onSubmit={save}"), editor.indexOf("</form>"));
   assert.ok(form.length > 0, "same form element and submit handler");
-  assert.equal(form.match(/<section data-vendor-form-section=""/g)?.length, 7);
+  // STORE-HOURS added one card ("İş saatları", data-store-hours-section): 7 -> 8.
+  assert.equal(form.match(/<section data-vendor-form-section=""/g)?.length, 8);
   for (const title of ["Mağaza ünvanı", "MAĞAZA GÖRÜNÜŞÜ", "ƏLAQƏ MƏLUMATLARI", "SATICI / HÜQUQİ MƏLUMATLAR", "ÇATDIRILMA QİYMƏTLƏRİ", "YERLƏŞMƏ", "ABUNƏLİK"]) assert.ok(form.includes(`sectionHead("${title}")`), title);
   assert.match(form, /uploadBox\("Yüklənir…","Loqo yüklə","logo"\)/);
   assert.match(form, /uploadBox\("Yüklənir…","Örtük şəkli yüklə","banner"\)/);

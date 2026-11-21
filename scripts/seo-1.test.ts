@@ -299,7 +299,8 @@ test("product page: JSON-LD only after the 404 checks, escaped, from the page's 
   const built = body.indexOf("const structuredData = serializeJsonLd(productJsonLd({");
   assert.ok(lastNotFound > 0 && built > lastNotFound, "built after every notFound()");
   assert.ok(body.indexOf("const variants = product.variants.map") < built);
-  assert.match(body, /unitPrice: effective\.unitPrice\.toFixed\(2\),\n    stock,\n    variants,/);
+  // \r?\n: the working copy may be CRLF on Windows (core.autocrlf); the committed file is LF.
+  assert.match(body, /unitPrice: effective\.unitPrice\.toFixed\(2\),\r?\n    stock,\r?\n    variants,/);
   assert.match(body, /<script type="application\/ld\+json" dangerouslySetInnerHTML=\{\{ __html: structuredData \}\}\/>/);
   assert.equal(page.match(/application\/ld\+json/g)?.length, 1);
   const metadataBody = page.slice(page.indexOf("export async function generateMetadata"), page.indexOf("export default async function ProductPage"));

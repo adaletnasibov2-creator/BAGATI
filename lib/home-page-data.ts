@@ -41,6 +41,9 @@ export type HomeStore = {
   latitude: number | null;
   longitude: number | null;
   city: { name: string };
+  /** STORE-HOURS: information-only dot on the home store cards (decided in the browser, so the 30 s cache is fine). */
+  openingTime: string | null;
+  closingTime: string | null;
 };
 export type HomeProduct = {
   id: string;
@@ -108,6 +111,8 @@ export async function loadHomePageData(db: PrismaClient, city: HomeCity | null, 
         logoUrl: true,
         latitude: true,
         longitude: true,
+        openingTime: true,
+        closingTime: true,
         city: { select: { name: true } },
       },
     }),
@@ -195,7 +200,7 @@ export async function loadHomePageData(db: PrismaClient, city: HomeCity | null, 
     featuredStoreIds.length
       ? db.store.findMany({
           where: { ...storeFilter, id: { in: featuredStoreIds } },
-          select: { id: true, name: true, description: true, logoUrl: true, latitude: true, longitude: true, city: { select: { name: true } } },
+          select: { id: true, name: true, description: true, logoUrl: true, latitude: true, longitude: true, openingTime: true, closingTime: true, city: { select: { name: true } } },
         })
       : Promise.resolve([]),
   ]);

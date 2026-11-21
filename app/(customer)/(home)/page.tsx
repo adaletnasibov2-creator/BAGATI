@@ -19,7 +19,7 @@ import { availableStock, getHomePageData, type HomeProduct } from "@/lib/home-pa
 import type { Metadata } from "next";
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
-import { homeSharePreviewMetadata } from "@/lib/share-preview";
+import { canonicalMetadata, homeSharePreviewMetadata } from "@/lib/share-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,8 @@ export async function generateMetadata(): Promise<Metadata> {
     getSetting<string>(SETTING_KEYS.seoDefaultOgTitle),
     getSetting<string>(SETTING_KEYS.seoDefaultOgDescription),
   ]);
-  return homeSharePreviewMetadata({ siteName: settings.siteName, description: description ?? null, ogTitle: ogTitle ?? null, ogDescription: ogDescription ?? null });
+  // SMALL-FIXES-2: + rel=canonical to the site root (= og:url), absolute from APP_BASE_URL, left out without a valid base.
+  return { ...homeSharePreviewMetadata({ siteName: settings.siteName, description: description ?? null, ogTitle: ogTitle ?? null, ogDescription: ogDescription ?? null }), ...canonicalMetadata("/") };
 }
 
 export default async function HomePage({ searchParams }: Props) {

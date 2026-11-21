@@ -38,7 +38,7 @@ export default function VendorReviews({ storeId }: { storeId: string }) {
     {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
     {loading ? <div className="rounded-2xl border border-[#e9e4da] bg-white p-6 text-sm text-slate-500" role="status">Rəylər yüklənir…</div>
       : items.length ? <div className="grid gap-3">{items.map((item) => <article key={item.id} className="rounded-2xl border border-[#e9e4da] bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-2"><b className="min-w-0 break-words text-[#142d38]">{item.product.name}</b>{stars(item.rating)}</div><p className="mt-2 whitespace-pre-line break-words text-sm text-slate-700">{item.comment || "Alıcı yalnız ulduz qiyməti verib."}</p><p className="mt-2 text-xs text-slate-500">{item.author} · {new Date(item.createdAt).toLocaleDateString("az-AZ")}</p></article>)}</div>
-      : <div className="rounded-2xl border border-[#e9e4da] bg-white p-8 text-center text-sm text-slate-500">{rating ? "Bu qiymətlə rəy yoxdur." : "Hələ rəy yoxdur. Alıcılar məhsul aldıqdan sonra rəy yaza bilər."}</div>}
+      : <div className="rounded-2xl border border-[#e9e4da] bg-white p-8 text-center text-sm text-slate-500">{rating ? "Bu qiymətlə rəy yoxdur." : "Hələ rəy yoxdur."}</div>}
     <p className="text-xs text-slate-500">Rəylər alıcılara məxsusdur və satıcı tərəfindən dəyişdirilə və ya silinə bilməz. Rəyə cavab yazmaq və uyğunsuz rəyi bildirmək imkanı hazırda mövcud deyil.</p>
   </div>;
 }

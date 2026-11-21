@@ -127,8 +127,9 @@ test("D: home share preview from the settings, og:url = site root, default image
 });
 
 test("D: home page wires the helper without changing the visible page", () => {
+  // SMALL-FIXES-2 (owner decision): the home page also gets canonicalMetadata("/") next to the share preview.
   const page = read("app/(customer)/(home)/page.tsx");
-  assert.match(page, /export async function generateMetadata\(\): Promise<Metadata> \{[\s\S]*return homeSharePreviewMetadata\(\{ siteName: settings\.siteName, description: description \?\? null, ogTitle: ogTitle \?\? null, ogDescription: ogDescription \?\? null \}\);\n\}/);
+  assert.match(page, /export async function generateMetadata\(\): Promise<Metadata> \{[\s\S]*return \{ \.\.\.homeSharePreviewMetadata\(\{ siteName: settings\.siteName, description: description \?\? null, ogTitle: ogTitle \?\? null, ogDescription: ogDescription \?\? null \}\), \.\.\.canonicalMetadata\("\/"\) \};\n\}/);
   const meta = page.slice(page.indexOf("export async function generateMetadata"), page.indexOf("export default async function HomePage"));
   assert.doesNotMatch(meta, /title:/, "the <title> stays the root default");
 });

@@ -16,6 +16,7 @@ import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { messageEntryForViewer } from "@/lib/messaging-pages";
 import { shortenMetaText } from "@/lib/seo";
 import { canonicalMetadata, shareImage, sharePreviewMetadata } from "@/lib/share-preview";
+import { productJsonLd, serializeJsonLd } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -153,12 +154,27 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
     };
   });
 
+  // SEO-1: schema.org Product from what this page shows (price, stock, store), only after the 404 checks above.
+  // No rating/review/shipping/returns. serializeJsonLd escapes "<" so seller text cannot close the script tag.
+  const structuredData = serializeJsonLd(productJsonLd({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    images: product.images,
+    sku: product.sku,
+    storeName: product.store.name,
+    unitPrice: effective.unitPrice.toFixed(2),
+    stock,
+    variants,
+  }));
+
   // A deactivated category (or a subcategory under a deactivated parent) is hidden publicly: the product stays
   // reachable and purchasable, but its breadcrumb and "Kateqoriya" line do not link to the hidden category.
   const publicCategory = product.category && product.category.isActive && (!product.category.parent || product.category.parent.isActive) ? product.category : null;
 
   return (
     <div className="container py-6 md:py-10">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }}/>
       <nav aria-label="Breadcrumb" className="mb-6 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
         <Link href="/" className="shrink-0 hover:text-primary">Ana səhifə</Link>
         {publicCategory?.parent && <>

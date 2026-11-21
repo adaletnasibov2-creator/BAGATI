@@ -20,6 +20,7 @@ import type { Metadata } from "next";
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 import { canonicalMetadata, homeSharePreviewMetadata } from "@/lib/share-preview";
+import { homeJsonLd, serializeJsonLd } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -57,9 +58,12 @@ export default async function HomePage({ searchParams }: Props) {
   ]);
   const { banners, featuredProducts, popular, newestVisible, promotionalById, discounted, eligibleCampaigns, homepageStores, storesAreFeatured, hasHomepageContent } = home;
   const orderedCategories = categories;
+  // SEO-1: WebSite + Organization (name, url, logo); left out without a valid APP_BASE_URL. No SearchAction.
+  const siteJsonLd = homeJsonLd();
 
   return (
     <div className="overflow-hidden bg-bagati-page text-bagati-deep">
+      {siteJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(siteJsonLd) }}/>}
       <section className="container pb-6 pt-3 sm:pb-8 sm:pt-5">
         <HeroCarousel banners={banners} />
         {/* Measures the space above the hero before first paint, so from 1024 px the hero fits the first screen. */}

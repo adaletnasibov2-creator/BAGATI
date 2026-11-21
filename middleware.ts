@@ -12,8 +12,9 @@ export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
   if (canonical) return NextResponse.redirect(canonical, 308);
   const { pathname } = request.nextUrl;
-  // Maintenance mode (lib/maintenance.ts): customer and seller pages and APIs get 503; the admin panel, payment
-  // callbacks, readiness and static files stay reachable. The state is cached 10 s and fails open.
+  // Maintenance mode (lib/maintenance.ts): customer and seller pages and APIs get 503 (designed static page / JSON); the
+  // admin panel, the Epoint callback and payment check, health/readiness and static files stay reachable. The state is
+  // cached 10 s while open and 1 s while closed (lib/maintenance-state.ts), and fails open.
   if (!isMaintenanceExempt(pathname)) {
     // BAGATI_INTERNAL_ORIGIN (Node port, e.g. http://127.0.0.1:3000) when set and valid: behind the proxy the request
     // origin is "https://localhost:<port>", which cannot be fetched (lib/maintenance-origin.ts).

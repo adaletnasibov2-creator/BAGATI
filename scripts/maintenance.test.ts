@@ -7,8 +7,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { NextRequest } from "next/server";
-import { isMaintenanceExempt, maintenanceHtml, maintenanceResponse, MAINTENANCE_RETRY_AFTER_SECONDS } from "../lib/maintenance";
-import { maintenanceState, MAINTENANCE_STATE_TTL_MS, resetMaintenanceStateCache } from "../lib/maintenance-state";
+import { isMaintenanceExempt, maintenanceHtml, maintenanceResponse, MAINTENANCE_PAGE_TEXT, MAINTENANCE_RETRY_AFTER_SECONDS } from "../lib/maintenance";
+import { maintenanceState, MAINTENANCE_STATE_ON_TTL_MS, MAINTENANCE_STATE_TTL_MS, resetMaintenanceStateCache } from "../lib/maintenance-state";
 import { MAINTENANCE_MESSAGE_DEFAULT } from "../lib/maintenance-defaults";
 
 const read = (path: string) => readFileSync(join(__dirname, "..", path), "utf8");
@@ -17,7 +17,9 @@ const ALLOWED = [
   "/admin", "/admin/login", "/admin/settings", "/admin/stores/abc",
   "/api/admin", "/api/admin/login", "/api/admin/login/2fa", "/api/admin/settings/maintenance.enabled",
   "/api/ready", "/api/health", "/api/maintenance-state", "/api/auth/logout",
-  "/api/payments/epoint/callback", "/api/payments/epoint/initiate", "/api/payments/epoint/reconcile",
+  // MAINTENANCE-PAGE: only the Epoint callback and the payment check stay open (they settle money already paid);
+  // /api/payments/epoint/initiate (start a NEW payment) is now blocked, see BLOCKED.
+  "/api/payments/epoint/callback", "/api/payments/epoint/reconcile",
   "/api/security/ingest/cloudflare",
   "/_next/static/chunks/main.js", "/favicon.ico", "/images/home/slide.webp", "/uploads/vendors/x/logo.png", "/robots.txt",
 ];
@@ -26,6 +28,8 @@ const BLOCKED = [
   "/vendor", "/vendor/login", "/vendor/apply", "/terms", "/contact",
   "/api/cart", "/api/orders", "/api/auth/login", "/api/auth/vendor-login", "/api/auth/register", "/api/vendor/stores", "/api/products",
   "/admins", "/administrator", "/api/administrator", "/api/paymentsx", "/api/readyx", "/products/item.v2",
+  // MAINTENANCE-PAGE: starting a new payment and any other future /api/payments/* route are blocked by default.
+  "/api/payments/epoint/initiate", "/api/payments/epoint/other", "/api/payments/epoint/callbackx",
 ];
 
 test("allow-list: admin, admin APIs and login, payment callbacks, readiness, logout, static files", () => {
@@ -39,7 +43,9 @@ test("everything else is blocked: customer and seller pages and APIs, look-alike
   assert.equal(isMaintenanceExempt("/stores/my.store"), false);
 });
 
-test("responses: 503 with Retry-After and no caching; JSON for APIs, HTML page otherwise; message escaped", async () => {
+test("responses: 503 with Retry-After and no caching; JSON for APIs, HTML page otherwise; the page never shows the message", async () => {
+  // MAINTENANCE-PAGE (owner-approved texts): the page shows only the approved title/body/footnote, never the admin
+  // message (so nothing from the setting can be injected into it); the API error keeps the message as before.
   const page = maintenanceResponse("/products", "Sabah 10:00-a qədər <script>alert(1)</script>");
   assert.equal(page.status, 503);
   assert.equal(page.headers.get("retry-after"), String(MAINTENANCE_RETRY_AFTER_SECONDS));
@@ -47,13 +53,12 @@ test("responses: 503 with Retry-After and no caching; JSON for APIs, HTML page o
   assert.match(page.headers.get("content-type") ?? "", /text\/html/);
   const html = await page.text();
   assert.match(html, /<html lang="az">/);
-  assert.match(html, /Texniki işlər aparılır/);
-  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
-  assert.doesNotMatch(html, /<script>/);
+  assert.ok(html.includes(`<h1>${MAINTENANCE_PAGE_TEXT.title}</h1>`));
+  assert.doesNotMatch(html, /Sabah 10:00|alert\(1\)|<script/);
+  assert.equal(html, maintenanceHtml(), "static: the same bytes for every request");
   const api = maintenanceResponse("/api/cart", "Texniki iş");
   assert.equal(api.status, 503);
   assert.deepEqual(await api.json(), { error: "Texniki iş", code: "MAINTENANCE" });
-  assert.match(maintenanceHtml('"&\''), /&quot;&amp;&#39;/);
 });
 
 test("state: default off, cached for 10 s, fails open, keeps the last known state on later failures", async () => {
@@ -61,10 +66,11 @@ test("state: default off, cached for 10 s, fails open, keeps the last known stat
   let calls = 0;
   const on: typeof fetch = async () => { calls += 1; return Response.json({ enabled: true, message: "Bağlıyıq" }); };
   assert.deepEqual(await maintenanceState("http://localhost:3000", on, 1_000), { enabled: true, message: "Bağlıyıq" });
-  await maintenanceState("http://localhost:3000", on, 1_000 + MAINTENANCE_STATE_TTL_MS - 1);
-  assert.equal(calls, 1, "cached within the TTL");
+  // MAINTENANCE-PAGE: an ON answer is kept only MAINTENANCE_STATE_ON_TTL_MS (1 s), so switching off shows at once.
+  await maintenanceState("http://localhost:3000", on, 1_000 + MAINTENANCE_STATE_ON_TTL_MS - 1);
+  assert.equal(calls, 1, "cached within the ON TTL");
   const failing: typeof fetch = async () => { throw new Error("network"); };
-  assert.equal((await maintenanceState("http://localhost:3000", failing, 1_000 + MAINTENANCE_STATE_TTL_MS)).enabled, true, "last known state kept");
+  assert.equal((await maintenanceState("http://localhost:3000", failing, 1_000 + MAINTENANCE_STATE_ON_TTL_MS)).enabled, true, "last known state kept");
   resetMaintenanceStateCache();
   assert.deepEqual(await maintenanceState("http://localhost:3000", failing, 5_000), { enabled: false, message: MAINTENANCE_MESSAGE_DEFAULT }, "fail-open: never takes the site down");
   resetMaintenanceStateCache();
@@ -103,12 +109,13 @@ test("middleware, maintenance ON: customer and seller pages and APIs get 503; ea
   const calls = await withState(true, async (middleware) => {
     const home = await middleware(request("/"));
     assert.equal(home.status, 503);
-    assert.match(await home.text(), /Bir saatlıq texniki iş/);
+    // MAINTENANCE-PAGE: the designed page with the approved title (the admin message stays in the API JSON).
+    assert.ok((await home.text()).includes(MAINTENANCE_PAGE_TEXT.title));
     for (const path of ["/products", "/checkout", "/vendor", "/login", "/vendor/login"]) assert.equal((await middleware(request(path))).status, 503, path);
     const cart = await middleware(request("/api/cart", "POST"));
     assert.equal(cart.status, 503);
     assert.equal((await cart.json()).code, "MAINTENANCE");
-    for (const path of ["/api/orders", "/api/auth/login", "/api/auth/vendor-login"]) assert.equal((await middleware(request(path, "POST"))).status, 503, path);
+    for (const path of ["/api/orders", "/api/auth/login", "/api/auth/vendor-login", "/api/payments/epoint/initiate"]) assert.equal((await middleware(request(path, "POST"))).status, 503, path);
     for (const [path, method] of [["/admin", "GET"], ["/admin/login", "GET"], ["/api/admin/login", "POST"], ["/api/admin/login/2fa", "POST"], ["/api/ready", "GET"], ["/api/payments/epoint/callback", "POST"], ["/api/payments/epoint/reconcile", "POST"], ["/api/auth/logout", "POST"], ["/_next/static/x.js", "GET"], ["/images/home/a.webp", "GET"]] as const) {
       const response = await middleware(request(path, method));
       assert.notEqual(response.status, 503, path);
@@ -116,7 +123,8 @@ test("middleware, maintenance ON: customer and seller pages and APIs get 503; ea
     // Admin pages keep their noindex header.
     assert.equal((await middleware(request("/admin/login"))).headers.get("x-robots-tag"), "noindex, nofollow, noarchive");
   });
-  assert.ok(calls >= 1 && calls <= 2, "state read once and cached (not once per request)");
+  // ON answers are kept 1 s (MAINTENANCE-PAGE), so a slow run may read the state a few times; never once per request.
+  assert.ok(calls >= 1 && calls <= 3, "state read once and cached (not once per request)");
 });
 
 test("wiring: middleware checks before CSRF; the state endpoint is public and read-only; dashboard banner", () => {
@@ -283,8 +291,8 @@ test("allow/deny matrix from the spec, plus noindex and Retry-After on every 503
   for (const path of ["/", "/api/orders"]) {
     const response = maintenanceResponse(path, "x");
     assert.equal(response.status, 503);
-    assert.equal(response.headers.get("x-robots-tag"), "noindex");
+    assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow", "MAINTENANCE-PAGE: noindex, nofollow");
     assert.equal(response.headers.get("retry-after"), String(MAINTENANCE_RETRY_AFTER_SECONDS));
   }
-  assert.match(await maintenanceResponse("/", "x").text(), /<meta name="robots" content="noindex">/);
+  assert.match(await maintenanceResponse("/", "x").text(), /<meta name="robots" content="noindex, nofollow">/);
 });

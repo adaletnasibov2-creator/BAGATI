@@ -1,6 +1,9 @@
 /**
  * Maintenance state for the Edge middleware, which cannot read the database: it asks /api/maintenance-state
- * (served by the Node runtime from the settings engine's 30 s cache) and keeps the answer for 10 seconds.
+ * (served by the Node runtime from the settings engine's 30 s cache) and keeps the answer for 10 seconds while the
+ * site is open. While maintenance is ON the answer is kept for only 1 second (MAINTENANCE-PAGE), so switching it off in
+ * the admin panel (which clears the settings cache in the same process) shows the normal site within about a second.
+ * The cost is one small local request per second while the site is closed.
  *
  * Fail-open: when the state cannot be read (timeout, network, bad response) the last known state is used, or "off"
  * if there is none, so a broken check never takes the site down. One request at a time per process.
@@ -14,6 +17,8 @@ export type MaintenanceState = { enabled: boolean; message: string };
 export type MaintenanceCheck = { ok: boolean; at: number; reason: string | null; source: "internal" | "request" };
 
 export const MAINTENANCE_STATE_TTL_MS = 10_000;
+/** How long an "ON" answer is kept: short, so switching maintenance off takes effect almost at once. */
+export const MAINTENANCE_STATE_ON_TTL_MS = 1_000;
 export const MAINTENANCE_WARNING_INTERVAL_MS = 60_000;
 const TIMEOUT_MS = 1_500;
 const OFF: MaintenanceState = { enabled: false, message: MAINTENANCE_MESSAGE_DEFAULT };
@@ -68,7 +73,7 @@ export async function maintenanceState(
       if (!response.ok) throw new CheckError(`HTTP ${response.status}`);
       const state = parseState(await response.json().catch(() => null));
       if (!state) throw new CheckError("cavab formatı yanlışdır");
-      cached = { state, expires: now + MAINTENANCE_STATE_TTL_MS };
+      cached = { state, expires: now + (state.enabled ? MAINTENANCE_STATE_ON_TTL_MS : MAINTENANCE_STATE_TTL_MS) };
       lastCheck = { ok: true, at: now, reason: null, source };
       return state;
     } catch (error) {

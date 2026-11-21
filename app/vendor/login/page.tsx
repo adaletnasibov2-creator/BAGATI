@@ -28,7 +28,7 @@ export default async function VendorLoginPage({ searchParams }: { searchParams: 
             Mağazanızı və məhsullarınızı idarə etmək üçün daxil olun.
           </p>
           <p className="mt-2 text-sm leading-6 text-[#667085]">
-            Müştəri hesabı satıcı hesabından ayrıdır. Satıcı müraciəti üçün müştəri hesabınızla daxil olun və /vendor/apply səhifəsinə keçin.
+            Müştəri hesabı satıcı hesabından ayrıdır. Satıcı müraciəti üçün müştəri hesabınızla daxil olun və “Satıcı olmaq istəyirəm” keçidinə basın.
           </p>
         </div>
 

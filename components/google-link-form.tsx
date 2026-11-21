@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
+import { TextLink } from "@/components/ui/text-link";
 import { finishAuthNavigation } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
@@ -20,7 +20,7 @@ export function GoogleLinkPanel() {
     return () => controller.abort();
   }, []);
 
-  if (!challenge) return <p className="mt-3 text-sm text-[#667085]">Yoxlanılır…</p>;
+  if (!challenge) return <p role="status" className="mt-3 text-sm text-fg-secondary">Yoxlanılır…</p>;
   if (challenge.status !== "ready" || !("role" in challenge)) {
     const message = challenge.status === "unavailable"
       ? "Google bağlantısı bu serverdə hələ saxlanıla bilmir. E-poçt və şifrə ilə daxil olun."
@@ -29,10 +29,10 @@ export function GoogleLinkPanel() {
         : "Google təsdiqinin vaxtı bitib və ya tapılmadı. Google ilə yenidən davam edin.";
     return (
       <>
-        <p className="mt-3 text-sm leading-6 text-[#667085]">{message}</p>
-        <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold text-[#85621d] underline">
-          <Link href="/login">Müştəri girişi</Link>
-          <Link href="/vendor/login">Satıcı girişi</Link>
+        <p className="mt-3 text-sm leading-6 text-fg-secondary">{message}</p>
+        <nav className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+          <TextLink href="/login" className="inline-flex min-h-11 items-center">Müştəri girişi</TextLink>
+          <TextLink href="/vendor/login" className="inline-flex min-h-11 items-center">Satıcı girişi</TextLink>
         </nav>
       </>
     );
@@ -42,10 +42,10 @@ export function GoogleLinkPanel() {
   const portalLabel = challenge.role === "VENDOR" ? "satıcı paneli" : "müştəri paneli";
   return (
     <>
-      <p className="mt-3 text-sm leading-6 text-[#667085]">
+      <p className="mt-3 text-sm leading-6 text-fg-secondary">
         Bu Google e-poçtu mövcud BAGATI hesabına uyğundur. Hesablar avtomatik birləşdirilmir. Şifrəni bir dəfə təsdiqləyin, sonra {portalLabel} açılacaq.
       </p>
-      {challenge.emailHint && <p className="mt-4 rounded-xl bg-[#F7F5EF] px-4 py-3 text-sm font-medium text-[#0B1726]">{challenge.emailHint}</p>}
+      {challenge.emailHint && <p className="mt-4 rounded-control bg-surface-sunken px-4 py-3 text-sm font-medium text-fg">{challenge.emailHint}</p>}
       <GoogleLinkForm destination={destination} />
     </>
   );

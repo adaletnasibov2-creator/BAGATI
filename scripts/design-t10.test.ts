@@ -114,7 +114,9 @@ test("auth headings: display font tokens on /login and /register; the card frame
 test("/vendor/login and the legal pages are byte-identical to main", () => {
   const pinned: Record<string, string> = {
     // Owner decision (T8): the seller login keeps the system font and stays outside the public theme.
-    "app/vendor/login/page.tsx": "4164d8d38780ef939e82ebf950d683493b2960e989052eadf675fe6a09e3a2a8",
+    // MAINTENANCE-PAGE 3A (owner-approved text): one sentence changed (raw "/vendor/apply" replaced); the hash is the new
+    // file, and the check below proves every other byte is still the DESIGN-T10 file (old hash 4164d8d3…).
+    "app/vendor/login/page.tsx": "6faed9767dbd69820a3f8a39f0a7356818b2f377ee3e293702ca06f6ad7d6130",
     "components/vendor-login-form.tsx": "9ed3fc560723c3324cb4e2c95bd6c4617fc814882f7dda39b86abc59bbb560f8",
     "app/(customer)/terms/page.tsx": "d9eee92220cd6cd6cb3588c5c159d7f3f038ff912efa83face3e4bc41138bf25",
     "app/(customer)/privacy/page.tsx": "3d645770b9750e70143c10c7dcd16a6bb9aab019d7dc845720c03a4a73f0d222",
@@ -122,6 +124,9 @@ test("/vendor/login and the legal pages are byte-identical to main", () => {
   };
   for (const [path, hash] of Object.entries(pinned)) assert.equal(sha256(read(path)), hash, path);
   assert.doesNotMatch(read("app/vendor/login/page.tsx"), /PublicTheme|font-display/);
+  const oldSentence = "Satıcı müraciəti üçün müştəri hesabınızla daxil olun və /vendor/apply səhifəsinə keçin.";
+  const newSentence = "Satıcı müraciəti üçün müştəri hesabınızla daxil olun və “Satıcı olmaq istəyirəm” keçidinə basın.";
+  assert.equal(sha256(read("app/vendor/login/page.tsx").replace(newSentence, oldSentence)), "4164d8d38780ef939e82ebf950d683493b2960e989052eadf675fe6a09e3a2a8", "only that sentence changed");
 });
 
 test("SMALL-FIXES-2: home canonical, store eligibility fields kept, reviews note without the promise", () => {

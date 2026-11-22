@@ -9,6 +9,14 @@ export async function register() {
   // Nested `if`s for the same reason as below: nothing here may reach the Edge bundle.
   if (process.env.NEXT_RUNTIME === "nodejs") {
     if (process.env.NEXT_PHASE !== "phase-production-build") {
+      // PERF-1: removes the guest edge-cache header from every non-200 response (404, error, redirect, 503). It can
+      // only remove, never add. Installed even when PUBLIC_EDGE_CACHE=off (then it has nothing to do).
+      try {
+        const { installEdgeCacheStatusGuard } = await import("./lib/edge-cache-status-guard");
+        installEdgeCacheStatusGuard();
+      } catch {
+        console.error("edge cache status guard failed");
+      }
       try {
         const { dbPoolLogLine } = await import("./lib/db-pool-info");
         console.info(dbPoolLogLine(process.env));

@@ -7,6 +7,7 @@ import { encodeMaintenanceCheck, lastMaintenanceCheck, MAINTENANCE_CHECK_HEADER,
 import { maintenanceStateOrigin } from "@/lib/maintenance-origin";
 import { isAdminPreview } from "@/lib/maintenance-preview";
 import { isStaticAssetPath } from "@/lib/static-asset-paths";
+import { EDGE_CACHE_HEADER, EDGE_CACHE_VALUE, shouldAddEdgeCacheHeader } from "@/lib/edge-cache";
 
 export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
@@ -52,6 +53,12 @@ export async function middleware(request: NextRequest) {
   if (personalizedDocument(pathname, request.cookies.has("bagati_session"))) {
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Vary", "Cookie");
+  }
+  // PERF-1: guest-only Cloudflare edge cache (60 s + 60 s stale) for allow-listed public pages; the browser's
+  // Cache-Control is unchanged. Never reached by the maintenance 503 (returned above). A non-200 response loses the
+  // header when its status is written (lib/edge-cache-status-guard.ts). Off: PUBLIC_EDGE_CACHE=off.
+  if (shouldAddEdgeCacheHeader({ method: request.method, pathname, searchParams: request.nextUrl.searchParams, headers: request.headers }, { PUBLIC_EDGE_CACHE: process.env.PUBLIC_EDGE_CACHE })) {
+    response.headers.set(EDGE_CACHE_HEADER, EDGE_CACHE_VALUE);
   }
   return response;
 }

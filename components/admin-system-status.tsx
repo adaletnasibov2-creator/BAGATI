@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { RefreshCw } from "lucide-react";
 import type { SystemStatusData as CachedCardData } from "@/lib/admin-system-status-cards";
 import type { ClientIpDiagnostics } from "@/lib/client-ip-diagnostics";
+import { evaluateSpoofTest, SPOOF_TEST_HEADERS, SPOOF_TEST_TEXTS, spoofTestDisplay, type SpoofTestOutcome } from "@/lib/admin-ip-spoof-test";
 
 /** Cached cards plus the request-specific client IP card. */
 type SystemStatusData = CachedCardData & { "client-ip": ClientIpDiagnostics };
@@ -175,7 +176,40 @@ function ClientIpBody({ data }: { data: SystemStatusData["client-ip"] }) {
       <Row label="CF-Connecting-IP = XFF ilk dəyəri">{data.cfConnectingIpMatchesLeftmostXff === null ? "—" : yesNo(data.cfConnectingIpMatchesLeftmostXff)}</Row>
       <Row label="CF-Connecting-IP ≠ X-Real-IP (IP etibarsız)" tone={data.cfRealIpMismatch ? "bad" : undefined}>{yesNo(data.cfRealIpMismatch)}</Row>
     </dl>
+    <SpoofTest baselineIp={data.ipWithFlagOn} />
   </>;
+}
+
+/**
+ * ADMIN-IP-TEST-1: repeats this card's request with forged CF-Connecting-IP / X-Real-IP (198.51.100.23, a documentation
+ * address) and shows whether the app would trust them (lib/admin-ip-spoof-test.ts). Same admin-only GET endpoint.
+ */
+function SpoofTest({ baselineIp }: { baselineIp: string | null }) {
+  const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<SpoofTestOutcome | null>(null);
+  async function run() {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/system?card=client-ip", { cache: "no-store", headers: SPOOF_TEST_HEADERS });
+      const body = await response.json().catch(() => null);
+      setOutcome(evaluateSpoofTest({ ok: response.ok && body?.ok === true, httpStatus: response.status, ipWithFlagOn: body?.data?.ipWithFlagOn, baselineIp }));
+    } catch {
+      setOutcome(evaluateSpoofTest({ ok: false, httpStatus: null, ipWithFlagOn: null, baselineIp }));
+    } finally { setBusy(false); }
+  }
+  const display = outcome ? spoofTestDisplay(outcome) : null;
+  const box = display?.tone === "bad" ? "border-red-200 bg-red-50 text-red-800" : display?.tone === "good" ? "border-green-200 bg-green-50 text-green-900" : "border-[#e7e3d9] bg-[#f8f7f4] text-slate-700";
+  return <div className="mt-4 border-t border-[#f0ece4] pt-4">
+    <p className="text-xs text-slate-500">{SPOOF_TEST_TEXTS.intro}</p>
+    <button type="button" onClick={() => void run()} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#c7ad78] bg-white px-4 py-2 text-sm font-semibold text-[#85621d] disabled:opacity-60">
+      {busy ? SPOOF_TEST_TEXTS.busy : SPOOF_TEST_TEXTS.button}
+    </button>
+    {outcome && display && <div role="status" className={`mt-3 rounded-xl border p-3 text-sm ${box}`}>
+      {display.message && <p className="font-semibold">{display.message}</p>}
+      {display.note && <p className={display.message ? "mt-1 text-slate-700" : undefined}>{display.note}</p>}
+      <p className="mt-2 text-xs">{SPOOF_TEST_TEXTS.returnedIp}: <span className="font-mono">{outcome.returnedIp ?? SPOOF_TEST_TEXTS.none}</span>{outcome.reason === "refused" && <> · {SPOOF_TEST_TEXTS.requestFailed}{outcome.httpStatus ? ` (HTTP ${outcome.httpStatus})` : ""}</>}</p>
+    </div>}
+  </div>;
 }
 
 function spec<K extends CardName>(name: K, title: string, Body: (props: { data: SystemStatusData[K] }) => ReactNode) {

@@ -43,8 +43,9 @@ export async function GET(request: NextRequest) {
     if (requestedNext) target.searchParams.set("next", safeOAuthNextPath(requestedNext, "customer"));
     return NextResponse.redirect(target);
   }
+  // SIGNUP-EASY-1 R7: a rate limit is reported as "rate-limited" (not "unavailable", which means not configured).
   if (!consumeAuthProcessRateLimit("google-oauth-start", 600, 60_000)) {
-    return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=unavailable`, origin));
+    return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=rate-limited`, origin));
   }
   const clientIp = trustedCloudflareClientIp(request.headers);
   if (clientIp) {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
         OAUTH_IP_RATE_LIMIT.limit,
         OAUTH_IP_RATE_LIMIT.windowMs,
       );
-      if (!allowed) return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=unavailable`, origin));
+      if (!allowed) return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=rate-limited`, origin));
     } catch (error) {
       logAuthFailure("google_oauth_start_rate_limit", error);
       return NextResponse.redirect(new URL(`${formPath(intent, mode)}?oauth=unavailable`, origin));

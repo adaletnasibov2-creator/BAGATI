@@ -21,6 +21,8 @@ export function googleOAuthMessage(code?: string, _intent: GoogleOAuthIntent = "
   }
   switch (code) {
     case "unavailable": return "Google girişi serverdə konfiqurasiya edilməyib.";
+    // SIGNUP-EASY-1 R7: the existing rate-limit text (reset-password, password change, Google link).
+    case "rate-limited": return "Çox sayda cəhd edildi. Bir müddət sonra yenidən yoxlayın.";
     case "account-exists": return "Təsdiqlənmiş Google e-poçtu ilə BAGATI hesabı tapıldı. Hesablar avtomatik birləşdirilmir. Mövcud hesabınıza uyğun giriş bölməsini seçin.";
     case "register-required": return "Əvvəlcə qeydiyyatdan keçin. Bu Google e-poçtu ilə BAGATI hesabı tapılmadı: şərtlərlə razılığınızı təsdiqləyib Google ilə davam edin.";
     case "terms-required": return "Google ilə qeydiyyat üçün əvvəlcə İstifadə şərtləri və Məxfilik siyasəti ilə razılığınızı təsdiqləyin.";

@@ -14,6 +14,8 @@ import { getProductDiscount } from "@/lib/product-card-pricing";
 
 type Variant = { id: string; name: string; options: Record<string, unknown>; isActive: boolean; images: string[]; available: number; basePrice: string; unitPrice: string; campaignName: string | null };
 type Axis = { name: string; values: string[] };
+/** SIGNUP-EASY-1 R6: after this message the status line also links to the cart ("Səbətə keç", the checkout's wording). */
+const ADDED_TO_CART_MESSAGE = "Məhsul səbətə əlavə edildi.";
 const valueOf = (variant: Variant, axis: string) => axis === "Seçim" && !Object.keys(variant.options || {}).length ? variant.name : String(variant.options?.[axis] ?? "");
 
 type ProductVariantPurchaseProps = {
@@ -70,7 +72,7 @@ export default function ProductVariantPurchase({ productId, name, productImages,
       const result = await response.json();
       if (response.status === 401) { router.push(`/login?next=${encodeURIComponent(pathname)}`); return; }
       if (!response.ok) { setMessage(result.error || "Məhsulu səbətə əlavə etmək mümkün olmadı."); return; }
-      setMessage("Məhsul səbətə əlavə edildi."); router.refresh();
+      setMessage(ADDED_TO_CART_MESSAGE); router.refresh();
     } catch { setMessage("Bağlantı xətası. Yenidən cəhd edin."); }
     finally { setBusy(false); }
   }
@@ -136,7 +138,7 @@ export default function ProductVariantPurchase({ productId, name, productImages,
         {(!hasVariants || selectedVariant) && <span aria-hidden="true" className={cx("h-2.5 w-2.5 shrink-0 rounded-full", selectedStock > 0 ? "bg-primary" : "bg-danger")}/>}
         <p className={cx("text-sm font-medium", selectedStock > 0 ? "text-primary" : "text-fg-secondary")} aria-live="polite">{stockText}</p>
       </div>
-      {message && <p role="status" className="mt-3 rounded-control bg-primary-subtle px-3 py-2 text-sm font-medium text-primary">{message}</p>}
+      {message && <p role="status" className="mt-3 rounded-control bg-primary-subtle px-3 py-2 text-sm font-medium text-primary">{message}{message === ADDED_TO_CART_MESSAGE && <> <Link href="/cart" className="underline underline-offset-4">Səbətə keç</Link></>}</p>}
 
       <Link href={`/stores/${store.id}`} className={cx("mt-6 flex min-h-14 items-center gap-3 rounded-card border border-line bg-surface-page px-4 py-3 transition-colors hover:border-brand-200 hover:bg-primary-subtle", focusRing)}>
         <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-primary ring-1 ring-inset ring-brand-100"><Store size={18}/></span>

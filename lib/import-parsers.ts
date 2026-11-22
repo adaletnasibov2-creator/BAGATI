@@ -25,13 +25,27 @@ export function stripBom(text: string): string {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 }
 
+/** Delimiters outside quoted fields; like parseDelimited, a quote opens a field only at the start of the field. */
 function countOutsideQuotes(line: string, delimiter: string): number {
   let count = 0;
   let quoted = false;
+  let fieldStart = true;
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
-    if (c === '"') quoted = !quoted;
-    else if (!quoted && c === delimiter) count++;
+    if (quoted) {
+      if (c === '"') {
+        if (line[i + 1] === '"') i++;
+        else quoted = false;
+      }
+    } else if (c === '"' && fieldStart) {
+      quoted = true;
+      fieldStart = false;
+    } else if (c === delimiter) {
+      count++;
+      fieldStart = true;
+    } else {
+      fieldStart = false;
+    }
   }
   return count;
 }
@@ -51,7 +65,11 @@ export function detectDelimiter(text: string): string {
   return best;
 }
 
-/** RFC-4180-ish parser: quoted fields, escaped quotes, BOM, configurable delimiter. */
+/**
+ * RFC-4180-ish parser: quoted fields, escaped quotes, BOM, configurable delimiter.
+ * A quote opens a quoted field only at the start of a field (IMPORT-TEMPLATE-1), so an unquoted value such as
+ * Ölçü "M" or 15" keeps its quote characters instead of swallowing the rest of the line.
+ */
 export function parseDelimited(text: string, forcedDelimiter?: string): ParsedImport {
   const clean = stripBom(text);
   const delimiter = forcedDelimiter ?? detectDelimiter(clean);
@@ -59,24 +77,35 @@ export function parseDelimited(text: string, forcedDelimiter?: string): ParsedIm
   let row: string[] = [];
   let value = "";
   let quoted = false;
+  let fieldStart = true;
   for (let i = 0; i < clean.length; i++) {
     const c = clean[i];
-    if (c === '"' && clean[i + 1] === '"' && quoted) {
-      value += '"';
-      i++;
-    } else if (c === '"') {
-      quoted = !quoted;
-    } else if (!quoted && c === delimiter) {
+    if (quoted) {
+      if (c === '"' && clean[i + 1] === '"') {
+        value += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = false;
+      } else {
+        value += c;
+      }
+    } else if (c === '"' && fieldStart) {
+      quoted = true;
+      fieldStart = false;
+    } else if (c === delimiter) {
       row.push(value);
       value = "";
-    } else if (!quoted && (c === "\n" || c === "\r")) {
+      fieldStart = true;
+    } else if (c === "\n" || c === "\r") {
       if (c === "\r" && clean[i + 1] === "\n") i++;
       row.push(value);
       matrix.push(row);
       row = [];
       value = "";
+      fieldStart = true;
     } else {
       value += c;
+      fieldStart = false;
     }
   }
   if (value.length || row.length) {

@@ -13,6 +13,7 @@ import {
   storeHoursLine, storeHoursOf,
 } from "../lib/store-hours";
 import { StoreHoursDot } from "../components/store-hours-dot";
+import { joinStoreTime, splitStoreTime, STORE_HOUR_OPTIONS, STORE_MINUTE_STEP_OPTIONS, storeMinuteOptions } from "../lib/store-time-select";
 
 (globalThis as { React?: typeof React }).React = React;
 const root = join(__dirname, "..");
@@ -198,12 +199,70 @@ test("seller API: both fields validated on the server as a pair, saved together,
   assert.match(route, /legalInfoApproved:true,reviewNote:true,openingTime:true,closingTime:true,/, "GET returns them to the form");
 });
 
-test("seller form: approved section, labels and help; time inputs; the other field becomes required; seller design system", () => {
+test("seller form: approved section, labels and help; 24-hour selects; required once any part is chosen; seller design system", () => {
   const form = read("components/vendor-store-profile-editor.tsx");
   assert.match(form, /sectionHead\(STORE_HOURS_TEXTS\.sectionTitle\)\}<p id="store-hours-help" className=\{`mt-1 \$\{vendorHint\}`\}>\{STORE_HOURS_TEXTS\.help\}<\/p>/);
-  assert.match(form, /\{STORE_HOURS_TEXTS\.openingLabel\}<input name="openingTime" type="time" value=\{openingTime\}.*?required=\{Boolean\(closingTime\)\} aria-describedby="store-hours-help" className=\{input\}\/>/);
-  assert.match(form, /\{STORE_HOURS_TEXTS\.closingLabel\}<input name="closingTime" type="time" value=\{closingTime\}.*?required=\{Boolean\(openingTime\)\} aria-describedby="store-hours-help" className=\{input\}\/>/);
+  // STORE-HOURS-3: the browser time inputs (12-hour AM/PM on many PCs) are replaced by hour + minute selects.
+  assert.doesNotMatch(form, /type="time"/);
+  assert.match(form, /\{timeField\("openingTime",STORE_HOURS_TEXTS\.openingLabel,openingParts,setOpeningParts,openingTime,openingMinutes\)\}\{timeField\("closingTime",STORE_HOURS_TEXTS\.closingLabel,closingParts,setClosingParts,closingTime,closingMinutes\)\}/);
+  const field = form.slice(form.indexOf("const timeField="), form.indexOf("const sectionHead="));
+  // The visible label stays the approved label; the only new visible text is the "—" (not set) option.
+  assert.match(field, /<div role="group" aria-labelledby=\{`\$\{name\}-label`\} className=\{vendorLabel\}><span id=\{`\$\{name\}-label`\}>\{label\}<\/span>/);
+  assert.equal(field.match(/<option value="">—<\/option>/g)?.length, 2, "hour and minute each start with the empty option");
+  assert.match(field, /<select aria-label=\{label\} value=\{parts\.hour\}.*?required=\{hoursTouched\} aria-describedby="store-hours-help" className=\{`\$\{input\} cursor-pointer`\}>/);
+  assert.match(field, /<select aria-label=\{`\$\{label\}, dəqiqə`\} value=\{parts\.minute\}.*?required=\{hoursTouched\} aria-describedby="store-hours-help" className=\{`\$\{input\} cursor-pointer`\}>/);
+  assert.match(field, /\{STORE_HOUR_OPTIONS\.map\(hour=>/);
+  assert.match(field, /\{minutes\.map\(minute=>/);
+  // The only named field is the hidden "HH:MM" (or "") value, so the request body keeps the same two keys.
+  assert.match(field, /<input type="hidden" name=\{name\} value=\{value\}\/>/);
+  assert.doesNotMatch(field, /<select name=/);
+  assert.match(form, /const openingTime=joinStoreTime\(openingParts\.hour,openingParts\.minute\); const closingTime=joinStoreTime\(closingParts\.hour,closingParts\.minute\);/);
+  assert.match(form, /const openingMinutes=storeMinuteOptions\(store\.openingTime\); const closingMinutes=storeMinuteOptions\(store\.closingTime\);/);
+  assert.match(form, /const hoursTouched=Boolean\(openingParts\.hour\|\|openingParts\.minute\|\|closingParts\.hour\|\|closingParts\.minute\);/);
+  assert.doesNotMatch(field, /emerald/);
   assert.doesNotMatch(form, /PublicTheme/);
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// STORE-HOURS-3: 24-hour picker helpers
+
+test("picker: split a saved HH:MM into hour and minute; anything else is not set", () => {
+  assert.deepEqual(splitStoreTime("09:00"), { hour: "09", minute: "00" });
+  assert.deepEqual(splitStoreTime("23:55"), { hour: "23", minute: "55" });
+  assert.deepEqual(splitStoreTime("00:00"), { hour: "00", minute: "00" });
+  assert.deepEqual(splitStoreTime("09:07"), { hour: "09", minute: "07" }, "odd minute kept");
+  for (const value of ["", null, undefined, "9:00", "24:00", "12:60", "09:00:00", "x"]) {
+    assert.deepEqual(splitStoreTime(value), { hour: "", minute: "" }, String(value));
+  }
+});
+
+test("picker: join gives HH:MM only when both parts are chosen; never a half value", () => {
+  assert.equal(joinStoreTime("09", "00"), "09:00");
+  assert.equal(joinStoreTime("18", "30"), "18:30");
+  assert.equal(joinStoreTime("09", "07"), "09:07");
+  assert.equal(joinStoreTime("", ""), "");
+  assert.equal(joinStoreTime("09", ""), "", "hour only");
+  assert.equal(joinStoreTime("", "30"), "", "minute only");
+  assert.equal(joinStoreTime("24", "00"), "");
+  assert.equal(joinStoreTime("9", "00"), "");
+  assert.equal(joinStoreTime("12", "60"), "");
+  for (const value of ["00:00", "09:07", "18:00", "23:55"]) {
+    const { hour, minute } = splitStoreTime(value);
+    assert.equal(joinStoreTime(hour, minute), value, `round trip ${value}`);
+    assert.deepEqual(normalizeStoreHoursInput({ openingTime: joinStoreTime(hour, minute), closingTime: "02:00" }).ok, value !== "02:00");
+  }
+});
+
+test("picker: 24 hours and 5-minute steps; a saved odd minute is added for that field only", () => {
+  assert.equal(STORE_HOUR_OPTIONS.length, 24);
+  assert.equal(STORE_HOUR_OPTIONS[0], "00");
+  assert.equal(STORE_HOUR_OPTIONS[23], "23");
+  assert.deepEqual(STORE_MINUTE_STEP_OPTIONS, ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]);
+  assert.deepEqual(storeMinuteOptions(null), STORE_MINUTE_STEP_OPTIONS);
+  assert.deepEqual(storeMinuteOptions("09:30"), STORE_MINUTE_STEP_OPTIONS);
+  assert.deepEqual(storeMinuteOptions("bad"), STORE_MINUTE_STEP_OPTIONS);
+  assert.deepEqual(storeMinuteOptions("09:07"), ["00", "05", "07", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]);
+  assert.equal(STORE_MINUTE_STEP_OPTIONS.length, 12, "the shared list is not changed by an odd minute");
 });
 
 function walk(dir: string, out: string[] = []): string[] {

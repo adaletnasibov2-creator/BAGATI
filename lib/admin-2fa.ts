@@ -12,7 +12,9 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { requestCookieSecure } from "@/lib/cookie-security";
 import { admin2faIpBucket } from "@/lib/admin-login-rate-limit";
-import { authRateLimitKey, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
+import { authRateLimitKey, consumeAuthRateLimit, PASSWORD_CHECK_RATE_LIMIT, passwordCheckRateLimitKey } from "@/lib/auth-rate-limit";
+import { checkCurrentPassword } from "@/lib/password-check";
+import { enqueueEmail } from "@/lib/email-outbox";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
 import { admin2faKeyStatus, Admin2faKeyError, decryptTotpSecret, encryptTotpSecret } from "@/lib/admin-2fa-crypto";
 import { generateRecoveryCodes, hashRecoveryCode, normalizeRecoveryCode, verifyRecoveryCode } from "@/lib/admin-recovery-codes";
@@ -83,6 +85,27 @@ export async function resolveEnrollmentActor(request: NextRequest): Promise<Enro
   if (admin) return { userId: admin.id, email: admin.email, via: "session" };
   const challenged = await readChallenge(request, "enroll");
   return challenged ? { userId: challenged.id, email: challenged.email, via: "challenge" } : null;
+}
+
+/**
+ * SEC-FIX-1 M1: optional enrollment from a signed-in session (setup and activate) needs the admin's current password,
+ * so a stolen session cannot bind the attacker's authenticator and lock the real admin out. Attempts are counted
+ * before bcrypt. The forced-enrollment challenge already proves the password and is not asked again.
+ */
+export async function assertEnrollmentPassword(request: NextRequest, actor: EnrollmentActor, password: unknown) {
+  if (actor.via !== "session") return;
+  const user = await prisma.user.findUnique({ where: { id: actor.userId }, select: { passwordHash: true } });
+  const { default: bcrypt } = await import("bcryptjs");
+  const check = await checkCurrentPassword({
+    consumeAttempt: () => consumeAuthRateLimit(passwordCheckRateLimitKey("admin-2fa-enroll", actor.userId), PASSWORD_CHECK_RATE_LIMIT.limit, PASSWORD_CHECK_RATE_LIMIT.windowMs),
+    compare: async () => Boolean(user) && typeof password === "string" && password.length > 0 && password.length <= 128 && await bcrypt.compare(password, user!.passwordHash),
+  });
+  if (check === "rate-limited") throw new Admin2faError("RATE_LIMITED");
+  if (check === "invalid") {
+    await audit(actor.userId, "ADMIN_2FA_FAILED", { stage: "enrollment", reason: "password" });
+    await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: request.nextUrl.pathname });
+    throw new Admin2faError("INVALID_PASSWORD");
+  }
 }
 
 export async function twoFactorStatus(userId: string) {
@@ -159,6 +182,10 @@ export async function activateEnrollment(request: NextRequest, actor: Enrollment
     await tx.adminRecoveryCode.deleteMany({ where: { userId: actor.userId } });
     await tx.adminRecoveryCode.createMany({ data: hashes.map((codeHash) => ({ userId: actor.userId, codeHash })) });
     await audit(actor.userId, "ADMIN_2FA_ENROLLED", { via: actor.via, recoveryCodes: codes.length }, tx);
+    // SEC-FIX-1 M1: tell the account owner when 2FA is switched on from a signed-in session (forced enrollment unchanged).
+    if (actor.via === "session") {
+      await enqueueEmail(tx, { eventKey: `account-security:admin-2fa-enrolled:${actor.userId}:${result.step}`, recipient: actor.email, template: "ACCOUNT_SECURITY", payload: { change: "admin-2fa-enrolled" } });
+    }
   });
   return codes;
 }
@@ -242,7 +269,13 @@ export async function disableTwoFactor(request: NextRequest, userId: string, kee
   if (isAdmin2faRequired()) throw new Admin2faError("REQUIRED");
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
   const { default: bcrypt } = await import("bcryptjs");
-  if (!user || typeof input.password !== "string" || input.password.length > 128 || !(await bcrypt.compare(input.password, user.passwordHash))) {
+  // SEC-FIX-1 L3: count the attempt before bcrypt (the code step after it has its own limits).
+  const check = await checkCurrentPassword({
+    consumeAttempt: () => consumeAuthRateLimit(passwordCheckRateLimitKey("admin-2fa-disable", userId), PASSWORD_CHECK_RATE_LIMIT.limit, PASSWORD_CHECK_RATE_LIMIT.windowMs),
+    compare: async () => Boolean(user) && typeof input.password === "string" && input.password.length <= 128 && await bcrypt.compare(input.password, user!.passwordHash),
+  });
+  if (check === "rate-limited") throw new Admin2faError("RATE_LIMITED");
+  if (check === "invalid") {
     await audit(userId, "ADMIN_2FA_FAILED", { stage: "disable", reason: "password" });
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/admin/2fa/disable" });
     throw new Admin2faError("INVALID_PASSWORD");

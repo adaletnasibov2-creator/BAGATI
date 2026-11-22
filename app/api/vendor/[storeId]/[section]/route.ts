@@ -20,7 +20,7 @@ import { CatalogSkuConflictError, findExistingProductSkuMatches, findExistingVar
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 import { CANCELLATION_REQUEST_OPEN_MESSAGE, hasOpenCancellationRequest, isDispatchShipmentStatus } from "@/lib/order-cancellation-guard";
 import { legacyVendorProductPatchSchema } from "@/lib/vendor-product-schemas";
-import { parseImportByExtension, ImportParseError } from "@/lib/import-parsers";
+import { vendorLegacyImportBodySchema } from "@/lib/vendor-legacy-import";
 import { isStorefrontTheme } from "@/lib/storefront-themes";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
 import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
@@ -204,14 +204,11 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:str
    const entitlement=await getStoreEntitlements(storeId,db);
     try{assertFeature(entitlement,"BULK_IMPORT");}
     catch(error){if(error instanceof EntitlementError)return entitlementErrorResponse(error);throw error;}
-   const parsed=z.object({action:z.enum(["validate","import"]),mode:z.enum(["create","update","mixed"]).default("create"),sourceName:z.string().trim().min(1).max(255),mapping:z.record(z.string()),rows:z.array(z.record(z.unknown())).min(1).max(1000),fileText:z.string().max(5_000_000).optional()}).safeParse(body);
+   // SEC-FIX-1 M4: rows only (parsed in the browser); a body with the removed raw-file field is rejected here.
+   const parsed=vendorLegacyImportBodySchema.safeParse(body);
    if(!parsed.success)return NextResponse.json({error:"Fayl, sütun uyğunlaşdırması və sətirləri yoxlayın"},{status:422});
    const {action,mode,sourceName,mapping,rows}=parsed.data;
-   let effectiveRows:Record<string,unknown>[]=rows;let effectiveMapping=mapping;let sourceFormat:string|undefined;
-   if(typeof parsed.data.fileText==="string"&&parsed.data.fileText.length){
-    try{const {format,parsed:fileParsed}=parseImportByExtension(sourceName,parsed.data.fileText);effectiveRows=fileParsed.rows;effectiveMapping={...Object.fromEntries(fileParsed.headers.map(header=>[header,header])),...mapping};sourceFormat=format;}
-    catch(error){return NextResponse.json({error:error instanceof ImportParseError?error.message:"Fayl oxunmadı"},{status:422})}
-   }
+   const effectiveRows:Record<string,unknown>[]=rows;const effectiveMapping=mapping;
    if(!effectiveMapping.name||!effectiveMapping.price||!effectiveMapping.category)return NextResponse.json({error:"Məhsul adı, qiymət və kateqoriya sütunlarını uyğunlaşdırın"},{status:422});
     const [categoryRows,brands,existing]=await Promise.all([db.category.findMany({where:{isActive:true,OR:[{parentId:null},{parent:{is:{isActive:true}}}]},select:{id:true,name:true,slug:true,parentId:true}}),db.brand.findMany({select:{id:true,name:true}}),db.product.findMany({where:{storeId},select:{id:true,sku:true,inventory:{where:{variantId:null},select:{quantity:true,reserved:true},take:1}}})]);
    const categories=categoriesWithOtherLast(categoryRows as {id:string;name:string;slug:string}[]);
@@ -226,7 +223,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:str
     const activeLimit=entitlement.limits?.activeProducts??0;if(!activeLimit)return NextResponse.json({error:"Mağaza satışa hazır deyil; idxal üçün aktiv paket tələb olunur",code:"SUBSCRIPTION_REQUIRED"},{status:409});if(activeCount+newCreates>activeLimit){
       return NextResponse.json({error:"Paket məhsul limitinə çatdınız. Daha çox məhsul üçün paketi yüksəltin.",code:"PRODUCT_LIMIT_REACHED",current:activeCount,incoming:newCreates,limit:activeLimit},{status:409});
    }
-     const record=await db.productImport.create({data:{storeId,sourceName,status:"VALIDATING",columnMapping:{...effectiveMapping,mode,format:sourceFormat??"xlsx"}}});
+     const record=await db.productImport.create({data:{storeId,sourceName,status:"VALIDATING",columnMapping:{...effectiveMapping,mode,format:"xlsx"}}});
    try{
     const result=await db.$transaction(async(tx:any)=>{
      let created=0,updated=0;

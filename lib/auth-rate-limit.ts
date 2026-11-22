@@ -17,10 +17,30 @@ function authRateLimitSecret() {
   return value;
 }
 
-export function authRateLimitKey(scope: "login" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "store-inquiry" | "store-notification-email" | "admin-2fa" | "admin-email-test" | "admin-email-drain" | "admin-login" | "messaging" | "seller-application", identity: string) {
+/** Current-password checks by a signed-in user (password change, admin 2FA enroll/disable), per user (SEC-FIX-1 L3). */
+export const PASSWORD_CHECK_RATE_LIMIT = { limit: 10, windowMs: 15 * 60 * 1000 } as const;
+
+export function authRateLimitKey(scope: "login" | "vendor-login" | "admin-login-account" | "password-check" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "store-inquiry" | "store-notification-email" | "admin-2fa" | "admin-email-test" | "admin-email-drain" | "admin-login" | "messaging" | "seller-application", identity: string) {
   return createHmac("sha256", authRateLimitSecret())
     .update(`BAGATI_AUTH_RATE_LIMIT_V1:${scope}:${identity.trim().toLowerCase()}`)
     .digest("hex");
+}
+
+export type LoginRateLimitPortal = "customer" | "vendor" | "admin";
+
+/**
+ * Per-account login lock (LOGIN_RATE_LIMIT), separate for each login page (SEC-FIX-1 M6): wrong passwords sent to the
+ * customer login can no longer lock the same email out of the seller or admin login. The customer key is the old
+ * "login" key, so existing customer buckets keep counting.
+ */
+export function loginRateLimitKey(portal: LoginRateLimitPortal, email: string) {
+  const scope = portal === "customer" ? "login" : portal === "vendor" ? "vendor-login" : "admin-login-account";
+  return authRateLimitKey(scope, email);
+}
+
+/** Key for PASSWORD_CHECK_RATE_LIMIT: one bucket per user and purpose. */
+export function passwordCheckRateLimitKey(purpose: "password-change" | "admin-2fa-disable" | "admin-2fa-enroll", userId: string) {
+  return authRateLimitKey("password-check", `${purpose}:${userId}`);
 }
 
 const processBuckets = new Map<string, { count: number; reset: number }>();

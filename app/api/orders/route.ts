@@ -16,7 +16,7 @@ import { commissionRatesForNewOrder } from "@/lib/order-commission";
 import { customerTermsGate } from "@/lib/legal-gates";
 import { isOrderSerializationConflict, withOrderSerializationRetry } from "@/lib/order-transaction-retry";
 import { ORDER_STOCK_ERROR_MESSAGES } from "@/lib/order-stock-errors";
-import { orderCreateResponse } from "@/lib/order-create-response";
+import { orderCreateResponse, publicOrderErrorCode } from "@/lib/order-create-response";
 const db: any = prisma;
 // acceptTerms: the checkout checkbox, shown only while the current customer terms are not accepted. The server decides
 // from the database (customerTermsGate); the flag alone never skips the check.
@@ -111,6 +111,8 @@ export async function POST(request:NextRequest) {
   const code=error instanceof Error?error.message:"ERROR";
   const messages:Record<string,string>={SESSION_EXPIRED:"Sessiya bitib. Yenidən daxil olun.",ADDRESS_INVALID:"Çatdırılma ünvanı tapılmadı və ya şəhər artıq aktiv deyil.",CART_EMPTY:"Səbət boşdur.",STORE_UNAVAILABLE:"Səbətdəki mağazalardan biri hazırda sifariş qəbul etmir. Səbəti yeniləyin.",PRODUCT_UNAVAILABLE:"Məhsul artıq satışda deyil. Səbəti yeniləyin.",VARIANT_INVALID:"Seçilmiş variant artıq mövcud deyil.",PRICE_INVALID:"Məhsulun qiyməti dəyişib və ya yanlışdır. Səbəti yeniləyin.",PRICE_CHANGED:"Məhsulun qiyməti dəyişib. Səbəti və sifariş məbləğini yeniləyin.",STOCK_CHANGED:"Stok dəyişib. Səbəti yeniləyib yenidən yoxlayın.",...ORDER_STOCK_ERROR_MESSAGES};
   const status=code==="CART_EMPTY"||code==="STOCK_CHANGED"?409:code==="ADDRESS_INVALID"?404:code==="SESSION_EXPIRED"?401:code in messages?409:500;
-  return NextResponse.json({error:messages[code]||"Sifaris yaradilma. Bir az sonra yeniden yoxlayin.",code},{status});
+  // SEC-FIX-1 L4: only a known code is sent back; anything else (raw error text) becomes "ERROR".
+  const publicCode=publicOrderErrorCode(code,messages);
+  return NextResponse.json({error:(publicCode==="ERROR"?undefined:messages[publicCode])||"Sifaris yaradilma. Bir az sonra yeniden yoxlayin.",code:publicCode},{status});
  }
 }

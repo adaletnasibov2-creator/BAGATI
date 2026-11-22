@@ -17,6 +17,7 @@ import { messageEntryForViewer } from "@/lib/messaging-pages";
 import { shortenMetaText } from "@/lib/seo";
 import { canonicalMetadata, shareImage, sharePreviewMetadata } from "@/lib/share-preview";
 import { productJsonLd, serializeJsonLd } from "@/lib/structured-data";
+import { safePublicMapUrl } from "@/lib/store-public-contact";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,8 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
   if (!eligibleStoreIds.has(product.store.id)) notFound();
   // "Bu məhsul haqqında soruş": customers; logged-out visitors sign in first; hidden while messaging is OFF.
   const askHref = await messageEntryForViewer({ storeId: product.store.id, productId: product.id }, "login");
+  // SEC-FIX-1 L10: the same read-time check as the store page, so a stored non-http(s) link is never rendered.
+  const storeMapUrl = safePublicMapUrl(product.store.mapUrl);
 
   const promotions = productPromotions(product.promotionProducts, product.store.id);
   const effective = calculateEffectivePrice(product.price, product.discountPrice, promotions, now);
@@ -246,7 +249,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
               src={`https://www.openstreetmap.org/export/embed.html?bbox=${product.store.longitude - 0.01}%2C${product.store.latitude - 0.01}%2C${product.store.longitude + 0.01}%2C${product.store.latitude + 0.01}&layer=mapnik&marker=${product.store.latitude}%2C${product.store.longitude}`}
             />
           ) : <p className="mt-5 rounded-control bg-surface-page p-3 text-xs text-fg-muted">Mağaza xəritə mövqeyini hələ əlavə etməyib.</p>}
-          {product.store.mapUrl && <a href={product.store.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus mt-3">Mağaza xəritəsinə bax →</a>}
+          {storeMapUrl && <a href={storeMapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-sm text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus mt-3">Mağaza xəritəsinə bax →</a>}
           {askHref && <Link href={askHref} className={`mt-4 ${buttonClass({ variant: "secondary", size: "sm", fullWidth: true })}`}><MessageCircle aria-hidden="true" size={17}/>Bu məhsul haqqında soruş</Link>}
         </section>
       </div>

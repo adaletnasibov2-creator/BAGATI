@@ -11,6 +11,7 @@ type Props = {
 };
 
 const input = "w-full rounded-xl border border-[#ded9cf] px-4 py-3 text-center font-mono text-lg tracking-[.3em] outline-none focus:border-[#bd9a5e]";
+const passwordField = "rounded-xl border border-[#ded9cf] px-4 py-3 outline-none focus:border-[#bd9a5e]";
 
 export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
   const [setup, setSetup] = useState<Setup | null>(null);
@@ -19,6 +20,9 @@ export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  // Settings (signed-in session) only: the server asks for the current password on setup and activate (SEC-FIX-1 M1).
+  const [password, setPassword] = useState("");
+  const needsPassword = mode === "settings";
 
   async function post(path: string, body: unknown) {
     const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(body) });
@@ -29,7 +33,7 @@ export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
 
   async function start() {
     setBusy(true); setError("");
-    try { setSetup(await post("/api/admin/2fa/setup", {})); }
+    try { setSetup(await post("/api/admin/2fa/setup", needsPassword ? { password } : {})); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Əməliyyat alınmadı."); }
     finally { setBusy(false); }
   }
@@ -38,7 +42,7 @@ export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
     event.preventDefault();
     setBusy(true); setError("");
     const code = String(new FormData(event.currentTarget).get("code") ?? "");
-    try { setCodes((await post("/api/admin/2fa/activate", { code })).recoveryCodes); }
+    try { setCodes((await post("/api/admin/2fa/activate", needsPassword ? { code, password } : { code })).recoveryCodes); setPassword(""); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Əməliyyat alınmadı."); }
     finally { setBusy(false); }
   }
@@ -83,8 +87,9 @@ export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
   if (!setup) {
     return <div className="space-y-4">
       <p className="text-sm leading-6 text-slate-600">Google Authenticator, Microsoft Authenticator və ya oxşar tətbiqdə QR kodu skan edin. Sonra tətbiqin göstərdiyi 6 rəqəmli kodu daxil edin.</p>
+      {needsPassword && <label className="grid max-w-xl gap-1.5 text-sm font-medium">Cari şifrə<input className={passwordField} type="password" name="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <button type="button" disabled={busy} onClick={() => void start()} className="inline-flex items-center gap-2 rounded-xl bg-[#0b1726] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"><KeyRound size={16} aria-hidden="true" />{busy ? "Hazırlanır…" : "QR kodu yarat"}</button>
+      <button type="button" disabled={busy || (needsPassword && !password)} onClick={() => void start()} className="inline-flex items-center gap-2 rounded-xl bg-[#0b1726] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"><KeyRound size={16} aria-hidden="true" />{busy ? "Hazırlanır…" : "QR kodu yarat"}</button>
     </div>;
   }
 

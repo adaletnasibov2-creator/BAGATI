@@ -26,15 +26,17 @@ const unavailable = <p className="rounded-xl border border-red-200 bg-red-50 p-3
 const empty = (text: string) => <p className="rounded-xl bg-[#f8f7f4] p-3 text-sm text-slate-500">{text}</p>;
 
 function Block({ title, note, children, wide }: { title: string; note?: string; children: ReactNode; wide?: boolean }) {
-  return <section className={`${card}${wide ? " xl:col-span-2" : ""}`}>
+  // min-w-0: a grid item must be allowed to shrink below its table's min width (the table scrolls inside), else the
+  // whole page overflows on phones (found in the SECURITY-PAGE-1 browser check: 578 px at 390).
+  return <section className={`${card} min-w-0${wide ? " xl:col-span-2" : ""}`}>
     <h2 className="font-semibold text-[#0d1b2a]">{title}</h2>
     {note && <p className="mt-1 text-xs text-slate-500">{note}</p>}
     <div className="mt-3">{children}</div>
   </section>;
 }
 
-function Table({ head, children }: { head: string[]; children: ReactNode }) {
-  return <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm">
+function Table({ head, children, narrow }: { head: string[]; children: ReactNode; narrow?: boolean }) {
+  return <div className="overflow-x-auto"><table className={`w-full ${narrow ? "min-w-[360px]" : "min-w-[520px]"} text-left text-sm`}>
     <thead className="bg-[#f8f7f4] text-xs text-slate-500"><tr>{head.map((title) => <th key={title} className={th}>{title}</th>)}</tr></thead>
     <tbody className="divide-y divide-[#eeeae2]">{children}</tbody>
   </table></div>;
@@ -88,7 +90,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
       </Block>
 
       <Block title="Adminlər və iki mərhələli təsdiq">
-        {!admins ? unavailable : !admins.length ? empty("Admin hesabı yoxdur.") : <Table head={["E-poçt", "2FA", "Kilid", "Bərpa kodları"]}>
+        {!admins ? unavailable : !admins.length ? empty("Admin hesabı yoxdur.") : <Table narrow head={["E-poçt", "2FA", "Kilid", "Bərpa kodları"]}>
           {admins.map((row) => <tr key={row.id}>
             <td className={td}>{row.email}{!row.isActive && <span className="ml-2 text-xs text-red-700">deaktiv</span>}</td>
             <td className={`${td} ${row.twoFactorOn ? "text-green-800" : "font-semibold text-red-700"}`}>{row.twoFactorOn ? "Qoşulub" : "Qoşulmayıb"}</td>
@@ -112,7 +114,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
         </Table>}
       </Block>
 
-      <Block title="Uğursuz girişlər" note="Giriş səhifəsinə görə: son 24 saat / son 7 gün.">
+      <Block wide title="Uğursuz girişlər" note="Giriş səhifəsinə görə: son 24 saat / son 7 gün.">
         {!failed ? unavailable : <>
           {!failed.byPath.length ? empty("Son 7 gündə uğursuz giriş yoxdur.") : <Table head={["Giriş", "24 saat", "7 gün"]}>
             {failed.byPath.map((row) => <tr key={row.path ?? "none"}><td className={td}>{portalForPath(row.path)}</td><td className={td}>{row.last24h}</td><td className={td}>{row.last7d}</td></tr>)}
@@ -132,7 +134,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
         </>}
       </Block>
 
-      <Block title="Şübhəli fəaliyyət" note="404 skanları sayğaclardır (IP saxlanmır); IP siyahısı qeydə alınmış hadisələrdəndir.">
+      <Block wide title="Şübhəli fəaliyyət" note="404 skanları sayğaclardır (IP saxlanmır); IP siyahısı qeydə alınmış hadisələrdəndir.">
         {!suspicious ? unavailable : <>
           <Table head={["Nə", "24 saat", "7 gün"]}>
             {suspicious.notFound.map((row) => <tr key={row.group}><td className={td}>{row.label}</td><td className={td}>{row.last24h}</td><td className={td}>{row.last7d}</td></tr>)}
@@ -151,7 +153,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
         </>}
       </Block>
 
-      <Block title="İnsidentlər və yüksək riskli hadisələr">
+      <Block wide title="İnsidentlər və yüksək riskli hadisələr">
         {!incidents ? unavailable : <>
           {!incidents.incidents.length ? empty("Açıq insident yoxdur.") : <ul className="space-y-2">{incidents.incidents.map((row) => <li key={row.id} className="rounded-xl bg-[#f8f7f4] px-3 py-2 text-sm">
             <span className="font-medium">{row.title}</span>

@@ -205,6 +205,20 @@ test("summary and event pages: admin + security.view first, read-only bounded qu
     assert.ok(summary.includes(`title="${title}"`), title);
   }
   for (const link of ["/admin/system", "/admin/security", "/admin/security-center/incidents", "/admin/security-center/events", "/admin/audit-log"]) assert.ok(summary.includes(link), link);
+  // Browser check (390 px): grid cards must shrink below their tables' min width, the tables scroll inside.
+  assert.match(summary, /<section className=\{`\$\{card\} min-w-0\$\{wide \? " xl:col-span-2" : ""\}`\}>/);
+  assert.match(summary, /<div className="overflow-x-auto"><table className=\{`w-full \$\{narrow \? "min-w-\[360px\]" : "min-w-\[520px\]"\} text-left text-sm`\}>/);
+  assert.match(summary, /<Table narrow head=\{\["E-poçt", "2FA", "Kilid", "Bərpa kodları"\]\}>/, "the half-width admins table fits its card");
+});
+
+test("security events are written as UTC wall-clock times (no +4 h shift on a database set to Asia/Baku)", () => {
+  const store = read("lib/security-event-store.ts");
+  assert.match(store, /\$\{utcTimestamp\(new Date\(input\.event\.occurredAt\)\)\},/);
+  assert.match(store, /\$\{input\.event\.ruleId \?\? null\}, \(NOW\(\) AT TIME ZONE 'UTC'\)/);
+  assert.doesNotMatch(store, /\$\{new Date\(input\.event\.occurredAt\)\},/);
+  // The wide blocks keep the summary tables readable on desktop (found in the browser check).
+  const summary = read("app/admin/security-center/page.tsx");
+  for (const title of ["Son admin girişləri", "Uğursuz girişlər", "Şübhəli fəaliyyət", "İnsidentlər və yüksək riskli hadisələr", "Son təhlükəsizlik əməliyyatları"]) assert.ok(summary.includes(`<Block wide title="${title}"`), title);
 });
 
 test("cleanup: nested old center, IP-controls API, Apache/Cloudflare cards, empty filters and duplicate IP list are gone", () => {

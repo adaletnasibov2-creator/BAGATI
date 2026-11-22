@@ -2,7 +2,7 @@
  * Opportunistic Security Center jobs, run inside the Next.js app (no separate worker):
  *  - alert-rule evaluation (at most once a minute per process; one incident per rule per cooldown across processes),
  *  - hourly roll-up of minute counters (recomputed, idempotent),
- *  - retention (raw IP 7 days then masked only; minute stats 14 days; hourly stats 90 days).
+ *  - retention (raw IP 30 days then masked only, SECURITY-PAGE-1; minute stats 14 days; hourly stats 90 days).
  * Triggered after a telemetry flush and when an admin opens the live panel. Every job is throttled, idempotent and
  * fail-safe: errors are logged (error class only, at most once a minute) and never reach a request.
  */
@@ -15,7 +15,7 @@ import {
   type AlertRuleDefinition, type RuleSettings,
 } from "@/lib/security-monitoring/rules";
 
-export const RETENTION = { rawIpDays: 7, minuteStatDays: 14, hourStatDays: 90 } as const;
+export const RETENTION = { rawIpDays: 30, minuteStatDays: 14, hourStatDays: 90 } as const;
 const RULES_INTERVAL_MS = 60_000;
 const MAINTENANCE_INTERVAL_MS = 10 * 60_000;
 const MASK_BATCH = 1_000;
@@ -122,7 +122,7 @@ export async function rollupHours(db: Db, now = new Date(), hours = 3): Promise<
 /**
  * Retention, idempotent:
  *  1. fills sourceIpMasked for events that have only the raw IP (batch),
- *  2. clears the raw IP of events older than 7 days (only where the masked form exists),
+ *  2. clears the raw IP of events older than 30 days (only where the masked form exists),
  *  3. deletes minute stats older than 14 days and hourly stats older than 90 days.
  */
 export async function applyRetention(db: Db, now = new Date()): Promise<{ masked: number; rawCleared: number; minuteDeleted: number; hourDeleted: number }> {

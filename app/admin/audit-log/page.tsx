@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAdminPage, normalizeAdminSearchParams, type AdminSearchParams } from "@/lib/admin-pagination";
 import { AUDIT_EXPORT_MAX_ROWS, AUDIT_LOG_PAGE_SIZE, auditFiltersToSearchParams, formatBakuDateTime, parseAuditLogFilters, type AuditLogFilters } from "@/lib/admin-audit-log";
 import { auditDistinctValues, findAuditLogPage, type AuditLogRow } from "@/lib/admin-audit-log-query";
+import { auditActionLabel } from "@/lib/audit-action-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,11 @@ function actorInputValue(filters: AuditLogFilters) {
   return filters.actor.kind === "system" ? "system" : filters.actor.value;
 }
 
-function Select({ name, title, values, selected }: { name: string; title: string; values: string[]; selected?: string }) {
+function Select({ name, title, values, selected, labelFor }: { name: string; title: string; values: string[]; selected?: string; labelFor?: (value: string) => string }) {
   const options = selected && !values.includes(selected) ? [selected, ...values] : values;
   return <label className={label}>{title}<select name={name} defaultValue={selected ?? ""} className={input}>
     <option value="">Hamısı</option>
-    {options.map((value) => <option key={value} value={value}>{value}</option>)}
+    {options.map((value) => <option key={value} value={value}>{labelFor ? labelFor(value) : value}</option>)}
   </select></label>;
 }
 
@@ -51,7 +52,7 @@ function AuditTable({ rows }: { rows: AuditLogRow[] }) {
       <tbody className="divide-y divide-[#eeeae2]">{rows.map((row) => <tr key={row.id} className="align-top">
         <td className="px-4 py-3.5"><time dateTime={row.createdAt.toISOString()} className="whitespace-nowrap">{formatBakuDateTime(row.createdAt)}</time></td>
         <td className="px-4 py-3.5">{row.actorEmail || "Sistem"}</td>
-        <td className="px-4 py-3.5">{row.action}</td>
+        <td className="px-4 py-3.5">{auditActionLabel(row.action)}{auditActionLabel(row.action) !== row.action && <span className="mt-0.5 block font-mono text-[11px] text-slate-400">{row.action}</span>}</td>
         <td className="px-4 py-3.5">{`${row.entityType} · ${row.entityId || "—"}`}</td>
         <td className="px-4 py-3.5"><pre className="max-w-xs whitespace-pre-wrap text-xs">{JSON.stringify(row.metadata || {})}</pre></td>
       </tr>)}</tbody>
@@ -85,7 +86,7 @@ export default async function AdminAuditLogPage({ searchParams }: { searchParams
 
     <form action="/admin/audit-log" className="mb-4 grid gap-3 rounded-2xl border border-[#e7e3d9] bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
       <label className={label}>İcraçı<input name="actor" defaultValue={actorInputValue(filters)} placeholder="E-poçt, ID və ya system" className={input} /></label>
-      <Select name="action" title="Əməl" values={distinct.actions} selected={filters.action} />
+      <Select name="action" title="Əməl" values={distinct.actions} selected={filters.action} labelFor={auditActionLabel} />
       <Select name="entityType" title="Obyekt növü" values={distinct.entityTypes} selected={filters.entityType} />
       <label className={label}>Obyekt ID-si<input name="entityId" defaultValue={filters.entityId ?? ""} className={input} /></label>
       <label className={label}>Başlanğıc tarixi<input type="date" name="from" defaultValue={filters.from ?? ""} className={input} /></label>

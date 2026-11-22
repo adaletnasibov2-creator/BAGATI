@@ -33,7 +33,8 @@ test("system status never exposes secret values or personal data", () => {
   // Only booleans/modes leave the server for configuration.
   assert.doesNotMatch(cards, /process\.env\.(SMTP_|EMAIL_ENCRYPTION_KEY|SESSION_SECRET|DATABASE_URL|GOOGLE_|S3_)/);
   assert.doesNotMatch(cards, /"email"|\."email"|contactEmail|contactPhone|"recipient"|"payload"/);
-  assert.match(cards, /maskIpAddress\(row\.sourceIp\)/);
+  // SECURITY-PAGE-1: the repeated-IP list (masked) moved to the security summary; the status cards return no IP at all.
+  assert.doesNotMatch(cards, /sourceIp|repeatedIps/);
   // Every card's queries run in a read-only transaction with a statement timeout.
   assert.match(cards, /SET TRANSACTION READ ONLY/);
   assert.match(cards, /SET LOCAL statement_timeout/);

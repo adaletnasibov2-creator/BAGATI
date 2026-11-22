@@ -9,7 +9,6 @@ import {
   SYSTEM_STATUS_STATEMENT_TIMEOUT_MS,
   bakuStartOfDay,
   createTtlCache,
-  maskIpAddress,
   missingMigrations,
   postgresMajorVersion,
   type SystemStatusCard,
@@ -173,17 +172,9 @@ async function securityCard(now: Date) {
       GROUP BY "eventType"
       ORDER BY "last7d" DESC
       LIMIT 20`;
-    const repeated = await tx.$queryRaw<{ sourceIp: string; count: number }[]>`
-      SELECT "sourceIp", COUNT(*)::int AS "count"
-      FROM "SecurityEvent"
-      WHERE "occurredAt" >= ${utcTimestamp(since7d)} AND "occurredAt" <= ${utcTimestamp(now)} AND "sourceIp" IS NOT NULL
-      GROUP BY "sourceIp"
-      HAVING COUNT(*) >= 2
-      ORDER BY "count" DESC
-      LIMIT 5`;
+    // SECURITY-PAGE-1: the repeated-IP list moved to the security summary (/admin/security-center); not duplicated here.
     return {
       byType: byType.map((row) => ({ eventType: row.eventType, last24h: Number(row.last24h), last7d: Number(row.last7d) })),
-      repeatedIps: repeated.map((row) => ({ ip: maskIpAddress(row.sourceIp), count: Number(row.count) })),
     };
   });
 }

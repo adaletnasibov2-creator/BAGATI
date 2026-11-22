@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { canTransition, fillMinuteSeries, INCIDENT_STATUSES, INCIDENT_TRANSITIONS, sumPoints, transitionFields } from "../lib/security-monitoring/admin";
@@ -99,17 +99,20 @@ test("a cross-site write is rejected before the session is looked up", async () 
   assert.equal(result.response.status, 403);
 });
 
-test("UI: client component polls every 15 s, imports no server module, marks Apache as not in use, page checks the permission", () => {
+// SECURITY-PAGE-1: the live tab (15 s polling), the sources tab and the nested older center
+// (components/admin-security-center.tsx, deleted) are gone. The client component keeps only incidents and rules, at
+// /admin/security-center/incidents; the summary and the event list are server pages that check the permission first.
+test("UI: incidents/rules client component imports no server module and does not poll; pages check the permission", () => {
   const ui = read("components/admin-security-monitoring.tsx");
   assert.match(ui, /^"use client";/);
-  assert.match(ui, /export const LIVE_POLL_MS = 15_000;/);
+  assert.doesNotMatch(ui, /LIVE_POLL_MS|setInterval|\/api\/admin\/security\/live|admin-security-center|Mənbələr|istifadə olunmur/);
   const imports = [...ui.matchAll(/from "([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(imports.filter((path) => path.startsWith("@/")), ["@/components/admin-security-center"], "no lib/ (server) imports");
-  assert.match(ui, /istifadə olunmur/);
-  for (const label of ["Canlı", "Hadisələr", "İnsidentlər", "Qaydalar", "Mənbələr"]) assert.ok(ui.includes(`label: "${label}"`), label);
-  const page = read("app/admin/security-center/page.tsx");
-  assert.ok(ascending(page, ['requireRole("ADMIN")', 'requireSecurityPermission(admin, "security.view")', "<AdminSecurityMonitoring />"]));
-  const old = read("components/admin-security-center.tsx");
-  assert.match(old, /label: "Kritik hadisələr"/, "the old in-page anchor no longer reads İnsidentlər");
-  assert.match(old, /Apache \/ ModSecurity: istifadə olunmur/);
+  assert.deepEqual(imports.filter((path) => path.startsWith("@/")), [], "no lib/ (server) imports");
+  assert.deepEqual([...ui.matchAll(/\{ id: "(\w+)", label: "([^"]+)"/g)].map((match) => [match[1], match[2]]), [["incidents", "İnsidentlər"], ["rules", "Qaydalar"]]);
+  for (const path of ["app/admin/security-center/page.tsx", "app/admin/security-center/events/page.tsx", "app/admin/security-center/incidents/page.tsx"]) {
+    assert.ok(ascending(read(path), ['requireRole("ADMIN")', 'requireSecurityPermission(admin, "security.view")', 'redirect("/admin/login")']), path);
+  }
+  assert.match(read("app/admin/security-center/incidents/page.tsx"), /<AdminSecurityMonitoring \/>/);
+  assert.equal(existsSync(join(root, "components/admin-security-center.tsx")), false, "the nested older center is deleted");
+  assert.equal(existsSync(join(root, "app/api/admin/security/ip-controls/route.ts")), false, "the dead IP-controls API is deleted");
 });

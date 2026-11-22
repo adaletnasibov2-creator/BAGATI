@@ -125,8 +125,6 @@ function SecurityBody({ data }: { data: SystemStatusData["security"] }) {
       <thead className="text-xs text-slate-500"><tr><th className="py-2 font-medium">Hadisə növü</th><th className="py-2 text-right font-medium">24 saat</th><th className="py-2 text-right font-medium">7 gün</th></tr></thead>
       <tbody className="divide-y divide-[#f0ece4]">{data.byType.map((row) => <tr key={row.eventType}><td className="break-all py-2 font-mono text-xs">{row.eventType}</td><td className="py-2 text-right">{row.last24h}</td><td className="py-2 text-right">{row.last7d}</td></tr>)}</tbody>
     </table></div> : <p className="rounded-xl bg-[#f8f7f4] p-3 text-sm text-slate-500">Son 7 gündə təhlükəsizlik hadisəsi yoxdur.</p>}
-    <h3 className="mt-4 text-sm font-semibold">Təkrarlanan IP-lər (7 gün, maskalanıb)</h3>
-    {data.repeatedIps.length ? <ul className="mt-2 divide-y divide-[#f0ece4] text-sm">{data.repeatedIps.map((row, index) => <li key={`${row.ip}-${index}`} className="flex justify-between py-2"><span className="font-mono text-xs">{row.ip}</span><b>{row.count}</b></li>)}</ul> : <p className="mt-2 text-sm text-slate-500">Təkrarlanan IP yoxdur.</p>}
   </>;
 }
 

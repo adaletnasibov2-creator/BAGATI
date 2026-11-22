@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { csrfRejection } from "@/lib/csrf";
 import { createSession, currentSessionId } from "@/lib/auth";
 import { readJsonBodyLimited } from "@/lib/request-json";
-import { Admin2faError, activateEnrollment, admin2faErrorMessage, expiredChallengeCookie, resolveEnrollmentActor } from "@/lib/admin-2fa";
+import { Admin2faError, activateEnrollment, admin2faErrorMessage, assertEnrollmentPassword, expiredChallengeCookie, resolveEnrollmentActor } from "@/lib/admin-2fa";
 import { revokeOtherOwnSessions } from "@/lib/admin-sessions";
 import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
@@ -21,6 +21,7 @@ async function handlePOST(request: NextRequest) {
   const value = body.ok && body.value && typeof body.value === "object" ? body.value as Record<string, unknown> : null;
   if (!value) return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400, headers });
   try {
+    await assertEnrollmentPassword(request, actor, value.password); // session path only (SEC-FIX-1 M1)
     const recoveryCodes = await activateEnrollment(request, actor, value.code);
     if (actor.via === "session") {
       const revoked = await revokeOtherOwnSessions(actor.userId, await currentSessionId(), "2fa-enrolled");

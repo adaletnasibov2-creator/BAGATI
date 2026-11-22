@@ -3,13 +3,13 @@
 // Supported here:
 //   - CSV/TSV: UTF-8 with optional BOM, auto-detected comma/semicolon/tab delimiter.
 //   - JSON: array of objects, or { products: [...] }.
-//   - XML: repeated <product> blocks with <field>value</field> children (text catalogs).
 //
 // Not parsed here (by design):
+//   - XML: removed in SEC-FIX-1 (M4); convert XML catalogs to CSV/XLSX.
 //   - XLSX is parsed in the existing client wizard and submitted as rows.
 //   - .xls (binary BIFF), PDF text extraction and scanned-PDF OCR are intentionally
 //     unsupported: the project has no library for them, so we never silently guess.
-//     PDFs/XLS must be converted to CSV/XLSX/JSON/XML before import.
+//     PDFs/XLS must be converted to CSV/XLSX/JSON before import.
 
 export type ParsedImport = { headers: string[]; rows: Record<string, string>[] };
 
@@ -130,60 +130,18 @@ export function parseJsonImport(text: string): ParsedImport {
   return { headers: Object.keys(rows[0]), rows };
 }
 
-
-function decodeXmlEntities(input: string): string {
-  return input
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_match, code: string) => String.fromCodePoint(Number(code)))
-    .replace(/&amp;/g, "&");
-}
-
-// Azerbaijani-letter-aware XML tag charset (ə ö ğ ü ç ş ı and uppercase İ Ğ Ü Ç Ö Ş Ə).
-const AZ_TAG = "[A-Za-z\\u0259\\u00f6\\u011f\\u00fc\\u00e7\\u015f\\u0131\\u0130\\u011e\\u00dc\\u00c7\\u015e\\u018f_][A-Za-z0-9\\u0259\\u00f6\\u011f\\u00fc\\u00e7\\u015f\\u0131\\u0130\\u011e\\u00dc\\u00c7\\u015e\\u018f_-]*";
-
 /**
- * Text-based XML catalogs: repeated <product> (or <item>/<məhsul>) blocks whose
- * children are simple <field>value</field> pairs. This is a pragmatic extractor,
- * not a full XML parser; CDATA is unwrapped and values are entity-decoded. It
- * only does string processing (never eval), so it is safe against code injection.
+ * Choose a parser from a file extension. CSV/TSV/JSON are text; XLSX/XLS/PDF are not.
+ * XML is no longer parsed (SEC-FIX-1 M4: the regex extractor was quadratic on unclosed tags and only the removed
+ * server-side fileText path used it), so .xml is rejected at once like any other unsupported format.
  */
-export function parseXmlImport(text: string): ParsedImport {
-  const clean = stripBom(text);
-  const blockPattern = new RegExp(`<(product|item|m\\u0259hsul|mehsul)\\b[^>]*>([\\s\\S]*?)</\\1>`, "gi");
-  const fieldPattern = new RegExp(`<(${AZ_TAG})\\s*(?:/>|>([\\s\\S]*?)</\\1>)`, "gi");
-  const rows: Record<string, string>[] = [];
-  let block: RegExpExecArray | null;
-  while ((block = blockPattern.exec(clean)) !== null) {
-    const inner = block[2];
-    const obj: Record<string, string> = {};
-    let field: RegExpExecArray | null;
-    fieldPattern.lastIndex = 0;
-    while ((field = fieldPattern.exec(inner)) !== null) {
-      const key = field[1].trim();
-      const raw = field[2] ?? "";
-      obj[key] = decodeXmlEntities(raw.replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, "$1").trim());
-    }
-    if (Object.keys(obj).length) rows.push(obj);
-  }
-  if (!rows.length) {
-    throw new ImportParseError("XML-də <product> blokları tapılmadı.");
-  }
-  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
-  return { headers, rows };
-}
-
-/** Choose a parser from a file extension. CSV/TSV/JSON/XML are text; XLSX/XLS/PDF are not. */
 export function parseImportByExtension(
   fileName: string,
   text: string,
-): { format: "csv" | "tsv" | "json" | "xml"; parsed: ParsedImport } {
+): { format: "csv" | "tsv" | "json"; parsed: ParsedImport } {
   const ext = fileName.toLowerCase().split(".").pop() ?? "";
   if (ext === "json") return { format: "json", parsed: parseJsonImport(text) };
-  if (ext === "xml") return { format: "xml", parsed: parseXmlImport(text) };
   if (ext === "tsv") return { format: "tsv", parsed: parseDelimited(text, "\t") };
   if (ext === "csv") return { format: "csv", parsed: parseDelimited(text) };
-  throw new ImportParseError("Dəstəklənməyən fayl formatı. CSV, TSV, JSON və ya XML göndərin.");
+  throw new ImportParseError("Dəstəklənməyən fayl formatı. CSV, TSV və ya JSON göndərin.");
 }

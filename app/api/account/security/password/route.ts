@@ -5,6 +5,8 @@ import { z } from "zod";
 import { createSession, currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enqueueEmail } from "@/lib/email-outbox";
+import { consumeAuthRateLimit, PASSWORD_CHECK_RATE_LIMIT, passwordCheckRateLimitKey } from "@/lib/auth-rate-limit";
+import { checkCurrentPassword } from "@/lib/password-check";
 
 const schema = z.object({ currentPassword: z.string().min(1).max(128), newPassword: z.string().min(12).max(128) });
 
@@ -19,7 +21,13 @@ export async function PATCH(request: NextRequest) {
   if (!parsed.success || parsed.data.newPassword === parsed.data.currentPassword) return NextResponse.json({ error: "Şifrə məlumatlarını yoxlayın; yeni şifrə ən azı 12 simvol olmalı və köhnədən fərqlənməlidir" }, { status: 422 });
   const record = await prisma.user.findUnique({ where: { id: user.id }, select: { passwordHash: true, passwordAuthEnabled: true } });
   if (!record?.passwordAuthEnabled) return NextResponse.json({ error: "Bu hesab Google ilə idarə olunur. Dəyişiklik üçün Google hesabınızdan istifadə edin." }, { status: 409 });
-  if (!record || !(await bcrypt.compare(parsed.data.currentPassword, record.passwordHash))) return NextResponse.json({ error: "Cari şifrə yanlışdır" }, { status: 400 });
+  // SEC-FIX-1 L3: the attempt is counted before bcrypt, so a stolen session cannot guess the password without limit.
+  const check = await checkCurrentPassword({
+    consumeAttempt: () => consumeAuthRateLimit(passwordCheckRateLimitKey("password-change", user.id), PASSWORD_CHECK_RATE_LIMIT.limit, PASSWORD_CHECK_RATE_LIMIT.windowMs),
+    compare: () => bcrypt.compare(parsed.data.currentPassword, record.passwordHash),
+  });
+  if (check === "rate-limited") return NextResponse.json({ error: "Çox sayda cəhd edildi. Bir müddət sonra yenidən yoxlayın." }, { status: 429, headers: { "Cache-Control": "no-store" } });
+  if (check === "invalid") return NextResponse.json({ error: "Cari şifrə yanlışdır" }, { status: 400 });
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await prisma.$transaction(async (transaction) => {
     await transaction.authSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });

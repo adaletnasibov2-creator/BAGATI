@@ -5,7 +5,8 @@ import { findUserByLoginEmail } from "@/lib/login-user-lookup";
 import { createSession } from "@/lib/auth";
 import { logAuthFailure, logAuthRejection } from "@/lib/auth-logging";
 import { wrongPortalBody } from "@/lib/login-portal";
-import { authRateLimitKey, clearAuthRateLimit, consumeAuthRateLimit, LOGIN_RATE_LIMIT } from "@/lib/auth-rate-limit";
+import { clearAuthRateLimit, consumeAuthRateLimit, LOGIN_RATE_LIMIT, loginRateLimitKey } from "@/lib/auth-rate-limit";
+import { equalizeLoginTiming } from "@/lib/login-timing";
 import { loginSchema } from "@/lib/validation";
 import { attachEmailVerificationContext, clearEmailVerificationContext, createEmailVerificationContext, emailVerificationRequired } from "@/lib/email-verification";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
@@ -25,7 +26,7 @@ async function handlePOST(request: NextRequest) {
   const email = parsed.data.email.trim().toLowerCase();
   let rateKey: string;
   try {
-    rateKey = authRateLimitKey("login", email);
+    rateKey = loginRateLimitKey("customer", email);
     if (!await consumeAuthRateLimit(rateKey, LOGIN_RATE_LIMIT.limit, LOGIN_RATE_LIMIT.windowMs)) {
       await captureApplicationSecurityEvent({ request, eventType: "RATE_LIMIT_VIOLATION", path: "/api/auth/login" });
       return NextResponse.json({ error: "Çox sayda giriş cəhdi edildi. Bir müddət sonra yenidən yoxlayın." }, { status: 429, headers: { "Cache-Control": "no-store" } });
@@ -42,15 +43,18 @@ async function handlePOST(request: NextRequest) {
   }
   const invalid = NextResponse.json({ error: "E-poçt və ya şifrə yanlışdır." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   if (!user) {
+    await equalizeLoginTiming(parsed.data.password);
     logAuthRejection("customer_login", "absent");
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/auth/login" });
     return invalid;
   }
   if (!user.isActive) {
+    await equalizeLoginTiming(parsed.data.password);
     logAuthRejection("customer_login", "inactive");
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/auth/login" });
     return invalid;
   }
+  if (!user.passwordAuthEnabled) await equalizeLoginTiming(parsed.data.password);
   if (!user.passwordAuthEnabled || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     logAuthRejection("customer_login", user.passwordAuthEnabled ? "password-mismatch" : "password-disabled");
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/auth/login" });

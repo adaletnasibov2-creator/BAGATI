@@ -61,7 +61,7 @@ test("admin login: per-IP limit, shared stricter unknown-IP limit, per-account l
     const { NextRequest } = await import("next/server");
     const bcrypt = (await import("bcryptjs")).default;
     const { securityTelemetry } = await import("../lib/security-monitoring/instance");
-    const { authRateLimitKey } = await import("../lib/auth-rate-limit");
+    const { loginRateLimitKey } = await import("../lib/auth-rate-limit");
     const { adminLoginIpBucket, ADMIN_LOGIN_IP_RATE_LIMIT, ADMIN_LOGIN_UNKNOWN_IP_RATE_LIMIT } = await import("../lib/admin-login-rate-limit");
     const { POST } = await import("../app/api/admin/login/route");
 
@@ -84,8 +84,8 @@ test("admin login: per-IP limit, shared stricter unknown-IP limit, per-account l
     const stranger = (index: number) => ({ email: `nobody-${tag}-${index}@verify.invalid`, password: wrongPassword });
     const bucketKey = (ip: string | null) => adminLoginIpBucket(new Headers(ip ? { "cf-connecting-ip": ip } : {}), ip !== null).key;
     const expireWindow = (key: string) => prisma.$executeRaw(Prisma.sql`UPDATE "AuthRateLimit" SET "windowStartedAt" = "windowStartedAt" - interval '16 minutes' WHERE "keyHash" = ${key}`);
-    keys.push(bucketKey(TEST_IPS[0]), bucketKey(TEST_IPS[1]), bucketKey(TEST_IPS[2]), bucketKey(null), authRateLimitKey("login", admin.email));
-    for (let index = 0; index < 40; index += 1) keys.push(authRateLimitKey("login", stranger(index).email));
+    keys.push(bucketKey(TEST_IPS[0]), bucketKey(TEST_IPS[1]), bucketKey(TEST_IPS[2]), bucketKey(null), loginRateLimitKey("admin", admin.email));
+    for (let index = 0; index < 40; index += 1) keys.push(loginRateLimitKey("admin", stranger(index).email));
 
     await t.test("per IP: 20 attempts in the window, then 429 with an Azerbaijani message and Retry-After; another IP is unaffected", async () => {
       process.env.BAGATI_TRUST_CLOUDFLARE_IP = "true";

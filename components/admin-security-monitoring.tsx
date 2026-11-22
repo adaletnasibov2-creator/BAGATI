@@ -1,32 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import {
-  Activity, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Gauge, ListChecks, Pause, Play, RefreshCw,
-  ShieldCheck, Siren, SlidersHorizontal, Wifi,
-} from "lucide-react";
-import AdminSecurityCenter from "@/components/admin-security-center";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
+import { AlertTriangle, ChevronLeft, ChevronRight, ListChecks, ShieldCheck, Siren, SlidersHorizontal } from "lucide-react";
 
-/* Client-only: talks to /api/admin/security/* and never imports server modules. */
+/*
+ * Client-only: talks to /api/admin/security/* and never imports server modules.
+ * SECURITY-PAGE-1: only the incident and alert-rule tools remain here (/admin/security-center/incidents). The live panel
+ * (15 s polling), the sources tab and the nested older center were removed; the summary is the server page
+ * app/admin/security-center/page.tsx and the event list is app/admin/security-center/events/page.tsx.
+ */
 
-type Tab = "live" | "events" | "incidents" | "rules" | "sources";
+type Tab = "incidents" | "rules";
 type IncidentStatus = "OPEN" | "ACKNOWLEDGED" | "RESOLVED" | "FALSE_POSITIVE";
 type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
-type Counters = { requests: number; status4xx: number; status5xx: number; authDenied: number; notFound: number; rateLimited: number; loginFailures: number; ipMismatches: number };
-type Totals = Counters & { rate5xx: number; rate4xx: number; rateAuthDenied: number };
-type LiveData = {
-  generatedAt: string;
-  series: Array<Counters & { minute: string }>;
-  totals: { last60: Totals; last5: Totals };
-  routeGroups: Array<{ routeGroup: string; requests: number; status4xx: number; status5xx: number; authDenied: number; notFound: number; rateLimited: number; avgMs: number | null; maxMs: number }>;
-  latestStatMinute: string | null;
-  recentEvents: Array<{ id: string; occurredAt: string; source: string; eventType: string; severity: Severity; action: string; path: string | null; ip: string | null }>;
-  openIncidents: Array<{ id: string; ruleKey: string; title: string; severity: Severity; status: IncidentStatus; observedValue: number; threshold: number; createdAt: string; assignee: string | null }>;
-  incidentCounts: Record<IncidentStatus, number>;
-  sources: Record<"application" | "cloudflare" | "apache", { state: "active" | "relay" | "not_in_use"; eventsLast24h: number; lastReceivedAt: string | null }>;
-  telemetry: { flushIntervalSeconds: number; processLastFlushAt: string | null };
-};
 type Incident = {
   id: string; ruleKey: string; title: string; severity: Severity; status: IncidentStatus; observedValue: number; threshold: number; windowMinutes: number;
   windowStart: string; windowEnd: string; acknowledgedAt: string | null; resolvedAt: string | null; createdAt: string; updatedAt: string;
@@ -37,14 +25,9 @@ type RuleSettings = { enabled: boolean; threshold: number; windowMinutes: number
 type Rule = { key: string; label: string; description: string; severity: Severity; defaults: RuleSettings; settings: RuleSettings; isDefault: boolean; version: number; updatedAt: string | null; updatedBy: string | null };
 type Bounds = { threshold: [number, number]; windowMinutes: [number, number]; cooldownMinutes: [number, number] };
 
-export const LIVE_POLL_MS = 15_000;
-
-const TABS: Array<{ id: Tab; label: string; icon: typeof Activity }> = [
-  { id: "live", label: "Canlı", icon: Gauge },
-  { id: "events", label: "Hadisələr", icon: Activity },
+const TABS: Array<{ id: Tab; label: string; icon: typeof Siren }> = [
   { id: "incidents", label: "İnsidentlər", icon: Siren },
   { id: "rules", label: "Qaydalar", icon: SlidersHorizontal },
-  { id: "sources", label: "Mənbələr", icon: Wifi },
 ];
 
 const STATUS_LABELS: Record<IncidentStatus, string> = { OPEN: "Açıq", ACKNOWLEDGED: "Qəbul edilib", RESOLVED: "Həll edilib", FALSE_POSITIVE: "Yanlış həyəcan" };
@@ -62,33 +45,6 @@ const STATUS_CLASSES: Record<IncidentStatus, string> = {
   RESOLVED: "border-emerald-800 bg-emerald-950/40 text-emerald-200",
   FALSE_POSITIVE: "border-slate-600 bg-slate-800 text-slate-300",
 };
-const ROUTE_GROUP_LABELS: Record<string, string> = {
-  "auth.login": "Müştəri girişi",
-  "auth.vendor-login": "Satıcı girişi",
-  "admin.login": "Admin girişi",
-  "admin.2fa": "Admin 2FA",
-  "auth.register": "Qeydiyyat",
-  "auth.password-reset": "Şifrə bərpası",
-  "seller-application": "Satıcı müraciəti",
-  inquiry: "Mağaza sorğusu",
-  "security.ingest": "Hadisə qəbulu",
-  "admin.security": "Təhlükəsizlik mərkəzi",
-  "notfound.php": "404 · PHP skanı",
-  "notfound.wp": "404 · WordPress skanı",
-  "notfound.secrets": "404 · gizli fayl axtarışı",
-  "notfound.admin-probe": "404 · admin panel axtarışı",
-  "notfound.api": "404 · API",
-  "notfound.other": "404 · digər",
-  other: "Digər",
-};
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  LOGIN_FAILURE: "Uğursuz giriş",
-  RATE_LIMIT_VIOLATION: "Limit aşımı",
-  IP_HEADER_MISMATCH: "IP başlıqları uyğun gəlmir",
-  SUSPICIOUS_PATH: "Şübhəli yol",
-  ABUSIVE_API: "API sui-istifadəsi",
-  WAF_EVENT: "WAF hadisəsi",
-};
 
 const panelClass = "rounded-xl border border-slate-700 bg-slate-900 p-4 sm:p-5";
 const inputClass = "min-h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-900";
@@ -97,7 +53,6 @@ const buttonClass = "inline-flex min-h-10 items-center justify-center gap-2 roun
 const time = (value: string | null) => (value ? new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)) : "—");
 const dateTime = (value: string | null) => (value ? new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "—");
 const number = (value: number) => new Intl.NumberFormat("az-AZ").format(value);
-const groupLabel = (group: string) => ROUTE_GROUP_LABELS[group] ?? group;
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init, headers: { Accept: "application/json", ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers } });
@@ -115,8 +70,9 @@ function ErrorBox({ message }: { message: string | null }) {
   return <p role="alert" className="rounded-lg border border-rose-800 bg-rose-950/60 px-3 py-2 text-sm text-rose-100">{message}</p>;
 }
 
+
 export default function AdminSecurityMonitoring() {
-  const [tab, setTab] = useState<Tab>("live");
+  const [tab, setTab] = useState<Tab>("incidents");
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("tab");
     if (TABS.some((item) => item.id === requested)) setTab(requested as Tab);
@@ -132,9 +88,9 @@ export default function AdminSecurityMonitoring() {
     <main className="min-h-screen rounded-2xl bg-[#07111b] text-slate-100">
       <header className="flex flex-col gap-4 border-b border-slate-800 p-4 sm:p-6 lg:px-8">
         <div>
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.2em] text-emerald-300"><ShieldCheck size={15} aria-hidden="true" /> BAGATI · Təhlükəsizlik mərkəzi</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Canlı təhlükəsizlik monitorinqi</h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-400">Tətbiqin öz sayğacları və qeydə alınmış hadisələr. Xəbərdarlıqlar yalnız bu paneldə göstərilir; IP bloklaması yoxdur.</p>
+          <Link href="/admin/security-center" prefetch={false} className="text-sm font-medium text-emerald-300">← Təhlükəsizlik mərkəzi</Link>
+          <p className="mt-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.2em] text-emerald-300"><ShieldCheck size={15} aria-hidden="true" /> BAGATI · Təhlükəsizlik mərkəzi</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">İnsidentlər və qaydalar</h1>
         </div>
         <nav aria-label="Təhlükəsizlik mərkəzi bölmələri" className="-mx-1 overflow-x-auto">
           <ul role="tablist" className="flex min-w-max gap-1 px-1">
@@ -151,210 +107,11 @@ export default function AdminSecurityMonitoring() {
           </ul>
         </nav>
       </header>
-      {tab === "events" ? <AdminSecurityCenter /> : (
-        <div className="p-4 sm:p-6 lg:px-8">
-          {tab === "live" && <LivePanel onOpenIncidents={() => select("incidents")} />}
-          {tab === "incidents" && <IncidentsPanel />}
-          {tab === "rules" && <RulesPanel />}
-          {tab === "sources" && <SourcesPanel />}
-        </div>
-      )}
-    </main>
-  );
-}
-
-function useLiveData(enabled: boolean) {
-  const [data, setData] = useState<LiveData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const inFlight = useRef<AbortController | null>(null);
-  const load = useCallback(async () => {
-    inFlight.current?.abort();
-    const controller = new AbortController();
-    inFlight.current = controller;
-    setLoading(true);
-    try {
-      setData(await requestJson<LiveData>("/api/admin/security/live", { signal: controller.signal }));
-      setError(null);
-    } catch (caught) {
-      if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : "Sorğu alınmadı.");
-    } finally {
-      if (inFlight.current === controller) setLoading(false);
-    }
-  }, []);
-  useEffect(() => {
-    void load();
-    if (!enabled) return () => inFlight.current?.abort();
-    const timer = window.setInterval(() => { if (!document.hidden) void load(); }, LIVE_POLL_MS);
-    return () => { window.clearInterval(timer); inFlight.current?.abort(); };
-  }, [enabled, load]);
-  return { data, error, loading, load };
-}
-
-function LivePanel({ onOpenIncidents }: { onOpenIncidents: () => void }) {
-  const [paused, setPaused] = useState(false);
-  const { data, error, loading, load } = useLiveData(!paused);
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Badge className={paused ? "border-slate-600 text-slate-300" : "border-emerald-800 bg-emerald-950/50 text-emerald-200"}>
-          <span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${paused ? "bg-slate-500" : "animate-pulse bg-emerald-400"}`} aria-hidden="true" />
-          {paused ? "Dayandırılıb" : "Canlı · hər 15 saniyədə"}
-        </Badge>
-        <span className="text-slate-400">Son yenilənmə: {time(data?.generatedAt ?? null)}</span>
-        <div className="ml-auto flex gap-2">
-          <button type="button" onClick={() => setPaused((value) => !value)} className={`${buttonClass} border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800`}>
-            {paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />} {paused ? "Davam et" : "Dayandır"}
-          </button>
-          <button type="button" onClick={() => void load()} disabled={loading} className={`${buttonClass} border-emerald-700 bg-emerald-950/40 text-emerald-100 hover:bg-emerald-900/50`}>
-            <RefreshCw size={15} className={loading ? "animate-spin" : ""} aria-hidden="true" /> Yenilə
-          </button>
-        </div>
+      <div className="p-4 sm:p-6 lg:px-8">
+        {tab === "incidents" && <IncidentsPanel />}
+        {tab === "rules" && <RulesPanel />}
       </div>
-      <ErrorBox message={error ? `${error}${data ? " Ekrandakı məlumat son uğurlu cavaba aiddir." : ""}` : null} />
-      {!data ? (
-        <p role="status" className={`${panelClass} text-sm text-slate-300`}>{loading ? "Canlı məlumat yüklənir…" : "Məlumat yoxdur."}</p>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Metric label="Sorğular" value={number(data.totals.last5.requests)} hint={`60 dəq: ${number(data.totals.last60.requests)}`} />
-            <Metric label="5xx xəta dərəcəsi" value={`${data.totals.last5.rate5xx}%`} hint={`60 dəq: ${data.totals.last60.rate5xx}% · ${number(data.totals.last60.status5xx)}`} tone={data.totals.last5.status5xx > 0 ? "bad" : "ok"} />
-            <Metric label="401/403" value={number(data.totals.last5.authDenied)} hint={`60 dəq: ${number(data.totals.last60.authDenied)} · ${data.totals.last60.rateAuthDenied}%`} tone={data.totals.last5.authDenied > 0 ? "warn" : "ok"} />
-            <Metric label="404" value={number(data.totals.last5.notFound)} hint={`60 dəq: ${number(data.totals.last60.notFound)}`} tone={data.totals.last5.notFound > 20 ? "warn" : "ok"} />
-            <Metric label="429 (limit)" value={number(data.totals.last5.rateLimited)} hint={`60 dəq: ${number(data.totals.last60.rateLimited)}`} tone={data.totals.last5.rateLimited > 0 ? "warn" : "ok"} />
-            <Metric label="Uğursuz girişlər" value={number(data.totals.last5.loginFailures)} hint={`60 dəq: ${number(data.totals.last60.loginFailures)}`} tone={data.totals.last5.loginFailures > 0 ? "warn" : "ok"} />
-            <Metric label="IP başlıq uyğunsuzluğu" value={number(data.totals.last5.ipMismatches)} hint={`60 dəq: ${number(data.totals.last60.ipMismatches)}`} tone={data.totals.last60.ipMismatches > 0 ? "bad" : "ok"} />
-            <Metric label="Açıq insidentlər" value={number(data.incidentCounts.OPEN + data.incidentCounts.ACKNOWLEDGED)} hint={`Açıq ${data.incidentCounts.OPEN} · qəbul edilib ${data.incidentCounts.ACKNOWLEDGED}`} tone={data.incidentCounts.OPEN > 0 ? "bad" : "ok"} />
-          </div>
-          <p className="text-[11px] text-slate-500">Böyük rəqəm son 5 dəqiqəni göstərir. Sayğaclar hər prosesdə {data.telemetry.flushIntervalSeconds} saniyədən bir bazaya yazılır; son dəqiqə natamam ola bilər.</p>
-
-          <section className={panelClass} aria-labelledby="rpm-title">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="rpm-title" className="text-sm font-semibold text-white">Dəqiqədə sorğular · son 60 dəqiqə</h2>
-              <div className="flex gap-3 text-[11px] text-slate-400">
-                <span className="flex items-center gap-1"><span className="h-2 w-3 rounded-sm bg-sky-500" aria-hidden="true" /> uğurlu</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-3 rounded-sm bg-amber-400" aria-hidden="true" /> 4xx</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-3 rounded-sm bg-rose-500" aria-hidden="true" /> 5xx</span>
-              </div>
-            </div>
-            <RequestsChart series={data.series} />
-          </section>
-
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <section className={panelClass} aria-labelledby="groups-title">
-              <h2 id="groups-title" className="text-sm font-semibold text-white">Ən aktiv marşrut qrupları · 60 dəq</h2>
-              {data.routeGroups.length === 0 ? <p className="mt-3 text-sm text-slate-400">Son 60 dəqiqədə izlənən sorğu yoxdur.</p> : (
-                <div className="mt-3 overflow-x-auto">
-                  <table className="w-full min-w-[26rem] text-left text-xs">
-                    <thead className="text-slate-500"><tr><th className="py-2 pr-2 font-medium">Qrup</th><th className="px-2 text-right font-medium">Sorğu</th><th className="px-2 text-right font-medium">4xx</th><th className="px-2 text-right font-medium">5xx</th><th className="px-2 text-right font-medium">401/403</th><th className="px-2 text-right font-medium">429</th><th className="pl-2 text-right font-medium">Orta ms</th></tr></thead>
-                    <tbody className="divide-y divide-slate-800">
-                      {data.routeGroups.map((row) => (
-                        <tr key={row.routeGroup}>
-                          <td className="py-2 pr-2 text-slate-200">{groupLabel(row.routeGroup)}</td>
-                          <td className="px-2 text-right tabular-nums text-slate-200">{number(row.requests)}</td>
-                          <td className="px-2 text-right tabular-nums text-amber-200">{number(row.status4xx)}</td>
-                          <td className="px-2 text-right tabular-nums text-rose-200">{number(row.status5xx)}</td>
-                          <td className="px-2 text-right tabular-nums text-slate-300">{number(row.authDenied)}</td>
-                          <td className="px-2 text-right tabular-nums text-slate-300">{number(row.rateLimited)}</td>
-                          <td className="pl-2 text-right tabular-nums text-slate-400">{row.avgMs ?? "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className={panelClass} aria-labelledby="open-title">
-              <div className="flex items-center justify-between gap-2">
-                <h2 id="open-title" className="text-sm font-semibold text-white">Açıq insidentlər</h2>
-                <button type="button" onClick={onOpenIncidents} className="text-xs font-medium text-emerald-300 underline">Hamısı</button>
-              </div>
-              {data.openIncidents.length === 0 ? (
-                <p className="mt-3 flex items-center gap-2 text-sm text-emerald-200"><CheckCircle2 size={16} aria-hidden="true" /> Açıq insident yoxdur.</p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {data.openIncidents.map((incident) => (
-                    <li key={incident.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge className={SEVERITY_CLASSES[incident.severity]}>{SEVERITY_LABELS[incident.severity]}</Badge>
-                        <Badge className={STATUS_CLASSES[incident.status]}>{STATUS_LABELS[incident.status]}</Badge>
-                        <span className="text-[11px] text-slate-500">{dateTime(incident.createdAt)}</span>
-                      </div>
-                      <p className="mt-1.5 text-sm text-slate-100">{incident.title}</p>
-                      {incident.assignee && <p className="mt-1 text-[11px] text-slate-400">Məsul: {incident.assignee}</p>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </div>
-
-          <section className={panelClass} aria-labelledby="recent-title">
-            <h2 id="recent-title" className="text-sm font-semibold text-white">Son hadisələr</h2>
-            {data.recentEvents.length === 0 ? <p className="mt-3 text-sm text-slate-400">Qeydə alınmış hadisə yoxdur.</p> : (
-              <ul className="mt-3 divide-y divide-slate-800">
-                {data.recentEvents.map((event) => (
-                  <li key={event.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-xs">
-                    <span className="w-16 shrink-0 tabular-nums text-slate-500">{time(event.occurredAt)}</span>
-                    <Badge className={SEVERITY_CLASSES[event.severity]}>{SEVERITY_LABELS[event.severity]}</Badge>
-                    <span className="text-slate-200">{EVENT_TYPE_LABELS[event.eventType] ?? event.eventType}</span>
-                    <span className="font-mono text-slate-400">{event.ip ?? "IP yoxdur"}</span>
-                    <span className="min-w-0 max-w-full truncate font-mono text-slate-500 sm:ml-auto sm:max-w-[16rem]">{event.path ?? ""}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="mt-2 text-[11px] text-slate-500">IP ünvanları maskalanıb. Tam IP 7 gün saxlanılır, sonra yalnız maskalı forma qalır.</p>
-          </section>
-        </>
-      )}
-    </div>
-  );
-}
-
-function Metric({ label, value, hint, tone = "ok" }: { label: string; value: string; hint: string; tone?: "ok" | "warn" | "bad" }) {
-  const toneClass = tone === "bad" ? "text-rose-200" : tone === "warn" ? "text-amber-200" : "text-white";
-  return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900 p-3 sm:p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
-      <p className="mt-1 text-[11px] text-slate-500">{hint}</p>
-    </div>
-  );
-}
-
-function RequestsChart({ series }: { series: LiveData["series"] }) {
-  const width = 600;
-  const height = 160;
-  const max = Math.max(1, ...series.map((point) => point.requests));
-  const slot = width / Math.max(series.length, 1);
-  const barWidth = Math.max(1, slot - 2);
-  const y = (value: number) => (value / max) * (height - 4);
-  return (
-    <figure className="mt-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-40 w-full" role="img" aria-label={`Son 60 dəqiqədə dəqiqəlik sorğular, ən çox ${max}`} preserveAspectRatio="none">
-        <line x1="0" x2={width} y1={height} y2={height} className="stroke-slate-700" strokeWidth="1" />
-        <line x1="0" x2={width} y1={height / 2} y2={height / 2} className="stroke-slate-800" strokeDasharray="4 4" strokeWidth="1" />
-        {series.map((point, index) => {
-          const ok = Math.max(0, point.requests - point.status4xx - point.status5xx);
-          const x = index * slot + 1;
-          const h5 = y(point.status5xx);
-          const h4 = y(point.status4xx);
-          const hOk = y(ok);
-          return (
-            <g key={point.minute}>
-              <title>{`${time(point.minute)} · ${point.requests} sorğu · 4xx ${point.status4xx} · 5xx ${point.status5xx}`}</title>
-              {h5 > 0 && <rect x={x} y={height - h5} width={barWidth} height={h5} className="fill-rose-500" />}
-              {h4 > 0 && <rect x={x} y={height - h5 - h4} width={barWidth} height={h4} className="fill-amber-400" />}
-              {hOk > 0 && <rect x={x} y={height - h5 - h4 - hOk} width={barWidth} height={hOk} className="fill-sky-500" />}
-            </g>
-          );
-        })}
-      </svg>
-      <div className="flex justify-between text-[11px] text-slate-500" aria-hidden="true"><span>-60 dəq</span><span>-30 dəq</span><span>indi</span></div>
-      <figcaption className="mt-1 text-[11px] text-slate-500">Şkalanın yuxarısı: {number(max)} sorğu/dəq. Sütunun üzərinə gətirəndə dəqiqənin rəqəmləri görünür.</figcaption>
-    </figure>
+    </main>
   );
 }
 
@@ -599,47 +356,5 @@ function RuleCard({ rule, bounds, onSaved }: { rule: Rule; bounds: Bounds; onSav
         {!rule.isDefault && <button type="button" disabled={busy} onClick={() => void send("DELETE")} className={`${buttonClass} border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800`}>Standarta qaytar</button>}
       </div>
     </article>
-  );
-}
-
-function SourcesPanel() {
-  const { data, error } = useLiveData(false);
-  const rows: Array<{ key: "application" | "cloudflare" | "apache"; title: string; text: string }> = [
-    { key: "application", title: "BAGATI tətbiqi", text: "Giriş, 2FA, qeydiyyat, şifrə bərpası, satıcı müraciəti və mağaza sorğusu marşrutları, həmçinin 404 səhifəsi tətbiqin öz sayğacları ilə izlənir." },
-    { key: "cloudflare", title: "Cloudflare (imzalı ötürücü)", text: "Yalnız imzalı ötürücü ilə göndərilən hadisələr. Birbaşa Cloudflare API inteqrasiyası bu mərhələdə yoxdur." },
-    { key: "apache", title: "Apache / ModSecurity", text: "Bu quraşdırmada istifadə olunmur. Qəbul kodu saxlanılıb, lakin agent qoşulmayıb." },
-  ];
-  return (
-    <div className="space-y-4">
-      <ErrorBox message={error} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <article className={panelClass}>
-          <h3 className="flex items-center gap-2 font-semibold text-white"><Gauge size={17} className="text-emerald-300" aria-hidden="true" /> Tətbiq telemetriyası</h3>
-          <p className="mt-2 text-xs leading-5 text-slate-400">Sayğaclar yaddaşda toplanır və hər {data?.telemetry.flushIntervalSeconds ?? 30} saniyədə bazaya yazılır. Ayrı işçi proses yoxdur; qaydalar və təmizləmə tətbiqin içində işləyir.</p>
-          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <dt className="text-slate-500">Bazadakı son dəqiqə</dt><dd className="text-slate-200">{data ? time(data.latestStatMinute) : "—"}</dd>
-            <dt className="text-slate-500">Bu prosesin son yazısı</dt><dd className="text-slate-200">{data ? time(data.telemetry.processLastFlushAt) : "—"}</dd>
-            <dt className="text-slate-500">Saxlama</dt><dd className="text-slate-200">IP 7 gün · dəqiqəlik 14 gün · saatlıq 90 gün</dd>
-          </dl>
-        </article>
-        {rows.map((row) => {
-          const source = data?.sources[row.key];
-          const notInUse = row.key === "apache";
-          return (
-            <article key={row.key} className={panelClass}>
-              <h3 className="flex flex-wrap items-center gap-2 font-semibold text-white">
-                <Wifi size={17} className={notInUse ? "text-slate-500" : "text-sky-300"} aria-hidden="true" /> {row.title}
-                <Badge className={notInUse ? "border-slate-600 bg-slate-800 text-slate-300" : "border-emerald-800 bg-emerald-950/40 text-emerald-200"}>{notInUse ? "istifadə olunmur" : row.key === "application" ? "aktiv" : "ötürücü"}</Badge>
-              </h3>
-              <p className="mt-2 text-xs leading-5 text-slate-400">{row.text}</p>
-              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <dt className="text-slate-500">Son 24 saat hadisə</dt><dd className="text-slate-200">{source ? number(source.eventsLast24h) : "—"}</dd>
-                <dt className="text-slate-500">Son qəbul</dt><dd className="text-slate-200">{source ? dateTime(source.lastReceivedAt) : "—"}</dd>
-              </dl>
-            </article>
-          );
-        })}
-      </div>
-    </div>
   );
 }

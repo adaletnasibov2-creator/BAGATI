@@ -7,6 +7,7 @@ import { logAuthFailure, logAuthRejection } from "@/lib/auth-logging";
 import { wrongPortalBody } from "@/lib/login-portal";
 import { clearAuthRateLimit, consumeAuthRateLimit, LOGIN_RATE_LIMIT, loginRateLimitKey } from "@/lib/auth-rate-limit";
 import { equalizeLoginTiming } from "@/lib/login-timing";
+import { auditAdminLoginFailure } from "@/lib/admin-login-audit";
 import { loginSchema } from "@/lib/validation";
 import { attachEmailVerificationContext, clearEmailVerificationContext, createEmailVerificationContext, emailVerificationRequired } from "@/lib/email-verification";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
@@ -51,12 +52,14 @@ async function handlePOST(request: NextRequest) {
   if (!user.isActive) {
     await equalizeLoginTiming(parsed.data.password);
     logAuthRejection("customer_login", "inactive");
+    auditAdminLoginFailure(request, user, "customer", "inactive"); // SECURITY-PAGE-1: admin accounts only, background
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/auth/login" });
     return invalid;
   }
   if (!user.passwordAuthEnabled) await equalizeLoginTiming(parsed.data.password);
   if (!user.passwordAuthEnabled || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     logAuthRejection("customer_login", user.passwordAuthEnabled ? "password-mismatch" : "password-disabled");
+    auditAdminLoginFailure(request, user, "customer", user.passwordAuthEnabled ? "password" : "password-disabled");
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/auth/login" });
     return invalid;
   }

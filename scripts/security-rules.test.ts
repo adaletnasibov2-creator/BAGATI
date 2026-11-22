@@ -33,11 +33,11 @@ test("incident decision: enabled, threshold reached, outside the cooldown", () =
   assert.equal(incidentTitle(getAlertRule("server_error_spike")!, 25, settings), "5xx server xətalarında artım: 25 (hədd 20, 5 dəq)");
 });
 
-test("retention periods: raw IP 7 days, minute stats 14, hourly 90", () => {
-  assert.deepEqual(RETENTION, { rawIpDays: 7, minuteStatDays: 14, hourStatDays: 90 });
+test("retention periods: raw IP 30 days (SECURITY-PAGE-1, was 7), minute stats 14, hourly 90", () => {
+  assert.deepEqual(RETENTION, { rawIpDays: 30, minuteStatDays: 14, hourStatDays: 90 });
   const now = new Date("2026-11-14T00:00:00.000Z");
   const cutoffs = retentionCutoffs(now);
-  assert.equal(cutoffs.rawIpBefore.toISOString(), "2026-11-07T00:00:00.000Z");
+  assert.equal(cutoffs.rawIpBefore.toISOString(), "2026-10-15T00:00:00.000Z");
   assert.equal(cutoffs.minuteStatsBefore.toISOString(), "2026-10-31T00:00:00.000Z");
   assert.equal(cutoffs.hourStatsBefore.toISOString(), "2026-08-16T00:00:00.000Z");
 });

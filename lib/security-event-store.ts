@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import type { SecurityEventPayload } from "@/lib/security-event-ingestion";
 import { hashSecurityEventId } from "@/lib/security-event-ingestion";
 import { maskIpAddress } from "@/lib/admin-system-status";
+// SECURITY-PAGE-1 browser check: occurredAt/createdAt are written as UTC wall-clock values (like Prisma does). A bare
+// Date / NOW() was shifted by the database session TimeZone (+4 h on a database set to Asia/Baku).
+import { utcTimestamp } from "@/lib/sql-timestamp";
 
 export type SecurityEventRow = {
   id: string;
@@ -73,9 +76,9 @@ export async function insertSecurityEvent(input: {
       "eventType", "severity", "action", "ruleId", "createdAt"
     )
     VALUES (
-      ${randomUUID()}, ${input.source}, ${hashSecurityEventId(input.source, input.event.eventId)}, ${new Date(input.event.occurredAt)},
+      ${randomUUID()}, ${input.source}, ${hashSecurityEventId(input.source, input.event.eventId)}, ${utcTimestamp(new Date(input.event.occurredAt))},
       ${input.event.sourceIp ?? null}, ${input.event.sourceIp ? maskIpAddress(input.event.sourceIp) : null}, ${input.event.path ?? null}, ${input.event.eventType},
-      ${input.event.severity}, ${input.event.action}, ${input.event.ruleId ?? null}, NOW()
+      ${input.event.severity}, ${input.event.action}, ${input.event.ruleId ?? null}, (NOW() AT TIME ZONE 'UTC')
     )
     ON CONFLICT ("source", "sourceEventId") DO NOTHING
     RETURNING "id"

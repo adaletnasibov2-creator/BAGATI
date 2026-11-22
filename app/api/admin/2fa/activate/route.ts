@@ -4,6 +4,7 @@ import { createSession, currentSessionId } from "@/lib/auth";
 import { readJsonBodyLimited } from "@/lib/request-json";
 import { Admin2faError, activateEnrollment, admin2faErrorMessage, assertEnrollmentPassword, expiredChallengeCookie, resolveEnrollmentActor } from "@/lib/admin-2fa";
 import { revokeOtherOwnSessions } from "@/lib/admin-sessions";
+import { auditAdminLogin } from "@/lib/admin-login-audit";
 import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 
 const headers = { "Cache-Control": "no-store" };
@@ -29,8 +30,10 @@ async function handlePOST(request: NextRequest) {
     }
     await revokeOtherOwnSessions(actor.userId, null, "2fa-enrolled"); // null = every existing session; audited
     const response = NextResponse.json({ recoveryCodes, signedIn: true }, { headers });
-    response.cookies.set(await createSession(actor.userId));
+    const session = await createSession(actor.userId);
+    response.cookies.set(session);
     response.cookies.set(await expiredChallengeCookie());
+    auditAdminLogin(request, actor.userId, session.value, "2fa-enroll"); // SECURITY-PAGE-1: forced enrollment signs in
     return response;
   } catch (error) {
     if (error instanceof Admin2faError) {

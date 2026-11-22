@@ -6,6 +6,7 @@ import { expiredChallengeCookie, readChallenge, verifySecondFactor } from "@/lib
 import { withSecurityTelemetry } from "@/lib/security-monitoring/runtime";
 import { adminRateLimitedResponseParts } from "@/lib/admin-login-rate-limit";
 import { ADMIN_2FA_IP_RATE_LIMIT } from "@/lib/admin-2fa-policy";
+import { auditAdminLogin } from "@/lib/admin-login-audit";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -43,8 +44,10 @@ async function handlePOST(request: NextRequest) {
     }
   }
   const response = NextResponse.json({ ok: true, method: result.method, ...(result.method === "recovery" ? { remainingRecoveryCodes: result.remainingRecoveryCodes } : {}) }, { headers });
-  response.cookies.set(await createSession(admin.id));
+  const session = await createSession(admin.id);
+  response.cookies.set(session);
   response.cookies.set(await expiredChallengeCookie());
+  auditAdminLogin(request, admin.id, session.value, "2fa"); // SECURITY-PAGE-1: background, never blocks the login
   return response;
 }
 

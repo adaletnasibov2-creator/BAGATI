@@ -8,6 +8,7 @@ import { logAuthFailure, logAuthRejection } from "@/lib/auth-logging";
 import { wrongPortalBody } from "@/lib/login-portal";
 import { clearAuthRateLimit, consumeAuthRateLimit, LOGIN_RATE_LIMIT, loginRateLimitKey } from "@/lib/auth-rate-limit";
 import { equalizeLoginTiming } from "@/lib/login-timing";
+import { auditAdminLoginFailure, auditAdminLogin } from "@/lib/admin-login-audit";
 import { clearEmailVerificationContext } from "@/lib/email-verification";
 import { captureApplicationSecurityEvent } from "@/lib/security-events";
 import { admin2faKeyStatus } from "@/lib/admin-2fa-crypto";
@@ -58,12 +59,14 @@ async function handlePOST(request: NextRequest) {
   if (!user.isActive) {
     await equalizeLoginTiming(parsed.data.password);
     logAuthRejection("admin_login", "inactive");
+    auditAdminLoginFailure(request, user, "admin", "inactive"); // SECURITY-PAGE-1: admin accounts only, background
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/admin/login" });
     return invalid;
   }
   if (!user.passwordAuthEnabled) await equalizeLoginTiming(parsed.data.password);
   if (!user.passwordAuthEnabled || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     logAuthRejection("admin_login", user.passwordAuthEnabled ? "password-mismatch" : "password-disabled");
+    auditAdminLoginFailure(request, user, "admin", user.passwordAuthEnabled ? "password" : "password-disabled");
     await captureApplicationSecurityEvent({ request, eventType: "LOGIN_FAILURE", path: "/api/admin/login" });
     return invalid;
   }
@@ -101,6 +104,7 @@ async function handlePOST(request: NextRequest) {
     const session = await createSession(user.id);
     const response = NextResponse.json({ user: { id: user.id, email: user.email, role: user.role } }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(session);
+    auditAdminLogin(request, user.id, session.value, "password"); // SECURITY-PAGE-1: background, never blocks the login
     await clearEmailVerificationContext(response);
     return response;
   } catch (error) {

@@ -1188,7 +1188,7 @@ model SecurityEvent {
   severity       String   @db.VarChar(16)
   action         String   @db.VarChar(32)
   ruleId         String?  @db.VarChar(128)
-  /// Masked form of sourceIp ("203.0.*.*"); kept after the raw IP is cleared (7 days). Shown in the UI instead of sourceIp.
+  /// Masked form of sourceIp ("203.0.*.*"); kept after the raw IP is cleared (30 days). The security page shows sourceIp only on an audited request.
   sourceIpMasked String?  @db.VarChar(64)
   createdAt      DateTime @default(now())
 

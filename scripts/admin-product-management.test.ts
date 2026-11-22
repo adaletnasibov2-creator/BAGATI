@@ -101,7 +101,8 @@ test("admin product imports are bounded, store-scoped, audited, and transaction-
   assert.match(exportRoute, /take: 250/);
   assert.match(exportRoute, /escapeAdminReportCsvCell/);
   assert.match(importForm, /\/api\/admin\/stores\/\$\{encodeURIComponent\(selected\.id\)\}\/imports/);
-  assert.match(wizard, /CSV şablonunu yüklə/);
+  assert.match(wizard, /Excel şablonunu yüklə/); // IMPORT-FIX-1: the CSV template link was removed
+  assert.doesNotMatch(wizard, /CSV şablonunu yüklə/);
   assert.match(wizard, /Şəkillər/);
   assert.match(wizard, /Variantlar \(JSON\)/);
 });

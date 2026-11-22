@@ -342,7 +342,8 @@ const REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationsh
  */
 export function buildXlsxWorkbook(input: { sheetName: string; columns: XlsxColumn[]; rows: XlsxCell[][] }): Uint8Array {
   const { sheetName, columns, rows } = input;
-  if (!columns.length || columns.length > 50) throw new Error("1..50 columns");
+  // The import wizard accepts up to 50 columns; the error report adds one ("Xəta") (IMPORT-FIX-1).
+  if (!columns.length || columns.length > 64) throw new Error("1..64 columns");
   const lastColumn = columnName(columns.length);
   const textCell = (ref: string, value: string, style: number) => `<c r="${ref}" t="inlineStr"${style ? ` s="${style}"` : ""}><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`;
   const header = columns.map((column, index) => textCell(`${columnName(index + 1)}1`, column.header, 1)).join("");

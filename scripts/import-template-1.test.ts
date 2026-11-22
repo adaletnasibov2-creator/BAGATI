@@ -246,13 +246,15 @@ test("readCatalogImportFile picks the reader by extension and reports the format
   assert.deepEqual(csv.rows, [expectedSampleRow]);
 });
 
-test("the wizard uses the shared reader and offers both templates; import rules and limits are unchanged", () => {
+test("the wizard uses the shared reader and offers the Excel template (CSV link removed in IMPORT-FIX-1); import rules and limits are unchanged", () => {
   const wizard = read("components/vendor-import.tsx");
   assert.match(wizard, /const parsed = await readCatalogImportFile\(file\);/);
   assert.match(wizard, /setSourceFormat\(parsed\.format\)/);
   assert.doesNotMatch(wizard, /DOMParser|function parseCsv|function unzipEntry|function parseXlsx/);
   assert.match(wizard, /href=\{xlsxTemplateHref\} download=\{CATALOG_TEMPLATE_XLSX_FILENAME\}>Excel şablonunu yüklə<\/a>/);
-  assert.match(wizard, /href=\{`data:text\/csv;charset=utf-8,\$\{encodeURIComponent\(csvTemplate\)\}`\} download=\{CATALOG_TEMPLATE_CSV_FILENAME\}>CSV şablonunu yüklə<\/a>/);
+  // IMPORT-FIX-1: the CSV template link is gone; CSV files are still read on upload (readCatalogImportFile).
+  assert.doesNotMatch(wizard, /CSV şablonunu yüklə|data:text\/csv/);
+  assert.match(wizard, /accept="\.csv,\.xlsx,text\/csv,/);
   for (const rule of ["Faylda maksimum 50 sütun qəbul edilir.", "Bir idxalda maksimum 100 000 sətir qəbul edilir.", "Fayl 10 MB-dan böyük olmamalıdır.", "Hər sətir 8 KB-dan kiçik olmalıdır."]) assert.ok(wizard.includes(rule), rule);
 });
 

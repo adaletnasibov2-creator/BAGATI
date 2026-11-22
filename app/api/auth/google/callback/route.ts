@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
         OAUTH_IP_RATE_LIMIT.limit,
         OAUTH_IP_RATE_LIMIT.windowMs,
       );
-      if (!allowed) return finish(NextResponse.redirect(resultUrl(origin, state, "unavailable")));
+      if (!allowed) return finish(NextResponse.redirect(resultUrl(origin, state, "rate-limited"))); // SIGNUP-EASY-1 R7
     } catch (error) {
       logAuthFailure("google_oauth_callback_rate_limit", error);
       return finish(NextResponse.redirect(resultUrl(origin, state, "unavailable")));

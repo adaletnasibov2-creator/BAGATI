@@ -42,10 +42,16 @@ export function EmailVerificationForm({
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(role === "CUSTOMER" ? { code, next: nextPath } : { code }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Təsdiq alınmadı.");
+      // SIGNUP-EASY-1 R2: a customer is signed in by the server; go to the server-sanitized destination. Sellers (and a
+      // customer whose session could not be created) continue to the login page as before.
+      if (data.signedIn === true && typeof data.redirectTo === "string" && data.redirectTo.startsWith("/") && !data.redirectTo.startsWith("//") && !data.redirectTo.includes("\\")) {
+        window.location.replace(data.redirectTo);
+        return;
+      }
       window.location.replace(`${loginPath}${loginPath.includes("?") ? "&" : "?"}verified=1`);
     } catch (reason) {
       setError(reason instanceof TypeError ? "Bağlantı xətası. Yenidən cəhd edin." : reason instanceof Error ? reason.message : "Təsdiq alınmadı.");

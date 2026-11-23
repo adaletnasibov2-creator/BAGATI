@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import Link from "next/link";
-import { AlertTriangle, ChevronLeft, ChevronRight, ListChecks, ShieldCheck, Siren, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, ListChecks, Siren, SlidersHorizontal, XCircle } from "lucide-react";
 
 /*
  * Client-only: talks to /api/admin/security/* and never imports server modules.
  * SECURITY-PAGE-1: only the incident and alert-rule tools remain here (/admin/security-center/incidents). The live panel
  * (15 s polling), the sources tab and the nested older center were removed; the summary is the server page
  * app/admin/security-center/page.tsx and the event list is app/admin/security-center/events/page.tsx.
+ * SECURITY-CENTER-DESIGN-2: the light admin look (it was a dark panel), the page header and tabs come from the server
+ * page, every incident row has "Qəbul et" / "Həll edildi" right in the list with a visible result, and the list loads
+ * again when the page's "Yenilə" re-renders it (refreshedAt). Same endpoints, same checks, same audit rows.
  */
 
 type Tab = "incidents" | "rules";
@@ -33,22 +35,24 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Siren }> = [
 const STATUS_LABELS: Record<IncidentStatus, string> = { OPEN: "Açıq", ACKNOWLEDGED: "Qəbul edilib", RESOLVED: "Həll edilib", FALSE_POSITIVE: "Yanlış həyəcan" };
 const STATUS_ACTIONS: Record<IncidentStatus, string> = { OPEN: "Yenidən aç", ACKNOWLEDGED: "Qəbul et", RESOLVED: "Həll edildi", FALSE_POSITIVE: "Yanlış həyəcan" };
 const SEVERITY_LABELS: Record<Severity, string> = { LOW: "Aşağı", MEDIUM: "Orta", HIGH: "Yüksək", CRITICAL: "Kritik" };
-const SEVERITY_CLASSES: Record<Severity, string> = {
-  LOW: "border-slate-600 text-slate-300",
-  MEDIUM: "border-amber-700 bg-amber-950/40 text-amber-200",
-  HIGH: "border-orange-700 bg-orange-950/40 text-orange-200",
-  CRITICAL: "border-rose-700 bg-rose-950/50 text-rose-200",
+type Tone = "good" | "warn" | "bad" | "neutral";
+const SEVERITY_TONES: Record<Severity, Tone> = { LOW: "neutral", MEDIUM: "warn", HIGH: "bad", CRITICAL: "bad" };
+const STATUS_TONES: Record<IncidentStatus, Tone> = { OPEN: "warn", ACKNOWLEDGED: "neutral", RESOLVED: "good", FALSE_POSITIVE: "neutral" };
+const TONE_CLASSES: Record<Tone, string> = {
+  good: "bg-green-50 text-green-900 ring-green-200",
+  warn: "bg-amber-50 text-amber-900 ring-amber-200",
+  bad: "bg-red-50 text-red-800 ring-red-200",
+  neutral: "bg-[#f3f1ec] text-slate-600 ring-[#e7e3d9]",
 };
-const STATUS_CLASSES: Record<IncidentStatus, string> = {
-  OPEN: "border-rose-800 bg-rose-950/40 text-rose-200",
-  ACKNOWLEDGED: "border-amber-800 bg-amber-950/40 text-amber-200",
-  RESOLVED: "border-emerald-800 bg-emerald-950/40 text-emerald-200",
-  FALSE_POSITIVE: "border-slate-600 bg-slate-800 text-slate-300",
-};
+const TONE_ICONS: Record<Tone, typeof Clock> = { good: CheckCircle2, warn: AlertTriangle, bad: XCircle, neutral: Clock };
 
-const panelClass = "rounded-xl border border-slate-700 bg-slate-900 p-4 sm:p-5";
-const inputClass = "min-h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-900";
-const buttonClass = "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+const panelClass = "rounded-2xl border border-[#e7e3d9] bg-white p-4 sm:p-5";
+const inputClass = "min-h-11 w-full rounded-xl border border-[#ded9cf] bg-white px-3 text-sm text-[#0d1b2a] outline-none focus:border-[#173c40] focus:ring-2 focus:ring-[#173c40]/20";
+const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173c40]";
+const primary = "border-[#173c40] bg-[#173c40] text-white hover:bg-[#10302f]";
+const secondary = "border-[#c7ad78] bg-white text-[#85621d] hover:bg-[#fbf8f1]";
+const plain = "border-[#e7e3d9] bg-white text-slate-700 hover:bg-[#f8f7f4]";
+const ACTION_CLASSES: Record<IncidentStatus, string> = { RESOLVED: primary, ACKNOWLEDGED: secondary, FALSE_POSITIVE: plain, OPEN: plain };
 
 const time = (value: string | null) => (value ? new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)) : "—");
 const dateTime = (value: string | null) => (value ? new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "—");
@@ -61,17 +65,18 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-function Badge({ className, children }: { className: string; children: ReactNode }) {
-  return <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${className}`}>{children}</span>;
+/** Badge: icon + text, never colour alone. */
+function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
+  const Icon = TONE_ICONS[tone];
+  return <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${TONE_CLASSES[tone]}`}><Icon size={12} aria-hidden="true" />{children}</span>;
 }
 
 function ErrorBox({ message }: { message: string | null }) {
   if (!message) return null;
-  return <p role="alert" className="rounded-lg border border-rose-800 bg-rose-950/60 px-3 py-2 text-sm text-rose-100">{message}</p>;
+  return <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</p>;
 }
 
-
-export default function AdminSecurityMonitoring() {
+export default function AdminSecurityMonitoring({ refreshedAt }: { refreshedAt?: string }) {
   const [tab, setTab] = useState<Tab>("incidents");
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("tab");
@@ -85,42 +90,29 @@ export default function AdminSecurityMonitoring() {
   };
 
   return (
-    <main className="min-h-screen rounded-2xl bg-[#07111b] text-slate-100">
-      <header className="flex flex-col gap-4 border-b border-slate-800 p-4 sm:p-6 lg:px-8">
-        <div>
-          <Link href="/admin/security-center" prefetch={false} className="text-sm font-medium text-emerald-300">← Təhlükəsizlik mərkəzi</Link>
-          <p className="mt-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.2em] text-emerald-300"><ShieldCheck size={15} aria-hidden="true" /> BAGATI · Təhlükəsizlik mərkəzi</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">İnsidentlər və qaydalar</h1>
-        </div>
-        <nav aria-label="Təhlükəsizlik mərkəzi bölmələri" className="-mx-1 overflow-x-auto">
-          <ul role="tablist" className="flex min-w-max gap-1 px-1">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <li key={id}>
-                <button
-                  type="button" role="tab" aria-selected={tab === id} onClick={() => select(id)}
-                  className={`flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm transition ${tab === id ? "bg-emerald-950/70 font-semibold text-emerald-200 ring-1 ring-emerald-800" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
-                >
-                  <Icon size={15} aria-hidden="true" /> {label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
-      <div className="p-4 sm:p-6 lg:px-8">
-        {tab === "incidents" && <IncidentsPanel />}
-        {tab === "rules" && <RulesPanel />}
+    <div className="min-w-0">
+      <div role="tablist" aria-label="İnsidentlər və qaydalar" className="mb-4 flex flex-wrap gap-2">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => select(id)}
+            className={`${buttonClass} ${tab === id ? primary : plain}`}>
+            <Icon size={15} aria-hidden="true" /> {label}
+          </button>
+        ))}
       </div>
-    </main>
+      {tab === "incidents" && <IncidentsPanel refreshedAt={refreshedAt} />}
+      {tab === "rules" && <RulesPanel />}
+    </div>
   );
 }
 
-function IncidentsPanel() {
+function IncidentsPanel({ refreshedAt }: { refreshedAt?: string }) {
   const [status, setStatus] = useState<IncidentStatus | "ALL">("OPEN");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ items: Incident[]; total: number; pageSize: number; assignees: Array<{ id: string; email: string }> } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
       const query = new URLSearchParams({ page: String(page), ...(status === "ALL" ? {} : { status }) });
@@ -130,49 +122,71 @@ function IncidentsPanel() {
       setError(caught instanceof Error ? caught.message : "Sorğu alınmadı.");
     }
   }, [page, status]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, refreshedAt]);
+  const updateItem = (updated: Incident) => setData((current) => current && { ...current, items: current.items.map((item) => (item.id === updated.id ? { ...updated, notes: undefined } : item)) });
+  // One-click status change from the list: the same PATCH (expectedStatus conflict check, audit row) as the details.
+  const quick = async (incident: Incident, next: IncidentStatus) => {
+    setBusyId(incident.id);
+    setResult(null);
+    try {
+      const body = await requestJson<{ incident: Incident }>(`/api/admin/security/incidents/${incident.id}`, { method: "PATCH", body: JSON.stringify({ expectedStatus: incident.status, status: next, comment: null }) });
+      updateItem(body.incident);
+      setError(null);
+      setResult(`İnsidentin statusu dəyişdi: ${STATUS_LABELS[body.incident.status]}.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Sorğu alınmadı.");
+    } finally {
+      setBusyId(null);
+    }
+  };
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2" role="group" aria-label="Status filtri">
         {(["OPEN", "ACKNOWLEDGED", "RESOLVED", "FALSE_POSITIVE", "ALL"] as const).map((item) => (
-          <button key={item} type="button" aria-pressed={status === item} onClick={() => { setStatus(item); setPage(1); setOpenId(null); }}
-            className={`${buttonClass} ${status === item ? "border-emerald-700 bg-emerald-950/60 text-emerald-100" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
+          <button key={item} type="button" aria-pressed={status === item} onClick={() => { setStatus(item); setPage(1); setOpenId(null); setResult(null); }}
+            className={`${buttonClass} ${status === item ? primary : plain}`}>
             {item === "ALL" ? "Hamısı" : STATUS_LABELS[item]}
           </button>
         ))}
       </div>
       <ErrorBox message={error} />
-      {!data ? <p role="status" className={`${panelClass} text-sm text-slate-300`}>Yüklənir…</p> : data.items.length === 0 ? (
-        <p className={`${panelClass} text-sm text-slate-400`}>Bu statusda insident yoxdur.</p>
+      <div role="status" aria-live="polite">{result && <p className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900"><CheckCircle2 size={16} aria-hidden="true" />{result}</p>}</div>
+      {!data ? <p role="status" className={`${panelClass} text-sm text-slate-600`}>Yüklənir…</p> : data.items.length === 0 ? (
+        <p className={`${panelClass} text-sm text-slate-500`}>Bu statusda insident yoxdur.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2">
           {data.items.map((incident) => (
-            <li key={incident.id} className={panelClass}>
+            <li key={incident.id} className={panelClass} data-incident-row={incident.status}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className={SEVERITY_CLASSES[incident.severity]}>{SEVERITY_LABELS[incident.severity]}</Badge>
-                    <Badge className={STATUS_CLASSES[incident.status]}>{STATUS_LABELS[incident.status]}</Badge>
-                    <span className="text-[11px] text-slate-500">{dateTime(incident.createdAt)}</span>
+                    <Badge tone={SEVERITY_TONES[incident.severity]}>{SEVERITY_LABELS[incident.severity]}</Badge>
+                    <Badge tone={STATUS_TONES[incident.status]}>{STATUS_LABELS[incident.status]}</Badge>
+                    <span className="text-xs text-slate-500">{dateTime(incident.createdAt)}</span>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-white">{incident.title}</p>
-                  <p className="mt-1 text-xs text-slate-400">Məsul: {incident.assignee ?? "təyin edilməyib"} · Qeydlər: {incident.noteCount}</p>
+                  <p className="mt-1.5 break-words text-sm font-medium text-[#0d1b2a]">{incident.title}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Məsul: {incident.assignee ?? "təyin edilməyib"} · Qeydlər: {incident.noteCount}</p>
                 </div>
-                <button type="button" aria-expanded={openId === incident.id} onClick={() => setOpenId(openId === incident.id ? null : incident.id)} className={`${buttonClass} border-slate-700 bg-slate-950 text-slate-200 hover:bg-slate-800`}>
-                  {openId === incident.id ? "Bağla" : "Ətraflı"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {incident.allowedTransitions.filter((next) => next === "ACKNOWLEDGED" || next === "RESOLVED").map((next) => (
+                    <button key={next} type="button" disabled={busyId === incident.id} onClick={() => void quick(incident, next)} className={`${buttonClass} ${ACTION_CLASSES[next]}`}>{STATUS_ACTIONS[next]}</button>
+                  ))}
+                  <button type="button" aria-expanded={openId === incident.id} onClick={() => setOpenId(openId === incident.id ? null : incident.id)} className={`${buttonClass} ${plain}`}>
+                    {openId === incident.id ? "Bağla" : "Ətraflı"}
+                  </button>
+                </div>
               </div>
-              {openId === incident.id && <IncidentDetail id={incident.id} assignees={data.assignees} onChanged={(updated) => setData((current) => current && { ...current, items: current.items.map((item) => (item.id === updated.id ? { ...updated, notes: undefined } : item)) })} />}
+              {openId === incident.id && <IncidentDetail id={incident.id} assignees={data.assignees} onChanged={updateItem} />}
             </li>
           ))}
         </ul>
       )}
       {data && pages > 1 && (
-        <div className="flex items-center justify-between gap-2 text-sm text-slate-400">
-          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className={`${buttonClass} border-slate-700 bg-slate-900 text-slate-200`}><ChevronLeft size={15} aria-hidden="true" /> Əvvəlki</button>
+        <div className="flex items-center justify-between gap-2 text-sm text-slate-500">
+          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className={`${buttonClass} ${plain}`}><ChevronLeft size={15} aria-hidden="true" /> Əvvəlki</button>
           <span>{page} / {pages}</span>
-          <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)} className={`${buttonClass} border-slate-700 bg-slate-900 text-slate-200`}>Növbəti <ChevronRight size={15} aria-hidden="true" /></button>
+          <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)} className={`${buttonClass} ${plain}`}>Növbəti <ChevronRight size={15} aria-hidden="true" /></button>
         </div>
       )}
     </div>
@@ -220,51 +234,50 @@ function IncidentDetail({ id, assignees, onChanged }: { id: string; assignees: A
       setBusy(false);
     }
   };
-  if (!incident) return <div className="mt-4"><ErrorBox message={error} />{!error && <p className="text-sm text-slate-400">Yüklənir…</p>}</div>;
+  if (!incident) return <div className="mt-4"><ErrorBox message={error} />{!error && <p className="text-sm text-slate-500">Yüklənir…</p>}</div>;
   return (
-    <div className="mt-4 grid gap-4 border-t border-slate-800 pt-4 lg:grid-cols-2">
-      <div className="space-y-3 text-xs text-slate-300">
-        <dl className="grid grid-cols-2 gap-2">
+    <div className="mt-4 grid gap-4 border-t border-[#eeeae2] pt-4 lg:grid-cols-2">
+      <div className="space-y-3 text-sm text-slate-700">
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
           <dt className="text-slate-500">Ölçülən dəyər</dt><dd className="tabular-nums">{incident.observedValue} (hədd {incident.threshold})</dd>
           <dt className="text-slate-500">Pəncərə</dt><dd>{dateTime(incident.windowStart)} – {time(incident.windowEnd)}</dd>
-          <dt className="text-slate-500">Qəbul edib</dt><dd>{incident.acknowledgedBy ?? "—"} {incident.acknowledgedAt ? `· ${dateTime(incident.acknowledgedAt)}` : ""}</dd>
-          <dt className="text-slate-500">Bağlayıb</dt><dd>{incident.resolvedBy ?? "—"} {incident.resolvedAt ? `· ${dateTime(incident.resolvedAt)}` : ""}</dd>
+          <dt className="text-slate-500">Qəbul edib</dt><dd className="break-words">{incident.acknowledgedBy ?? "—"} {incident.acknowledgedAt ? `· ${dateTime(incident.acknowledgedAt)}` : ""}</dd>
+          <dt className="text-slate-500">Bağlayıb</dt><dd className="break-words">{incident.resolvedBy ?? "—"} {incident.resolvedAt ? `· ${dateTime(incident.resolvedAt)}` : ""}</dd>
         </dl>
-        <label className="block">
-          <span className="text-slate-400">Məsul şəxs</span>
+        <label className="block text-xs">
+          <span className="text-slate-500">Məsul şəxs</span>
           <select className={`${inputClass} mt-1`} value={incident.assigneeId ?? ""} disabled={busy} onChange={(event) => void patch({ assigneeId: event.target.value || null })}>
             <option value="">Təyin edilməyib</option>
             {assignees.map((admin) => <option key={admin.id} value={admin.id}>{admin.email}</option>)}
           </select>
         </label>
-        <label className="block">
-          <span className="text-slate-400">Status dəyişikliyinə şərh (istəyə görə)</span>
+        <label className="block text-xs">
+          <span className="text-slate-500">Status dəyişikliyinə şərh (istəyə görə)</span>
           <textarea className={`${inputClass} mt-1 min-h-16 py-2`} maxLength={1500} value={comment} onChange={(event) => setComment(event.target.value)} />
         </label>
         <div className="flex flex-wrap gap-2">
           {incident.allowedTransitions.map((next) => (
-            <button key={next} type="button" disabled={busy} onClick={() => void patch({ status: next })}
-              className={`${buttonClass} ${next === "RESOLVED" ? "border-emerald-700 bg-emerald-950/50 text-emerald-100" : next === "FALSE_POSITIVE" ? "border-slate-600 bg-slate-800 text-slate-200" : "border-amber-700 bg-amber-950/40 text-amber-100"}`}>
+            <button key={next} type="button" disabled={busy} onClick={() => void patch({ status: next })} className={`${buttonClass} ${ACTION_CLASSES[next]}`}>
               {STATUS_ACTIONS[next]}
             </button>
           ))}
         </div>
         <ErrorBox message={error} />
       </div>
-      <div>
-        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400"><ListChecks size={14} aria-hidden="true" /> Qeydlər</h3>
+      <div className="min-w-0">
+        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500"><ListChecks size={14} aria-hidden="true" /> Qeydlər</h3>
         <ol className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
           {(incident.notes ?? []).map((item) => (
-            <li key={item.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-2 text-xs">
+            <li key={item.id} className="rounded-xl border border-[#eeeae2] bg-[#f8f7f4] p-2 text-xs">
               <p className="text-[11px] text-slate-500">{item.author} · {dateTime(item.createdAt)}</p>
-              <p className="mt-1 whitespace-pre-line break-words text-slate-200">{item.body}</p>
+              <p className="mt-1 whitespace-pre-line break-words text-slate-700">{item.body}</p>
             </li>
           ))}
         </ol>
         <form onSubmit={addNote} className="mt-3 space-y-2">
-          <label className="block text-xs text-slate-400" htmlFor={`note-${id}`}>Yeni qeyd</label>
+          <label className="block text-xs text-slate-500" htmlFor={`note-${id}`}>Yeni qeyd</label>
           <textarea id={`note-${id}`} className={`${inputClass} min-h-16 py-2`} maxLength={2000} value={note} onChange={(event) => setNote(event.target.value)} />
-          <button type="submit" disabled={busy || !note.trim()} className={`${buttonClass} border-emerald-700 bg-emerald-950/40 text-emerald-100`}>Qeyd əlavə et</button>
+          <button type="submit" disabled={busy || !note.trim()} className={`${buttonClass} ${secondary}`}>Qeyd əlavə et</button>
         </form>
       </div>
     </div>
@@ -288,9 +301,9 @@ function RulesPanel() {
   useEffect(() => { void load(); }, [load]);
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-400">Hər qayda pəncərə ərzində həddə çatanda bir insident açır; gözləmə müddətində eyni qayda yeni insident açmır. Dəyişikliklər audit jurnalına yazılır.</p>
+      <p className="text-sm text-slate-500">Hər qayda pəncərə ərzində həddə çatanda bir insident açır; gözləmə müddətində eyni qayda yeni insident açmır. Dəyişikliklər audit jurnalına yazılır.</p>
       <ErrorBox message={error} />
-      {!rules || !bounds ? <p role="status" className={`${panelClass} text-sm text-slate-300`}>Yüklənir…</p> : (
+      {!rules || !bounds ? <p role="status" className={`${panelClass} text-sm text-slate-600`}>Yüklənir…</p> : (
         <div className="grid gap-4 xl:grid-cols-2">
           {rules.map((rule) => <RuleCard key={`${rule.key}:${rule.version}`} rule={rule} bounds={bounds} onSaved={(updated) => setRules((current) => current?.map((item) => (item.key === updated.key ? updated : item)) ?? null)} />)}
         </div>
@@ -317,29 +330,29 @@ function RuleCard({ rule, bounds, onSaved }: { rule: Rule; bounds: Bounds; onSav
   };
   const field = (key: "threshold" | "windowMinutes" | "cooldownMinutes", label: string, unit: string) => (
     <label className="block text-xs">
-      <span className="text-slate-400">{label}</span>
+      <span className="text-slate-500">{label}</span>
       <span className="mt-1 flex items-center gap-2">
         <input type="number" inputMode="numeric" className={inputClass} min={bounds[key][0]} max={bounds[key][1]} step={1} value={Number.isNaN(form[key]) ? "" : form[key]}
           onChange={(event) => { setForm({ ...form, [key]: event.target.valueAsNumber }); setMessage(null); }} aria-describedby={`${rule.key}-${key}-hint`} />
         <span className="shrink-0 text-slate-500">{unit}</span>
       </span>
-      <span id={`${rule.key}-${key}-hint`} className="mt-1 block text-[10px] text-slate-500">Standart {rule.defaults[key]} · {bounds[key][0]}–{number(bounds[key][1])}</span>
+      <span id={`${rule.key}-${key}-hint`} className="mt-1 block text-[11px] text-slate-500">Standart {rule.defaults[key]} · {bounds[key][0]}–{number(bounds[key][1])}</span>
     </label>
   );
   return (
-    <article className={panelClass}>
+    <article className={`${panelClass} min-w-0`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-semibold text-white">{rule.label}</h3>
-          <p className="mt-1 text-xs leading-5 text-slate-400">{rule.description}</p>
+          <h3 className="font-semibold text-[#0d1b2a]">{rule.label}</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{rule.description}</p>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <Badge className={SEVERITY_CLASSES[rule.severity]}>{SEVERITY_LABELS[rule.severity]}</Badge>
-          <Badge className={rule.isDefault ? "border-slate-600 text-slate-300" : "border-sky-700 bg-sky-950/50 text-sky-200"}>{rule.isDefault ? "Standart" : "Dəyişdirilib"}</Badge>
+          <Badge tone={SEVERITY_TONES[rule.severity]}>{SEVERITY_LABELS[rule.severity]}</Badge>
+          <Badge tone={rule.isDefault ? "neutral" : "warn"}>{rule.isDefault ? "Standart" : "Dəyişdirilib"}</Badge>
         </div>
       </div>
-      <label className="mt-3 flex min-h-10 items-center gap-2 text-sm text-slate-200">
-        <input type="checkbox" className="h-4 w-4 accent-emerald-500" checked={form.enabled} onChange={(event) => { setForm({ ...form, enabled: event.target.checked }); setMessage(null); }} />
+      <label className="mt-3 flex min-h-11 items-center gap-2 text-sm text-slate-700">
+        <input type="checkbox" className="h-4 w-4 accent-[#173c40]" checked={form.enabled} onChange={(event) => { setForm({ ...form, enabled: event.target.checked }); setMessage(null); }} />
         Aktivdir
       </label>
       <div className="mt-2 grid gap-3 sm:grid-cols-3">
@@ -348,12 +361,12 @@ function RuleCard({ rule, bounds, onSaved }: { rule: Rule; bounds: Bounds; onSav
         {field("cooldownMinutes", "Gözləmə", "dəq")}
       </div>
       {!rule.isDefault && <p className="mt-2 text-[11px] text-slate-500">Son dəyişiklik: {rule.updatedBy ?? "—"} · {dateTime(rule.updatedAt)} · versiya {rule.version}</p>}
-      {!valid && <p className="mt-2 text-xs text-amber-200"><AlertTriangle size={13} className="mr-1 inline" aria-hidden="true" />Dəyərlər icazə verilən hədlərdə tam ədəd olmalıdır.</p>}
-      {message && <p role={message.ok ? "status" : "alert"} className={`mt-2 text-xs ${message.ok ? "text-emerald-200" : "text-rose-200"}`}>{message.text}</p>}
+      {!valid && <p className="mt-2 text-xs text-amber-900"><AlertTriangle size={13} className="mr-1 inline" aria-hidden="true" />Dəyərlər icazə verilən hədlərdə tam ədəd olmalıdır.</p>}
+      {message && <p role={message.ok ? "status" : "alert"} className={`mt-2 text-xs ${message.ok ? "text-green-900" : "text-red-800"}`}>{message.text}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" disabled={busy || !dirty || !valid} onClick={() => void send("PUT")} className={`${buttonClass} border-emerald-700 bg-emerald-950/50 text-emerald-100 hover:bg-emerald-900/50`}>Yadda saxla</button>
-        {dirty && <button type="button" disabled={busy} onClick={() => setForm(rule.settings)} className={`${buttonClass} border-slate-700 bg-slate-900 text-slate-300`}>Ləğv et</button>}
-        {!rule.isDefault && <button type="button" disabled={busy} onClick={() => void send("DELETE")} className={`${buttonClass} border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800`}>Standarta qaytar</button>}
+        <button type="button" disabled={busy || !dirty || !valid} onClick={() => void send("PUT")} className={`${buttonClass} ${primary}`}>Yadda saxla</button>
+        {dirty && <button type="button" disabled={busy} onClick={() => setForm(rule.settings)} className={`${buttonClass} ${plain}`}>Ləğv et</button>}
+        {!rule.isDefault && <button type="button" disabled={busy} onClick={() => void send("DELETE")} className={`${buttonClass} ${plain}`}>Standarta qaytar</button>}
       </div>
     </article>
   );

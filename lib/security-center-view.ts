@@ -94,7 +94,7 @@ export function ipCheckLight(data: Pick<ClientIpDiagnostics, "flagEnabled" | "he
 /** "Ətraflı hadisələr" filters from the query string (unknown values are ignored). */
 export const EVENT_WINDOWS = { "24h": 24, "7d": 24 * 7, "30d": 24 * 30 } as const;
 export type EventWindow = keyof typeof EVENT_WINDOWS;
-export const EVENTS_PAGE_SIZE = 50;
+export const EVENTS_PAGE_SIZE = 10;
 
 export function parseEventFilters(params: Record<string, string | string[] | undefined>) {
   const one = (key: string) => { const value = params[key]; return (Array.isArray(value) ? value[0] : value)?.trim() ?? ""; };

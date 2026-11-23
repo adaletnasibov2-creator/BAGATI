@@ -12,7 +12,7 @@ import { sessionReference } from "@/lib/admin-sessions";
 import { SECURITY_AUDIT_ACTIONS } from "@/lib/audit-action-labels";
 import { utcTimestamp } from "@/lib/sql-timestamp";
 import { EVENT_WINDOWS, EVENTS_PAGE_SIZE, loginAuditBySession, NOT_FOUND_GROUPS, type EventWindow } from "@/lib/security-center-view";
-import { bakuDaysStart, isAdminSessionActive } from "@/lib/security-center-status";
+import { bakuDaysStart, isAdminSessionActive, SCAN_NOISE_RULE_KEYS } from "@/lib/security-center-status";
 import { ADMIN_IDLE_TIMEOUT_MS } from "@/lib/session-policy";
 
 export const SECURITY_PAGE_TIMEOUT_MS = 4_000;
@@ -189,32 +189,73 @@ export async function loadSuspicious(now: Date) {
   });
 }
 
-export async function loadIncidentsAndHighEvents(now: Date) {
-  const since7d = new Date(now.getTime() - 7 * DAY_MS);
+const OPEN_STATUSES = ["OPEN", "ACKNOWLEDGED"] as const;
+const INCIDENT_SELECT = { id: true, ruleKey: true, title: true, severity: true, status: true, observedValue: true, threshold: true, windowMinutes: true, createdAt: true } as const;
+
+/**
+ * SECURITY-CENTER-DESIGN-2: open (OPEN / ACKNOWLEDGED) incidents for the overview.
+ * - counts: every open incident counted by rule and severity (a GROUP BY over at most rules × severities rows), so the
+ *   verdict never under-counts (DESIGN-1 read only the newest 10);
+ * - urgent / other: the newest 5 high (HIGH/CRITICAL) and 5 lower incidents that are not scan noise (the attention
+ *   list takes the top 5 of these);
+ * - scan: the oldest 25 open scan-noise incidents (ids and status only), for the bulk "resolve" button.
+ */
+export async function loadOpenIncidents() {
   return block(async (tx) => {
-    const incidents = await tx.securityIncident.findMany({
-      where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: { id: true, title: true, severity: true, status: true, createdAt: true },
+    const grouped = await tx.securityIncident.groupBy({ by: ["ruleKey", "severity"], where: { status: { in: [...OPEN_STATUSES] } }, _count: { _all: true }, orderBy: { ruleKey: "asc" }, take: 60 });
+    const notScan = { status: { in: [...OPEN_STATUSES] }, ruleKey: { notIn: [...SCAN_NOISE_RULE_KEYS] } };
+    const urgent = await tx.securityIncident.findMany({ where: { ...notScan, severity: { in: ["HIGH", "CRITICAL"] } }, orderBy: { createdAt: "desc" }, take: 5, select: INCIDENT_SELECT });
+    const other = await tx.securityIncident.findMany({ where: { ...notScan, severity: { notIn: ["HIGH", "CRITICAL"] } }, orderBy: { createdAt: "desc" }, take: 5, select: INCIDENT_SELECT });
+    const scan = await tx.securityIncident.findMany({
+      where: { status: { in: [...OPEN_STATUSES] }, ruleKey: { in: [...SCAN_NOISE_RULE_KEYS] } },
+      orderBy: { createdAt: "asc" },
+      take: 25,
+      select: { id: true, status: true },
     });
-    const high = await tx.securityEvent.findMany({
-      where: { severity: { in: ["HIGH", "CRITICAL"] }, occurredAt: { gte: since7d } },
-      orderBy: { occurredAt: "desc" },
-      take: 10,
-      select: { id: true, occurredAt: true, eventType: true, severity: true, path: true, sourceIp: true, sourceIpMasked: true },
-    });
-    return { incidents, high };
+    return {
+      counts: grouped.map((row) => ({ ruleKey: row.ruleKey, severity: row.severity, count: Number(row._count._all) })),
+      list: [...urgent, ...other].map((row) => ({ ...row, status: String(row.status) })),
+      scan: scan.map((row) => ({ id: row.id, status: String(row.status) as "OPEN" | "ACKNOWLEDGED" })),
+    };
   });
 }
 
-export async function loadSecurityAudit() {
-  return block((tx) => tx.auditLog.findMany({
-    where: { action: { in: [...SECURITY_AUDIT_ACTIONS] } },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    select: { id: true, action: true, createdAt: true, metadata: true, actor: { select: { email: true } } },
-  }));
+/**
+ * SECURITY-CENTER-DESIGN-2: 404 requests (background scanning) per Baku day for the last 7 days, from the counters
+ * (SecurityMinuteStat keeps no IP), summed over all route groups in SQL.
+ */
+export async function loadScanNoise(now: Date) {
+  const since7days = bakuDaysStart(now, 7);
+  const since24h = new Date(now.getTime() - DAY_MS);
+  return block(async (tx) => {
+    const daily = await tx.$queryRaw<Array<{ day: string; count: number }>>`
+      SELECT to_char("bucketStart" + INTERVAL '4 hours', 'YYYY-MM-DD') AS "day", COALESCE(SUM("notFound"), 0)::int AS "count"
+      FROM "SecurityMinuteStat"
+      WHERE "bucketStart" >= ${utcTimestamp(since7days)}
+      GROUP BY 1 ORDER BY 1 LIMIT 10`;
+    const last24h = await tx.$queryRaw<Array<{ count: number }>>`
+      SELECT COALESCE(SUM("notFound"), 0)::int AS "count" FROM "SecurityMinuteStat" WHERE "bucketStart" >= ${utcTimestamp(since24h)}`;
+    return { daily: daily.map((row) => ({ day: row.day, count: Number(row.count) })), last24h: Number(last24h[0]?.count ?? 0) };
+  });
+}
+
+/** SECURITY-CENTER-DESIGN-2 "Audit" tab: security audit rows, AUDIT_PAGE_SIZE per page, newest first. */
+export const AUDIT_PAGE_SIZE = 10;
+export const AUDIT_MAX_PAGES = 50;
+export async function loadSecurityAudit(page = 1) {
+  const safePage = Math.min(Math.max(1, Math.floor(page) || 1), AUDIT_MAX_PAGES);
+  return block(async (tx) => {
+    const where = { action: { in: [...SECURITY_AUDIT_ACTIONS] } };
+    const total = await tx.auditLog.count({ where });
+    const rows = await tx.auditLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (safePage - 1) * AUDIT_PAGE_SIZE,
+      take: AUDIT_PAGE_SIZE,
+      select: { id: true, action: true, createdAt: true, actor: { select: { email: true } } },
+    });
+    return { total, page: safePage, rows };
+  });
 }
 
 /** "Ətraflı hadisələr": one page of events (50) with filters; produced event types only. */
@@ -243,7 +284,7 @@ export async function listSecurityEvents(input: { window: EventWindow; eventType
  * Full IPs are shown only after this audit row is written (who, which page, when). Returns false when the write fails,
  * and the page then keeps the masked IPs.
  */
-export async function recordFullIpView(adminId: string, page: "summary" | "events"): Promise<boolean> {
+export async function recordFullIpView(adminId: string, page: "summary" | "events" | "logins"): Promise<boolean> {
   try {
     await prisma.auditLog.create({ data: { actorId: adminId, action: "SECURITY_FULL_IP_VIEW", entityType: "SecurityCenter", entityId: page, metadata: { page } } });
     return true;

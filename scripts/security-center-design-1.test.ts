@@ -8,7 +8,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import test from "node:test";
 import {
-  bakuDayKey, bakuDaysStart, dailyFailedLogins, DASHBOARD_TEXT, deviceText, hourlyFailedLogins, isAdminSessionActive, isFailedLoginSpike,
+  bakuDayKey, bakuDaysStart, CENTER_TEXT, dailyFailedLogins, DASHBOARD_TEXT, INCIDENT_HELP, deviceText, hourlyFailedLogins, isAdminSessionActive, isFailedLoginSpike,
   lastBakuDays, securityVerdict, STATUS_TEXT, STATUS_THRESHOLDS, type StatusInput,
 } from "../lib/security-center-status";
 import { ADMIN_IDLE_TIMEOUT_MS } from "../lib/session-policy";
@@ -161,16 +161,20 @@ test("page: admin + security.view first, full IP only after the audit row, every
   const order = ['requireRole("ADMIN")', 'requireSecurityPermission(admin, "security.view")', 'redirect("/admin/login")', 'await recordFullIpView(admin.id, "summary")', "await loadAdmins()"];
   for (let i = 1; i < order.length; i += 1) assert.ok(page.indexOf(order[i - 1]) < page.indexOf(order[i]), `${order[i - 1]} before ${order[i]}`);
   // Every IP shown goes through the masking rule: shownIp(raw, masked, full), loginIp (full && ipFull, else masked), or
-  // the admin-failed row (full ? ip : maskIpAddress(ip)).
-  const ipOutputs = [...page.matchAll(/<Ip value=\{([^}]*(?:\}[^}]*)?)\} \/>/g)].map((m) => m[1]);
+  // the admin-failed row (full ? ip : maskIpAddress(ip)). SECURITY-CENTER-DESIGN-2: the IP tables moved to the logins
+  // and events tabs, so the outputs are counted over the three pages (the overview keeps the last-login IP).
+  const sources = [page, read("app/admin/security-center/logins/page.tsx"), read("app/admin/security-center/events/page.tsx")].join("\n");
+  const ipOutputs = [...sources.matchAll(/<Ip (?:key="\w+" )?value=\{([^}]*(?:\}[^}]*)?)\} \/>/g)].map((m) => m[1]);
   assert.ok(ipOutputs.length >= 6);
   for (const expr of ipOutputs) assert.ok(/^shownIp\(.*, full\)$|^loginIp\((row|lastLogin)\)$|^row\.ip \? \(full \? row\.ip : maskIpAddress\(row\.ip\)\) : null$/.test(expr), `IP output: ${expr}`);
   assert.match(page, /const loginIp = \(row: \{ ipFull: string \| null; ipMasked: string \| null \}\) => full && row\.ipFull \? row\.ipFull : row\.ipMasked \?\? \(row\.ipFull \? maskIpAddress\(row\.ipFull\) : null\);/);
-  assert.doesNotMatch(page, /\{row\.sourceIp\}|\{row\.ipFull\}|\{row\.raw\}/, "no raw IP printed directly");
-  // The reveal stays the audited GET form; no auto-refresh, no client code.
-  assert.match(page, /<form method="get" action="\/admin\/security-center"><input type="hidden" name="ip" value="full" \/><button[^>]*>Tam IP-ləri göstər<\/button><\/form>/);
-  assert.doesNotMatch(page, /setInterval|"use client"|router\.refresh/);
-  assert.match(page, /Səhifə avtomatik yenilənmir\./);
+  assert.doesNotMatch(sources, /\{row\.sourceIp\}|\{row\.ipFull\}|\{row\.raw\}/, "no raw IP printed directly");
+  // The reveal stays the audited GET form (now the shared FullIpToggle). DESIGN-2 changes the refresh: the page itself
+  // stays a server page without timers; "Yenilə" and the optional auto-refresh are the client component
+  // components/security-refresh.tsx (pinned in security-center-design-2.test.ts). "Səhifə avtomatik yenilənmir." is gone.
+  assert.match(read("components/security-center-ui.tsx"), /<form method="get" action=\{action\}><input type="hidden" name="ip" value="full" \/><button[^>]*>Tam IP-ləri göstər<\/button><\/form>/);
+  assert.match(page, /<FullIpToggle action="\/admin\/security-center" full=\{full\}\/>/);
+  assert.doesNotMatch(page, /setInterval|"use client"/);
 });
 
 test("page: verdict banner with icon + text, summary cards, charts with empty states, latest 10 + show more, related pages", () => {
@@ -183,12 +187,17 @@ test("page: verdict banner with icon + text, summary cards, charts with empty st
   assert.match(page, /title="IP yoxlaması"/);
   assert.match(page, /allClear\("Son 7 gündə uğursuz giriş yoxdur\."\)/);
   assert.match(page, /allClear\(DASHBOARD_TEXT\.noFailed24h\)/);
-  assert.match(page, /const LATEST = 10;/);
-  assert.match(page, /logins\.slice\(0, LATEST\)\.map\(loginRow\)/);
-  assert.match(page, /<details className="mt-3 group"><summary[^>]*>\{DASHBOARD_TEXT\.showMore\(logins\.length - LATEST\)\}<\/summary>/);
-  for (const href of ["/admin/security/sessions", "/admin/audit-log", "/admin/system", "/admin/security", "/admin/security-center/events", "/admin/security-center/incidents"]) assert.ok(page.includes(`"${href}"`), href);
-  // Status badges are icon + text.
-  assert.match(page, /<Icon size=\{12\} aria-hidden="true"\/>\{children\}<\/span>/);
+  // SECURITY-CENTER-DESIGN-2: "latest 10 + show more" moved to the logins tab (LimitedRows); the related-pages card
+  // became the tabs, and its links live in the tabs and the verdict reasons.
+  const logins = read("app/admin/security-center/logins/page.tsx");
+  assert.match(logins, /const LATEST = 10;/);
+  assert.match(logins, /<LimitedRows limit=\{LATEST\} more=\{DASHBOARD_TEXT\.showMore\}/);
+  const ui = read("components/security-center-ui.tsx");
+  assert.match(ui, /<details className="mt-3"><summary className=\{`cursor-pointer \$\{linkClass\}`\}>\{more\(rows\.length - limit\)\}<\/summary>/);
+  const everywhere = ["page.tsx", "logins/page.tsx", "audit/page.tsx", "events/page.tsx"].map((name) => read(`app/admin/security-center/${name}`)).join("\n") + read("lib/security-center-status.ts") + ui;
+  for (const href of ["/admin/security/sessions", "/admin/audit-log", "/admin/system", "/admin/security", "/admin/security-center/events", "/admin/security-center/incidents"]) assert.ok(everywhere.includes(`"${href}"`), href);
+  // Status badges are icon + text (shared Badge since DESIGN-2).
+  assert.match(ui, /<Icon size=\{12\} aria-hidden="true"\/>\{children\}<\/span>/);
   // Charts: accessible (title per segment / bar, screen-reader table); no chart package.
   const stacked = read("components/stacked-column-chart.tsx");
   assert.match(stacked, /<title>\{`\$\{column\.label\} · \$\{name\}: \$\{value\}`\}<\/title>/);
@@ -201,7 +210,8 @@ test("live-check fixes: no React key carries an IP; the chart's screen-reader ta
   const page = read("app/admin/security-center/page.tsx");
   // React keys are serialized into the page's embedded data even when the shown IP is masked.
   assert.doesNotMatch(page, /key=\{[^}]*\b(row\.key|raw|sourceIp|ipFull|row\.ip)\b[^}]*\}/);
-  assert.match(page, /suspicious\.topIps\.map\(\(row, index\) => <tr key=\{`top-ip-\$\{index\}`\}>/);
+  // SECURITY-CENTER-DESIGN-2: the top-IP table moved to the events tab, still keyed by position.
+  assert.match(read("app/admin/security-center/events/page.tsx"), /rows=\{suspicious\.topIps\.map\(\(row, index\) => \(\{ key: `top-ip-\$\{index\}`/);
   // A <table> ignores sr-only's 1 px width: the wrapper carries sr-only.
   const stacked = read("components/stacked-column-chart.tsx");
   assert.match(stacked, /<div className="sr-only"><table><caption>\{title\}<\/caption>/);
@@ -255,7 +265,11 @@ test("texts: only the listed new texts appear in the changed files (scan against
   const AZ = /[əğıöüşçƏĞİÖÜŞÇ]/;
   const fragments = (source: string) => new Set(source.split(/["'`<>{}]|\$\{/).map((p) => p.trim()).filter((p) => AZ.test(p)));
   const changed = ["app/admin/security-center/page.tsx", "lib/security-center-status.ts", "lib/security-center-data.ts", "components/stacked-column-chart.tsx"];
-  const allBefore = changed.map(baseText).join("\n") + "\n" + REUSED.map(([, p]) => baseText(p)).join("\n");
+  // SECURITY-CENTER-DESIGN-2 adds its own texts to these files; they are listed and scanned (against 962124e) in
+  // security-center-design-2.test.ts, so words from that list are accepted here.
+  // ("hədd" is reused from the incident details in components/admin-security-monitoring.tsx.)
+  const design2 = read("scripts/security-center-design-2.test.ts") + "\n" + Object.values(INCIDENT_HELP).map((help) => help.text).join("\n") + "\n" + CENTER_TEXT.scanText + "\n" + baseText("components/admin-security-monitoring.tsx");
+  const allBefore = changed.map(baseText).join("\n") + "\n" + REUSED.map(([, p]) => baseText(p)).join("\n") + "\n" + design2;
   for (const path of changed) {
     const before = fragments(baseText(path));
     for (const fragment of fragments(read(path))) {

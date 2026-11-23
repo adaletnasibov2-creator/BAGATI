@@ -176,6 +176,18 @@ test("auto-refresh never runs while full IPs are shown (no repeated SECURITY_FUL
   for (const path of [PAGES.overview, PAGES.logins, PAGES.events]) assert.match(read(path), /<SecurityCenterHeader active="\w+" renderedAt=\{now\.toISOString\(\)\} fullIp=\{full\} actions=/, path);
 });
 
+test("live-check layout fixes: phone rows put buttons under the text; events tables and filters fit at 1280", () => {
+  const overview = read(PAGES.overview);
+  // At 390 px the buttons squeezed the incident text into a narrow column: on phones the text takes the full row.
+  assert.match(overview, /<div className="min-w-0 flex-1 max-sm:basis-full">\n\s+<div className="flex flex-wrap items-center gap-2"><SeverityBadge/);
+  assert.match(overview, /<span className="min-w-\[14rem\] flex-1">\{reason\.text\}<\/span>/, "the reason link wraps below on phones");
+  assert.match(read("components/admin-security-monitoring.tsx"), /<div className="min-w-0 flex-1 max-sm:basis-full">\n\s+<div className="flex flex-wrap items-center gap-2">\n\s+<Badge tone=\{SEVERITY_TONES/);
+  // At 1280 the half-width top-IP table was cut off and the filter selects overlapped.
+  const events = read(PAGES.events);
+  assert.match(events, /\{!suspicious \? unavailable : <div className="grid gap-5">/);
+  assert.match(events, /const field = "min-h-11 w-full min-w-0 rounded-xl/);
+});
+
 // ================================================================= tabs
 
 test("tabs: five sections with existing titles where they exist, each page admin-only, server-rendered and bounded", () => {

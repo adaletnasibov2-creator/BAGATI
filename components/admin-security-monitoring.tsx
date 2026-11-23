@@ -159,7 +159,7 @@ function IncidentsPanel({ refreshedAt }: { refreshedAt?: string }) {
           {data.items.map((incident) => (
             <li key={incident.id} className={panelClass} data-incident-row={incident.status}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 max-sm:basis-full">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={SEVERITY_TONES[incident.severity]}>{SEVERITY_LABELS[incident.severity]}</Badge>
                     <Badge tone={STATUS_TONES[incident.status]}>{STATUS_LABELS[incident.status]}</Badge>

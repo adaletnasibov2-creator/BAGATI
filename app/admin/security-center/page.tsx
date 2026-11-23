@@ -100,7 +100,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
           {verdict.reasons.length
             ? <ul className="mt-2 space-y-1.5 text-sm" data-verdict-reasons="">{verdict.reasons.map((reason) => <li key={reason.code} data-reason={reason.code} className="flex flex-wrap items-start gap-x-2 gap-y-1">
                 {reason.level === "problem" ? <XCircle size={16} aria-hidden="true" className="mt-0.5 shrink-0"/> : <AlertTriangle size={16} aria-hidden="true" className="mt-0.5 shrink-0"/>}
-                <span className="min-w-0 flex-1">{reason.text}</span>
+                <span className="min-w-[14rem] flex-1">{reason.text}</span>
                 {reason.href && reason.action
                   ? <Link href={reason.href} prefetch={false} className="inline-flex items-center gap-0.5 whitespace-nowrap font-semibold underline">{reason.action}<ChevronRight size={14} aria-hidden="true"/></Link>
                   : <span className="text-xs">{CENTER_TEXT.retry}</span>}
@@ -138,7 +138,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
             const help = INCIDENT_HELP[row.ruleKey];
             return <li key={row.id} className="rounded-xl border border-[#eeeae2] p-3" data-attention-item={row.severity}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 max-sm:basis-full">
                   <div className="flex flex-wrap items-center gap-2"><SeverityBadge severity={row.severity}/><StatusBadge status={row.status}/><span className="text-xs text-slate-500">{date(row.createdAt)}</span></div>
                   <p className="mt-1.5 font-medium text-[#0d1b2a]">{ruleName(row.ruleKey)}</p>
                   <p className="text-xs text-slate-500">{CENTER_TEXT.observed(row.observedValue, row.threshold, row.windowMinutes)}</p>

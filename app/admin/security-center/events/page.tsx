@@ -11,7 +11,7 @@ import { DASHBOARD_TEXT } from "@/lib/security-center-status";
 export const dynamic = "force-dynamic";
 
 const card = "rounded-2xl border border-[#e7e3d9] bg-white p-5";
-const field = "min-h-11 rounded-xl border border-[#ded9cf] bg-white px-3 text-sm";
+const field = "min-h-11 w-full min-w-0 rounded-xl border border-[#ded9cf] bg-white px-3 text-sm";
 const WINDOW_LABELS = { "24h": "Son 24 saat", "7d": "Son 7 gün", "30d": "Son 30 gün" } as const;
 const FEW = 5;
 
@@ -41,7 +41,7 @@ export default async function AdminSecurityEventsPage({ searchParams }: { search
     {filters.fullIp && !full && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">Tam IP-lərə baxış audit jurnalına yazıla bilmədi; IP-lər maskalı qalır.</p>}
 
     <div className="mb-5"><Block title="Şübhəli fəaliyyət" note="404 skanları sayğaclardır (IP saxlanmır); IP siyahısı qeydə alınmış hadisələrdəndir.">
-      {!suspicious ? unavailable : <div className="grid gap-5 xl:grid-cols-2">
+      {!suspicious ? unavailable : <div className="grid gap-5">
         <div className="min-w-0"><RowTable head={["Nə", "24 saat", "7 gün"]} rows={[
           ...suspicious.notFound.map((row) => ({ key: row.group, cells: [row.label, row.last24h, row.last7d] })),
           { key: "rate-limited", cells: ["Limit aşımı", suspicious.rateLimited.last24h, suspicious.rateLimited.last7d] },

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { loadVendorSalesAnalytics } from "@/lib/vendor-sales-analytics-query";
+import { analyticsRangeAllowed } from "@/lib/vendor-sales-analytics";
 import { shipmentEmailAllowed } from "@/lib/shipment-email-guard";
 import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
@@ -120,6 +122,8 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
  if(section==="sales"){
   const start=from?new Date(from):new Date(new Date().getFullYear(),new Date().getMonth(),1),end=to?new Date(to+"T23:59:59.999"):new Date();
   if(isNaN(start.valueOf())||isNaN(end.valueOf())||start>end)return NextResponse.json({error:"Tarix aralığı yanlışdır"},{status:400});
+   // SELLER-ANALYTICS-1: every report query is bounded (at most 366 days).
+   if(!analyticsRangeAllowed(start,end))return NextResponse.json({error:"Tarix aralığı yanlışdır"},{status:400});
   const period={gte:start,lte:end};const orders=await db.storeOrder.findMany({where:{storeId,status:"DELIVERED",OR:[{deliveredAt:period},{deliveredAt:null,createdAt:period}]},include:{items:{include:{product:{select:{category:{select:{id:true,name:true}}}}}}},orderBy:{createdAt:"asc"}});
   const daily=new Map<string,{orders:number;quantity:number;revenue:number}>(),byProduct=new Map<string,{quantity:number;revenue:number}>(),byCategory=new Map<string,{name:string;quantity:number;revenue:number}>();let revenue=0,quantity=0;
   for(const order of orders){const day=(order.deliveredAt||order.createdAt).toISOString().slice(0,10),row=daily.get(day)||{orders:0,quantity:0,revenue:0};row.orders++;row.revenue+=Number(order.subtotal);daily.set(day,row);revenue+=Number(order.subtotal);for(const item of order.items){quantity+=item.quantity;row.quantity+=item.quantity;const product=byProduct.get(item.productName)||{quantity:0,revenue:0};product.quantity+=item.quantity;product.revenue+=Number(item.lineTotal);byProduct.set(item.productName,product);const category=item.product.category,name=category?.name||"Kateqoriyasız",key=category?.id||"uncategorized",categoryRow=byCategory.get(key)||{name,quantity:0,revenue:0};categoryRow.quantity+=item.quantity;categoryRow.revenue+=Number(item.lineTotal);byCategory.set(key,categoryRow)}}
@@ -141,8 +145,10 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
    db.storeOrder.findMany({where:{storeId,status:{notIn:["DELIVERED","CANCELLED","RETURNED"]}},select:financeSelect}),
   ]);
   const finance=summarizeVendorFinance([...financeDelivered,...financeOpen].map((row:any)=>({id:row.id,status:row.status,subtotal:row.subtotal,deliveryFee:row.deliveryFee,commissionRateSnapshot:row.commissionRateSnapshot,createdAt:row.createdAt,deliveredAt:row.deliveredAt,paymentStatuses:row.order.payments.map((p:any)=>p.status),itemQuantity:row.items.reduce((n:number,i:any)=>n+i.quantity,0),returnRequests:row.returnRequests})));
+  // SELLER-ANALYTICS-1: received orders (all statuses, not paid sales); comparisons, categories and cities only with ADVANCED_ANALYTICS.
+  const analytics=await loadVendorSalesAnalytics(db,{storeId,start,end,advanced:advancedAnalytics!==null});
   const currentCommission=await db.commission.findFirst({where:{storeId,startsAt:{lte:new Date()},OR:[{endsAt:null},{endsAt:{gt:new Date()}}]},orderBy:{startsAt:"desc"},select:{rate:true}});
-  return NextResponse.json({finance,currentCommissionRate:currentCommission?Number(currentCommission.rate):null,payoutsTracked:false,period:{from:start.toISOString(),to:end.toISOString()},orders:orders.length,quantity,revenue,daily:[...daily].map(([date,value])=>({date,...value})),monthly:[...monthly].map(([month,value])=>({month,...value})),products:[...byProduct].map(([name,value])=>({name,...value})),advancedAnalytics});
+  return NextResponse.json({finance,currentCommissionRate:currentCommission?Number(currentCommission.rate):null,payoutsTracked:false,period:{from:start.toISOString(),to:end.toISOString()},orders:orders.length,quantity,revenue,daily:[...daily].map(([date,value])=>({date,...value})),monthly:[...monthly].map(([month,value])=>({month,...value})),products:[...byProduct].map(([name,value])=>({name,...value})),advancedAnalytics,analytics});
  }
  if(section==="settings")return NextResponse.json({store:await db.store.findUnique({where:{id:storeId},select:{id:true,name:true,isActive:true,createdAt:true,updatedAt:true}}),commission:await db.commission.findFirst({where:{storeId,OR:[{endsAt:null},{endsAt:{gt:new Date()}}]},orderBy:{startsAt:"desc"}})});
  if(section==="subscription"){

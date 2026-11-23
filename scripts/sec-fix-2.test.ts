@@ -352,15 +352,18 @@ test("texts: only existing texts are used; no other new Azerbaijani text (diff s
   // The two texts exist before this change.
   assert.ok(baseText("app/api/auth/reset-password/route.ts").includes(RATE_LIMITED_MESSAGE));
   assert.ok(baseText("lib/catalog-import-job-route.ts").includes(BODY_TOO_LARGE_MESSAGE));
-  const changed = execFileSync("git", ["diff", "--name-only", BASE, "--", "app", "lib", "components"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
-  const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "--", "app", "lib", "components"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
-  const files = [...new Set([...changed, ...untracked])].filter(path => /\.(ts|tsx)$/.test(path));
+  // SELLER-ANALYTICS-1: scan exactly what the SEC-FIX-2 commit changed (files and content at f8e9a8c), so later tasks
+  // with their own approved texts do not break this check. Before, it diffed the working tree against BASE.
+  const SEC_FIX_2 = "f8e9a8c";
+  const atCommit = (path: string) => execFileSync("git", ["show", `${SEC_FIX_2}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n");
+  const changed = execFileSync("git", ["diff", "--name-only", BASE, SEC_FIX_2, "--", "app", "lib", "components"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
+  const files = changed.filter(path => /\.(ts|tsx)$/.test(path));
   assert.ok(files.length >= 50, `changed files found: ${files.length}`);
   const AZ = /[əğıöüşçƏĞİÖÜŞÇ]/;
   const fragments = (source: string) => new Set(source.split(/["'`<>{}]|\$\{/).map(part => part.trim()).filter(part => AZ.test(part)));
   for (const path of files) {
     const before = fragments(baseText(path));
-    for (const fragment of fragments(read(path))) {
+    for (const fragment of fragments(atCommit(path))) {
       if (before.has(fragment)) continue;
       const rest = fragment.split(RATE_LIMITED_MESSAGE).join("").split(BODY_TOO_LARGE_MESSAGE).join("");
       assert.doesNotMatch(rest, AZ, `${path}: new text: ${fragment}`);

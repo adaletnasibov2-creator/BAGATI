@@ -12,6 +12,8 @@ import { sessionReference } from "@/lib/admin-sessions";
 import { SECURITY_AUDIT_ACTIONS } from "@/lib/audit-action-labels";
 import { utcTimestamp } from "@/lib/sql-timestamp";
 import { EVENT_WINDOWS, EVENTS_PAGE_SIZE, loginAuditBySession, NOT_FOUND_GROUPS, type EventWindow } from "@/lib/security-center-view";
+import { bakuDaysStart, isAdminSessionActive } from "@/lib/security-center-status";
+import { ADMIN_IDLE_TIMEOUT_MS } from "@/lib/session-policy";
 
 export const SECURITY_PAGE_TIMEOUT_MS = 4_000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -63,7 +65,8 @@ export async function loadAdminLogins(now: Date) {
       const audit = byKey.get(`${session.userId}:${sessionReference(session.id)}`);
       return {
         id: session.id, email: session.user.email, createdAt: session.createdAt, lastSeenAt: session.lastSeenAt,
-        active: !session.revokedAt && session.expiresAt > now, ipMasked: session.ipMasked, ipFull: audit?.ip ?? null,
+        // SECURITY-CENTER-DESIGN-1: "Aktiv" uses the session's own rule, including the admin idle timeout.
+        active: isAdminSessionActive(session, now), ipMasked: session.ipMasked, ipFull: audit?.ip ?? null,
         method: audit?.method ?? null, device: session.userAgent,
       };
     });
@@ -72,11 +75,13 @@ export async function loadAdminLogins(now: Date) {
 
 export async function loadFailedLogins(now: Date) {
   const since24h = new Date(now.getTime() - DAY_MS);
+  const since48h = new Date(now.getTime() - 2 * DAY_MS);
   const since7d = new Date(now.getTime() - 7 * DAY_MS);
   return block(async (tx) => {
-    const byPath = await tx.$queryRaw<Array<{ path: string | null; last24h: number; last7d: number }>>`
+    const byPath = await tx.$queryRaw<Array<{ path: string | null; last24h: number; prev24h: number; last7d: number }>>`
       SELECT "path",
         COUNT(*) FILTER (WHERE "occurredAt" >= ${utcTimestamp(since24h)})::int AS "last24h",
+        COUNT(*) FILTER (WHERE "occurredAt" >= ${utcTimestamp(since48h)} AND "occurredAt" < ${utcTimestamp(since24h)})::int AS "prev24h",
         COUNT(*)::int AS "last7d"
       FROM "SecurityEvent"
       WHERE "eventType" = 'LOGIN_FAILURE' AND "occurredAt" >= ${utcTimestamp(since7d)}
@@ -94,7 +99,7 @@ export async function loadFailedLogins(now: Date) {
       select: { id: true, createdAt: true, metadata: true, actor: { select: { email: true } } },
     });
     return {
-      byPath: byPath.map((row) => ({ path: row.path, last24h: Number(row.last24h), last7d: Number(row.last7d) })),
+      byPath: byPath.map((row) => ({ path: row.path, last24h: Number(row.last24h), prev24h: Number(row.prev24h), last7d: Number(row.last7d) })),
       recent,
       adminTargeted: adminTargeted.map((row) => {
         const meta = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
@@ -102,6 +107,42 @@ export async function loadFailedLogins(now: Date) {
       }),
     };
   });
+}
+
+/**
+ * SECURITY-CENTER-DESIGN-1: failed logins per Baku day (last 7 days, by login endpoint) and per UTC hour (last 24 h),
+ * aggregated in SQL. Day keys use the column's UTC wall-clock time + 4 h (Asia/Baku, no DST).
+ */
+export async function loadFailedLoginTrend(now: Date) {
+  const since7days = bakuDaysStart(now, 7);
+  const since24h = new Date(now.getTime() - DAY_MS);
+  return block(async (tx) => {
+    const daily = await tx.$queryRaw<Array<{ day: string; path: string | null; count: number }>>`
+      SELECT to_char("occurredAt" + INTERVAL '4 hours', 'YYYY-MM-DD') AS "day", "path", COUNT(*)::int AS "count"
+      FROM "SecurityEvent"
+      WHERE "eventType" = 'LOGIN_FAILURE' AND "occurredAt" >= ${utcTimestamp(since7days)}
+      GROUP BY 1, 2 ORDER BY 1 LIMIT 60`;
+    const hourly = await tx.$queryRaw<Array<{ hour: string; count: number }>>`
+      SELECT to_char(date_trunc('hour', "occurredAt"), 'YYYY-MM-DD"T"HH24') AS "hour", COUNT(*)::int AS "count"
+      FROM "SecurityEvent"
+      WHERE "eventType" = 'LOGIN_FAILURE' AND "occurredAt" >= ${utcTimestamp(since24h)}
+      GROUP BY 1 ORDER BY 1 LIMIT 30`;
+    return {
+      daily: daily.map((row) => ({ day: row.day, path: row.path, count: Number(row.count) })),
+      hourly: hourly.map((row) => ({ hour: row.hour, count: Number(row.count) })),
+    };
+  });
+}
+
+/** Admin sessions that can still be used now (not revoked, not expired, used within the admin idle timeout). */
+export async function loadActiveAdminSessionCount(now: Date) {
+  const idleSince = new Date(now.getTime() - ADMIN_IDLE_TIMEOUT_MS);
+  return block((tx) => tx.authSession.count({
+    where: {
+      user: { role: "ADMIN" }, revokedAt: null, expiresAt: { gt: now },
+      OR: [{ lastSeenAt: { gte: idleSince } }, { lastSeenAt: null, createdAt: { gte: idleSince } }],
+    },
+  }));
 }
 
 /** 404 probes, rate-limit hits and IP-header mismatches (counters), plus the busiest IPs with what they tried. */

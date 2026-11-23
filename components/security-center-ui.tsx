@@ -73,7 +73,7 @@ export function LimitedRows({ head, rows, limit, more }: { head: readonly string
 }
 
 /** Title, tabs and the refresh controls, the same on every tab. `actions` holds the page's own buttons (full-IP reveal). */
-export function SecurityCenterHeader({ active, renderedAt, actions }: { active: SecurityTab; renderedAt: string; actions?: ReactNode }) {
+export function SecurityCenterHeader({ active, renderedAt, actions, fullIp = false }: { active: SecurityTab; renderedAt: string; actions?: ReactNode; fullIp?: boolean }) {
   return <div className="mb-5">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
@@ -81,7 +81,7 @@ export function SecurityCenterHeader({ active, renderedAt, actions }: { active: 
         <h1 className="mt-2 flex items-center gap-2 text-3xl font-semibold text-[#0d1b2a]"><ShieldAlert size={26} aria-hidden="true" className="shrink-0 text-[#85621d]"/>Təhlükəsizlik mərkəzi</h1>
         <p className="mt-2 text-sm text-slate-500">{CENTER_TEXT.subtitle}</p>
       </div>
-      <div className="flex flex-wrap items-start gap-3">{actions}<SecurityRefresh renderedAt={renderedAt}/></div>
+      <div className="flex flex-wrap items-start gap-3">{actions}<SecurityRefresh renderedAt={renderedAt} fullIp={fullIp}/></div>
     </div>
     <nav aria-label="Təhlükəsizlik mərkəzi bölmələri" className="mt-4 overflow-x-auto border-b border-[#e7e3d9]" data-security-tabs="">
       <ul className="flex min-w-max gap-1">

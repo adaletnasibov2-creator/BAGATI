@@ -137,6 +137,8 @@ export const CENTER_TEXT = {
   refreshFailed: "Yenilənmədi. Bir az sonra yenidən cəhd edin.",
   autoRefresh: "Avtomatik yenilə (60 san)",
   autoStopped: "Avtomatik yeniləmə bir saatdan sonra dayandırıldı.",
+  // Text 41 (added after the owner approved texts 1-40; needs approval): shown while ?ip=full is open, switch off.
+  autoOffFullIp: "Tam IP-lər göstərilərkən avtomatik yeniləmə işləmir.",
   // Logins tab: link to the existing sessions page.
   allSessions: "Bütün sessiyalar →",
 } as const;
@@ -305,7 +307,9 @@ export const AUTO_REFRESH = { seconds: 60, maxRuns: 60 } as const;
  * What the auto-refresh timer does on a tick: "stop" after maxRuns, "wait" while the tab is hidden or a refresh is
  * still running (nothing is sent), otherwise "refresh". A failed refresh turns it off too (refreshOutcome).
  */
-export function autoRefreshStep(state: { visible: boolean; pending: boolean; runs: number }): "refresh" | "wait" | "stop" {
+export function autoRefreshStep(state: { visible: boolean; pending: boolean; runs: number; fullIp?: boolean }): "refresh" | "wait" | "stop" {
+  // While full IPs are shown every render writes a SECURITY_FULL_IP_VIEW row: never refresh automatically then.
+  if (state.fullIp) return "stop";
   if (state.runs >= AUTO_REFRESH.maxRuns) return "stop";
   if (!state.visible || state.pending) return "wait";
   return "refresh";

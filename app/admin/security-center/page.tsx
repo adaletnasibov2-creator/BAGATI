@@ -88,7 +88,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
   const ipTone = light.tone;
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
-    <SecurityCenterHeader active="overview" renderedAt={now.toISOString()} actions={<FullIpToggle action="/admin/security-center" full={full}/>}/>
+    <SecurityCenterHeader active="overview" renderedAt={now.toISOString()} fullIp={full} actions={<FullIpToggle action="/admin/security-center" full={full}/>}/>
     <FullIpNotice wanted={wantsFull} full={full}/>
 
     {/* 1. Overall verdict: every reason says what it is and links to where it is handled. */}

@@ -158,6 +158,24 @@ test("refresh button: router.refresh in a transition, busy state, render time sh
   assert.match(read("components/admin-security-monitoring.tsx"), /useEffect\(\(\) => \{ void load\(\); \}, \[load, refreshedAt\]\);/);
 });
 
+test("auto-refresh never runs while full IPs are shown (no repeated SECURITY_FULL_IP_VIEW rows)", () => {
+  // The rule: fullIp stops the timer whatever else is true.
+  assert.equal(autoRefreshStep({ visible: true, pending: false, runs: 0, fullIp: true }), "stop");
+  assert.equal(autoRefreshStep({ visible: true, pending: false, runs: 0, fullIp: false }), "refresh");
+  const ui = read("components/security-refresh.tsx");
+  assert.match(ui, /export default function SecurityRefresh\(\{ renderedAt, fullIp = false \}: \{ renderedAt: string; fullIp\?: boolean \}\)/);
+  assert.match(ui, /useEffect\(\(\) => \{ if \(fullIp\) setAuto\(false\); \}, \[fullIp\]\);/, "the switch turns itself off");
+  assert.match(ui, /if \(!auto \|\| fullIp\) return;/, "no timer is started while full IPs are shown");
+  assert.match(ui, /autoRefreshStep\(\{ visible: document\.visibilityState === "visible", pending: pendingRef\.current, runs, fullIp \}\)/);
+  assert.match(ui, /checked=\{auto && !fullIp\} disabled=\{fullIp\}/, "it cannot be switched on");
+  assert.match(ui, /onChange=\{\(event\) => \{ setAuto\(event\.target\.checked && !fullIp\); setResult\(null\); \}\}/);
+  assert.match(ui, /\{fullIp && <p id="auto-refresh-full-ip" className="text-xs text-slate-500" data-auto-off-full-ip="">\{CENTER_TEXT\.autoOffFullIp\}<\/p>\}/);
+  assert.equal(CENTER_TEXT.autoOffFullIp, "Tam IP-lər göstərilərkən avtomatik yeniləmə işləmir.");
+  // The header passes it on; every page that can reveal IPs passes its audited `full` flag.
+  assert.match(read("components/security-center-ui.tsx"), /<SecurityRefresh renderedAt=\{renderedAt\} fullIp=\{fullIp\}\/>/);
+  for (const path of [PAGES.overview, PAGES.logins, PAGES.events]) assert.match(read(path), /<SecurityCenterHeader active="\w+" renderedAt=\{now\.toISOString\(\)\} fullIp=\{full\} actions=/, path);
+});
+
 // ================================================================= tabs
 
 test("tabs: five sections with existing titles where they exist, each page admin-only, server-rendered and bounded", () => {
@@ -307,6 +325,7 @@ test("texts: only the listed new texts appear in the changed files (scan against
     "skan insidenti", "ediləcək. Hər biri audit jurnalına yazılır.", "Bəli, həll et", "Həll edilir…", "insident həll edildi", "alınmadı.",
     "Son yenilənmə:", "Məlumatlar yeniləndi.", "Yenilənmədi. Bir az sonra yenidən cəhd edin.", "Avtomatik yenilə (60 san)",
     "Avtomatik yeniləmə bir saatdan sonra dayandırıldı.", "Bütün sessiyalar →",
+    "Tam IP-lər göstərilərkən avtomatik yeniləmə işləmir.", // text 41, added after "mətnlər ok" (flagged in the report)
     ...Object.values(INCIDENT_HELP).map((help) => help.text),
   ];
   // Existing texts reused in a new place (each must exist in the base commit).

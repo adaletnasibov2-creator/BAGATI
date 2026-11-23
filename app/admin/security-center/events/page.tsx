@@ -37,7 +37,7 @@ export default async function AdminSecurityEventsPage({ searchParams }: { search
     : <a href={`${query(filters.page)}&ip=full`} className="inline-flex min-h-11 items-center rounded-xl border border-[#c7ad78] bg-white px-4 text-sm font-semibold text-[#85621d]">Tam IP-ləri göstər</a>;
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
-    <SecurityCenterHeader active="events" renderedAt={now.toISOString()} actions={reveal}/>
+    <SecurityCenterHeader active="events" renderedAt={now.toISOString()} fullIp={full} actions={reveal}/>
     {filters.fullIp && !full && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">Tam IP-lərə baxış audit jurnalına yazıla bilmədi; IP-lər maskalı qalır.</p>}
 
     <div className="mb-5"><Block title="Şübhəli fəaliyyət" note="404 skanları sayğaclardır (IP saxlanmır); IP siyahısı qeydə alınmış hadisələrdəndir.">

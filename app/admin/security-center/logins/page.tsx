@@ -32,7 +32,7 @@ export default async function AdminSecurityLoginsPage({ searchParams }: { search
   const loginIp = (row: { ipFull: string | null; ipMasked: string | null }) => full && row.ipFull ? row.ipFull : row.ipMasked ?? (row.ipFull ? maskIpAddress(row.ipFull) : null);
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
-    <SecurityCenterHeader active="logins" renderedAt={now.toISOString()} actions={<FullIpToggle action="/admin/security-center/logins" full={full}/>}/>
+    <SecurityCenterHeader active="logins" renderedAt={now.toISOString()} fullIp={full} actions={<FullIpToggle action="/admin/security-center/logins" full={full}/>}/>
     <FullIpNotice wanted={wantsFull} full={full}/>
     <div className="grid gap-5">
       <Block title="Adminlər və iki mərhələli təsdiq">

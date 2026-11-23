@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   const customer = await requireRole("CUSTOMER");
   if (!customer) return NextResponse.json({ error: "Daxil olmaq tələb olunur" }, { status: 401 });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = z.object({ orderItemId: z.string().min(1), reason: reasonSchema, explanation: z.string().trim().max(2000).optional().default(""), resolution: z.enum(["REFUND", "EXCHANGE"]) }).safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Qaytarılma məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   try {
@@ -79,7 +80,7 @@ export async function PATCH(request: NextRequest) {
   const customer = await requireRole("CUSTOMER");
   if (!customer) return NextResponse.json({ error: "Daxil olmaq tələb olunur" }, { status: 401 });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = z.object({ id: z.string().min(1), action: z.literal("cancel") }).safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Sorğu məlumatlarını yoxlayın" }, { status: 422 });
   const current = await db.returnRequest.findFirst({ where: { id: parsed.data.id, customerId: customer.id }, select: { id: true, status: true, resolution: true, storeId: true, orderItem: { select: { productName: true } }, storeOrder: { select: { orderId: true } }, store: { select: { name: true, vendor: { select: { user: { select: { id: true, email: true } } } } } } } });

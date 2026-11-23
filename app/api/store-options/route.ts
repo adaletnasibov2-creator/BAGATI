@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { allowPublicSearch } from "@/lib/public-search-rate-limit";
+import { rateLimitedResponse } from "@/lib/rate-limit-response";
 import { prisma } from "@/lib/prisma";
 import { createPrismaPublicStoreDiscoveryClient, findPublicStoreDiscoveryCursorPage } from "@/lib/public-store-discovery";
 
@@ -6,6 +8,8 @@ export const dynamic = "force-dynamic";
 const STORE_OPTION_PAGE_SIZE = 20;
 
 export async function GET(request: NextRequest) {
+  // SEC-FIX-2 L8: in-process budget for public search / catalog GETs (no DB call); the existing rate-limit text.
+  if (!allowPublicSearch(request.headers)) return rateLimitedResponse(60);
   const city = request.nextUrl.searchParams.get("city")?.trim() || undefined;
   const rawQuery = request.nextUrl.searchParams.get("q");
   const query = rawQuery?.trim() || undefined;

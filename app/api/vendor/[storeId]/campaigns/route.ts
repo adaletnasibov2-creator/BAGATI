@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireStoreAccess } from "@/lib/auth";
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const access = await accessFor(storeId);
   if (!access) return NextResponse.json({ error: "Mağazaya giriş icazəsi yoxdur" }, { status: 403 });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = campaignSchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Kampaniya məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   const value = parsed.data, startsAt = new Date(value.startsAt), endsAt = new Date(value.endsAt);
@@ -101,7 +102,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const access = await accessFor(storeId);
   if (!access) return NextResponse.json({ error: "Mağazaya giriş icazəsi yoxdur" }, { status: 403 });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const input = z.object({ id: z.string().min(1), ...campaignSchema.shape }).safeParse(raw);
   if (!input.success) return NextResponse.json({ error: "Kampaniya məlumatlarını yoxlayın", details: input.error.flatten() }, { status: 422 });
   const value = input.data, startsAt = new Date(value.startsAt), endsAt = new Date(value.endsAt);

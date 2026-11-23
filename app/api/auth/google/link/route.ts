@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { createSession } from "@/lib/auth";
@@ -37,8 +38,8 @@ function clearLinkCookies(response: NextResponse) {
 
 export async function POST(request: NextRequest) {
   let body: unknown;
-  try { body = await request.json(); }
-  catch { return NextResponse.json({ error: "Sorğu məlumatları yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); }
+  catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatları yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Şifrə yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } });
 

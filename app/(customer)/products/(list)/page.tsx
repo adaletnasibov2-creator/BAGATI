@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { allowPublicSearch, limitedSearch } from "@/lib/public-search-rate-limit";
+import { RATE_LIMITED_MESSAGE } from "@/lib/rate-limit-response";
 import { PRODUCT_GRID_WITH_SIDEBAR_CLASS } from "@/components/product-layout";
 import { CategoryEmptyState } from "@/components/category-empty-state";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +48,8 @@ export default async function ProductsPage({ searchParams }: Props) {
   const now = new Date();
   const search = normalizePublicSearchTerm(params.q, PRODUCT_SEARCH_MAX_LENGTH);
   const searchQuery = search.value;
+  // SEC-FIX-2 L8: a search (?q=) uses the in-process public-search budget (no DB call); over it, the search query is skipped.
+  const searchLimited = Boolean(searchQuery) && !allowPublicSearch(await headers());
   const sort = normalizeProductCatalogSort(params.sort);
   // Only what the cards render (SCALE-FIX-2 A5): no full rows, only promotions that are on and not ended.
   const productSelect = productListCardSelect(now);
@@ -63,7 +68,7 @@ export default async function ProductsPage({ searchParams }: Props) {
       where: { id: params.store, ...publicStoreListingWhere({ citySlug: params.city }, now) },
       select: { id: true, name: true },
     }) : Promise.resolve(null),
-    findPublicProductCatalogPage(
+    limitedSearch(searchLimited, () => findPublicProductCatalogPage(
       createPrismaPublicProductCatalogSelectClient(prisma, productSelect),
       {
         citySlug: params.city,
@@ -72,7 +77,7 @@ export default async function ProductsPage({ searchParams }: Props) {
         query: searchQuery,
         searchFields: "catalog",
       }, { sort, now, limit: 48, paginate: true, allowMissingRecords: true, ...(cursor ? { cursor } : {}) },
-    ),
+    )),
   ]);
   const eligibleSelectedStoreIds = selectedStore
     ? await resolvePublicStoreEligibility([selectedStore.id], prisma, now)
@@ -111,6 +116,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald">BAGATI kataloqu</p><h1 className="mt-2 text-3xl font-semibold text-ink md:text-4xl">{searchQuery ? `“${searchQuery}” üçün nəticələr` : selectedCategory ? selectedCategory.category.name : "Məhsullar"}</h1>
     {search.tooLong && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{"Axtar\u0131\u015f s\u00f6z\u00fc " + PRODUCT_SEARCH_MAX_LENGTH + " simvoldan uzun ola bilm\u0259z. Q\u0131sa axtar\u0131\u015f daxil edin."}</p>}
     {invalidCursor && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Səhifə keçidi etibarsızdır. İlk səhifə göstərilir.</p>}
+    {searchLimited && <p role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{RATE_LIMITED_MESSAGE}</p>}
     {/* DESIGN-T10: shared control style and button (visible focus ring); texts, field names and the GET form unchanged. */}
     <form action="/products" data-products-search-form="" className="mt-7 grid gap-3 rounded-card border border-line bg-white p-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
       <input name="q" maxLength={PRODUCT_SEARCH_MAX_LENGTH} defaultValue={searchQuery} placeholder="Məhsul axtar" className={controlClass()} aria-label="Məhsul axtar"/>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { csrfRejection } from "@/lib/csrf";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
@@ -27,7 +28,9 @@ export async function POST(request: NextRequest) {
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
-  const parsed = z.object({ id: z.string().min(1).max(64) }).safeParse(await request.json().catch(() => null));
+  const raw = await readJsonCapped(request, JSON_BODY_LIMITS.small).catch((error: unknown) => bodyTooLargeResponse(error) ?? null);
+  if (raw instanceof NextResponse) return raw;
+  const parsed = z.object({ id: z.string().min(1).max(64) }).safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Məktub identifikatoru yanlışdır" }, { status: 422 });
   const changed = await prisma.$transaction(async (tx) => {
     const item = await tx.emailOutbox.findFirst({ where: { id: parsed.data.id, status: "FAILED", retrySafe: true }, select: { id: true, attempts: true } });

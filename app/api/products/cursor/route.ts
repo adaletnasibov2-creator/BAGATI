@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { allowPublicSearch } from "@/lib/public-search-rate-limit";
+import { rateLimitedResponse } from "@/lib/rate-limit-response";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -24,6 +26,8 @@ const productInclude = {
 } satisfies Prisma.ProductInclude;
 
 export async function GET(request: NextRequest) {
+  // SEC-FIX-2 L8: in-process budget for public search / catalog GETs (no DB call); the existing rate-limit text.
+  if (!allowPublicSearch(request.headers)) return rateLimitedResponse(60);
   const parsed = querySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
   if (!parsed.success) return NextResponse.json({ error: "Sorğu parametrləri yanlışdır" }, { status: 400 });
   const { city, category, q, cursor } = parsed.data;

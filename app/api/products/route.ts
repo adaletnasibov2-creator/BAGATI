@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { allowPublicSearch } from "@/lib/public-search-rate-limit";
+import { rateLimitedResponse } from "@/lib/rate-limit-response";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createPrismaPublicProductCatalogClient, findPublicProductCatalogPage } from "@/lib/public-product-catalog";
@@ -15,6 +17,8 @@ const productInclude = {
 } satisfies Prisma.ProductInclude;
 
 export async function GET(request: NextRequest) {
+  // SEC-FIX-2 L8: in-process budget for public search / catalog GETs (no DB call); the existing rate-limit text.
+  if (!allowPublicSearch(request.headers)) return rateLimitedResponse(60);
   // Favorites: GET /api/products?ids=a,b,c (max 50) -> { items } in request order, same rules as /api/products/[id].
   if (request.nextUrl.searchParams.has("ids")) {
     const ids = parseProductIdsParam(request.nextUrl.searchParams.get("ids"));

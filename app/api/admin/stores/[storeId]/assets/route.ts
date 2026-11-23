@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { csrfRejection } from "@/lib/csrf";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -69,7 +70,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   if (!STORE_ID_PATTERN.test(storeId)) return NextResponse.json({ error: "Mağaza identifikatoru yanlışdır" }, { status: 422 });
   if (!await prisma.store.findUnique({ where: { id: storeId }, select: { id: true } })) return NextResponse.json({ error: "Mağaza tapılmadı" }, { status: 404 });
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Şəkil məlumatı yanlışdır" }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Şəkil məlumatı yanlışdır" }, { status: 400 }); }
   const url = body && typeof body === "object" && "url" in body && typeof body.url === "string" ? body.url : "";
   const key = getOwnedStoreAssetKey(storeId, url);
   const urlDriver = getStoreAssetDriverForUrl(storeId, url);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -27,7 +28,7 @@ export async function PATCH(request: NextRequest) {
   const admin = await requireRole("ADMIN");
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = z.object({ id: z.string().min(1), action: z.enum(["approve", "reject"]), note: z.string().trim().min(3).max(2000) }).safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Qaytarılma qərarını və daxili qeydi yoxlayın" }, { status: 422 });
   const current = await db.returnRequest.findUnique({ where: { id: parsed.data.id }, select: { id: true, status: true, resolution: true, storeId: true, customerId: true } });

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { csrfRejection } from "@/lib/csrf";
 import type { GoogleIdentity } from "@/lib/google-oauth";
 import { consumePendingGoogleSignupOnce, expiredPendingGoogleSignupCookie, verifyPendingGoogleSignupToken } from "@/lib/google-pending-signup";
@@ -58,7 +59,7 @@ export async function handleCompleteGoogleRegister(request: Request, deps: Compl
   if (!allowed) return refuse("rate-limited", 429, false);
 
   let body: unknown;
-  try { body = await request.json(); } catch { body = null; }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { const tooLarge = bodyTooLargeResponse(error); if (tooLarge) return tooLarge; body = null; }
   if (!body || typeof body !== "object" || (body as { acceptTerms?: unknown }).acceptTerms !== true) {
     return refuse("terms-required", 400, false);
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireStoreAccess } from "@/lib/auth";
 import { csrfRejection } from "@/lib/csrf";
@@ -18,7 +19,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const access = await requireStoreAccess(storeId);
   if (!access || access.user.role !== "VENDOR") return NextResponse.json({ error: "Mağazaya giriş icazəsi yoxdur" }, { status: 403 });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Qərarı yoxlayın" }, { status: 422 });
   if (parsed.data.decision === "REJECT" && !parsed.data.response?.trim()) return NextResponse.json({ error: "Rədd etmə səbəbini müştəri üçün yazın" }, { status: 422 });

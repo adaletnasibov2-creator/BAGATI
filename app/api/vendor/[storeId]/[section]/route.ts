@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { shipmentEmailAllowed } from "@/lib/shipment-email-guard";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -157,7 +159,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
 }
 export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:string;section:string}>}){
   const {storeId,section}=await params; const access=await scope(storeId); if(!access)return NextResponse.json({error:"Mağazaya giriş icazəsi yoxdur"},{status:403});
-  let body:any; try{body=await req.json()}catch{return NextResponse.json({error:"Sorğu məlumatı yanlışdır"},{status:400})}
+  let body:any; try{body=await readJsonCapped(req,section==="imports"?JSON_BODY_LIMITS.legacyImport:JSON_BODY_LIMITS.medium)}catch(error){return bodyTooLargeResponse(error)??NextResponse.json({error:"Sorğu məlumatı yanlışdır"},{status:400})}
   if(section==="campaigns"){
    const s=z.object({name:z.string().trim().min(2).max(160),discountType:z.enum(["PERCENT","FIXED"]),discountValue:z.coerce.number().positive(),startsAt:z.string(),endsAt:z.string(),productIds:z.array(z.string()).max(200).default([])}).safeParse(body);
    if(!s.success)return NextResponse.json({error:"Kampaniya məlumatları yanlışdır"},{status:422});
@@ -266,7 +268,7 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:str
 }
 
 export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:string;section:string}>}){
- const {storeId,section}=await params;const access=await scope(storeId);if(!access)return NextResponse.json({error:"Mağazaya giriş icazəsi yoxdur"},{status:403});let b:any;try{b=await req.json()}catch{return NextResponse.json({error:"Sorğu məlumatı yanlışdır"},{status:400})}
+ const {storeId,section}=await params;const access=await scope(storeId);if(!access)return NextResponse.json({error:"Mağazaya giriş icazəsi yoxdur"},{status:403});let b:any;try{b=await readJsonCapped(req,JSON_BODY_LIMITS.medium)}catch(error){return bodyTooLargeResponse(error)??NextResponse.json({error:"Sorğu məlumatı yanlışdır"},{status:400})}
  if(section==="notifications"){
   const s=z.union([z.object({id:z.string().min(1).max(64)}),z.object({all:z.literal(true)})]).safeParse(b);
   if(!s.success)return NextResponse.json({error:"Bildiriş seçimi yanlışdır"},{status:422});
@@ -320,7 +322,9 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
      const trackingCode=s.data.deliveryTrackingCode??locked.deliveryTrackingCode;
      const trackingUrl=s.data.trackingUrl??locked.trackingUrl;
      const trackingChanged=s.data.shipmentStatus!==undefined||s.data.deliveryTrackingCode!==undefined||s.data.trackingUrl!==undefined||s.data.deliveryCarrier!==undefined;
-     if(trackingChanged&&(trackingCode||trackingUrl)){
+     // SEC-FIX-2 L5: no tracking e-mail on a closed order, and at most 10 per store order / 200 per store per hour; the
+     // recipient is always this order's customer (order.user.email above). The tracking data is saved either way.
+     if(trackingChanged&&(trackingCode||trackingUrl)&&await shipmentEmailAllowed({storeId,storeOrderId:locked.id,orderStatus:targetOrderStatus??locked.status})){
       await enqueueEmail(tx,{eventKey:`shipment-update:${locked.id}:${s.data.shipmentStatus??"tracking"}:${String(trackingCode??"")}:${String(trackingUrl??"")}`,recipient:order.user.email,template:"SHIPMENT_UPDATE",payload:{orderRef:order.id,storeName:store.name,statusLabel:s.data.shipmentStatus??locked.shipmentStatus??"Yenilənib",carrier:s.data.deliveryCarrier??locked.deliveryCarrier??"",trackingCode:trackingCode??"",trackingUrl:trackingUrl??""}});
      }
     }

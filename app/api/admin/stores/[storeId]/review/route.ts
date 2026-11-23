@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -31,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sto
   const { storeId } = await params;
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(storeId)) return NextResponse.json({ error: "Mağaza identifikatoru yanlışdır." }, { status: 422 });
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatları düzgün deyil." }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatları düzgün deyil." }, { status: 400 }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Qərar məlumatlarını yoxlayın." }, { status: 422 });
   if ((parsed.data.action === "reject" || parsed.data.action === "suspend") && !parsed.data.reason?.trim()) {

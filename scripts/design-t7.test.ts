@@ -49,7 +49,7 @@ test("header at 768-1023 px: the city selector moves to the section row, so sear
   assert.doesNotMatch(header, /<div className="hidden shrink-0 md:block">\n\s*<CitySelector/);
   assert.match(header, /\{cities\.length > 0 && <div data-header-city-tablet="" className="ml-auto shrink-0 lg:hidden"><CitySelector cities=\{cities\} \/><\/div>\}\n\s*<\/nav>/);
   // The section row itself is unchanged (pinned by design-header-footer.test.ts too).
-  assert.match(header, /<nav aria-label="Alış-veriş bölmələri" className="hidden border-t border-line py-1 md:flex md:items-center md:gap-3">/);
+  assert.match(header, /<nav aria-label="Alış-veriş bölmələri" className="hidden border-t border-line py-1 md:flex md:items-center md:gap-1">/);
   // Search still takes the free width.
   assert.match(header, /<div className="hidden min-w-0 flex-1 md:block">\n\s*<SearchForm categories=\{categories\} \/>/);
 });

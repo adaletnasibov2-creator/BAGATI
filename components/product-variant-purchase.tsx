@@ -12,6 +12,7 @@ import ProductGallery from "@/components/product-gallery";
 import { FavoriteToggle } from "@/components/favorite-toggle";
 import { getProductDiscount } from "@/lib/product-card-pricing";
 import { addRememberedCartItem, browserSessionStorage, rememberPendingCartAdd } from "@/lib/pending-cart-add";
+import { notifyCartChanged } from "@/lib/cart-events";
 
 type Variant = { id: string; name: string; options: Record<string, unknown>; isActive: boolean; images: string[]; available: number; basePrice: string; unitPrice: string; campaignName: string | null };
 type Axis = { name: string; values: string[] };
@@ -81,7 +82,7 @@ export default function ProductVariantPurchase({ productId, name, productImages,
         router.push(`/login?next=${encodeURIComponent(pathname)}`); return;
       }
       if (!response.ok) { setMessage(result.error || "Məhsulu səbətə əlavə etmək mümkün olmadı."); return; }
-      setMessage(ADDED_TO_CART_MESSAGE); router.refresh();
+      notifyCartChanged(); setMessage(ADDED_TO_CART_MESSAGE); router.refresh();
     } catch { setMessage("Bağlantı xətası. Yenidən cəhd edin."); }
     finally { setBusy(false); }
   }
@@ -103,7 +104,7 @@ export default function ProductVariantPurchase({ productId, name, productImages,
       },
     }).then(outcome => {
       if (!outcome) return;
-      if (outcome.kind === "added") { setMessage(PENDING_CART_ADDED_MESSAGE); router.refresh(); return; }
+      if (outcome.kind === "added") { notifyCartChanged(); setMessage(PENDING_CART_ADDED_MESSAGE); router.refresh(); return; }
       setMessage(outcome.kind === "network" ? "Bağlantı xətası. Yenidən cəhd edin." : outcome.serverError || "Məhsulu səbətə əlavə etmək mümkün olmadı.");
     });
   }, [viewerIsCustomer, productId, router]);
@@ -171,7 +172,7 @@ export default function ProductVariantPurchase({ productId, name, productImages,
       </div>
       {message && <p role="status" className="mt-3 rounded-control bg-primary-subtle px-3 py-2 text-sm font-medium text-primary">{message}{(message === ADDED_TO_CART_MESSAGE || message === PENDING_CART_ADDED_MESSAGE) && <> <Link href="/cart" className="underline underline-offset-4">Səbətə keç</Link></>}</p>}
 
-      <Link href={`/stores/${store.id}`} className={cx("mt-6 flex min-h-14 items-center gap-3 rounded-card border border-line bg-surface-page px-4 py-3 transition-colors hover:border-brand-200 hover:bg-primary-subtle", focusRing)}>
+      <Link href={`/stores/${store.id}`} className={cx("mt-6 flex min-h-14 items-center gap-3 rounded-card border border-line bg-surface-page px-4 py-3 transition-colors hover:border-brand-300 hover:bg-primary-subtle", focusRing)}>
         <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-primary ring-1 ring-inset ring-brand-100"><Store size={18}/></span>
         <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-fg">{store.name}</span><span className="flex items-center gap-1 text-xs text-fg-muted"><MapPin aria-hidden="true" size={13} className="shrink-0"/>{store.city}</span></span>
         <ChevronRight aria-hidden="true" size={18} className="shrink-0 text-fg-muted"/>

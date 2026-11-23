@@ -109,7 +109,7 @@ const defaultSlides: Slide[] = [
 ];
 
 const controlButton =
-  "inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none";
+  "inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/15 text-white shadow-subtle backdrop-blur-sm transition-colors hover:border-white hover:bg-white/25 active:bg-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none";
 
 /** Time each slide stays before autoplay moves on (owner decision 2026-11-16). */
 export const HERO_AUTOPLAY_MS = 6000;
@@ -237,7 +237,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
       onClick={() => setPaused((value) => !value)}
       className={controlButton}
     >
-      {paused ? <Play aria-hidden="true" size={15} className="fill-current" /> : <Pause aria-hidden="true" size={15} className="fill-current" />}
+      {paused ? <Play aria-hidden="true" size={16} className="fill-current" /> : <Pause aria-hidden="true" size={16} className="fill-current" />}
     </button>
   );
 
@@ -322,7 +322,7 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
         })}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-[3] hidden w-[13%] bg-[linear-gradient(90deg,#10292a_0%,rgba(16,41,42,0.62)_38%,rgba(16,41,42,0)_100%)] lg:block"
+          className="pointer-events-none absolute inset-y-0 left-0 z-[3] hidden w-[26%] bg-[linear-gradient(90deg,#10292a_0%,rgba(16,41,42,0.82)_16%,rgba(16,41,42,0.5)_40%,rgba(16,41,42,0.2)_66%,rgba(16,41,42,0.06)_85%,rgba(16,41,42,0)_100%)] lg:block"
         />
       </div>
 
@@ -351,10 +351,10 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
           </h1>
           {slide.description && <p className="mt-4 line-clamp-2 max-w-[32rem] text-body leading-6 text-white/85 sm:line-clamp-3 sm:text-body-lg lg:mt-[clamp(0.75rem,calc(var(--bagati-hero-h)*0.03),1rem)] lg:line-clamp-2">{slide.description}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-3 lg:mt-[clamp(1rem,calc(var(--bagati-hero-h)*0.04),1.5rem)]">
-            <Link href={slide.href} className="inline-flex min-h-12 items-center justify-center rounded-full bg-gold-100 px-6 text-body font-semibold text-fg shadow-subtle transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
+            <Link href={slide.href} className="inline-flex min-h-12 items-center justify-center rounded-full bg-gold-100 px-6 text-body font-semibold text-fg shadow-subtle transition-colors hover:bg-white active:bg-gold-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
               {slide.button}
             </Link>
-            <Link href={slide.secondaryHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 px-5 text-body font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
+            <Link href={slide.secondaryHref} className="inline-flex min-h-12 items-center justify-center rounded-full border-2 border-white/80 bg-white/10 px-5 text-body font-semibold text-white transition-colors hover:border-white hover:bg-white/20 active:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold motion-reduce:transition-none">
               {slide.secondary}
             </Link>
           </div>
@@ -372,9 +372,9 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
                   aria-label={`${index + 1}. slayd`}
                   aria-pressed={isActive}
                   onClick={() => setActive(index)}
-                  className="group/dot grid h-11 min-w-11 place-items-center rounded-full px-1.5"
+                  className="group/dot grid h-11 min-w-11 place-items-center rounded-full px-1.5 active:scale-95 motion-reduce:active:scale-100"
                 >
-                  <span className={`relative block h-2.5 overflow-hidden rounded-full transition-all duration-200 motion-reduce:transition-none ${isActive ? (autoplay ? "w-8 bg-white/35" : "w-8 bg-gold-200") : "w-2.5 bg-white/70 group-hover/dot:bg-white"}`}>
+                  <span className={`relative block h-3 overflow-hidden rounded-full transition-all duration-200 motion-reduce:transition-none ${isActive ? (autoplay ? "w-10 bg-white/45" : "w-10 bg-gold-200") : "w-3 bg-white/85 group-hover/dot:scale-125 group-hover/dot:bg-white motion-reduce:group-hover/dot:scale-100"}`}>
                   {isActive && autoplay && (
                     // Progress fill = the autoplay timer. Keyed by slide so a manual change restarts it; paused with the
                     // carousel (hover, focus, pause button, hidden tab).
@@ -400,14 +400,14 @@ export function HeroCarousel({ banners = [] }: { banners?: HeroBanner[] }) {
           </div>
           <div className="flex items-center gap-2">
             <span className="sm:hidden">{pauseButton}</span>
-            {slide.visualLabel && <span className="mr-1 hidden rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-medium text-white/85 sm:inline-flex">
+            {slide.visualLabel && <span className="mr-1 hidden rounded-full border border-white/40 bg-white/15 px-3 py-1.5 text-sm font-medium text-white sm:inline-flex">
               {slide.visualLabel}
             </span>}
             <button type="button" aria-label="Əvvəlki slayd" onClick={() => step(-1)} className={controlButton}>
-              <ChevronLeft aria-hidden="true" size={18} />
+              <ChevronLeft aria-hidden="true" size={20} />
             </button>
             <button type="button" aria-label="Növbəti slayd" onClick={() => step(1)} className={controlButton}>
-              <ChevronRight aria-hidden="true" size={18} />
+              <ChevronRight aria-hidden="true" size={20} />
             </button>
           </div>
         </div>

@@ -14,7 +14,7 @@ export function SearchForm({ mobile = false, categories = [] }: { mobile?: boole
     <form
       action="/products"
       role="search"
-      className={`flex w-full items-center gap-2 rounded-full border border-line-strong bg-white text-fg-body shadow-subtle transition-[border-color,box-shadow] focus-within:border-primary focus-within:shadow-[0_0_0_3px_var(--bagati-brand-100)] motion-reduce:transition-none ${mobile ? "h-12 pl-3 pr-0.5" : "h-[52px] pl-3 pr-1"}`}
+      className={`flex w-full items-center gap-2 rounded-full border border-line-strong bg-white text-fg-body shadow-subtle transition-[border-color,box-shadow] focus-within:border-primary focus-within:shadow-[0_0_0_3px_var(--bagati-brand-200)] motion-reduce:transition-none ${mobile ? "h-12 pl-3 pr-0.5" : "h-[52px] pl-3 pr-1"}`}
     >
       {city && <input type="hidden" name="city" value={city} />}
       {categories.length > 0 && (

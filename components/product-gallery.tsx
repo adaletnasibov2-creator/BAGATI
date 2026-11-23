@@ -63,7 +63,7 @@ export default function ProductGallery({ images, name }: { images: string[]; nam
         aria-label={`${index + 1}-ci şəkli göstər`}
         aria-pressed={selected === index}
         onClick={() => show(index)}
-        className={cx("relative h-16 w-16 shrink-0 overflow-hidden rounded-control border-2 bg-surface-sunken transition-colors motion-reduce:transition-none sm:h-20 sm:w-20", focusRing, selected === index ? "border-primary" : "border-transparent hover:border-brand-200")}
+        className={cx("relative h-16 w-16 shrink-0 overflow-hidden rounded-control border-2 bg-surface-sunken transition-colors motion-reduce:transition-none sm:h-20 sm:w-20", focusRing, selected === index ? "border-primary" : "border-transparent hover:border-brand-300")}
       >{failedImages.includes(url) ? <ImageOff aria-hidden="true" size={18} className="absolute inset-0 m-auto text-fg-muted"/> : <Image src={url} alt="" fill sizes="80px" unoptimized={/^https?:\/\//i.test(url)} onError={() => markImageFailed(url)} className="object-contain p-1"/>}</button>)}
     </div>}
   </div>;

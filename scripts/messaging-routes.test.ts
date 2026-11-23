@@ -165,7 +165,9 @@ test("OFF hides every entry point and page", () => {
   assert.match(read("components/account-navigation.tsx"), /const items = messagesUnread === null \? links : \[\.\.\.links\.slice\(0, 2\), messagesLink, \.\.\.links\.slice\(2\)\];/);
   assert.match(read("components/customer-account-menu.tsx"), /\.\.\.\(messagesUnread === null \? \[\] : \[\["\/account\/messages", "Mesajlarım"\]\]\)/);
   assert.match(read("components/vendor-navigation.tsx"), /\(path !== "messages" \|\| conversations !== null\)/);
-  assert.match(read("app/(customer)/layout.tsx"), /const messagesUnread = user\?\.role === "CUSTOMER" \? await customerMessagesBadge\(user\.id\) : null;/);
+  // DESIGN-POLISH-1: loaded together with the header cart count; still customers only, null otherwise.
+  assert.match(read("app/(customer)/layout.tsx"), /const \[messagesUnread, cartCount\] = user\?\.role === "CUSTOMER"\s*\? await Promise\.all\(\[customerMessagesBadge\(user\.id\), /);
+  assert.match(read("app/(customer)/layout.tsx"), /: \[null, null\];/);
   assert.match(read("app/vendor/[storeId]/layout.tsx"), /storeConversationsBadge\(access\.storeId, access\.user\.id\),/);
   assert.match(read("app/vendor/[storeId]/layout.tsx"), /conversations=\{conversations\}\/>/);
   // Entry buttons.

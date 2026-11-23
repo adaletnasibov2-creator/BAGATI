@@ -60,7 +60,9 @@ test("the old Inter name that never loaded is gone; the stacks are variables", (
 test("public scope: fonts, larger small text and the AA muted colour; :root keeps the values admin uses", () => {
   const styles = read("app/globals.css");
   const scope = styles.slice(styles.indexOf("body:has(> .bagati-public),"), styles.indexOf("}", styles.indexOf("body:has(> .bagati-public),")));
-  assert.match(scope, /--bagati-muted-green: #56706a;/);
+  // DESIGN-POLISH-1: #4f6963 (5.94:1 on white, 5.30:1 on the section colour) and the stronger control border.
+  assert.match(scope, /--bagati-muted-green: #4f6963;/);
+  assert.match(scope, /--bagati-border-strong: #6b867c;/);
   assert.match(scope, /--bagati-text-sm: 0\.9375rem;/);
   assert.match(scope, /--bagati-text-xs: 0\.8125rem;/);
   assert.match(scope, /--bagati-font-sans: var\(--bagati-font-inter/);

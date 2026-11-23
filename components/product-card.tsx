@@ -50,7 +50,7 @@ export function ProductCard({ id, name, price, originalPrice, store, storeHref, 
 
   return (
     // relative: contains every sr-only (position:absolute) text of the card, so a card scrolled out of a carousel never widens the page.
-    <article className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-card border border-line bg-white transition-[border-color,box-shadow,transform] duration-200 ease-out hover:border-brand-200 hover:shadow-card motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none">
+    <article className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-card border border-line bg-white transition-[border-color,box-shadow,transform] duration-200 ease-out hover:border-brand-300 hover:shadow-card motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none">
       <div className="relative">
         <Link
           href={`/products/${id}`}

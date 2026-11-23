@@ -66,7 +66,8 @@ test("stores strip: round logo or initial avatar, link to the store", () => {
 
 test("hero: 44 px controls and dots, eager first image, gold hairline, uploaded banners do not borrow default labels", () => {
   assert.match(carousel, /"inline-flex h-11 w-11 items-center justify-center rounded-full/);
-  assert.match(carousel, /className="group\/dot grid h-11 min-w-11 place-items-center rounded-full px-1\.5"/);
+  // DESIGN-POLISH-1 adds a short pressed state (no scale under reduced motion); the 44 px hit area is unchanged.
+  assert.match(carousel, /className="group\/dot grid h-11 min-w-11 place-items-center rounded-full px-1\.5 active:scale-95 motion-reduce:active:scale-100"/);
   assert.match(carousel, /loading=\{index === 0 \? "eager" : "lazy"\}/);
   assert.match(carousel, /fetchPriority=\{index === 0 \? "high" : "low"\}/);
   assert.match(carousel, /<span aria-hidden="true" className="h-px w-8 shrink-0 bg-gold-400" \/>/);

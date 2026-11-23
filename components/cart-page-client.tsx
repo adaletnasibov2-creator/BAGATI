@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { cx, focusRing } from "@/components/ui/cx";
 import { centsToFixed, lineTotalCents, remainingForFreeDeliveryCents, showFreeDeliveryThresholdNote, storeDeliveryCents, type StoreDeliveryCents } from "@/lib/delivery-cents";
+import { notifyCartChanged } from "@/lib/cart-events";
 
 type CartItem = {
   id: string; productId: string; variantId: string | null; quantity: number;
@@ -30,7 +31,7 @@ export function CartPageClient() {
       const response = await fetch("/api/cart", { cache: "no-store" }), data = await response.json();
       if (response.status === 401) { location.assign(`/login?next=${encodeURIComponent("/cart")}`); return; }
       if (!response.ok) throw new Error(data.error || "Səbət yüklənmədi.");
-      setCart(data.cart);
+      setCart(data.cart); notifyCartChanged(Array.isArray(data.cart?.items) ? data.cart.items.length : 0);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Səbət yüklənmədi."); }
     finally { setLoading(false); }
   }

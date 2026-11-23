@@ -9,6 +9,7 @@ import { getPublicContact } from "@/lib/public-contact";
 import AnnouncementBar from "@/components/announcement-bar";
 import { customerMessagesBadge } from "@/lib/messaging-pages";
 import { PublicTheme } from "@/components/public-theme";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,11 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
   ]);
   const publicUser = user ? { email: user.email, displayName: user.displayName, role: user.role } : null;
   // "Mesajlarım" in the account menu: customers only, hidden (null) while messaging is OFF.
-  const messagesUnread = user?.role === "CUSTOMER" ? await customerMessagesBadge(user.id) : null;
+  // Header cart badge (DESIGN-POLISH-1): the real number of lines in a signed-in customer's cart, the same number the
+  // cart page shows next to its title. Guests and other roles get null (no badge, no query), so guest pages stay cacheable.
+  const [messagesUnread, cartCount] = user?.role === "CUSTOMER"
+    ? await Promise.all([customerMessagesBadge(user.id), prisma.cartItem.count({ where: { cart: { userId: user.id } } }).catch(() => null)])
+    : [null, null];
 
   return (
     <PublicTheme>
@@ -34,6 +39,7 @@ export default async function CustomerLayout({ children }: Readonly<{ children: 
         branding={{ siteName: settings.siteName, logoUrl: settings.logoUrl }}
         user={publicUser}
         messagesUnread={messagesUnread}
+        cartCount={cartCount}
         cities={cities}
         categories={categories}
       />

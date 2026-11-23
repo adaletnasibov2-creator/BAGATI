@@ -47,8 +47,10 @@ test("header: 44 px targets for icons, nav links and the search button; tokens i
   // real-data badges); the section links are HeaderNavLink (44 px pill, current-page underline).
   const actions = read("components/header-actions.tsx");
   assert.match(header, /<HeaderFavoritesLink \/>\s*<HeaderCartLink initialCount=\{cartCount\} \/>/, "favourites and cart");
-  assert.match(actions, /"relative grid h-11 w-11 place-items-center rounded-full text-icon"/);
-  assert.equal(actions.match(/size=\{24\} strokeWidth=\{2\}/g)?.length, 2);
+  // DESIGN-POLISH-2: one link per item (icon circle + label), min 44 px; 44 px circle on phones, 48 px from 768 px.
+  assert.match(actions, /"group\/action relative inline-flex min-h-11 min-w-11 shrink-0 flex-col items-center justify-center gap-1 rounded-control text-fg md:px-1"/);
+  assert.match(actions, /"relative grid h-11 w-11 shrink-0 place-items-center rounded-full md:h-12 md:w-12"/);
+  assert.match(actions, /<HeartIcon size=\{30\} filled=/); assert.match(actions, /<BagIcon size=\{30\} \/>/);
   assert.match(actions, /"relative inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-fg"/);
   assert.equal(header.match(/<HeaderNavLink href="\/(stores|deals|new-products)">/g)?.length, 3, "Mağazalar, Endirimlər, Yeni məhsullar");
   assert.doesNotMatch(header, /\[#[0-9A-Fa-f]{6}\]/);

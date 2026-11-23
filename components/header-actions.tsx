@@ -3,30 +3,42 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Heart, ShoppingBag } from "lucide-react";
 import { CART_CHANGED_EVENT, headerBadgeText } from "@/lib/cart-events";
 import { cx } from "@/components/ui/cx";
+import { BagIcon, HeartIcon } from "@/components/header-icons";
 
 /**
- * Header icon buttons (DESIGN-POLISH-1): 24 px lucide icons, stroke 2, in the deep icon colour; a 44 x 44 px round target
- * with a hover background, a pressed state and the green focus ring. The count badges show REAL numbers only:
- * favourites from this browser's saved list (the same list the heart buttons write), the cart from the server count
- * of the signed-in customer's cart lines (null for guests and other roles = no badge). Hidden when 0.
- * The number is aria-hidden: the links keep their existing labels "Sevimlilər" and "Səbət" (no new text).
+ * Header action items (DESIGN-POLISH-2, the owner's variant 2): ONE link per item, a two-colour icon in a light-green
+ * circle above a one-line label. From 768 px: 48 px circle (#e1ece8, hover #c4d9d1, pressed a little darker), 13 px
+ * label (weight 500, #173a3a = 12.33:1 on white, primary on hover), 4 px gap. Below 768 px: 44 px circle only; the label
+ * stays in the DOM as sr-only, so the accessible name is still the visible label (no aria-label, WCAG 2.5.3).
+ * The count badges (DESIGN-POLISH-1) show REAL numbers only and are aria-hidden: favourites from this browser's saved
+ * list, the cart from the signed-in customer's cart lines (null for guests and other roles = no badge). Hidden at 0.
  */
-export const headerIconButton = cx(
-  "relative grid h-11 w-11 place-items-center rounded-full text-icon",
-  "transition-[background-color,color,transform] duration-150 ease-out motion-reduce:transition-none",
-  "hover:bg-primary-subtle hover:text-primary active:bg-primary-tint motion-safe:active:scale-95",
+export const headerActionItem = cx(
+  "group/action relative inline-flex min-h-11 min-w-11 shrink-0 flex-col items-center justify-center gap-1 rounded-control text-fg md:px-1",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-  "aria-[current=page]:bg-primary-subtle aria-[current=page]:text-primary",
+);
+/** Size, shape and pressed motion of the circle; the colours are added by headerActionCircle (or by the account avatar). */
+export const headerActionCircleBase = cx(
+  "relative grid h-11 w-11 shrink-0 place-items-center rounded-full md:h-12 md:w-12",
+  "transition-[background-color,transform,filter] duration-150 ease-out motion-reduce:transition-none",
+  "group-active/action:brightness-95 motion-safe:group-active/action:scale-95",
+);
+export const headerActionCircle = cx(
+  headerActionCircleBase,
+  "bg-brand-100 group-hover/action:bg-brand-200 group-active/action:bg-brand-200 group-aria-[current=page]/action:bg-brand-200",
+);
+export const headerActionLabel = cx(
+  "sr-only md:not-sr-only md:whitespace-nowrap md:text-[13px] md:font-medium md:leading-4 md:text-fg",
+  "md:transition-colors md:duration-150 motion-reduce:transition-none md:group-hover/action:text-primary md:group-aria-[current=page]/action:text-primary",
 );
 
 function CountBadge({ count }: { count: number | null }) {
   const text = headerBadgeText(count);
   if (!text) return null;
-  // White on #174746 is 10.36:1; the white ring separates the badge from the icon and the hover background.
-  return <span aria-hidden="true" data-header-count="" className="pointer-events-none absolute right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none tabular-nums text-white ring-2 ring-white">{text}</span>;
+  // White on #174746 is 10.36:1; the 2 px white border separates the badge from the circle.
+  return <span aria-hidden="true" data-header-count="" className="pointer-events-none absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-primary px-1 text-[12px] font-medium leading-none tabular-nums text-white">{text}</span>;
 }
 
 const FAVORITES_KEY = "bagati_favorites";
@@ -34,16 +46,16 @@ function readFavoriteCount(): number {
   try { const parsed = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]"); return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string").length : 0; } catch { return 0; }
 }
 
-function IconLink({ href, label, children, badge }: { href: string; label: string; children: ReactNode; badge: number | null }) {
+function ActionLink({ href, label, icon, badge }: { href: string; label: string; icon: ReactNode; badge: number | null }) {
   const pathname = usePathname();
-  return <Link href={href} aria-label={label} aria-current={pathname === href ? "page" : undefined} className={headerIconButton}>
-    {children}
-    <CountBadge count={badge} />
+  return <Link href={href} data-header-action="" aria-current={pathname === href ? "page" : undefined} className={headerActionItem}>
+    <span data-header-circle="" className={headerActionCircle}>{icon}<CountBadge count={badge} /></span>
+    <span data-header-label="" className={headerActionLabel}>{label}</span>
   </Link>;
 }
 
 export function HeaderFavoritesLink() {
-  // null until mounted: the server HTML has no badge, so hydration always matches.
+  // null until mounted: the server HTML has no badge and an unfilled heart, so hydration always matches.
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
     const sync = () => setCount(readFavoriteCount());
@@ -53,7 +65,8 @@ export function HeaderFavoritesLink() {
     window.addEventListener("storage", onStorage);
     return () => { window.removeEventListener("bagati:favorites", sync); window.removeEventListener("storage", onStorage); };
   }, []);
-  return <IconLink href="/favorites" label="Sevimlilər" badge={count}><Heart aria-hidden="true" size={24} strokeWidth={2} /></IconLink>;
+  // Filled heart only while the saved list is not empty (real data).
+  return <ActionLink href="/favorites" label="Sevimlilərim" badge={count} icon={<HeartIcon size={30} filled={(count ?? 0) > 0} />} />;
 }
 
 export function HeaderCartLink({ initialCount }: { initialCount: number | null }) {
@@ -78,7 +91,7 @@ export function HeaderCartLink({ initialCount }: { initialCount: number | null }
     window.addEventListener(CART_CHANGED_EVENT, onChange);
     return () => { active = false; window.removeEventListener(CART_CHANGED_EVENT, onChange); };
   }, [initialCount]);
-  return <IconLink href="/cart" label="Səbət" badge={count}><ShoppingBag aria-hidden="true" size={24} strokeWidth={2} /></IconLink>;
+  return <ActionLink href="/cart" label="Səbətim" badge={count} icon={<BagIcon size={30} />} />;
 }
 
 /**

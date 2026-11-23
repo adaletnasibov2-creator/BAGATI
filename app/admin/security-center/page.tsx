@@ -244,7 +244,9 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
           </Table>
           <h3 className="mt-4 text-sm font-semibold">Ən çox qeydə alınan IP-lər (7 gün)</h3>
           {!suspicious.topIps.length ? empty("Qeydə alınmış IP yoxdur.") : <Table head={["IP", "Say", "Nə etdi", "Son"]}>
-            {suspicious.topIps.map((row) => <tr key={row.key}>
+            {/* Key by position, never by row.key: that is the RAW IP, and React keys end up in the page's embedded data
+                even when the IP shown is masked (found in the live check). */}
+            {suspicious.topIps.map((row, index) => <tr key={`top-ip-${index}`}>
               <td className={td}><Ip value={shownIp(row.raw, row.masked, full)} /></td>
               <td className={td}>{row.count}</td>
               <td className={td}>{row.eventTypes.map(eventTypeLabel).join(", ")}{row.paths.length > 0 && <span className="mt-1 block font-mono text-xs text-slate-500">{row.paths.map((item) => `${item.path ?? "—"} (${item.count})`).join(", ")}</span>}</td>

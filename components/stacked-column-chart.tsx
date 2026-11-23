@@ -41,9 +41,10 @@ export function StackedColumnChart({ columns, series, title, totalLabel }: { col
     {series.length > 0 && <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600" aria-hidden="true">
       {series.map((name, index) => <li key={name} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: seriesFill(index) }}/>{name}</li>)}
     </ul>}
-    <table className="sr-only"><caption>{title}</caption><tbody>{columns.map((column) => <tr key={column.key}>
+    {/* The wrapper carries sr-only: a <table> ignores the 1px width and pushed a 390 px page sideways (live check). */}
+    <div className="sr-only"><table><caption>{title}</caption><tbody>{columns.map((column) => <tr key={column.key}>
       <th scope="row">{column.label}</th><td>{totalLabel(column)}</td>
       {column.segments.filter((segment) => segment.value > 0).map((segment) => <td key={segment.series}>{`${segment.series}: ${segment.value}`}</td>)}
-    </tr>)}</tbody></table>
+    </tr>)}</tbody></table></div>
   </figure>;
 }

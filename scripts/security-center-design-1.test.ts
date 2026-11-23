@@ -192,9 +192,20 @@ test("page: verdict banner with icon + text, summary cards, charts with empty st
   // Charts: accessible (title per segment / bar, screen-reader table); no chart package.
   const stacked = read("components/stacked-column-chart.tsx");
   assert.match(stacked, /<title>\{`\$\{column\.label\} · \$\{name\}: \$\{value\}`\}<\/title>/);
-  assert.match(stacked, /<table className="sr-only">/);
+  assert.match(stacked, /<div className="sr-only"><table>/);
   const pkg = JSON.parse(read("package.json")) as { dependencies: Record<string, string> };
   assert.equal(Object.keys(pkg.dependencies).some((name) => /chart|recharts|d3|visx|nivo/i.test(name)), false);
+});
+
+test("live-check fixes: no React key carries an IP; the chart's screen-reader table cannot widen a phone page", () => {
+  const page = read("app/admin/security-center/page.tsx");
+  // React keys are serialized into the page's embedded data even when the shown IP is masked.
+  assert.doesNotMatch(page, /key=\{[^}]*\b(row\.key|raw|sourceIp|ipFull|row\.ip)\b[^}]*\}/);
+  assert.match(page, /suspicious\.topIps\.map\(\(row, index\) => <tr key=\{`top-ip-\$\{index\}`\}>/);
+  // A <table> ignores sr-only's 1 px width: the wrapper carries sr-only.
+  const stacked = read("components/stacked-column-chart.tsx");
+  assert.match(stacked, /<div className="sr-only"><table><caption>\{title\}<\/caption>/);
+  assert.doesNotMatch(stacked, /<table className="sr-only">/);
 });
 
 test("no protection claims and nothing about WAF / Cloudflare data", () => {

@@ -15,7 +15,7 @@ export function StoreStrip({ stores }: { stores: StripStore[] }) {
     <ul className="-mx-3 flex snap-x gap-3 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0">
       {stores.map((store) => { const hours = storeHoursOf(store); return (
         <li key={store.id} className="w-[44%] shrink-0 snap-start sm:w-auto">
-          <Link href={`/stores/${store.id}`} className="group flex h-full flex-col items-center rounded-card border border-line bg-white px-3 pb-4 pt-5 text-center transition-[transform,box-shadow,border-color] duration-200 hover:border-brand-200 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none">
+          <Link href={`/stores/${store.id}`} className="group flex h-full flex-col items-center rounded-card border border-line bg-white px-3 pb-4 pt-5 text-center transition-[transform,box-shadow,border-color] duration-200 hover:border-brand-300 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none">
             <span className="relative grid h-[72px] w-[72px] place-items-center overflow-hidden rounded-full bg-primary-subtle ring-1 ring-brand-100 ring-offset-2 ring-offset-white">
               {store.logoUrl
                 ? <Image src={store.logoUrl} alt="" fill sizes="72px" unoptimized={/^https?:\/\//i.test(store.logoUrl)} className="object-cover" />

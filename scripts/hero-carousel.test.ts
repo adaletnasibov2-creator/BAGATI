@@ -77,7 +77,7 @@ test("hero sizes: 4:3 on phones, 2:1 from 640 px, from 1024 px a side panel whos
 });
 
 test("the lg edge gradient stays above the stacked images (z-[3] over z-[2] / z-[1])", () => {
-  assert.match(carousel, /className="pointer-events-none absolute inset-y-0 left-0 z-\[3\] hidden w-\[13%\][^"]* lg:block"/);
+  assert.match(carousel, /className="pointer-events-none absolute inset-y-0 left-0 z-\[3\] hidden w-\[26%\][^"]* lg:block"/); // DESIGN-POLISH-1: wider, softer edge (was 13%)
 });
 
 // ---------------------------------------------------------------------------------------------------------------

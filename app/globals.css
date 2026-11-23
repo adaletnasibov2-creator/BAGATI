@@ -48,6 +48,7 @@
   --bagati-danger-hover: #991b1b;
   --bagati-danger-subtle: #fef2f2;
   --bagati-focus-ring: var(--bagati-primary);
+  --bagati-icon: var(--bagati-deep-teal);
   /* Colour of the site-wide :focus-visible outline: gold in admin and the seller panel, green on the public site. */
   --bagati-focus-outline: var(--bagati-gold);
   --bagati-radius-control: 12px;
@@ -72,8 +73,14 @@
    the section colour (#638078 was 4.29:1). */
 body:has(> .bagati-public),
 .bagati-public {
-  --bagati-muted-green: #56706a;
-  --bagati-muted: #56706a;
+  /* DESIGN-POLISH-1: stronger muted text and borders (public site and customer account only; admin and the seller panel
+     keep their values). Muted text #4f6963: 5.94:1 on white, 5.58:1 on the page, 5.30:1 on the section colour (was
+     #56706a, 4.77:1 on the section). Control border #6b867c: 3.94:1 on white, 3.70:1 on the page, 3.51:1 on the section
+     (was #7b968c, 2.99:1 on the page). Card and divider lines #d9e2dd (decorative, was #e5eae6). */
+  --bagati-muted-green: #4f6963;
+  --bagati-muted: #4f6963;
+  --bagati-border-strong: #6b867c;
+  --bagati-border: #d9e2dd;
   --bagati-font-sans: var(--bagati-font-inter, ui-sans-serif), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --bagati-font-serif: var(--bagati-font-fraunces, Georgia), Georgia, "Times New Roman", serif;
   --bagati-text-xs: 0.8125rem;

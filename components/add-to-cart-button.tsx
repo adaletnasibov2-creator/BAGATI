@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
+import { notifyCartChanged } from "@/lib/cart-events";
 type Variant = { id: string; name: string; options?: Record<string, unknown>; available: number };
 export function AddToCartButton({ productId, variants, stock }: { productId: string; variants: Variant[]; stock: number }) {
   const [variantId, setVariantId] = useState(variants[0]?.id ?? ""); const [quantity, setQuantity] = useState(1); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
@@ -13,7 +14,7 @@ export function AddToCartButton({ productId, variants, stock }: { productId: str
       const result = await response.json();
       if (response.status === 401) { router.push(`/login?next=${encodeURIComponent(pathname)}`); return; }
       if (!response.ok) { setMessage(result.error ?? "Məhsul səbətə əlavə edilmədi."); return; }
-      setMessage("Məhsul səbətə əlavə edildi.");
+      notifyCartChanged(); setMessage("Məhsul səbətə əlavə edildi.");
     } catch { setMessage("Bağlantı xətası. Yenidən cəhd edin."); }
     finally { setBusy(false); }
   }

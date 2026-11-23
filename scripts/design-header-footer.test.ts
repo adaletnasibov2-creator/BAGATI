@@ -33,8 +33,9 @@ test("focus ring: green on the public site, gold kept for admin/seller panel and
 
 test("top bar: fixed 44 px height, one line, nothing can change its height on font swap", () => {
   const header = read("components/header.tsx");
-  assert.match(header, /<div className="container flex h-11 items-center justify-between gap-3 overflow-hidden text-xs">/);
-  assert.match(header, /<p className="min-w-0 truncate text-white\/80">Sevdiyin mağazalar və məhsullar bir məkanda\.<\/p>/);
+  // DESIGN-POLISH-1: 15 px from 768 px (still one line in the fixed 44 px row), brighter tagline.
+  assert.match(header, /<div className="container flex h-11 items-center justify-between gap-3 overflow-hidden text-xs md:text-sm">/);
+  assert.match(header, /<p className="min-w-0 truncate text-white\/85">Sevdiyin mağazalar və məhsullar bir məkanda\.<\/p>/);
   for (const [href, label] of [["/delivery-returns", "Çatdırılma"], ["/help", "Kömək"], ["/vendor/apply", "Satıcı ol"]]) {
     assert.match(header, new RegExp(`<Link href="${href}" className="inline-flex h-11 items-center whitespace-nowrap[^"]*">${label}</Link>`), label);
   }
@@ -42,25 +43,33 @@ test("top bar: fixed 44 px height, one line, nothing can change its height on fo
 
 test("header: 44 px targets for icons, nav links and the search button; tokens instead of hex colours", () => {
   const header = read("components/header.tsx");
-  assert.equal(header.match(/className="grid h-11 w-11 place-items-center rounded-full/g)?.length, 2, "favourites and cart");
-  assert.equal(header.match(/className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-semibold/g)?.length, 3, "Mağazalar, Endirimlər, Yeni məhsullar");
+  // DESIGN-POLISH-1: favourites and cart live in components/header-actions.tsx (44 px round targets, 24 px icons,
+  // real-data badges); the section links are HeaderNavLink (44 px pill, current-page underline).
+  const actions = read("components/header-actions.tsx");
+  assert.match(header, /<HeaderFavoritesLink \/>\s*<HeaderCartLink initialCount=\{cartCount\} \/>/, "favourites and cart");
+  assert.match(actions, /"relative grid h-11 w-11 place-items-center rounded-full text-icon"/);
+  assert.equal(actions.match(/size=\{24\} strokeWidth=\{2\}/g)?.length, 2);
+  assert.match(actions, /"relative inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-fg"/);
+  assert.equal(header.match(/<HeaderNavLink href="\/(stores|deals|new-products)">/g)?.length, 3, "Mağazalar, Endirimlər, Yeni məhsullar");
   assert.doesNotMatch(header, /\[#[0-9A-Fa-f]{6}\]/);
   // The section links use the second row at every desktop width, so the search field is never squeezed next to the
   // city and account controls (at 1280 px it showed only the category select); one copy of each link.
   assert.doesNotMatch(header, /aria-label="Əsas naviqasiya"/);
-  assert.match(header, /<nav aria-label="Alış-veriş bölmələri" className="hidden border-t border-line py-1 md:flex md:items-center md:gap-3">/);
+  assert.match(header, /<nav aria-label="Alış-veriş bölmələri" className="hidden border-t border-line py-1 md:flex md:items-center md:gap-1">/);
   assert.equal(header.match(/<CategoryMegaMenu categories=\{categories\} \/>/g)?.length, 1);
   assert.match(read("components/search-form.tsx"), /"hidden max-w-\[158px\] px-2 xl:block"/, "desktop category select from 1280 px only");
   const search = read("components/search-form.tsx");
   assert.match(search, /<button type="submit" aria-label="Axtar" className="grid h-11 w-11 shrink-0/);
   assert.match(search, /border border-line-strong bg-white/, "visible 3:1 field border");
-  assert.match(search, /placeholder:text-fg-muted/, "placeholder meets AA (#56706a, 5.36:1)");
+  assert.match(search, /placeholder:text-fg-muted/, "placeholder meets AA (#4f6963, 5.94:1 since DESIGN-POLISH-1)");
   assert.match(read("components/mobile-menu.tsx"), /className="grid h-11 w-11 place-items-center rounded-full/, "menu button 44 px");
 });
 
-test("bottom nav: 11 px labels, active tab marked by a pill as well as colour", () => {
+test("bottom nav: 12 px labels, 22 px icons, active tab marked by a pill as well as colour", () => {
   const nav = read("components/mobile-bottom-nav.tsx");
-  assert.equal(nav.match(/text-\[0\.6875rem\]/g)?.length, 2);
+  // DESIGN-POLISH-1: 12 px labels (were 11 px) and 22 px icons with stroke 2 (were 19 px, 1.8).
+  assert.equal(nav.match(/text-\[0\.75rem\]/g)?.length, 2);
+  assert.match(nav, /<Icon size=\{22\} strokeWidth=\{active \? 2\.25 : 2\} \/>/);
   assert.doesNotMatch(nav, /text-\[\.62rem\]/);
   assert.match(nav, /\$\{active \? "bg-primary-tint" : ""\}/);
   assert.match(nav, /\$\{accountActive \? "bg-primary-tint" : ""\}/);

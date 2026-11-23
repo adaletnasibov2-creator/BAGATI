@@ -80,6 +80,8 @@ const config: Config = {
           subtle: "var(--bagati-danger-subtle)",
         },
         focus: "var(--bagati-focus-ring)",
+        // Icon colour (DESIGN-POLISH-1): deep teal #173a3a, 12.33:1 on white. Same value in every scope.
+        icon: "var(--bagati-icon)",
       },
       // Exactly three standard radii, plus Tailwind's `rounded-full` for pills.
       borderRadius: {

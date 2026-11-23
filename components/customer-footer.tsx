@@ -70,7 +70,7 @@ export function CustomerFooter({ settings, contact }: { settings: FooterSettings
           )}
           {(contact?.address || contact?.workingHours) && <div className="mt-4 grid gap-1 text-sm leading-6 text-white/75">
             {contact.address && <p><span className="sr-only">Ünvan: </span>{contact.address}</p>}
-            {contact.workingHours && <p><span className="text-white/55">İş saatları: </span>{contact.workingHours}</p>}
+            {contact.workingHours && <p><span className="text-white/70">İş saatları: </span>{contact.workingHours}</p>}
           </div>}
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {settings.instagramUrl && <a className="inline-flex min-h-11 items-center text-white/75 transition-colors hover:text-bagati-cream focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bagati-gold" href={settings.instagramUrl} target="_blank" rel="noreferrer">Instagram</a>}

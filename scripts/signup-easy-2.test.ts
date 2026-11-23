@@ -516,7 +516,7 @@ test("B: the product page remembers on 401 (no URL parameter), then adds once fo
   assert.doesNotMatch(source, /addToCart=|pendingCart=|[?&](add|cart|item)=/, "no state-changing URL parameter");
   assert.match(source, /if \(!viewerIsCustomer \|\| pendingHandled\.current\) return;\n    pendingHandled\.current = true;/);
   assert.equal(source.match(/addRememberedCartItem\(/g)?.length, 1);
-  assert.match(source, /if \(outcome\.kind === "added"\) \{ setMessage\(PENDING_CART_ADDED_MESSAGE\); router\.refresh\(\); return; \}/);
+  assert.match(source, /if \(outcome\.kind === "added"\) \{ notifyCartChanged\(\); setMessage\(PENDING_CART_ADDED_MESSAGE\); router\.refresh\(\); return; \}/); // + header cart badge event (DESIGN-POLISH-1)
   assert.match(source, /\(message === ADDED_TO_CART_MESSAGE \|\| message === PENDING_CART_ADDED_MESSAGE\) && <> <Link href="\/cart" className="underline underline-offset-4">Səbətə keç<\/Link><\/>/);
   assert.match(read("lib/pending-cart-add.ts"), /window\.sessionStorage/);
   assert.doesNotMatch(read("lib/pending-cart-add.ts"), /localStorage/);

@@ -13,7 +13,7 @@ type StoreCardProps = { id: string; name: string; city: string; description?: st
 export function StoreCard({ id, name, city, description, logoUrl, hasLocation, openingTime, closingTime }: StoreCardProps) {
   const hours = storeHoursOf({ openingTime, closingTime });
   const initial = name.trim().slice(0, 1).toLocaleUpperCase("az-AZ") || "M";
-  return <Link href={`/stores/${id}`} className="group flex min-w-0 gap-3 rounded-card border border-line bg-white p-4 shadow-subtle transition-[transform,box-shadow,border-color] duration-200 hover:border-brand-200 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none sm:gap-4">
+  return <Link href={`/stores/${id}`} className="group flex min-w-0 gap-3 rounded-card border border-line bg-white p-4 shadow-subtle transition-[transform,box-shadow,border-color] duration-200 hover:border-brand-300 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none sm:gap-4">
     <div className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-control border border-line bg-surface-page sm:h-16 sm:w-16">
       {logoUrl
         ? <Image src={logoUrl} alt={`${name} loqosu`} fill unoptimized={/^https?:\/\//i.test(logoUrl)} sizes="64px" className="object-contain p-1"/>

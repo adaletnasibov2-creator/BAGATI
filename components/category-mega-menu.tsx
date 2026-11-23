@@ -32,9 +32,9 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
 
   return (
     <details ref={menu.ref} className="group relative" onToggle={menu.onToggle} onClick={menu.onClick}>
-      <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1 rounded-sm text-sm font-semibold text-bagati-text transition-colors hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bagati-gold [&::-webkit-details-marker]:hidden">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-sm font-semibold text-fg transition-colors duration-150 hover:bg-primary-subtle hover:text-primary active:bg-primary-tint group-open:bg-primary-subtle group-open:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
         Kateqoriyalar
-        <ChevronDown aria-hidden="true" size={14} className="transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+        <ChevronDown aria-hidden="true" size={16} className="transition-transform group-open:rotate-180 motion-reduce:transition-none" />
       </summary>
       <div className="absolute left-0 top-full z-50 mt-2 w-[min(760px,calc(100vw-32px))] rounded-2xl border border-bagati-border bg-white p-5 shadow-[0_24px_60px_rgba(23,58,58,.15)] sm:p-6">
         <div className="mb-4 flex items-end justify-between gap-3">
@@ -42,7 +42,7 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
             <p className="text-[.65rem] font-semibold uppercase tracking-[.16em] text-bagati-muted">BAGATI kataloqu</p>
             <h2 className="mt-1 text-lg font-semibold text-bagati-deep">Nə axtarırsan?</h2>
           </div>
-          <Link href="/categories" className="inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-bagati-accent hover:text-bagati-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
+          <Link href="/categories" className="inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-bagati-accent hover:text-bagati-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
             Hamısına bax<ChevronRight aria-hidden="true" size={14} />
           </Link>
         </div>
@@ -60,7 +60,7 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
                   >
                     <Link
                       href={categoryHref(category.slug)}
-                      className="group flex min-h-[70px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold"
+                      className="group flex min-h-[70px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                     >
                       <CategoryIcon category={category} size="small" loading="lazy" />
                       <span className="line-clamp-2 min-w-0">{category.name}</span>
@@ -72,7 +72,7 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
                         aria-controls={panelId}
                         aria-label={`${category.name}: alt kateqoriyalar`}
                         onClick={(event) => toggle(event, category.id)}
-                        className="mr-1 grid h-10 w-9 shrink-0 place-items-center rounded-xl text-bagati-muted hover:bg-bagati-section hover:text-bagati-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold"
+                        className="mr-1 grid h-10 w-9 shrink-0 place-items-center rounded-xl text-bagati-muted hover:bg-bagati-section hover:text-bagati-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                       >
                         <ChevronDown aria-hidden="true" size={16} className={`transition-transform motion-reduce:transition-none ${isActive ? "rotate-180" : ""}`} />
                       </button>
@@ -84,13 +84,13 @@ export function CategoryMegaMenu({ categories }: { categories: MegaMenuCategory[
             <div id={panelId} ref={panelRef} aria-live="polite">
               {active && (
                 <section aria-label={`${active.name}: alt kateqoriyalar`} className="mt-3 rounded-2xl border border-bagati-border bg-bagati-page/60 p-3 sm:p-4">
-                  <Link href={categoryHref(active.slug)} className="inline-flex min-h-10 items-center gap-1 rounded-sm text-sm font-semibold text-bagati-deep hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
+                  <Link href={categoryHref(active.slug)} className="inline-flex min-h-10 items-center gap-1 rounded-sm text-sm font-semibold text-bagati-deep hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
                     Bütün {active.name}<ChevronRight aria-hidden="true" size={14} />
                   </Link>
                   <ul className="mt-1 grid grid-cols-1 gap-1 min-[420px]:grid-cols-2 sm:grid-cols-3">
                     {active.children!.map((child) => (
                       <li key={child.id} className="min-w-0">
-                        <Link href={categoryHref(child.slug)} className="flex min-h-10 min-w-0 items-center gap-2 rounded-xl px-2 text-[.82rem] text-bagati-text hover:bg-white hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-bagati-gold">
+                        <Link href={categoryHref(child.slug)} className="flex min-h-10 min-w-0 items-center gap-2 rounded-xl px-2 text-[.82rem] text-bagati-text hover:bg-white hover:text-bagati-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
                           <CategoryGlyph category={child} size={17} className="text-[#1f5a4f]" />
                           <span className="min-w-0 truncate">{child.name}</span>
                           {child.count ? <span className="ml-auto shrink-0 text-xs text-bagati-muted">{child.count}</span> : null}

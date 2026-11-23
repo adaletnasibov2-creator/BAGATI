@@ -18,6 +18,8 @@ import { customerTermsGate } from "@/lib/legal-gates";
 import { isOrderSerializationConflict, withOrderSerializationRetry } from "@/lib/order-transaction-retry";
 import { ORDER_STOCK_ERROR_MESSAGES } from "@/lib/order-stock-errors";
 import { orderCreateResponse, publicOrderErrorCode } from "@/lib/order-create-response";
+import { AZ_PHONE_ERROR, normalizeAzMobilePhone } from "@/lib/az-phone";
+import { rememberOrderPhone } from "@/lib/profile-phone";
 const db: any = prisma;
 // acceptTerms: the checkout checkbox, shown only while the current customer terms are not accepted. The server decides
 // from the database (customerTermsGate); the flag alone never skips the check.
@@ -56,6 +58,9 @@ export async function POST(request:NextRequest) {
    const tx:any=transaction;
    const activeCustomer=await tx.user.findFirst({where:{id:user.id,role:"CUSTOMER",isActive:true},select:{id:true}});if(!activeCustomer)throw new Error("SESSION_EXPIRED");
    const address=await tx.address.findFirst({where:{id:parsed.data.addressId,userId:user.id},include:{city:{select:{id:true,name:true,isActive:true}}}});if(!address||!address.city.isActive)throw new Error("ADDRESS_INVALID");
+   // PHONE-REQUIRED-1: no order without a valid Azerbaijani mobile number (the store calls or WhatsApps the customer).
+   // Checked before the cart and stock are locked; the snapshot keeps the normalized +994XXXXXXXXX form.
+   const orderPhone=normalizeAzMobilePhone(address.phone);if(!orderPhone)throw new Error("PHONE_INVALID");
    await tx.$queryRawUnsafe('SELECT "id" FROM "Cart" WHERE "userId" = $1 FOR UPDATE',user.id);
     const cart=await tx.cart.findUnique({where:{userId:user.id},include:{items:{include:{variant:true,product:{include:{store:{select:{id:true,name:true,freeDeliveryThreshold:true,deliveryFee:true,vendor:{select:{user:{select:{id:true,email:true}}}}}},inventory:true,variants:{select:{id:true,productId:true,isActive:true}},promotionProducts:{where:{promotion:{isActive:true,startsAt:{lte:now},endsAt:{gte:now}}},include:{promotion:true}}}}}}}});
    const items:any[]=cart?.items??[];if(!items.length)throw new Error("CART_EMPTY");
@@ -89,7 +94,7 @@ export async function POST(request:NextRequest) {
     const subtotal=storeOrders.reduce((sum,group)=>sum.add(group.subtotal),new Prisma.Decimal(0));
     const totalDeliveryFee=storeOrders.reduce((sum,group)=>sum.add(group.deliveryFee),new Prisma.Decimal(0));
     const total=subtotal.add(totalDeliveryFee);
-    const addressSnapshot=createOrderAddressSnapshot(address,coordinatePin.selected);
+    const addressSnapshot=createOrderAddressSnapshot({...address,phone:orderPhone},coordinatePin.selected);
      const created=await tx.order.create({data:{userId:user.id,status:"PENDING",subtotal,deliveryFee:totalDeliveryFee,total,addressSnapshot,storeOrders:{create:storeOrders.map(group=>({storeId:group.storeId,status:"NEW",createdAt:orderCreatedAt,subtotal:group.subtotal,commissionRateSnapshot:commissionRates.get(group.storeId)??null,deliveryFee:group.deliveryFee,items:{create:group.lines.map((row:any)=>({productId:row.item.productId,variantId:row.item.variantId,...orderVariantSnapshot(row.item.variant),productName:row.item.product.name,sku:row.item.variant?.sku??row.item.product.sku,unitPrice:row.unitPrice,quantity:row.item.quantity,lineTotal:row.lineTotal}))}}))},payments:{create:{amount:total,currency:"AZN",status:"PENDING"}}},include:{storeOrders:{include:{store:{select:{id:true,name:true,vendor:{select:{user:{select:{id:true,email:true}}}}}},items:true}},payments:true}});
    const customer=await tx.user.findUnique({where:{id:user.id},select:{email:true}});
    if(customer)await enqueueEmail(tx,{eventKey:`order-confirmed:${created.id}:${customer.email}`,recipient:customer.email,template:"CUSTOMER_ORDER_CONFIRMED",payload:{orderRef:created.id,total:Number(created.total)}});
@@ -104,14 +109,17 @@ export async function POST(request:NextRequest) {
   // SELLER_NEW_ORDER emails (SELLER-ALERTS): queued AFTER the commit and not awaited, so queuing can never fail, roll
   // back or slow the order. Best effort, one row per StoreOrder per recipient (lib/seller-order-emails.ts).
   void queueSellerNewOrderEmails(prisma,order as SellerOrderEmailOrder).catch(()=>undefined);
+  // PHONE-REQUIRED-1: the order phone goes to the profile (empty or invalid profile phone only). Best-effort, after the commit.
+  const orderPhone=normalizeAzMobilePhone((order as {addressSnapshot?:{phone?:string}|null}).addressSnapshot?.phone);
+  if(orderPhone){try{await rememberOrderPhone(prisma,user.id,orderPhone)}catch(error){console.error(`profile phone not remembered (${error instanceof Error?error.name:"unknown"})`)}}
   // Only the order id goes back to the browser: `order` still holds seller data (account email) used above.
   return NextResponse.json(orderCreateResponse(order as SellerOrderEmailOrder),{status:201});
  }catch(error){
   // Retries used up: the same 409 as before (also for the P2010/40001 form, which returned 500 before SCALE-FIX-1).
   if(isOrderSerializationConflict(error))return NextResponse.json({error:"Sifariş zamanı uyğunluq və ya stok məlumatları dəyişdi. Səbəti yeniləyib yenidən cəhd edin.",code:"TRANSACTION_CONFLICT"},{status:409});
   const code=error instanceof Error?error.message:"ERROR";
-  const messages:Record<string,string>={SESSION_EXPIRED:"Sessiya bitib. Yenidən daxil olun.",ADDRESS_INVALID:"Çatdırılma ünvanı tapılmadı və ya şəhər artıq aktiv deyil.",CART_EMPTY:"Səbət boşdur.",STORE_UNAVAILABLE:"Səbətdəki mağazalardan biri hazırda sifariş qəbul etmir. Səbəti yeniləyin.",PRODUCT_UNAVAILABLE:"Məhsul artıq satışda deyil. Səbəti yeniləyin.",VARIANT_INVALID:"Seçilmiş variant artıq mövcud deyil.",PRICE_INVALID:"Məhsulun qiyməti dəyişib və ya yanlışdır. Səbəti yeniləyin.",PRICE_CHANGED:"Məhsulun qiyməti dəyişib. Səbəti və sifariş məbləğini yeniləyin.",STOCK_CHANGED:"Stok dəyişib. Səbəti yeniləyib yenidən yoxlayın.",...ORDER_STOCK_ERROR_MESSAGES};
-  const status=code==="CART_EMPTY"||code==="STOCK_CHANGED"?409:code==="ADDRESS_INVALID"?404:code==="SESSION_EXPIRED"?401:code in messages?409:500;
+  const messages:Record<string,string>={SESSION_EXPIRED:"Sessiya bitib. Yenidən daxil olun.",ADDRESS_INVALID:"Çatdırılma ünvanı tapılmadı və ya şəhər artıq aktiv deyil.",PHONE_INVALID:AZ_PHONE_ERROR,CART_EMPTY:"Səbət boşdur.",STORE_UNAVAILABLE:"Səbətdəki mağazalardan biri hazırda sifariş qəbul etmir. Səbəti yeniləyin.",PRODUCT_UNAVAILABLE:"Məhsul artıq satışda deyil. Səbəti yeniləyin.",VARIANT_INVALID:"Seçilmiş variant artıq mövcud deyil.",PRICE_INVALID:"Məhsulun qiyməti dəyişib və ya yanlışdır. Səbəti yeniləyin.",PRICE_CHANGED:"Məhsulun qiyməti dəyişib. Səbəti və sifariş məbləğini yeniləyin.",STOCK_CHANGED:"Stok dəyişib. Səbəti yeniləyib yenidən yoxlayın.",...ORDER_STOCK_ERROR_MESSAGES};
+  const status=code==="CART_EMPTY"||code==="STOCK_CHANGED"?409:code==="ADDRESS_INVALID"?404:code==="PHONE_INVALID"?422:code==="SESSION_EXPIRED"?401:code in messages?409:500;
   // SEC-FIX-1 L4: only a known code is sent back; anything else (raw error text) becomes "ERROR".
   const publicCode=publicOrderErrorCode(code,messages);
   return NextResponse.json({error:(publicCode==="ERROR"?undefined:messages[publicCode])||"Sifaris yaradilma. Bir az sonra yeniden yoxlayin.",code:publicCode},{status});

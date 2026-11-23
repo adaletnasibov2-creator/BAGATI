@@ -209,7 +209,13 @@ test("privacy: only the order pages, the reveal API and order creation read the 
     "app/api/orders/route.ts",                       // creation
     "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx", // the store's own order (7-day rule)
     "lib/delivery-location.ts",
+    "lib/vendor-sales-analytics-query.ts",           // SELLER-ANALYTICS-1: city name only, counted in SQL (no customer link)
   ]);
+  // The seller analytics read ONLY the city field, aggregated (GROUP BY), never the snapshot itself.
+  const analytics = read("lib/vendor-sales-analytics-query.ts");
+  assert.deepEqual(analytics.match(/"addressSnapshot"[^\s,]*/g), ['"addressSnapshot"->>\'city\'']);
+  assert.match(analytics, /SELECT o\."addressSnapshot"->>'city' AS city, COUNT\(\*\)::int AS orders/);
+  assert.match(analytics, /GROUP BY 1 ORDER BY 2 DESC, 1 ASC/);
   // E-mails never carry the address or coordinates.
   assert.doesNotMatch(read("lib/email-templates.ts"), /latitude|longitude|addressSnapshot|line1/);
   for (const file of ["app/api/orders/route.ts", "app/api/vendor/[storeId]/[section]/route.ts"]) {

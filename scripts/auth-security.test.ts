@@ -69,7 +69,9 @@ test("customer and vendor password login remain controlled by explicit password-
   ]);
   assert.match(customer, /!user\.passwordAuthEnabled/);
   assert.match(vendor, /!user\.passwordAuthEnabled/);
-  assert.match(googleCallback, /passwordAuthEnabled:\s*false/);
+  // SIGNUP-EASY-2: Google account creation moved to the shared lib/google-customer-account.ts (callback + complete-register).
+  assert.match(googleCallback, /createGoogleCustomerAccount\(prisma, identity\)/);
+  assert.match(await source("lib/google-customer-account.ts"), /passwordAuthEnabled:\s*false/);
   assert.doesNotMatch(linkMigration, /\b(UPDATE|DELETE|INSERT)\b/i);
   assert.doesNotMatch(authMigration, /\b(UPDATE|DELETE|INSERT)\b/i);
 });

@@ -146,9 +146,13 @@ test("Google start: /register without the box goes back to /register; with it th
 
 test("Google callback: /login with an unknown email creates no user (the only user.create is the accepted-terms branch)", () => {
   const callback = read("app/api/auth/google/callback/route.ts");
-  assert.equal(callback.match(/\.user\.create\(/g)?.length, 1);
+  // SIGNUP-EASY-2: the callback creates through the shared lib/google-customer-account.ts (also used by
+  // complete-register, which demands acceptTerms === true); the callback itself has no user.create any more.
+  assert.equal(callback.match(/\.user\.create\(/g)?.length ?? 0, 0);
+  assert.equal(callback.match(/createGoogleCustomerAccount\(/g)?.length, 1);
   const createBranch = callback.slice(callback.indexOf('if (decision.kind === "create-customer") {'), callback.indexOf('if (decision.kind === "link")'));
-  assert.match(createBranch, /transaction\.user\.create\(/);
+  assert.match(createBranch, /createGoogleCustomerAccount\(prisma, identity\)/);
+  assert.equal(read("lib/google-customer-account.ts").match(/\.user\.create\(/g)?.length, 1);
   assert.match(read("lib/google-oauth-decision.ts"), /input\.customerTermsAccepted \? \{ kind: "create-customer" \} : \{ kind: "redirect", result: "register-required" \}/);
   const button = read("components/google-oauth-button.tsx");
   assert.match(button, /case "register-required": return "Əvvəlcə qeydiyyatdan keçin\./);

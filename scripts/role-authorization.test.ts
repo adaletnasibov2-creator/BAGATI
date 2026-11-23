@@ -29,8 +29,11 @@ test("public registration assigns a fixed role and never reads a role from the r
 
 test("Google sign-in can only target customer or seller accounts, never admin", () => {
   const callback = read("app/api/auth/google/callback/route.ts");
-  assert.match(callback, /role: "CUSTOMER",/);
-  assert.doesNotMatch(callback, /role: "VENDOR"|vendorProfile/);
+  // SIGNUP-EASY-2: creation moved to the shared lib/google-customer-account.ts.
+  const creation = read("lib/google-customer-account.ts");
+  assert.match(creation, /role: "CUSTOMER",/);
+  for (const source of [callback, creation]) assert.doesNotMatch(source, /role: "VENDOR"|vendorProfile/);
+  assert.doesNotMatch(creation, /"ADMIN"/);
   assert.doesNotMatch(callback, /"ADMIN"/);
   assert.match(callback, /account\.role !== state\.intent\.toUpperCase\(\)/);
 });

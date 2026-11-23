@@ -84,9 +84,12 @@ test("no decision ever creates a seller", () => {
 
 test("callback creates only CUSTOMER accounts and maps unverified email to its own code", () => {
   const callback = readFileSync("app/api/auth/google/callback/route.ts", "utf8");
+  // SIGNUP-EASY-2: the creation itself lives in the shared lib/google-customer-account.ts.
+  const creation = readFileSync("lib/google-customer-account.ts", "utf8");
   assert.match(callback, /decideGoogleSignIn\(/);
-  assert.match(callback, /role: "CUSTOMER",/);
-  assert.doesNotMatch(callback, /role: "VENDOR"|vendorProfile|WELCOME_SELLER|role = state\.intent/);
+  assert.match(callback, /createGoogleCustomerAccount\(prisma, identity\)/);
+  assert.match(creation, /role: "CUSTOMER",/);
+  for (const source of [callback, creation]) assert.doesNotMatch(source, /role: "VENDOR"|vendorProfile|WELCOME_SELLER|role = state\.intent/);
   assert.match(callback, /error instanceof GoogleEmailUnverifiedError\) return finish\(NextResponse\.redirect\(resultUrl\(origin, state, "email-unverified"\)\)\)/);
   assert.doesNotMatch(callback, /"\/vendor\/register"/);
 });
@@ -119,7 +122,11 @@ test("only the current customer-terms version from a customer /register state co
 test("callback: create only with accepted terms, the acceptance in the same transaction, /register for register-required", () => {
   const callback = readFileSync("app/api/auth/google/callback/route.ts", "utf8");
   assert.match(callback, /customerTermsAccepted: stateAcceptedCustomerTerms\(state\)/);
-  const create = callback.slice(callback.indexOf("prisma.$transaction(async transaction =>"), callback.indexOf("decision = { kind: \"session\", userId: user.id }"));
+  // SIGNUP-EASY-2: the callback's create branch calls the shared function; its one transaction records the acceptance.
+  const branch = callback.slice(callback.indexOf('if (decision.kind === "create-customer") {'), callback.indexOf("decision = { kind: \"session\", userId: user.id }"));
+  assert.match(branch, /createGoogleCustomerAccount\(prisma, identity\)/);
+  const creation = readFileSync("lib/google-customer-account.ts", "utf8");
+  const create = creation.slice(creation.indexOf("db.$transaction(async transaction =>"));
   assert.match(create, /recordAcceptance\(transaction, \{ userId: created\.id, document: "CUSTOMER_TERMS", source: "REGISTER_GOOGLE" \}\)/);
   assert.match(callback, /REGISTER_RESULTS = new Set\(\["register-required", "terms-required"\]\)/);
   assert.match(callback, /REGISTER_RESULTS\.has\(result\) \? "\/register"/);

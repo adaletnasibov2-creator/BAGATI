@@ -62,5 +62,7 @@ export function LoginForm({ nextPath, oauthError, notice, portal }: { nextPath: 
       <Button type="submit" size="lg" fullWidth loading={busy} loadingLabel="Yoxlanılır...">Daxil ol</Button>
       <p className="text-center text-sm text-muted">Satıcı hesabınız var? <TextLink href="/vendor/login">Satıcı girişinə keçin</TextLink></p>
     </form>
+    {/* SIGNUP-EASY-2 T4: plain hint, no logic. */}
+    <p className="mt-4 text-center text-sm text-muted">Hesabınızı Google ilə yaratmısınızsa, «Google ilə davam et» düyməsindən istifadə edin.</p>
   </>;
 }

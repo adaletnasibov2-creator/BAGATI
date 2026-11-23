@@ -100,6 +100,7 @@ test("only reviewed code paths create sessions; customer, vendor and Google logi
     "app/api/admin/login/2fa/route.ts",
     "app/api/admin/login/route.ts",
     "app/api/auth/google/callback/route.ts",
+    "app/api/auth/google/complete-register/route.ts", // SIGNUP-EASY-2: creates only new CUSTOMER accounts, never signs in an existing (ADMIN) one
     "app/api/auth/google/link/route.ts",
     "app/api/auth/login/route.ts",
     "app/api/auth/vendor-login/route.ts",

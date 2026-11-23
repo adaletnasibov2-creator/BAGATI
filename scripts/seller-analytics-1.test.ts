@@ -237,6 +237,16 @@ test("page keeps the date filter, presets, period switch, CSV, the transfer note
   assert.equal(Object.keys(pkg.dependencies).some((name) => /chart|recharts|d3|visx|nivo/i.test(name)), false);
 });
 
+test("finding 1: the old PRO block no longer repeats the new section; only the low-stock count remains, under the existing heading", () => {
+  const block = read("components/vendor-advanced-analytics.tsx");
+  for (const removed of ["Orta sifariş məbləği", "Əvvəlki eyni müddət", "Kateqoriyalar üzrə satış", "averageOrderValue", "previousPeriod", "topCategories"]) assert.doesNotMatch(block, new RegExp(removed), removed);
+  assert.match(block, />Ətraflı analitika<\/h2>/);
+  assert.match(block, />Az stoklu aktiv məhsullar<\/p><b className="mt-2 block text-xl">\{data\.lowStockProducts\}<\/b>/);
+  assert.match(block, /type Props = \{ data: \{ lowStockProducts: number \} \};/);
+  // The new section keeps its own (received-orders) average; it is the only "Orta sifariş məbləği" on the page now.
+  assert.equal(read("components/vendor-sales-report.tsx").match(/AVERAGE_ORDER\b/g)?.length, 3);
+});
+
 // ================================================================= texts
 
 test("texts: only the listed new texts appear (diff scan against main); legal pages unchanged", () => {
@@ -260,7 +270,7 @@ test("texts: only the listed new texts appear (diff scan against main); legal pa
   const AZ = /[əğıöüşçƏĞİÖÜŞÇ]/;
   const fragments = (source: string) => new Set(source.split(/["'`<>{}]|\$\{/).map((part) => part.trim()).filter((part) => AZ.test(part)));
   // The files this task changes (an explicit list, so later tasks with their own approved texts do not break this).
-  const files = ["components/vendor-sales-report.tsx", "components/vendor-analytics-charts.tsx", "lib/vendor-sales-analytics.ts", "lib/vendor-sales-analytics-query.ts", "app/api/vendor/[storeId]/[section]/route.ts"];
+  const files = ["components/vendor-sales-report.tsx", "components/vendor-analytics-charts.tsx", "components/vendor-advanced-analytics.tsx", "lib/vendor-sales-analytics.ts", "lib/vendor-sales-analytics-query.ts", "app/api/vendor/[storeId]/[section]/route.ts"];
   for (const path of files) {
     const before = fragments(baseText(path));
     for (const fragment of fragments(read(path))) {

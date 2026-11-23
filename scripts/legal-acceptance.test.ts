@@ -110,12 +110,12 @@ test("Phase B: exactly the expected application code calls the helper (registrat
   // A new caller must be added here on purpose (and recorded in the legal-acceptance report).
   assert.deepEqual(callers.sort(), [
     "app/(customer)/checkout/page.tsx",
-    "app/api/auth/google/callback/route.ts",
     "app/api/auth/register/route.ts",
     "app/api/vendor/[storeId]/[section]/route.ts",
     "app/vendor/[storeId]/layout.tsx",
     "app/vendor/page.tsx",
     "app/vendor/stores/new/page.tsx",
+    "lib/google-customer-account.ts", // SIGNUP-EASY-2: Google creation (callback + complete-register), was the callback
     "lib/legal-gates.ts",
     "lib/seller-application-service.ts",
     "lib/vendor-product-patch.ts",

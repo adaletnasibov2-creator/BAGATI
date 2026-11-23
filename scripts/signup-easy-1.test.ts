@@ -275,7 +275,8 @@ test("R6: after a successful add the status line links to the cart with the exis
   const source = read("components/product-variant-purchase.tsx");
   assert.match(source, /const ADDED_TO_CART_MESSAGE = "Məhsul səbətə əlavə edildi\.";/);
   assert.match(source, /setMessage\(ADDED_TO_CART_MESSAGE\); router\.refresh\(\);/);
-  assert.match(source, /\{message === ADDED_TO_CART_MESSAGE && <> <Link href="\/cart" className="underline underline-offset-4">Səbətə keç<\/Link><\/>\}/);
+  // SIGNUP-EASY-2 adds T3 (PENDING_CART_ADDED_MESSAGE) to the same link condition.
+  assert.match(source, /\{\(message === ADDED_TO_CART_MESSAGE \|\| message === PENDING_CART_ADDED_MESSAGE\) && <> <Link href="\/cart" className="underline underline-offset-4">Səbətə keç<\/Link><\/>\}/);
   assert.match(read("components/checkout-form.tsx"), />Səbətə keç<\/Link>/, "the same words are already used in checkout");
 });
 

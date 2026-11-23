@@ -268,7 +268,10 @@ test("OAuth account creation and linking preserve legacy password state without 
   assert.match(callback, /googleAccount\.create/);
   assert.match(start, /modeValue !== "link"/);
   assert.match(recovery, /passwordAuthEnabled/);
-  assert.match(callback, /passwordAuthEnabled: false/);
+  // SIGNUP-EASY-2: account creation moved to the shared lib/google-customer-account.ts.
+  const creation = await readFile(new URL("../lib/google-customer-account.ts", import.meta.url), "utf8");
+  assert.match(callback, /createGoogleCustomerAccount\(prisma, identity\)/);
+  assert.match(creation, /passwordAuthEnabled: false/);
   assert.match(passwordAuthMigration, /ADD COLUMN "passwordAuthEnabled" BOOLEAN NOT NULL DEFAULT true/);
   assert.doesNotMatch(passwordAuthMigration, /\b(DROP|TRUNCATE)\b|DELETE\s+FROM/i);
   assert.doesNotMatch(passwordAuthMigration, /\b(UPDATE|DELETE|INSERT)\b/i);
@@ -278,7 +281,7 @@ test("OAuth account creation and linking preserve legacy password state without 
   const linkingFlow = callback.slice(callback.indexOf('if (state.mode === "link")'), callback.indexOf("const resolve = async"));
   assert.match(linkingFlow, /googleAccount\.create/);
   assert.doesNotMatch(linkingFlow, /passwordAuthEnabled/);
-  assert.match(callback, /transaction\.user\.create\([\s\S]*?passwordAuthEnabled: false/);
+  assert.match(creation, /transaction\.user\.create\([\s\S]*?passwordAuthEnabled: false/);
   assert.match(recovery, /Google ilə yaradılmış və şifrə girişi bağlı olan hesablar Google girişi ilə istifadə olunur/);
   const customerLoginPage = await readFile(new URL("../app/(customer)/login/page.tsx", import.meta.url), "utf8");
   const customerRegisterPage = await readFile(new URL("../app/(customer)/register/page.tsx", import.meta.url), "utf8");

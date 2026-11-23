@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,11 +11,14 @@ import { cx, focusRing } from "@/components/ui/cx";
 import ProductGallery from "@/components/product-gallery";
 import { FavoriteToggle } from "@/components/favorite-toggle";
 import { getProductDiscount } from "@/lib/product-card-pricing";
+import { addRememberedCartItem, browserSessionStorage, rememberPendingCartAdd } from "@/lib/pending-cart-add";
 
 type Variant = { id: string; name: string; options: Record<string, unknown>; isActive: boolean; images: string[]; available: number; basePrice: string; unitPrice: string; campaignName: string | null };
 type Axis = { name: string; values: string[] };
 /** SIGNUP-EASY-1 R6: after this message the status line also links to the cart ("Səbətə keç", the checkout's wording). */
 const ADDED_TO_CART_MESSAGE = "Məhsul səbətə əlavə edildi.";
+/** SIGNUP-EASY-2 T3: the item a guest chose before signing in was added after the login (also links to the cart). */
+export const PENDING_CART_ADDED_MESSAGE = "Seçdiyiniz məhsul səbətə əlavə edildi.";
 const valueOf = (variant: Variant, axis: string) => axis === "Seçim" && !Object.keys(variant.options || {}).length ? variant.name : String(variant.options?.[axis] ?? "");
 
 type ProductVariantPurchaseProps = {
@@ -31,9 +34,11 @@ type ProductVariantPurchaseProps = {
   store: { id: string; name: string; city: string; deliveryFee: string; freeDeliveryThreshold: string };
   category: { name: string; href: string } | null;
   sku: string | null;
+  /** SIGNUP-EASY-2: true only for a signed-in CUSTOMER (server-decided); only then is a remembered item added. */
+  viewerIsCustomer?: boolean;
 };
 
-export default function ProductVariantPurchase({ productId, name, productImages, variants, hasVariants, stock, basePrice, unitPrice, campaignName, store, category, sku }: ProductVariantPurchaseProps) {
+export default function ProductVariantPurchase({ productId, name, productImages, variants, hasVariants, stock, basePrice, unitPrice, campaignName, store, category, sku, viewerIsCustomer = false }: ProductVariantPurchaseProps) {
   const axes = useMemo<Axis[]>(() => {
     const values = new Map<string, Set<string>>();
     for (const variant of variants) for (const [key, raw] of Object.entries(variant.options || {})) {
@@ -70,12 +75,38 @@ export default function ProductVariantPurchase({ productId, name, productImages,
     try {
       const response = await fetch("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, ...(selectedVariant ? { variantId: selectedVariant.id } : {}), quantity }) });
       const result = await response.json();
-      if (response.status === 401) { router.push(`/login?next=${encodeURIComponent(pathname)}`); return; }
+      if (response.status === 401) {
+        // SIGNUP-EASY-2: remember the choice in this tab (no URL parameter); added once after the login.
+        rememberPendingCartAdd(browserSessionStorage(), { productId, ...(selectedVariant ? { variantId: selectedVariant.id } : {}), quantity });
+        router.push(`/login?next=${encodeURIComponent(pathname)}`); return;
+      }
       if (!response.ok) { setMessage(result.error || "Məhsulu səbətə əlavə etmək mümkün olmadı."); return; }
       setMessage(ADDED_TO_CART_MESSAGE); router.refresh();
     } catch { setMessage("Bağlantı xətası. Yenidən cəhd edin."); }
     finally { setBusy(false); }
   }
+
+  // SIGNUP-EASY-2: the remembered item for THIS product, once, only for a signed-in customer. addRememberedCartItem
+  // removes it before the request, so a refresh, the back button or a second effect run cannot add it again.
+  const pendingHandled = useRef(false);
+  useEffect(() => {
+    if (!viewerIsCustomer || pendingHandled.current) return;
+    pendingHandled.current = true;
+    void addRememberedCartItem({
+      storage: browserSessionStorage(),
+      productId,
+      viewerIsCustomer,
+      post: async body => {
+        const response = await fetch("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const result = await response.json().catch(() => ({}));
+        return { ok: response.ok, status: response.status, error: result.error };
+      },
+    }).then(outcome => {
+      if (!outcome) return;
+      if (outcome.kind === "added") { setMessage(PENDING_CART_ADDED_MESSAGE); router.refresh(); return; }
+      setMessage(outcome.kind === "network" ? "Bağlantı xətası. Yenidən cəhd edin." : outcome.serverError || "Məhsulu səbətə əlavə etmək mümkün olmadı.");
+    });
+  }, [viewerIsCustomer, productId, router]);
 
   const canAdd = !(busy || (hasVariants && (!complete || !selectedVariant || !selectedVariant.isActive || selectedStock < 1)) || selectedStock < 1);
   const stockText = hasVariants && !complete ? "Əvvəlcə variant seçimlərini tamamlayın." : hasVariants && !selectedVariant ? "Bu seçim mövcud deyil." : selectedStock > 0 ? `Stokda ${selectedStock} ədəd` : "Tükənib";
@@ -138,7 +169,7 @@ export default function ProductVariantPurchase({ productId, name, productImages,
         {(!hasVariants || selectedVariant) && <span aria-hidden="true" className={cx("h-2.5 w-2.5 shrink-0 rounded-full", selectedStock > 0 ? "bg-primary" : "bg-danger")}/>}
         <p className={cx("text-sm font-medium", selectedStock > 0 ? "text-primary" : "text-fg-secondary")} aria-live="polite">{stockText}</p>
       </div>
-      {message && <p role="status" className="mt-3 rounded-control bg-primary-subtle px-3 py-2 text-sm font-medium text-primary">{message}{message === ADDED_TO_CART_MESSAGE && <> <Link href="/cart" className="underline underline-offset-4">Səbətə keç</Link></>}</p>}
+      {message && <p role="status" className="mt-3 rounded-control bg-primary-subtle px-3 py-2 text-sm font-medium text-primary">{message}{(message === ADDED_TO_CART_MESSAGE || message === PENDING_CART_ADDED_MESSAGE) && <> <Link href="/cart" className="underline underline-offset-4">Səbətə keç</Link></>}</p>}
 
       <Link href={`/stores/${store.id}`} className={cx("mt-6 flex min-h-14 items-center gap-3 rounded-card border border-line bg-surface-page px-4 py-3 transition-colors hover:border-brand-200 hover:bg-primary-subtle", focusRing)}>
         <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-primary ring-1 ring-inset ring-brand-100"><Store size={18}/></span>

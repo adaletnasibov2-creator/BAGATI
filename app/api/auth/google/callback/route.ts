@@ -1,14 +1,12 @@
-import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { createSession } from "@/lib/auth";
 import { currentUser } from "@/lib/auth";
 import { logAuthFailure } from "@/lib/auth-logging";
-import { enqueueEmail } from "@/lib/email-outbox";
-import { GOOGLE_OAUTH_COOKIE, GoogleEmailUnverifiedError, exchangeGoogleCode, googleOAuthConfig, googleOAuthCookieOptions, safeEqual, safeOAuthNextPath, verifyGoogleOAuthState, type GoogleOAuthIntent, type GoogleOAuthMode } from "@/lib/google-oauth";
+import { GOOGLE_OAUTH_COOKIE, GoogleEmailUnverifiedError, type GoogleIdentity, exchangeGoogleCode, googleOAuthConfig, googleOAuthCookieOptions, safeEqual, safeOAuthNextPath, verifyGoogleOAuthState, type GoogleOAuthIntent, type GoogleOAuthMode } from "@/lib/google-oauth";
 import { decideGoogleSignIn, intentRole, stateAcceptedCustomerTerms, type GoogleSignInDecision } from "@/lib/google-oauth-decision";
-import { recordAcceptance } from "@/lib/legal-acceptance";
+import { createGoogleCustomerAccount } from "@/lib/google-customer-account";
+import { createPendingGoogleSignupToken, GOOGLE_PENDING_SIGNUP_COOKIE, pendingGoogleSignupCookieOptions } from "@/lib/google-pending-signup";
 import { existingAccountIdentity } from "@/lib/existing-account";
 import { createGoogleLinkTransaction, GOOGLE_LINK_COOKIE, GOOGLE_LINK_NEXT_COOKIE, googleLinkCookieOptions, isMissingGoogleLinkStore } from "@/lib/google-link";
 import { loginPortalForRole, type LoginPortal } from "@/lib/login-portal";
@@ -50,6 +48,26 @@ async function redirectToPasswordLink(origin: string, state: CallbackState, user
     if (!isMissingGoogleLinkStore(error)) throw error;
     logAuthFailure("google_link_transaction_store", error);
     return finish(NextResponse.redirect(new URL("/auth/google/link?status=unavailable", origin)));
+  }
+}
+
+/**
+ * SIGNUP-EASY-2: /register with the verified identity in the signed pending sign-up cookie (lib/google-pending-signup.ts).
+ * exchangeGoogleCode returns only identities whose e-mail Google verified (email_verified === true). Null when the
+ * cookie cannot be made; the caller then falls back to /register?oauth=register-required.
+ */
+async function pendingSignupRedirect(origin: string, state: CallbackState, identity: GoogleIdentity) {
+  try {
+    const token = await createPendingGoogleSignupToken({ ...identity, emailVerified: true }, state.next);
+    const target = new URL("/register", origin);
+    const next = safeOAuthNextPath(state.next, "customer");
+    if (next !== "/account") target.searchParams.set("next", next);
+    const response = finish(NextResponse.redirect(target));
+    response.cookies.set(GOOGLE_PENDING_SIGNUP_COOKIE, token, pendingGoogleSignupCookieOptions());
+    return response;
+  } catch (error) {
+    logAuthFailure("google_pending_signup_cookie", error);
+    return null;
   }
 }
 
@@ -159,41 +177,9 @@ export async function GET(request: NextRequest) {
 
     let decision = await resolve();
     if (decision.kind === "create-customer") {
-      // Only reachable with intent=customer (see decideGoogleSignIn); the role is fixed here, never taken from state.
-      const displayName = [identity.givenName, identity.familyName].filter(Boolean).join(" ") || identity.name || identity.email.split("@")[0];
-      const firstName = identity.givenName || identity.name.split(/\s+/)[0] || "";
-      const lastName = identity.familyName || identity.name.split(/\s+/).slice(1).join(" ");
-      const passwordHash = await bcrypt.hash(randomBytes(48).toString("base64url"), 12);
+      // Only reachable with intent=customer (see decideGoogleSignIn); the role is fixed in the shared function, never taken from state.
       try {
-        const user = await prisma.$transaction(async transaction => {
-          const created = await transaction.user.create({
-            data: {
-              email: identity.email,
-              passwordHash,
-              passwordAuthEnabled: false,
-              role: "CUSTOMER",
-              isActive: true,
-              // exchangeGoogleCode only returns identities whose email Google has verified.
-              emailVerifiedAt: new Date(),
-              customerProfile: { create: { firstName: firstName.slice(0, 80), lastName: lastName.slice(0, 80) } },
-              cart: { create: {} },
-            },
-            select: { id: true },
-          });
-          await transaction.$executeRaw(Prisma.sql`
-            INSERT INTO "GoogleAccount" ("id", "googleSub", "userId", "createdAt")
-            VALUES (${randomBytes(18).toString("base64url")}, ${identity.sub}, ${created.id}, ${new Date()})
-          `);
-          await enqueueEmail(transaction, {
-            eventKey: `google-welcome:${created.id}`,
-            recipient: identity.email,
-            template: "WELCOME_CUSTOMER",
-            payload: { name: displayName },
-          });
-          // Reached only with the current terms version in the signed state (stateAcceptedCustomerTerms).
-          await recordAcceptance(transaction, { userId: created.id, document: "CUSTOMER_TERMS", source: "REGISTER_GOOGLE" });
-          return created;
-        });
+        const user = await createGoogleCustomerAccount(prisma, identity);
         decision = { kind: "session", userId: user.id };
       } catch (error) {
         // A concurrent sign-in may have created the account or link; decide again from the database.
@@ -202,6 +188,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // SIGNUP-EASY-2: a new customer from /login. The verified identity waits in a signed 10-minute cookie and /register
+    // finishes the sign-up with the consent box and one button (no second Google trip). If the cookie cannot be made,
+    // the old /register?oauth=register-required message is the fallback.
+    if (decision.kind === "redirect" && decision.result === "register-required") {
+      const pending = await pendingSignupRedirect(origin, state, identity);
+      if (pending) return pending;
+    }
     if (decision.kind === "link") return redirectToPasswordLink(origin, state, decision.userId, identity.email, identity.sub);
     if (decision.kind === "redirect") return finish(NextResponse.redirect(resultUrl(origin, state, decision.result, decision.portal)));
     if (decision.kind !== "session") throw new Error("Google OAuth account resolution failed.");

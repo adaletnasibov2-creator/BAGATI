@@ -18,6 +18,7 @@ import { shortenMetaText } from "@/lib/seo";
 import { canonicalMetadata, shareImage, sharePreviewMetadata } from "@/lib/share-preview";
 import { productJsonLd, serializeJsonLd } from "@/lib/structured-data";
 import { safePublicMapUrl } from "@/lib/store-public-contact";
+import { currentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,8 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
   if (!eligibleStoreIds.has(product.store.id)) notFound();
   // "Bu məhsul haqqında soruş": customers; logged-out visitors sign in first; hidden while messaging is OFF.
   const askHref = await messageEntryForViewer({ storeId: product.store.id, productId: product.id }, "login");
+  // SIGNUP-EASY-2: only a signed-in CUSTOMER may get a remembered guest add-to-cart (guests and the edge cache: false).
+  const viewer = await currentUser();
   // SEC-FIX-1 L10: the same read-time check as the store page, so a stored non-http(s) link is never rendered.
   const storeMapUrl = safePublicMapUrl(product.store.mapUrl);
 
@@ -216,6 +219,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
           name: publicCategory.name,
           href: categoryHref(publicCategory.slug),
         } : null}
+        viewerIsCustomer={viewer?.role === "CUSTOMER"}
         sku={product.sku}
       />
 

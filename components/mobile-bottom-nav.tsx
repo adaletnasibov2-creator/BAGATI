@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Grid2X2, Home, Search, ShoppingBag, UserRound } from "lucide-react";
+import { BagIcon } from "@/components/header-icons";
 
 type BottomNavUser = { role: "CUSTOMER" | "VENDOR" | "ADMIN" } | null;
 const entries = [
@@ -25,7 +26,7 @@ export function MobileBottomNav({ user }: { user: BottomNavUser }) {
           return (
             <li key={href}>
               <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} className={`group/tab flex min-h-[60px] flex-col items-center justify-center gap-0.5 rounded-control px-1 text-[0.75rem] font-medium transition-colors active:bg-primary-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-focus ${active ? "font-semibold text-primary" : "text-fg-body hover:text-primary"}`}>
-                <span aria-hidden="true" className={`grid h-8 w-14 place-items-center rounded-full transition-colors ${active ? "bg-primary-tint" : ""}`}><Icon size={22} strokeWidth={active ? 2.25 : 2} /></span>
+                <span aria-hidden="true" className={`grid h-8 w-14 place-items-center rounded-full transition-colors ${active ? "bg-primary-tint" : ""}`}>{href === "/cart" ? <BagIcon size={24} /> : <Icon size={22} strokeWidth={active ? 2.25 : 2} />}</span>
                 <span className="leading-none">{label}</span>
               </Link>
             </li>

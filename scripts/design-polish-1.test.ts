@@ -56,11 +56,13 @@ test("header badge text: real counts only, hidden for 0, capped at 99+", () => {
   assert.equal(headerBadgeText(100), "99+");
 });
 
-test("header icons: 24 px, stroke 2, 44 px targets, existing labels; badge hidden from screen readers", () => {
+test("header actions: 44 px targets, visible labels, focus ring; badge hidden from screen readers", () => {
   const actions = read("components/header-actions.tsx");
-  assert.match(actions, /label="Sevimlilər"/); assert.match(actions, /label="Səbət"/);
+  // DESIGN-POLISH-2 replaced the 24 px lucide icons and the aria-labels "Sevimlilər"/"Səbət" with two-colour icons and the
+  // owner-approved visible labels (scripts/design-polish-2.test.ts checks the details).
+  assert.match(actions, /label="Sevimlilərim"/); assert.match(actions, /label="Səbətim"/);
   assert.match(actions, /<span aria-hidden="true" data-header-count=""/);
-  assert.match(actions, /hover:bg-primary-subtle hover:text-primary active:bg-primary-tint motion-safe:active:scale-95/);
+  assert.match(actions, /"group\/action relative inline-flex min-h-11 min-w-11 /);
   assert.match(actions, /focus-visible:outline-focus/);
   // Cart: the server count for signed-in customers only; guests (null) never fetch.
   assert.match(actions, /if \(initialCount === null\) return;/);
@@ -84,11 +86,13 @@ test("no gold focus ring on a white surface in the category menu (2.57:1)", () =
 
 const AZ = /[əğıöşüçƏĞİÖŞÜÇ]/;
 test("texts: no new visible Azerbaijani text in the changed files; legal pages unchanged", () => {
+  // The three header labels approved by the owner for DESIGN-POLISH-2 are the only new words.
+  const APPROVED = new Set(["Sevimlilərim", "Səbətim", "Hesabım"]);
   const changed = ["components/header.tsx", "components/header-actions.tsx", "components/customer-account-menu.tsx", "components/category-mega-menu.tsx", "components/home/hero-carousel.tsx", "components/home/product-shelf.tsx", "components/favorite-toggle.tsx", "components/mobile-bottom-nav.tsx", "components/customer-footer.tsx", "components/search-form.tsx", "app/(customer)/layout.tsx", "app/(customer)/products/(list)/page.tsx", "lib/cart-events.ts"];
   const fragments = (source: string) => new Set(source.split("\n").filter((line) => !/^\s*(\/\/|\*|\/\*\*|\{\/\*)/.test(line)).join("\n").split(/["'`<>{}]|\$\{/).map((part) => part.trim()).filter((part) => AZ.test(part)));
   const allBefore = new Set(changed.flatMap((path) => [...fragments(baseFile(path))]));
   for (const path of changed) {
-    const added = [...fragments(read(path))].filter((fragment) => !allBefore.has(fragment));
+    const added = [...fragments(read(path))].filter((fragment) => !allBefore.has(fragment) && !APPROVED.has(fragment) && fragment !== "Hesabım,");
     assert.deepEqual(added, [], `${path}: new Azerbaijani text`);
   }
   for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(read(path), baseFile(path), `${path} unchanged`);

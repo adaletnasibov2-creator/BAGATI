@@ -13,7 +13,7 @@ type StoreCardProps = { id: string; name: string; city: string; description?: st
 export function StoreCard({ id, name, city, description, logoUrl, hasLocation, openingTime, closingTime }: StoreCardProps) {
   const hours = storeHoursOf({ openingTime, closingTime });
   const initial = name.trim().slice(0, 1).toLocaleUpperCase("az-AZ") || "M";
-  return <Link href={`/stores/${id}`} className="group flex min-w-0 gap-3 rounded-card border border-line bg-white p-4 shadow-subtle transition-[transform,box-shadow,border-color] duration-200 hover:border-brand-300 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none sm:gap-4">
+  return <Link href={`/stores/${id}`} className="group relative flex min-w-0 gap-3 rounded-card border border-line bg-white p-4 shadow-subtle transition-[transform,box-shadow,border-color] duration-200 hover:border-brand-300 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none sm:gap-4 after:pointer-events-none after:absolute after:inset-x-5 after:bottom-0 after:h-0.5 after:rounded-full after:bg-gold-400 after:opacity-0 after:transition-opacity after:duration-200 hover:after:opacity-100 motion-reduce:after:transition-none">
     <div className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-control border border-line bg-surface-page sm:h-16 sm:w-16">
       {logoUrl
         ? <Image src={logoUrl} alt={`${name} loqosu`} fill unoptimized={/^https?:\/\//i.test(logoUrl)} sizes="64px" className="object-contain p-1"/>

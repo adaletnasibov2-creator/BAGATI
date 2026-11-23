@@ -59,7 +59,7 @@ export function Header({
             <CitySelector cities={cities} />
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 md:gap-2">
             <HeaderFavoritesLink />
             <HeaderCartLink initialCount={cartCount} />
             <CustomerAccountMenu user={user ? { email: user.email, displayName: user.displayName, role: user.role } : null} messagesUnread={messagesUnread} />

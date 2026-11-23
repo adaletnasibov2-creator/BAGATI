@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { headerActionCircle, headerActionCircleBase, headerActionItem, headerActionLabel } from "@/components/header-actions";
+import { UserIcon } from "@/components/header-icons";
+import { cx } from "@/components/ui/cx";
 import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
 import { useDismissibleDetails } from "@/components/use-dismissible-details";
 
@@ -23,7 +26,7 @@ export function CustomerAccountMenu({ user, messagesUnread = null }: { user: Acc
     finishAuthNavigation("/");
   }
   if (!user) return <div className="flex items-center gap-1">
-    <Link href="/login" aria-label="Giriş" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold text-fg transition-colors hover:bg-primary-subtle hover:text-primary active:bg-primary-tint focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:px-3"><UserRound aria-hidden="true" size={24} strokeWidth={2} className="text-icon"/><span className="hidden lg:inline">Giriş</span></Link>
+    <Link href="/login" data-header-action="" className={headerActionItem}><span data-header-circle="" className={headerActionCircle}><UserIcon size={30} /></span><span data-header-label="" className={headerActionLabel}>Giriş</span></Link>
     <Link href="/register" className="hidden min-h-11 items-center rounded-full border border-primary bg-white px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary-subtle active:bg-primary-tint focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus xl:inline-flex">Qeydiyyat</Link>
   </div>;
   const roleLabel = user.role === "VENDOR" ? "Satıcı hesabı" : user.role === "ADMIN" ? "İdarəçi hesabı" : "Müştəri hesabı";
@@ -32,7 +35,9 @@ export function CustomerAccountMenu({ user, messagesUnread = null }: { user: Acc
     : user.role === "ADMIN" ? [["/admin", "İdarəetmə paneli"]]
     : [["/account", "Hesab icmalı"], ["/orders", "Sifarişlərim"], ...(messagesUnread === null ? [] : [["/account/messages", "Mesajlarım"]]), ["/account/returns", "Qaytarılma sorğuları"], ["/account/addresses", "Ünvanlarım"], ["/favorites", "Sevimlilər"], ["/account/notifications", "Bildirişlər"], ["/account/security", "Təhlükəsizlik"]];
   return <details ref={menu.ref} className="group relative" onToggle={menu.onToggle} onClick={menu.onClick}>
-    <summary aria-label={`${user.displayName}, ${roleLabel}`} className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-transparent px-1.5 text-sm font-semibold text-fg transition-colors hover:border-line hover:bg-primary-subtle active:bg-primary-tint group-open:border-line group-open:bg-primary-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none sm:pl-1.5 sm:pr-3 [&::-webkit-details-marker]:hidden"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold tracking-wide text-white ring-2 ring-white" aria-hidden="true">{initials}</span><span className="hidden max-w-36 truncate lg:inline">{user.displayName}</span>{messagesUnread ? <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold-700 px-1 text-[11px] font-bold text-white" aria-label={`${messagesUnread} oxunmamış söhbət`}>{messagesUnread > 9 ? "9+" : messagesUnread}</span> : null}</summary>
+    {/* DESIGN-POLISH-2: the avatar (36 px, solid primary, white initials, 2 px #e1ece8 ring) above "Hesabım". The name starts with the
+        visible label (WCAG 2.5.3) and keeps the name and role for screen readers. */}
+    <summary aria-label={`Hesabım, ${user.displayName}, ${roleLabel}`} data-header-action="" className={cx(headerActionItem, "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}><span data-header-circle="" className={cx(headerActionCircleBase, "group-hover/action:bg-brand-100 group-active/action:bg-brand-100 group-open:bg-brand-100")}><span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-xs font-bold tracking-wide text-white ring-2 ring-brand-100" aria-hidden="true">{initials}</span>{messagesUnread ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-gold-700 px-1 text-[12px] font-medium leading-none text-white" aria-label={`${messagesUnread} oxunmamış söhbət`}>{messagesUnread > 9 ? "9+" : messagesUnread}</span> : null}</span><span data-header-label="" className={headerActionLabel}>Hesabım</span></summary>
     <div className="absolute right-0 z-50 mt-2 w-64 rounded-card border border-line bg-white p-2 shadow-overlay">
       <p className="truncate px-3 pt-2 text-sm font-semibold text-fg">{user.displayName}</p><p className="truncate px-3 pb-2 text-xs text-fg-muted">{user.email}</p><p className="px-3 pb-2 text-xs font-medium uppercase tracking-wide text-fg-muted">{roleLabel}</p>
       {links.map(([href, label]) => <Link key={href} href={href} className="flex min-h-11 items-center justify-between gap-2 rounded-control px-3 py-2.5 text-sm text-fg-body transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus">{label}{href === "/account/messages" && messagesUnread ? <span className="rounded-full bg-gold-700 px-1.5 py-0.5 text-[11px] font-bold text-white">{messagesUnread > 99 ? "99+" : messagesUnread}</span> : null}</Link>)}

@@ -23,6 +23,8 @@ export function HomeSectionHeading({ id, eyebrow, title, href, actionLabel = "Ha
           <span className="truncate">{eyebrow}</span>
         </p>
         <h2 id={id} className="mt-2 text-h2 text-fg">{title}</h2>
+        {/* DESIGN-POLISH-2: short gold accent under the title (decoration only). */}
+        <span aria-hidden="true" data-heading-accent="" className="mt-2 block h-[3px] w-10 rounded-full bg-gold-400" />
       </div>
       {(href || children) && (
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">

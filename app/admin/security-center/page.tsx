@@ -185,7 +185,7 @@ export default async function AdminSecurityCenterPage({ searchParams }: { search
       <section className={`${card} min-w-0`} aria-labelledby="failed-24h" data-failed-chart="24h">
         <h2 id="failed-24h" className="font-semibold text-[#0d1b2a]">{DASHBOARD_TEXT.failed24hTitle}</h2>
         <div className="mt-3">{!hourly ? unavailable : hourly.every((hour) => hour.count === 0) ? allClear(DASHBOARD_TEXT.noFailed24h)
-          : <ColumnChart title={DASHBOARD_TEXT.failed24hTitle} axisLabel={(value) => String(value)} data={hourly.map((hour) => ({ key: hour.key, value: hour.count, label: `${hour.label}: ${DASHBOARD_TEXT.failedCount(hour.count)}` }))}/>}</div>
+          : <ColumnChart title={DASHBOARD_TEXT.failed24hTitle} axisLabel={(value) => String(value)} data={hourly.map((hour) => ({ key: hour.label, value: hour.count, label: `${hour.label}: ${DASHBOARD_TEXT.failedCount(hour.count)}` }))}/>}</div>
       </section>
     </div>
 

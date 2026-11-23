@@ -206,6 +206,8 @@ test("live-check fixes: no React key carries an IP; the chart's screen-reader ta
   const stacked = read("components/stacked-column-chart.tsx");
   assert.match(stacked, /<div className="sr-only"><table><caption>\{title\}<\/caption>/);
   assert.doesNotMatch(stacked, /<table className="sr-only">/);
+  // The 24 h chart's axis shows the Baku hour ("16:00"), not the UTC key (found in the live check screenshots).
+  assert.match(page, /data=\{hourly\.map\(\(hour\) => \(\{ key: hour\.label, value: hour\.count,/);
 });
 
 test("no protection claims and nothing about WAF / Cloudflare data", () => {

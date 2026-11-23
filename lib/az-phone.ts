@@ -67,7 +67,16 @@ export function buildTelHref(phone: string | null | undefined): string | null {
   return normalized ? `tel:${normalized.e164}` : null;
 }
 
-export const AZ_PHONE_ERROR = "Telefon nömrəsini Azərbaycan formatında yazın, məsələn +994 55 123 45 67 və ya 055 123 45 67.";
+/**
+ * PHONE-REQUIRED-1: the phone on a delivery address and on an order must be an Azerbaijani MOBILE number, so the store
+ * can always call or WhatsApp the customer. Returns the stored form +994XXXXXXXXX, or null (empty, invalid or landline).
+ */
+export function normalizeAzMobilePhone(input: string | null | undefined): string | null {
+  const normalized = normalizeAzPhone(input);
+  return normalized?.mobile ? normalized.e164 : null;
+}
+
+export const AZ_PHONE_ERROR ="Telefon nömrəsini Azərbaycan formatında yazın, məsələn +994 55 123 45 67 və ya 055 123 45 67.";
 
 /**
  * Save-time schema for optional store phone fields. Empty values become null; anything else must

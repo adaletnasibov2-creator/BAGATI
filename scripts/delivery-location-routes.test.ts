@@ -69,7 +69,8 @@ test("order route: coordinates are read before the transaction and can no longer
   const pinRead = route.indexOf("const coordinatePin=readOrderCoordinates(raw);");
   const transaction = route.indexOf("db.$transaction(");
   assert.ok(pinRead > 0 && pinRead < transaction, "pin read once, before the transaction");
-  assert.match(route, /const addressSnapshot=createOrderAddressSnapshot\(address,coordinatePin\.selected\);/);
+  // PHONE-REQUIRED-1: the snapshot gets the normalized phone; the pin argument is unchanged.
+  assert.match(route, /const addressSnapshot=createOrderAddressSnapshot\(\{\.\.\.address,phone:orderPhone\},coordinatePin\.selected\);/);
   assert.equal(route.match(/coordinatePin/g)?.length, 2, "the pin is used only for the address snapshot");
 });
 
@@ -78,9 +79,11 @@ test("checkout: the pin is optional and never blocks ordering (no confirm step);
   assert.doesNotMatch(form, /locationConfirmed|Mövqeyi təsdiqlə|xəritə mövqeyini təsdiqləyin/);
   const placeOrder = form.slice(form.indexOf("async function placeOrder(){"), form.indexOf("return <div"));
   // Before the order request the only early stops are "no address selected" and (legal Phase B) the unticked terms
-  // checkbox while the current customer terms are not accepted; nothing about the map can stop the order.
+  // checkbox while the current customer terms are not accepted, and (PHONE-REQUIRED-1) a selected address whose phone is
+  // not a valid mobile number; nothing about the map can stop the order.
   const beforeRequest = placeOrder.slice(0, placeOrder.indexOf('await fetch("/api/orders"'));
-  assert.deepEqual(beforeRequest.match(/return/g), ["return", "return"]);
+  assert.deepEqual(beforeRequest.match(/return/g), ["return", "return", "return"]);
+  assert.match(beforeRequest, /if\(chosen&&!normalizeAzMobilePhone\(chosen\.phone\)\)\{fixAddressPhone\(chosen\);return\}/);
   assert.match(placeOrder, /if\(!selected\)\{setError\("Çatdırılma ünvanı seçin\."\);return\}/);
   assert.match(placeOrder, /if\(termsRequired&&!acceptTerms\)\{setTermsError\(TERMS_ERROR\);[^}]*return\}/);
   assert.doesNotMatch(beforeRequest, /location/, "the map pin never stops the order");

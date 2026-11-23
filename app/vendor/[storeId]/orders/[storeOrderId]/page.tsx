@@ -6,7 +6,7 @@ import { statusLabel, paymentStatusLabel } from "@/lib/order-status";
 import VendorOrderActions from "@/components/vendor-order-actions";
 import VendorCancellationRequest from "@/components/vendor-cancellation-request";
 import { InteractiveMap } from "@/components/interactive-map";
-import { buildCustomerWhatsAppUrl, buildTelHref } from "@/lib/az-phone";
+import { buildCustomerWhatsAppUrl, buildTelHref, normalizeAzPhone } from "@/lib/az-phone";
 import { VendorDeliveryAddressMenu } from "@/components/vendor-delivery-address-menu";
 import { buildDispatchLinks, formatCoordinates, readAddressSnapshot, sellerCanSeeDeliveryLocation } from "@/lib/delivery-location";
 import { VendorPageHeader } from "@/components/vendor-page-header";
@@ -46,7 +46,8 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
   const profile = order.order.user.customerProfile;
   const customerName = textValue(address.recipientName) || [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") || "Ad qeyd edilməyib";
   const customerPhone = textValue(address.phone) || profile?.phone || null;
-  const phone = customerPhone || "Qeyd edilməyib";
+  // PHONE-REQUIRED-1: new orders store +994XXXXXXXXX; shown as +994 55 123 45 67. Older free-text phones are shown as typed.
+  const phone = (normalizeAzPhone(customerPhone)?.display ?? customerPhone) || "Qeyd edilməyib";
   // The phone is already shown to this seller; it only becomes tappable (tel:, and WhatsApp for mobile numbers).
   const phoneTel = buildTelHref(customerPhone);
   const phoneWhatsApp = buildCustomerWhatsAppUrl(customerPhone, order.order.id);

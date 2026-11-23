@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { currentUser } from "@/lib/auth";
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   const terms = await sellerTermsGate(prisma, user.id);
   if (!terms.ok) return NextResponse.json({ error: terms.error, code: terms.code }, { status: terms.status });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? "Mağaza məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   const data = parsed.data;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -16,8 +17,8 @@ const schema = z.object({
 
 async function handlePOST(request: NextRequest) {
   let body: unknown;
-  try { body = await request.json(); }
-  catch { return NextResponse.json({ error: "Sorğu məlumatları yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); }
+  catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatları yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Bərpa keçidi və ya yeni şifrə yanlışdır." }, { status: 400, headers: { "Cache-Control": "no-store" } });
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { csrfRejection } from "@/lib/csrf";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -20,7 +21,8 @@ export async function PUT(request: NextRequest) {
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
 
-  const raw: unknown = await request.json().catch(() => null);
+  const raw: unknown = await readJsonCapped(request, JSON_BODY_LIMITS.medium).catch((error: unknown) => bodyTooLargeResponse(error) ?? null);
+  if (raw instanceof NextResponse) return raw;
   const parsed = siteSettingsSchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Sayt parametrlərini yoxlayın", details: parsed.error.flatten() }, { status: 422 });
 

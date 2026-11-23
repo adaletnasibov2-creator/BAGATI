@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const admin = await requireRole("ADMIN");
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
   const { resource } = await params;
-  let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  let body: unknown; try { body = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const section = resource.join("/");
   if (section === "commissions") {
     // ratePercent (0–100, the admin form) or the older rate (0–1); see commissionRateInput.
@@ -106,7 +107,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const admin = await requireRole("ADMIN");
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
   const { resource } = await params;
-  let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  let body: unknown; try { body = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const section = resource.join("/");
   if (section === "subscriptions") {
     const parsed = adminSubscriptionSchema.safeParse(body);
@@ -290,7 +291,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const admin = await requireRole("ADMIN");
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
   const { resource } = await params; const section = resource.join("/");
-  let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  let body: unknown; try { body = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = z.object({ id: z.string().min(1) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Rəy identifikatoru yanlışdır" }, { status: 422 });
   if (section === "categories") {
     try { const result = await deleteCategory(db, admin.id, parsed.data.id); invalidatePublicCategoryCache(); return NextResponse.json(result); }

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { consumeAuthProcessRateLimit } from "@/lib/auth-rate-limit";
+import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
 import { prisma } from "@/lib/prisma";
 import { readJsonBodyLimited } from "@/lib/request-json";
 import { verifyNotificationEmailToken } from "@/lib/store-notification-email";
@@ -12,6 +14,13 @@ import { verifyNotificationEmailToken } from "@/lib/store-notification-email";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // SEC-FIX-2 L8: guest route, one DB lookup per call. In-process only (no DB write per call): 30 / minute per trusted
+  // client IP and 600 / minute for the process. Same { ok } answer as a failed link, so nothing new is shown.
+  const clientIp = trustedCloudflareClientIp(request.headers);
+  if ((clientIp && !consumeAuthProcessRateLimit(`notification-email-verify:ip:${clientIp}`, 30, 60_000))
+    || !consumeAuthProcessRateLimit("notification-email-verify:process", 600, 60_000)) {
+    return NextResponse.json({ ok: false }, { status: 429, headers: { "Cache-Control": "no-store" } });
+  }
   const body = await readJsonBodyLimited(request, 1024);
   const token = body.ok ? (body.value as { token?: unknown } | null)?.token : null;
   const ok = typeof token === "string" ? await verifyNotificationEmailToken(prisma, token).catch(() => false) : false;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -20,7 +21,7 @@ import { adminLoginIpBucket, adminRateLimitedResponseParts } from "@/lib/admin-l
 const schema = z.object({ email: z.string().trim().email().max(254), password: z.string().min(1).max(128) });
 async function handlePOST(request: NextRequest) {
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "E-poçt və ya şifrə yanlışdır" }, { status: 400 });
   const email = parsed.data.email.trim().toLowerCase();

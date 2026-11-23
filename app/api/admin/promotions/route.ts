@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { csrfRejection } from "@/lib/csrf";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Kampaniya məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Kampaniya məlumatı yanlışdır" }, { status: 400 }); }
   if (!adminPromotionSchema.safeParse(raw).success) return NextResponse.json({ error: "Kampaniya məlumatlarını yoxlayın" }, { status: 422 });
   try {
     const item = await prisma.$transaction(async (tx) => {
@@ -115,7 +116,7 @@ export async function PATCH(request: NextRequest) {
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Kampaniya məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Kampaniya məlumatı yanlışdır" }, { status: 400 }); }
   const idResult = z.object({ id: z.string().min(1) }).safeParse(raw);
   if (!idResult.success) return NextResponse.json({ error: "Kampaniya identifikatoru yanlışdır" }, { status: 422 });
   if (!adminPromotionSchema.safeParse(raw).success) return NextResponse.json({ error: "Kampaniya məlumatlarını yoxlayın" }, { status: 422 });

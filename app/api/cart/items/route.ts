@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,7 @@ const schema = z.object({ productId: z.string().min(1), variantId: z.string().mi
 export async function POST(request: NextRequest) {
   const user = await requireRole("CUSTOMER");
   if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  let raw: unknown; try { raw = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  let raw: unknown; try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
   const parsed = schema.safeParse(raw); if (!parsed.success) return NextResponse.json({ error: "Review the product and quantity" }, { status: 422 });
   try {
     const item = await prisma.$transaction(async transaction => {

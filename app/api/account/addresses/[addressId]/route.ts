@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +13,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   const { addressId } = await params;
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Review the address details", details: parsed.error.flatten() }, { status: 422 });
   if ((parsed.data.latitude == null) !== (parsed.data.longitude == null)) return NextResponse.json({ error: "Xəritə koordinatları birlikdə daxil edilməlidir" }, { status: 422 });

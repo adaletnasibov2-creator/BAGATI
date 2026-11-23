@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { csrfRejection } from "@/lib/csrf";
@@ -16,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!customer) return NextResponse.json({ error: "Daxil olmaq tələb olunur" }, { status: 401 });
   const { orderId, requestId } = await params;
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   if (!z.object({ action: z.literal("withdraw") }).strict().safeParse(raw).success) return NextResponse.json({ error: "Əməliyyat yanlışdır" }, { status: 422 });
   try {
     return NextResponse.json({ item: await withdrawStoreOrderCancellation(prisma, { orderId, requestId, customerId: customer.id }) });

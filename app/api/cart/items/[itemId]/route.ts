@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -11,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   const user = await requireRole("CUSTOMER");
   if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   const { itemId } = await params;
-  let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  let body: unknown; try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
   const parsed = schema.safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Quantity must be from 1 to 50" }, { status: 422 });
   try {
     const updated = await prisma.$transaction(async transaction => {

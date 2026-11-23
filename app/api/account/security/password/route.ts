@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { csrfRejection } from "@/lib/csrf";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -16,7 +17,7 @@ export async function PATCH(request: NextRequest) {
   const crossSite = csrfRejection(request);
   if (crossSite) return crossSite;
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Yanlış JSON" }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Yanlış JSON" }, { status: 400 }); }
   const parsed = schema.safeParse(body);
   if (!parsed.success || parsed.data.newPassword === parsed.data.currentPassword) return NextResponse.json({ error: "Şifrə məlumatlarını yoxlayın; yeni şifrə ən azı 12 simvol olmalı və köhnədən fərqlənməlidir" }, { status: 422 });
   const record = await prisma.user.findUnique({ where: { id: user.id }, select: { passwordHash: true, passwordAuthEnabled: true } });

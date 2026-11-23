@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import type { Prisma } from "@prisma/client";
 import { requireStoreAccess } from "@/lib/auth";
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const access = await requireStoreAccess(storeId);
   if (!hasVendorProductStoreAccess(access)) return NextResponse.json({ error: "Mağazaya giriş icazəsi yoxdur" }, { status: 403 });
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Məhsul məlumatı yanlışdır" }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.product); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Məhsul məlumatı yanlışdır" }, { status: 400 }); }
 
   const parsed = vendorProductPatchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Məhsul məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });

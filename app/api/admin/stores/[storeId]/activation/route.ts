@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -20,9 +21,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ st
 
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 });
+    body = await readJsonCapped(request, JSON_BODY_LIMITS.medium);
+  } catch (error) {
+    return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 });
   }
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Aktivlik statusunu yoxlayın" }, { status: 422 });

@@ -4,6 +4,7 @@
  * successful, committed verification.
  */
 import { NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import type { PrismaClient, Prisma } from "@prisma/client";
 import type { Role } from "@prisma/client";
@@ -41,9 +42,9 @@ export async function handleVerifyEmail(request: Request, deps: VerifyEmailDeps)
 
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "6 rəqəmli kodu daxil edin." }, { status: 400 });
+    body = await readJsonCapped(request, JSON_BODY_LIMITS.small);
+  } catch (error) {
+    return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "6 rəqəmli kodu daxil edin." }, { status: 400 });
   }
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) {

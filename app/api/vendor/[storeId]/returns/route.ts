@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { z } from "zod";
 import { requireStoreAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const access = await requireStoreAccess(storeId);
   if (!access) return NextResponse.json({ error: "Mağazaya giriş icazəsi yoxdur" }, { status: 403 });
   let raw: unknown;
-  try { raw = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+  try { raw = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = z.object({ id: z.string().min(1), action: z.enum(["approve", "reject", "receive", "restore-stock", "process-resolution", "complete-exchange"]), response: responseSchema }).safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Qaytarılma məlumatlarını yoxlayın" }, { status: 422 });
   try {

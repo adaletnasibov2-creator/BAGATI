@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
 }
 export async function POST(request:NextRequest) {
  const user=await requireRole("CUSTOMER"); if(!user)return NextResponse.json({error:"Authentication required"},{status:401});
- let raw:unknown;try{raw=await request.json()}catch{return NextResponse.json({error:"Invalid JSON"},{status:400})}
+ let raw:unknown;try{raw=await readJsonCapped(request, JSON_BODY_LIMITS.medium)}catch (error) {return bodyTooLargeResponse(error) ?? NextResponse.json({error:"Invalid JSON"},{status:400})}
  const parsed=schema.safeParse(raw);if(!parsed.success)return NextResponse.json({error:"A delivery address is required"},{status:400});
  // Legal gate before any stock is touched: 409 TERMS_REQUIRED without a current acceptance; with the box ticked the
  // acceptance is recorded (source CHECKOUT) in its own short transaction and the order continues.

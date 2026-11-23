@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import { csrfRejection } from "@/lib/csrf";
 import { Prisma } from "@prisma/client";
@@ -19,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (crossSite) return crossSite;
 
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Məhsul məlumatı yanlışdır" }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.large); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Məhsul məlumatı yanlışdır" }, { status: 400 }); }
   const parsed = adminProductUpdateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Məhsul məlumatlarını yoxlayın", details: parsed.error.flatten() }, { status: 422 });
   const { productId } = await params;

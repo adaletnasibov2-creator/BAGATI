@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { csrfRejection } from "@/lib/csrf";
 import { CategoryAdminError } from "@/lib/admin-category-service";
 import { logSecurityOperationFailure } from "@/lib/security-logging";
@@ -22,7 +23,7 @@ export async function runCategoryAdmin(
   if (crossSite) return crossSite;
   let body: unknown = null;
   if (readBody) {
-    try { body = await request.json(); } catch { return NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
+    try { body = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
   }
   try {
     const item = await work(body);

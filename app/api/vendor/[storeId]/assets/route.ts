@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
 import { requireStoreAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { readBoundedRequestBytes } from "@/lib/request-body";
@@ -51,7 +52,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const access = await requireStoreAccess(storeId);
   if (!access || access.user.role !== "VENDOR") return NextResponse.json({ error: "Mağazaya giriş icazəsi yoxdur" }, { status: 403 });
   let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Şəkil məlumatı yanlışdır" }, { status: 400 }); }
+  try { body = await readJsonCapped(request, JSON_BODY_LIMITS.small); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Şəkil məlumatı yanlışdır" }, { status: 400 }); }
   const url = body && typeof body === "object" && "url" in body && typeof body.url === "string" ? body.url : "";
   const key = getOwnedStoreAssetKey(access.storeId, url);
   const urlDriver = getStoreAssetDriverForUrl(access.storeId, url);

@@ -132,16 +132,23 @@ test("shownIp: full IP only in full mode and only while the raw value exists", (
 });
 
 test("full IPs are shown only after the SECURITY_FULL_IP_VIEW audit row was written", () => {
-  for (const [path, page] of [["app/admin/security-center/page.tsx", "summary"], ["app/admin/security-center/events/page.tsx", "events"]] as const) {
+  // SECURITY-CENTER-DESIGN-2: the overview shows one IP (last login, via loginIp); the logins tab is a new reveal page.
+  for (const [path, page, output] of [
+    ["app/admin/security-center/page.tsx", "summary", "<Ip value={loginIp("],
+    ["app/admin/security-center/events/page.tsx", "events", "shownIp(row."],
+    ["app/admin/security-center/logins/page.tsx", "logins", "shownIp(row."],
+  ] as const) {
     const source = read(path);
     assert.match(source, new RegExp(`const full = [^;]*\\? await recordFullIpView\\(admin\\.id, "${page}"\\) : false;`), path);
-    before(source, `recordFullIpView(admin.id, "${page}")`, "shownIp(", path);
+    before(source, `recordFullIpView(admin.id, "${page}")`, output, path);
   }
   const data = read("lib/security-center-data.ts");
   assert.match(data, /action: "SECURITY_FULL_IP_VIEW", entityType: "SecurityCenter", entityId: page/);
   assert.match(data, /return true;\n  \} catch \(error\) \{[\s\S]*?return false;/, "a failed audit write keeps the IPs masked");
-  // The reveal is a GET form (never prefetched by the router), not a Link.
-  assert.match(read("app/admin/security-center/page.tsx"), /<form method="get" action="\/admin\/security-center"><input type="hidden" name="ip" value="full" \/>/);
+  // The reveal is a GET form (never prefetched by the router), not a Link. DESIGN-2: the form moved into the shared
+  // FullIpToggle (components/security-center-ui.tsx); the overview passes its own action.
+  assert.match(read("components/security-center-ui.tsx"), /<form method="get" action=\{action\}><input type="hidden" name="ip" value="full" \/>/);
+  assert.match(read("app/admin/security-center/page.tsx"), /<FullIpToggle action="\/admin\/security-center" full=\{full\}\/>/);
 });
 
 // ---------------------------------------------------------------- summary helpers
@@ -183,7 +190,7 @@ test("event list filters: only produced event types, bounded page and query", ()
   assert.deepEqual(parseEventFilters({}), { window: "7d", eventType: "", severity: "", q: "", page: 1, fullIp: false });
   assert.deepEqual(parseEventFilters({ window: "30d", type: "WAF_EVENT", severity: "HIGH", q: "x".repeat(300), page: "99999", ip: "full" }), { window: "30d", eventType: "", severity: "HIGH", q: "x".repeat(100), page: 1, fullIp: true });
   assert.equal(parseEventFilters({ type: "LOGIN_FAILURE", page: "3" }).page, 3);
-  assert.equal(EVENTS_PAGE_SIZE, 50);
+  assert.equal(EVENTS_PAGE_SIZE, 10, "SECURITY-CENTER-DESIGN-2: compact tab, 10 per page (was 50)");
 });
 
 // ---------------------------------------------------------------- page wiring, limits, cleanup
@@ -195,20 +202,26 @@ test("summary and event pages: admin + security.view first, read-only bounded qu
   assert.doesNotMatch(data, /\.(create|update|upsert|delete|createMany|updateMany|deleteMany)\((?![^)]*SECURITY_FULL_IP_VIEW)/, "only the full-IP audit row is written");
   for (const take of data.matchAll(/take: (\d+)/g)) assert.ok(Number(take[1]) <= 100, `take ${take[1]}`);
   for (const limit of data.matchAll(/LIMIT (\d+)/g)) assert.ok(Number(limit[1]) <= 60, `LIMIT ${limit[1]}`);
-  for (const path of ["app/admin/security-center/page.tsx", "app/admin/security-center/events/page.tsx"]) {
+  // SECURITY-CENTER-DESIGN-2: the pages stay server pages without timers; the optional auto-refresh lives in the client
+  // component components/security-refresh.tsx (off by default, tested in security-center-design-2.test.ts).
+  const tabs = ["page.tsx", "events/page.tsx", "logins/page.tsx", "audit/page.tsx", "incidents/page.tsx"].map((name) => `app/admin/security-center/${name}`);
+  for (const path of tabs) {
     const source = read(path);
     assert.match(source, /export const dynamic = "force-dynamic";/);
     assert.doesNotMatch(source, /setInterval|"use client"/, path);
   }
-  const summary = read("app/admin/security-center/page.tsx");
-  for (const title of ["IP yoxlaması", "Adminlər və iki mərhələli təsdiq", "Son admin girişləri", "Uğursuz girişlər", "Şübhəli fəaliyyət", "İnsidentlər və yüksək riskli hadisələr", "Son təhlükəsizlik əməliyyatları"]) {
-    assert.ok(summary.includes(`title="${title}"`), title);
+  // DESIGN-2: the blocks moved from the summary into their tabs (titles unchanged).
+  const all = tabs.map(read).join("\n");
+  assert.ok(read(tabs[0]).includes('title="IP yoxlaması"'));
+  for (const title of ["Adminlər və iki mərhələli təsdiq", "Son admin girişləri", "Uğursuz girişlər", "Şübhəli fəaliyyət", "Son təhlükəsizlik əməliyyatları"]) {
+    assert.ok(all.includes(`<Block title="${title}"`), title);
   }
-  for (const link of ["/admin/system", "/admin/security", "/admin/security-center/incidents", "/admin/security-center/events", "/admin/audit-log"]) assert.ok(summary.includes(link), link);
-  // Browser check (390 px): grid cards must shrink below their tables' min width, the tables scroll inside.
-  assert.match(summary, /<section className=\{`\$\{card\} min-w-0\$\{wide \? " xl:col-span-2" : ""\}`\}>/);
-  assert.match(summary, /<div className="overflow-x-auto"><table className=\{`w-full \$\{narrow \? "min-w-\[360px\]" : "min-w-\[520px\]"\} text-left text-sm`\}>/);
-  assert.match(summary, /<Table narrow head=\{\["E-poçt", "2FA", "Kilid", "Bərpa kodları"\]\}>/, "the half-width admins table fits its card");
+  for (const link of ["/admin/system", "/admin/security", "/admin/security-center/incidents", "/admin/security-center/events", "/admin/audit-log"]) assert.ok(all.includes(link) || read("lib/security-center-status.ts").includes(link), link);
+  // Browser check (390 px): cards shrink (min-w-0) and tables turn into small cards on phones (no sideways scroll).
+  const ui = read("components/security-center-ui.tsx");
+  assert.match(ui, /<section className=\{`\$\{card\} min-w-0`\} id=\{id\}>/);
+  assert.match(ui, /<table className="w-full text-left text-sm max-sm:block sm:min-w-\[480px\]">/);
+  assert.match(read("app/admin/security-center/logins/page.tsx"), /<RowTable head=\{\["E-poçt", "2FA", "Kilid", "Bərpa kodları"\]\}/);
 });
 
 test("security events are written as UTC wall-clock times (no +4 h shift on a database set to Asia/Baku)", () => {
@@ -216,9 +229,11 @@ test("security events are written as UTC wall-clock times (no +4 h shift on a da
   assert.match(store, /\$\{utcTimestamp\(new Date\(input\.event\.occurredAt\)\)\},/);
   assert.match(store, /\$\{input\.event\.ruleId \?\? null\}, \(NOW\(\) AT TIME ZONE 'UTC'\)/);
   assert.doesNotMatch(store, /\$\{new Date\(input\.event\.occurredAt\)\},/);
-  // The wide blocks keep the summary tables readable on desktop (found in the browser check).
-  const summary = read("app/admin/security-center/page.tsx");
-  for (const title of ["Son admin girişləri", "Uğursuz girişlər", "Şübhəli fəaliyyət", "İnsidentlər və yüksək riskli hadisələr", "Son təhlükəsizlik əməliyyatları"]) assert.ok(summary.includes(`<Block wide title="${title}"`), title);
+  // The blocks with wide tables now each have a tab (SECURITY-CENTER-DESIGN-2), full width there; the incidents block
+  // became the overview's "needs attention" list and the incidents tab.
+  for (const [title, path] of [["Son admin girişləri", "logins"], ["Uğursuz girişlər", "logins"], ["Şübhəli fəaliyyət", "events"], ["Son təhlükəsizlik əməliyyatları", "audit"]]) {
+    assert.ok(read(`app/admin/security-center/${path}/page.tsx`).includes(`<Block title="${title}"`), title);
+  }
 });
 
 test("cleanup: nested old center, IP-controls API, Apache/Cloudflare cards, empty filters and duplicate IP list are gone", () => {

@@ -112,7 +112,8 @@ test("UI: incidents/rules client component imports no server module and does not
   for (const path of ["app/admin/security-center/page.tsx", "app/admin/security-center/events/page.tsx", "app/admin/security-center/incidents/page.tsx"]) {
     assert.ok(ascending(read(path), ['requireRole("ADMIN")', 'requireSecurityPermission(admin, "security.view")', 'redirect("/admin/login")']), path);
   }
-  assert.match(read("app/admin/security-center/incidents/page.tsx"), /<AdminSecurityMonitoring \/>/);
+  // SECURITY-CENTER-DESIGN-2: the page passes its render time so "Yenilə" reloads the list (was `<AdminSecurityMonitoring />`).
+  assert.match(read("app/admin/security-center/incidents/page.tsx"), /<AdminSecurityMonitoring refreshedAt=\{renderedAt\} \/>/);
   assert.equal(existsSync(join(root, "components/admin-security-center.tsx")), false, "the nested older center is deleted");
   assert.equal(existsSync(join(root, "app/api/admin/security/ip-controls/route.ts")), false, "the dead IP-controls API is deleted");
 });

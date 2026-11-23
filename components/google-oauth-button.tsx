@@ -93,10 +93,13 @@ export function GoogleOAuthButton({ intent, mode, nextPath, errorCode, portal, t
     {termsGate && !termsGate.accepted ? <button type="button" onClick={termsGate.onBlocked} aria-disabled="true" className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 py-3.5 font-medium text-ink opacity-60 transition">
       <GoogleMark/>
       Google ilə davam et
-    </button> : <Link href={`/api/auth/google/start?${query.toString()}`} className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 py-3.5 font-medium text-ink transition hover:bg-slate-50">
+    </button> : // GOOGLE-PREFETCH-1: a plain <a>, never next/link. A <Link> is prefetched when the page opens (the start route
+    // then sets the OAuth state cookie, uses rate-limit counters and redirects to Google with nobody pressing it), and
+    // its click first sends an RSC fetch that runs the route a second time. A plain <a> runs it once, on the click.
+    <a href={`/api/auth/google/start?${query.toString()}`} className="flex w-full items-center justify-center gap-3 rounded-full border border-line bg-white px-5 py-3.5 font-medium text-ink transition hover:bg-slate-50">
       <GoogleMark/>
       {mode === "link" ? "Google hesabını bağla" : "Google ilə davam et"}
-    </Link>}
+    </a>}
     <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line"/><span>və ya e-poçtla</span><span className="h-px flex-1 bg-line"/></div>
   </div>;
 }

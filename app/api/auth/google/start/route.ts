@@ -4,6 +4,7 @@ import { authRateLimitKey, consumeAuthProcessRateLimit, consumeAuthRateLimit, OA
 import { logAuthFailure } from "@/lib/auth-logging";
 import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
 import { LEGAL_VERSIONS } from "@/lib/legal-versions";
+import { isPrefetchOrRouterRequest } from "@/lib/prefetch-request";
 import {
   GOOGLE_OAUTH_COOKIE,
   googleAuthorizationUrl,
@@ -23,6 +24,12 @@ function formPath(intent: GoogleOAuthIntent, mode: GoogleOAuthMode) {
 }
 
 export async function GET(request: NextRequest) {
+  // GOOGLE-PREFETCH-1 (defence in depth; the button is a plain <a>): a prefetch or Next.js router fetch gets an empty
+  // 204 before anything else: no OAuth state cookie, no rate-limit counter, no redirect. A real click never carries
+  // these headers; a router fetch that gets a non-RSC answer falls back to a normal browser navigation.
+  if (isPrefetchOrRouterRequest(request.headers)) {
+    return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store", Vary: "RSC, Next-Router-Prefetch, Sec-Purpose, Purpose" } });
+  }
   const origin = oauthResponseOrigin(request.url, request.headers.get("host"));
   const params = request.nextUrl.searchParams;
   const intentValue = params.get("intent");

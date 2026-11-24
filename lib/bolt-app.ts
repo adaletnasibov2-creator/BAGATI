@@ -23,6 +23,11 @@ export function detectClientPlatform(userAgent: string, maxTouchPoints = 0): Cli
   return "desktop";
 }
 
+/** SELLER-CUSTOMER-CARD-1: Apple Maps is offered only on Apple devices (iPhone, iPad, Mac); decided in the browser. */
+export function isAppleMapsPlatform(userAgent: string, maxTouchPoints = 0): boolean {
+  return detectClientPlatform(userAgent, maxTouchPoints) === "ios" || /Macintosh|Mac OS X/i.test(userAgent);
+}
+
 export function boltOpenLink(platform: ClientPlatform): { href: string; label: string } {
   if (platform === "android") return { href: BOLT_PLAY_STORE_URL, label: "Google Play" };
   if (platform === "ios") return { href: BOLT_APP_STORE_URL, label: "App Store" };

@@ -119,22 +119,25 @@ test("seller order page: pin and dispatch menu only while the seller may see the
 test("dispatch menu: portal, plain-text brands, no referrer, Bolt copy message and link", () => {
   const menu = read("components/vendor-delivery-address-menu.tsx");
   assert.match(menu, /createPortal\(/);
-  assert.match(menu, /document\.body,\n\s*\)\}/);
-  assert.equal(menu.match(/target="_blank" rel="noopener noreferrer"/g)?.length, 7, "Google, OSM, Uber, Waze, WhatsApp, Bolt and the Bolt notice link");
-  assert.match(menu, />Google Maps<\/a>/);
-  assert.match(menu, />Xəritə \(OpenStreetMap\)<\/a>/);
-  assert.match(menu, />Uber<\/a>/);
+  assert.match(menu, /<\/>, document\.body\)\}/);
+  // SELLER-CUSTOMER-CARD-1: every external link (Google, Waze, Apple, Yandex, Uber via appRow; Bolt; WhatsApp; the Bolt notice link) sends no referrer.
+  assert.equal(menu.match(/<a [^>]*href=/g)?.length, menu.match(/target="_blank" rel="noopener noreferrer"/g)?.length, "every <a> opens in a new tab without referrer");
+  for (const name of ['"Google Maps"', '"Waze"', '"Uber"', "SELLER_CUSTOMER_CARD_TEXT.appleMaps", "SELLER_CUSTOMER_CARD_TEXT.yandexMaps"]) assert.ok(menu.includes(name), name);
+  assert.doesNotMatch(menu, /OpenStreetMap/, "owner: OpenStreetMap row removed from the seller menu");
   assert.match(menu, /Ünvan kopyalandı\. Bolt tətbiqini açın\. <a href=\{bolt\.href\}/);
-  // Waze only with a pin; WhatsApp share always (its text has a map link only with a pin); Bolt copies, then opens the store page.
-  assert.match(menu, /\{links\.waze && <a role="menuitem" href=\{links\.waze\}/);
-  assert.match(menu, /<a role="menuitem" href=\{links\.whatsapp\}[^>]*>.*WhatsApp · Ünvanı göndər<\/a>/);
-  assert.match(menu, /<a role="menuitem" href=\{bolt\.href\}[^>]*onClick=\{\(\) => void copy\("bolt"\)\}/);
+  // Uber only with a pin (else the existing note); WhatsApp share always; Bolt copies, then opens the store page; Apple only on Apple devices.
+  assert.match(menu, /\{links\.apps\.uber\n\s*\? appRow\(links\.apps\.uber, "Uber"/);
+  assert.match(menu, /<a data-dispatch-row="" href=\{links\.whatsapp\}[^>]*>.*WhatsApp · Ünvanı göndər<\/span>/);
+  assert.match(menu, /href=\{bolt\.href\}[^>]*onClick=\{\(\) => void copy\("bolt"\)\}/);
+  assert.match(menu, /\{apple && <li>\{appRow\(links\.apps\.appleMaps/);
   // The platform is detected in the browser only.
-  assert.match(menu, /useEffect\(\(\) => \{ setPlatform\(detectClientPlatform\(navigator\.userAgent, navigator\.maxTouchPoints\)\); \}, \[\]\);/);
+  assert.match(menu, /useEffect\(\(\) => \{ setPlatform\(detectClientPlatform\(navigator\.userAgent, navigator\.maxTouchPoints\)\); setApple\(isAppleMapsPlatform\(navigator\.userAgent, navigator\.maxTouchPoints\)\); \}, \[\]\);/);
   assert.doesNotMatch(read("lib/bolt-app.ts"), /from "next|headers\(|cookies\(/, "no server logic");
-  assert.doesNotMatch(menu, /<img|<svg|<Image|\.(png|svg|jpe?g|webp)"/i, "brand names as text only, no logo images");
+  assert.doesNotMatch(menu, /<img|<Image|\.(png|svg|jpe?g|webp)"/i, "brand names as text and letter marks, no logo images");
   assert.match(menu, /event\.key === "Escape"/);
+  assert.match(menu, /event\.key === "Tab"/, "focus stays inside the dialog");
   assert.match(menu, /buttonRef\.current\?\.focus\(\)/);
+  assert.match(menu, /role="dialog" aria-modal="true" aria-labelledby="delivery-address-menu-title"/);
 });
 
 test("seller shipment API: the shipment status never moves the order status; closed orders refuse shipment changes", () => {
@@ -260,7 +263,8 @@ test("seller order page: the customer's phone (already shown) is a tel: link plu
   const page = read("app/vendor/[storeId]/orders/[storeOrderId]/page.tsx");
   assert.match(page, /const phoneTel = buildTelHref\(customerPhone\);/);
   assert.match(page, /const phoneWhatsApp = buildCustomerWhatsAppUrl\(customerPhone, order\.order\.id\);/);
-  assert.match(page, /\{phoneTel \? <a href=\{phoneTel\}/);
+  // SELLER-CUSTOMER-CARD-1: the number is always shown as text; "Zəng et" (tel:) appears when the number is valid.
+  assert.match(page, /\{phoneTel && <a href=\{phoneTel\}[^>]*>.*Zəng et<\/a>\}/);
   // SELLER-ORDERS-DESIGN-1: a decorative icon (aria-hidden) may sit before the same visible text.
   assert.match(page, /\{phoneWhatsApp && <a href=\{phoneWhatsApp\} target="_blank" rel="noopener noreferrer"[^>]*>(?:<MessageCircle aria-hidden="true"[^>]*\/>)?WhatsApp ilə yaz<\/a>\}/);
   // Same source as before: the order snapshot, else the customer profile. Not subject to the pin's 7-day rule.

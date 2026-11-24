@@ -48,7 +48,8 @@ test("dispatch links: exact Google, OpenStreetMap and Uber URLs; no name or phon
   const links = buildDispatchLinks(address, "cmabcdef1234567890");
   assert.equal(links.googleMaps, "https://www.google.com/maps/search/?api=1&query=40.4093,49.8671");
   assert.equal(links.openStreetMap, "https://www.openstreetmap.org/?mlat=40.4093&mlon=49.8671#map=17/40.4093/49.8671");
-  assert.equal(links.uber, "https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=40.4093&dropoff[longitude]=49.8671&dropoff[nickname]=Sifari%C5%9F%20%2334567890");
+  // SELLER-CUSTOMER-CARD-1: the documented universal link (m.uber.com/looking, drop[0] = JSON); the old /ul/ path is not in Uber's docs.
+  assert.equal(links.uber, `https://m.uber.com/looking?drop%5B0%5D=${encodeURIComponent(JSON.stringify({ latitude: 40.4093, longitude: 49.8671, addressLine1: "Sifariş #34567890" }))}`);
   assert.equal(links.copyText, "Nizami küç. 1, Bakı\n40.409300, 49.867100\nhttps://www.google.com/maps/search/?api=1&query=40.4093,49.8671");
   for (const value of Object.values(links)) assert.doesNotMatch(String(value), /Gizli|501112233/);
 });

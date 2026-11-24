@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ImageOff, MessageCircle, Phone } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
 import { statusLabel, paymentStatusLabel } from "@/lib/order-status";
@@ -11,17 +12,30 @@ import { VendorDeliveryAddressMenu } from "@/components/vendor-delivery-address-
 import { buildDispatchLinks, formatCoordinates, readAddressSnapshot, sellerCanSeeDeliveryLocation } from "@/lib/delivery-location";
 import { VendorPageHeader } from "@/components/vendor-page-header";
 import { Badge } from "@/components/ui/badge";
-import { orderStatusTone } from "@/lib/vendor-status-tone";
+import { buttonClass } from "@/components/ui/button";
+import { cx } from "@/components/ui/cx";
+import { orderStatusTone, paymentStatusTone } from "@/lib/vendor-status-tone";
+import { VendorOrderPrintButton } from "@/components/vendor-order-print-button";
+import { formatOrderDateTime, itemThumbnail, orderNumber, orderTimeline, SELLER_ORDERS_TEXT, storeOrderTotal } from "@/lib/vendor-order-view";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
-const panel = "rounded-card border border-line bg-white p-5 sm:p-6";
+const panel = "min-w-0 rounded-card border border-line bg-white p-5 sm:p-6";
+const panelTitle = "font-display text-h3 text-fg";
+const term = "text-xs font-medium text-fg-muted";
+const money = (value: unknown) => Number(value).toFixed(2);
 const textValue = (value: unknown) => typeof value === "string" ? value : "";
+type OrderItemRow = { id: string; productName: string; variantName?: string | null; variantOptions?: unknown; sku?: string | null; quantity: number; unitPrice: unknown; lineTotal: unknown; variant?: { name: string; options: unknown } | null; product?: { images?: string[] | null } | null };
 function optionText(options: unknown) {
   if (!options || typeof options !== "object" || Array.isArray(options)) return "";
   return Object.entries(options).map(([key, value]) => `${key}: ${String(value)}`).join(" · ");
 }
 
+/**
+ * Seller order page (SELLER-ORDERS-DESIGN-1 layout). Same data rules as before: only this store's part of the order
+ * (other stores' parts give 404), no customer e-mail, the address/pin rules of lib/delivery-location.ts, the same
+ * actions. The packing slip at the end is shown only when printing.
+ */
 export default async function VendorOrderDetail({ params }: { params: Promise<{ storeId: string; storeOrderId: string }> }) {
   const { storeId, storeOrderId } = await params;
   const access = await requireVendorStorePage(storeId);
@@ -30,8 +44,8 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
   const order = await db.storeOrder.findFirst({
     where: { id: storeOrderId, storeId: access.storeId },
     include: {
-      order: { select: { id: true, createdAt: true, addressSnapshot: true, payments: { select: { status: true, amount: true, currency: true }, orderBy: { createdAt: "desc" }, take: 1 }, user: { select: { customerProfile: { select: { firstName: true, lastName: true, phone: true } } } } } },
-      items: { include: { variant: { select: { name: true, options: true } } } },
+      order: { select: { id: true, createdAt: true, addressSnapshot: true, payments: { select: { status: true }, orderBy: { createdAt: "desc" }, take: 1 }, user: { select: { customerProfile: { select: { firstName: true, lastName: true, phone: true } } } } } },
+      items: { include: { variant: { select: { name: true, options: true } }, product: { select: { images: true } } } },
       cancellationRequests: { where: { status: "REQUESTED" }, orderBy: { createdAt: "desc" }, take: 1, select: { id: true, reason: true, createdAt: true } },
     },
   });
@@ -39,6 +53,10 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
   // All payments, not only the latest attempt: a paid order whose store order is cancelled needs a manual refund.
   const paid = (await db.payment.count({ where: { orderId: order.order.id, status: "PAID" } })) > 0;
   const openRequest = order.cancellationRequests[0] ?? null;
+  // The only stored moment of a cancellation: an approved request's decision time (status strip; never guessed).
+  const approvedCancellation = order.status === "CANCELLED"
+    ? await db.orderCancellationRequest.findFirst({ where: { storeOrderId: order.id, status: "APPROVED" }, orderBy: { decidedAt: "desc" }, select: { decidedAt: true } })
+    : null;
 
   const address = order.order.addressSnapshot && typeof order.order.addressSnapshot === "object" && !Array.isArray(order.order.addressSnapshot)
     ? order.order.addressSnapshot as Record<string, unknown>
@@ -58,27 +76,102 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
   const pin = locationAccess ? deliveryView.coordinates : null;
   const dispatchLinks = locationAccess && addressLines.length ? buildDispatchLinks(deliveryView, order.order.id) : null;
 
-  return <div className="mx-auto max-w-5xl space-y-5">
-    <VendorPageHeader
-      back={<Link href={`/vendor/${storeId}/orders`} className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:text-primary-hover">← Sifarişlərə qayıt</Link>}
-      eyebrow="Sifariş təfərrüatı"
-      title={`#${order.order.id.slice(-8).toUpperCase()}`}
-      description={<>Yaradılıb: {new Date(order.order.createdAt).toLocaleString("az-AZ")} <span aria-hidden="true">·</span> Ödəniş: {paymentStatusLabel(order.order.payments[0]?.status)}{order.order.payments[0] ? ` · ${Number(order.order.payments[0].amount).toFixed(2)} ${order.order.payments[0].currency}` : ""}</>}
-      action={<Badge tone={orderStatusTone(order.status)} size="md">{statusLabel(order.status)}</Badge>}
-    />
+  const number = orderNumber(order.order.id);
+  const created = formatOrderDateTime(order.order.createdAt);
+  const paymentStatus = order.order.payments[0]?.status;
+  // Only the payment STATUS is shown: the payment amount is the whole customer order, which can include other stores.
+  const timeline = orderTimeline({ createdAt: order.order.createdAt, status: order.status, shippedAt: order.shippedAt, outForDeliveryAt: order.outForDeliveryAt, deliveredAt: order.deliveredAt, cancelledAt: approvedCancellation?.decidedAt });
+  const variantLine = (item: OrderItemRow) => `${(item.variantName||item.variant) ? `Variant: ${item.variantName||item.variant?.name}${optionText(item.variantOptions??item.variant?.options) ? ` · ${optionText(item.variantOptions??item.variant?.options)}` : ""}` : "Standart məhsul"}${item.sku ? ` · Məhsul kodu: ${item.sku}` : ""}`;
+  const addressText = addressLines.length ? addressLines.join(", ") : "Ünvan məlumatı yoxdur";
+  const deliveryRows: [string, string | null][] = [["Çatdırılma üsulu", order.deliveryMethod], ["Daşıyıcı", order.deliveryCarrier], ["İzləmə kodu", order.deliveryTrackingCode], ["Çatdırılma qeydi", order.deliveryNote]];
 
-    <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-      <div className="space-y-5">
-        <section className={panel}><h2 className="font-semibold text-[#142d38]">Müştəri və çatdırılma ünvanı</h2><dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-xs text-slate-500">Alıcı</dt><dd className="mt-1 font-medium">{customerName}</dd></div><div><dt className="text-xs text-slate-500">Telefon</dt><dd className="mt-1 font-medium">{phoneTel ? <a href={phoneTel} className="text-[#28766f] underline-offset-2 hover:underline">{phone}</a> : phone}{phoneWhatsApp && <a href={phoneWhatsApp} target="_blank" rel="noopener noreferrer" className="ml-3 inline-flex min-h-9 items-center rounded-lg bg-[#1f7a4d] px-3 text-xs font-semibold text-white hover:bg-[#17633e]">WhatsApp ilə yaz</a>}</dd></div><div className="sm:col-span-2"><dt className="text-xs text-slate-500">Çatdırılma ünvanı</dt><dd className="mt-1 leading-6">{addressLines.length ? addressLines.join(", ") : "Ünvan məlumatı yoxdur"}</dd></div></dl>{dispatchLinks ? <div className="mt-4"><VendorDeliveryAddressMenu links={dispatchLinks} /></div> : !locationAccess && <p className="mt-4 text-xs leading-5 text-slate-500">Sifariş bağlandığı üçün xəritə nöqtəsi və çatdırılma menyusu artıq göstərilmir.</p>}</section>{pin&&<section className={panel}><h2 className="font-semibold text-[#142d38]">Çatdırılma xəritə nöqtəsi</h2><div className="mt-4"><InteractiveMap selected={pin} className="h-56" zoom={15}/></div><p className="mt-2 text-xs text-slate-500">{formatCoordinates(pin)}</p></section>}
+  return <div className="mx-auto max-w-6xl">
+    <div className="space-y-5 print:hidden">
+      <VendorPageHeader
+        back={<Link href={`/vendor/${storeId}/orders`} className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:text-primary-hover">← Sifarişlərə qayıt</Link>}
+        eyebrow="Sifariş təfərrüatı"
+        title={number}
+        description={<span className="tabular-nums">Yaradılıb: {created}</span>}
+        action={<>
+          <Badge tone={orderStatusTone(order.status)} size="md">{statusLabel(order.status)}</Badge>
+          <Badge tone={paymentStatusTone(paymentStatus)} size="md">{paymentStatusLabel(paymentStatus)}</Badge>
+          <VendorOrderPrintButton/>
+        </>}
+      />
 
-        <section className={`${panel} overflow-hidden`}><div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-[#142d38]">Sifariş edilən məhsullar</h2><span className="text-sm text-slate-500">{order.items.length} mövqe</span></div><div className="mt-4 divide-y divide-[#eeeae2]">{order.items.map((item: any) => <article key={item.id} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto] sm:items-center"><div className="min-w-0"><h3 className="font-medium text-[#243647]">{item.productName}</h3><p className="mt-1 text-xs text-slate-500">{(item.variantName||item.variant) ? `Variant: ${item.variantName||item.variant.name}${optionText(item.variantOptions??item.variant.options) ? ` · ${optionText(item.variantOptions??item.variant.options)}` : ""}` : "Standart məhsul"}{item.sku ? ` · Məhsul kodu: ${item.sku}` : ""}</p><p className="mt-1 text-xs text-slate-500">{Number(item.unitPrice).toFixed(2)} ₼ × {item.quantity}</p></div><b className="text-sm text-[#142d38]">{Number(item.lineTotal).toFixed(2)} ₼</b></article>)}</div><div className="mt-2 space-y-2 border-t border-[#ded9cf] pt-4 text-sm"><div className="flex justify-between"><span>Məhsulların cəmi</span><span>{Number(order.subtotal).toFixed(2)} AZN</span></div><div className="flex justify-between"><span>Çatdırılma haqqı</span><span>{Number(order.deliveryFee ?? 0).toFixed(2)} AZN</span></div><div className="flex justify-between border-t pt-2 font-semibold text-[#142d38]"><span>Mağaza sifarişinin cəmi</span><b>{(Number(order.subtotal) + Number(order.deliveryFee ?? 0)).toFixed(2)} AZN</b></div></div></section>
-      </div>
+      <VendorCancellationRequest storeId={storeId} request={openRequest ? { id: openRequest.id, reason: openRequest.reason, createdAt: openRequest.createdAt.toISOString(), createdAtText: formatOrderDateTime(openRequest.createdAt) } : null} paid={paid} refundPending={order.status === "CANCELLED" && paid}/>
 
-      <div className="space-y-5"><section className={panel}><h2 className="font-semibold text-[#142d38]">Çatdırılma məlumatları</h2><dl className="mt-4 space-y-3 text-sm">{[["Çatdırılma üsulu", order.deliveryMethod], ["Daşıyıcı", order.deliveryCarrier], ["İzləmə kodu", order.deliveryTrackingCode], ["Çatdırılma qeydi", order.deliveryNote]].map(([label, value]) => <div key={String(label)}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium">{value || "Qeyd edilməyib"}</dd></div>)}</dl></section>
-        <VendorCancellationRequest storeId={storeId} request={openRequest ? { id: openRequest.id, reason: openRequest.reason, createdAt: openRequest.createdAt.toISOString() } : null} paid={paid} refundPending={order.status === "CANCELLED" && paid}/>
-        <VendorOrderActions storeId={storeId} storeOrderId={order.id} status={order.status} shipmentStatus={order.shipmentStatus} trackingUrl={order.trackingUrl} deliveryMethod={order.deliveryMethod} deliveryNote={order.deliveryNote} deliveryCarrier={order.deliveryCarrier} deliveryTrackingCode={order.deliveryTrackingCode}/>
+      {timeline.length > 1 && <section aria-labelledby="order-timeline-title" className={panel} data-order-timeline="">
+        <h2 id="order-timeline-title" className="text-sm font-semibold text-fg">{SELLER_ORDERS_TEXT.timeline}</h2>
+        <ol className="mt-4 grid gap-0 sm:flex sm:flex-wrap sm:gap-y-3">
+          {timeline.map((step, index) => <li key={step.key} data-timeline-step={step.key} className="relative flex min-w-0 gap-3 pb-4 last:pb-0 sm:flex-1 sm:flex-col sm:gap-2 sm:pb-0 sm:pr-4">
+            {index < timeline.length - 1 && <span aria-hidden="true" className="absolute left-[9px] top-5 h-[calc(100%-1.25rem)] w-0.5 bg-brand-200 sm:left-5 sm:right-0 sm:top-[9px] sm:h-0.5 sm:w-auto"/>}
+            <span aria-hidden="true" className={cx("relative z-10 mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ring-4 ring-white sm:mt-0", step.key === "cancelled" ? "bg-danger" : "bg-primary")}><span className="h-1.5 w-1.5 rounded-full bg-white"/></span>
+            <span className="min-w-0"><span className="block text-sm font-semibold text-fg">{step.label}</span><span className="block text-xs tabular-nums text-fg-secondary">{formatOrderDateTime(step.at)}</span></span>
+          </li>)}
+        </ol>
+      </section>}
+
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <section className={panel}>
+            <div className="flex items-baseline justify-between gap-3"><h2 className={panelTitle}>Sifariş edilən məhsullar</h2><span className="text-sm text-fg-muted">{order.items.length} mövqe</span></div>
+            <ul className="mt-4 divide-y divide-line">{order.items.map((item: OrderItemRow) => {
+              const image = itemThumbnail(item);
+              return <li key={item.id} className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-4 gap-y-1 py-4 first:pt-0 sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:items-center">
+                <div className="row-span-2 grid aspect-square w-16 place-items-center overflow-hidden rounded-control border border-line bg-surface-page sm:row-span-1">{image ? <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a 64 px thumbnail; next/image would add ~6 kB of client JS to this page */}
+                  <img src={image} alt="" width={64} height={64} loading="lazy" className="h-full w-full object-cover"/></> : <ImageOff aria-hidden="true" size={20} strokeWidth={2} className="text-fg-muted"/>}</div>
+                <div className="min-w-0"><h3 className="break-words font-medium text-fg">{item.productName}</h3><p className="mt-1 break-words text-xs text-fg-muted">{variantLine(item)}</p><p className="mt-1 text-xs tabular-nums text-fg-secondary">{money(item.unitPrice)} ₼ × {item.quantity}</p></div>
+                <b className="col-start-2 text-sm tabular-nums text-fg sm:col-start-auto sm:text-right">{money(item.lineTotal)} ₼</b>
+              </li>;
+            })}</ul>
+            <dl className="mt-4 space-y-2 rounded-control bg-surface-page p-4 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-fg-secondary">Məhsulların cəmi</dt><dd className="tabular-nums">{money(order.subtotal)} AZN</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-fg-secondary">Çatdırılma haqqı</dt><dd className="tabular-nums">{money(order.deliveryFee ?? 0)} AZN</dd></div>
+              <div className="flex justify-between gap-3 border-t border-line pt-2 text-base font-semibold text-fg"><dt>Mağaza sifarişinin cəmi</dt><dd className="tabular-nums">{storeOrderTotal(order).toFixed(2)} AZN</dd></div>
+            </dl>
+          </section>
+
+        </div>
+        {/* Phones: right after the items, so the next step is near the top. Desktop: the right column (not sticky: the card is taller than a screen). */}
+        <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <VendorOrderActions storeId={storeId} storeOrderId={order.id} status={order.status} shipmentStatus={order.shipmentStatus} trackingUrl={order.trackingUrl} deliveryMethod={order.deliveryMethod} deliveryNote={order.deliveryNote} deliveryCarrier={order.deliveryCarrier} deliveryTrackingCode={order.deliveryTrackingCode}/>
+        </div>
+        <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-2">
+          <section className={panel}>
+            <h2 className={panelTitle}>Müştəri və çatdırılma ünvanı</h2>
+            <dl className="mt-4 grid gap-4 text-sm">
+              <div><dt className={term}>Alıcı</dt><dd className="mt-1 font-medium text-fg">{customerName}</dd></div>
+              <div><dt className={term}>Telefon</dt><dd className="mt-1.5 flex flex-wrap gap-2">
+                {phoneTel ? <a href={phoneTel} className={cx(buttonClass({ variant: "secondary", size: "sm" }), "tabular-nums")}><Phone aria-hidden="true" size={16} strokeWidth={2}/>{phone}</a> : <span className="font-medium">{phone}</span>}
+                {phoneWhatsApp && <a href={phoneWhatsApp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#1f7a4d] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#17633e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"><MessageCircle aria-hidden="true" size={16} strokeWidth={2}/>WhatsApp ilə yaz</a>}
+              </dd></div>
+              <div><dt className={term}>Çatdırılma ünvanı</dt><dd className="mt-1 leading-6 text-fg-body">{addressLines.join(", ") || "Ünvan məlumatı yoxdur"}</dd></div>
+            </dl>
+            {dispatchLinks ? <div className="mt-4"><VendorDeliveryAddressMenu links={dispatchLinks} /></div> : !locationAccess && <p className="mt-4 text-xs leading-5 text-fg-muted">Sifariş bağlandığı üçün xəritə nöqtəsi və çatdırılma menyusu artıq göstərilmir.</p>}
+          </section>
+          {pin&&<section className={panel}><h2 className={panelTitle}>Çatdırılma xəritə nöqtəsi</h2><div className="mt-4"><InteractiveMap selected={pin} className="h-56" zoom={15}/></div><p className="mt-2 text-xs tabular-nums text-fg-muted">{formatCoordinates(pin)}</p></section>}
+        </div>
       </div>
     </div>
+
+    {/* Packing slip: only when printing. This store's part only: number, date, customer, phone, address, items and quantities. */}
+    <section data-order-packing-slip="" className="hidden text-[11pt] text-black print:block">
+      <div className="flex items-start justify-between gap-6 border-b-2 border-black pb-3">
+        <div><p className="text-xs uppercase tracking-wide">Sifariş təfərrüatı</p><p className="text-2xl font-bold">{number}</p></div>
+        <p className="text-right text-sm tabular-nums">Yaradılıb: {created}</p>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+        <div><dt className="text-xs">Alıcı</dt><dd className="font-semibold">{customerName}</dd></div>
+        <div><dt className="text-xs">Telefon</dt><dd className="font-semibold">{phone}</dd></div>
+        <div className="col-span-2"><dt className="text-xs">Çatdırılma ünvanı</dt><dd>{addressText}</dd></div>
+        {deliveryRows.filter(([, value]) => value).map(([label, value]) => <div key={label}><dt className="text-xs">{label}</dt><dd>{value}</dd></div>)}
+      </dl>
+      <table className="mt-5 w-full border-collapse text-left text-sm">
+        <thead><tr className="border-b border-black"><th scope="col" className="py-2 pr-3">Sifariş edilən məhsullar</th><th scope="col" className="w-24 py-2 text-right">Miqdar</th></tr></thead>
+        <tbody>{order.items.map((item: OrderItemRow) => <tr key={item.id} className="break-inside-avoid border-b border-gray-400 align-top"><td className="py-2 pr-3"><b>{item.productName}</b><br/><span className="text-xs">{variantLine(item)}</span></td><td className="py-2 text-right text-base font-bold tabular-nums">{item.quantity}</td></tr>)}</tbody>
+      </table>
+    </section>
   </div>;
 }
-

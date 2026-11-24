@@ -261,7 +261,8 @@ test("seller order page: the customer's phone (already shown) is a tel: link plu
   assert.match(page, /const phoneTel = buildTelHref\(customerPhone\);/);
   assert.match(page, /const phoneWhatsApp = buildCustomerWhatsAppUrl\(customerPhone, order\.order\.id\);/);
   assert.match(page, /\{phoneTel \? <a href=\{phoneTel\}/);
-  assert.match(page, /\{phoneWhatsApp && <a href=\{phoneWhatsApp\} target="_blank" rel="noopener noreferrer"[^>]*>WhatsApp ilə yaz<\/a>\}/);
+  // SELLER-ORDERS-DESIGN-1: a decorative icon (aria-hidden) may sit before the same visible text.
+  assert.match(page, /\{phoneWhatsApp && <a href=\{phoneWhatsApp\} target="_blank" rel="noopener noreferrer"[^>]*>(?:<MessageCircle aria-hidden="true"[^>]*\/>)?WhatsApp ilə yaz<\/a>\}/);
   // Same source as before: the order snapshot, else the customer profile. Not subject to the pin's 7-day rule.
   assert.match(page, /const customerPhone = textValue\(address\.phone\) \|\| profile\?\.phone \|\| null;/);
 });

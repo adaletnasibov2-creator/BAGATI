@@ -39,7 +39,7 @@ export default async function VendorLayout({ children, params }: Readonly<{ chil
   if (!store) notFound();
   const subscriptionText = store.subscription ? `${store.subscription.plan.name} · ${subscriptionStatusLabels[store.subscription.status] ?? "Status məlum deyil"}` : "Abunəlik məlumatı yoxdur";
   return <VendorTheme><div className="min-h-screen bg-surface-page text-fg-body">
-    <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
+    <header data-vendor-chrome="" className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
       <div className="mx-auto flex min-h-[72px] max-w-[1600px] items-center justify-between gap-3 px-4 sm:px-7 lg:px-8">
         <div className="flex min-w-0 items-center gap-3"><span className="shrink-0 sm:hidden"><BrandLogo variant="icon"/></span><span className="hidden shrink-0 sm:inline-flex"><BrandLogo variant="compact"/></span><span aria-hidden="true" className="hidden h-8 w-px bg-line lg:block"/><div className="hidden min-w-0 lg:block"><p className="whitespace-nowrap text-[.62rem] font-semibold uppercase tracking-[.16em] text-gold-700">Satıcı paneli</p><p className="max-w-48 truncate text-sm font-semibold text-fg">{store.name}</p></div></div>
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">

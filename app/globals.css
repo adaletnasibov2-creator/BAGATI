@@ -318,3 +318,12 @@ img {
   .legal-prose h2 { break-after: avoid; }
   .legal-prose li, .legal-prose tr { break-inside: avoid; }
 }
+
+/* Printing a seller order (SELLER-ORDERS-DESIGN-1): only the packing slip, without the seller header, menu and sidebar. */
+@media print {
+  body:has([data-order-packing-slip]) [data-vendor-chrome] { display: none !important; }
+  body:has([data-order-packing-slip]) main { margin: 0 !important; padding: 0 !important; max-width: none !important; min-height: 0 !important; }
+  body:has([data-order-packing-slip]), body:has([data-order-packing-slip]) div:has(> main) { background: #fff !important; }
+  body:has([data-order-packing-slip]) main > :not(:has([data-order-packing-slip])) { display: none !important; }
+  [data-order-packing-slip] tr { break-inside: avoid; }
+}

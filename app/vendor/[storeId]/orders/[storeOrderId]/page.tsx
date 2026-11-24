@@ -1,4 +1,5 @@
-﻿import Link from "next/link";
+﻿import { Fragment } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ImageOff, MessageCircle, Phone } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -9,14 +10,15 @@ import VendorCancellationRequest from "@/components/vendor-cancellation-request"
 import { InteractiveMap } from "@/components/interactive-map";
 import { buildCustomerWhatsAppUrl, buildTelHref, normalizeAzPhone } from "@/lib/az-phone";
 import { VendorDeliveryAddressMenu } from "@/components/vendor-delivery-address-menu";
-import { buildDispatchLinks, formatCoordinates, readAddressSnapshot, sellerCanSeeDeliveryLocation } from "@/lib/delivery-location";
+import { buildDispatchLinks, deliveryAddressParts, formatCoordinates, readAddressSnapshot, sellerCanSeeDeliveryLocation } from "@/lib/delivery-location";
+import { VendorCopyButton } from "@/components/vendor-copy-button";
 import { VendorPageHeader } from "@/components/vendor-page-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { orderStatusTone, paymentStatusTone } from "@/lib/vendor-status-tone";
 import { VendorOrderPrintButton } from "@/components/vendor-order-print-button";
-import { formatOrderDateTime, itemThumbnail, orderNumber, orderTimeline, SELLER_ORDERS_TEXT, storeOrderTotal } from "@/lib/vendor-order-view";
+import { customerInitials, formatOrderDateTime, itemThumbnail, orderNumber, orderTimeline, SELLER_CUSTOMER_CARD_TEXT, SELLER_ORDERS_TEXT, storeOrderTotal } from "@/lib/vendor-order-view";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
@@ -75,6 +77,9 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
   const deliveryView = readAddressSnapshot(order.order.addressSnapshot);
   const pin = locationAccess ? deliveryView.coordinates : null;
   const dispatchLinks = locationAccess && addressLines.length ? buildDispatchLinks(deliveryView, order.order.id) : null;
+  // SELLER-CUSTOMER-CARD-1: the address as separate labelled lines, and the number to copy (+994XXXXXXXXX, or as typed).
+  const addressParts = deliveryAddressParts(deliveryView);
+  const phoneCopy = normalizeAzPhone(customerPhone)?.e164 ?? customerPhone ?? null;
 
   const number = orderNumber(order.order.id);
   const created = formatOrderDateTime(order.order.createdAt);
@@ -139,19 +144,34 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
           <VendorOrderActions storeId={storeId} storeOrderId={order.id} status={order.status} shipmentStatus={order.shipmentStatus} trackingUrl={order.trackingUrl} deliveryMethod={order.deliveryMethod} deliveryNote={order.deliveryNote} deliveryCarrier={order.deliveryCarrier} deliveryTrackingCode={order.deliveryTrackingCode}/>
         </div>
         <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-2">
-          <section className={panel}>
+          <section className={panel} data-customer-card="">
             <h2 className={panelTitle}>Müştəri və çatdırılma ünvanı</h2>
-            <dl className="mt-4 grid gap-4 text-sm">
-              <div><dt className={term}>Alıcı</dt><dd className="mt-1 font-medium text-fg">{customerName}</dd></div>
-              <div><dt className={term}>Telefon</dt><dd className="mt-1.5 flex flex-wrap gap-2">
-                {phoneTel ? <a href={phoneTel} className={cx(buttonClass({ variant: "secondary", size: "sm" }), "tabular-nums")}><Phone aria-hidden="true" size={16} strokeWidth={2}/>{phone}</a> : <span className="font-medium">{phone}</span>}
-                {phoneWhatsApp && <a href={phoneWhatsApp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#1f7a4d] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#17633e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"><MessageCircle aria-hidden="true" size={16} strokeWidth={2}/>WhatsApp ilə yaz</a>}
-              </dd></div>
-              <div><dt className={term}>Çatdırılma ünvanı</dt><dd className="mt-1 leading-6 text-fg-body">{addressLines.join(", ") || "Ünvan məlumatı yoxdur"}</dd></div>
-            </dl>
-            {dispatchLinks ? <div className="mt-4"><VendorDeliveryAddressMenu links={dispatchLinks} /></div> : !locationAccess && <p className="mt-4 text-xs leading-5 text-fg-muted">Sifariş bağlandığı üçün xəritə nöqtəsi və çatdırılma menyusu artıq göstərilmir.</p>}
+            <div className="mt-4 flex items-center gap-3">
+              <span aria-hidden="true" className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-primary-tint text-base font-semibold text-primary">{customerInitials(customerName)}</span>
+              <div className="min-w-0"><p className={term}>Alıcı</p><p className="break-words text-base font-semibold text-fg">{customerName}</p></div>
+            </div>
+            <div className="mt-5 border-t border-line pt-5" data-customer-phone="">
+              <p className={term}>Telefon</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums tracking-wide text-fg">{phone}</p>
+              <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-start">
+                {phoneTel && <a href={phoneTel} className={cx(buttonClass({ size: "sm" }), "w-full sm:w-auto")}><Phone aria-hidden="true" size={16} strokeWidth={2}/>Zəng et</a>}
+                {phoneWhatsApp && <a href={phoneWhatsApp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1f7a4d] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#17633e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:w-auto"><MessageCircle aria-hidden="true" size={16} strokeWidth={2}/>WhatsApp ilə yaz</a>}
+                {phoneCopy && <VendorCopyButton value={phoneCopy} label={SELLER_CUSTOMER_CARD_TEXT.copyPhone} done={SELLER_CUSTOMER_CARD_TEXT.phoneCopied}/>}
+              </div>
+            </div>
+            <div className="mt-5 border-t border-line pt-5" data-customer-address="">
+              <p className={term}>Çatdırılma ünvanı</p>
+              {addressParts.length
+                ? <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">{addressParts.map((part) => <Fragment key={part.label}><dt className="text-fg-muted">{part.label}</dt><dd className="break-words font-medium text-fg">{part.value}</dd></Fragment>)}</dl>
+                : <p className="mt-1 text-sm text-fg-body">Ünvan məlumatı yoxdur</p>}
+              <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-start">
+                {dispatchLinks && <VendorDeliveryAddressMenu links={dispatchLinks} />}
+                {addressLines.length > 0 && <VendorCopyButton value={addressLines.join(", ")} label="Ünvanı kopyala" done="Ünvan kopyalandı."/>}
+              </div>
+              {!locationAccess ? <p className="mt-3 text-xs leading-5 text-fg-muted">Sifariş bağlandığı üçün xəritə nöqtəsi və çatdırılma menyusu artıq göstərilmir.</p> : !pin && <p className="mt-3 text-xs leading-5 text-fg-muted" data-no-pin="">Xəritə nöqtəsi yoxdur.</p>}
+            </div>
           </section>
-          {pin&&<section className={panel}><h2 className={panelTitle}>Çatdırılma xəritə nöqtəsi</h2><div className="mt-4"><InteractiveMap selected={pin} className="h-56" zoom={15}/></div><p className="mt-2 text-xs tabular-nums text-fg-muted">{formatCoordinates(pin)}</p></section>}
+          {pin&&<section className={panel}><h2 className={panelTitle}>Çatdırılma xəritə nöqtəsi</h2><div className="mt-4"><InteractiveMap selected={pin} className="h-56" zoom={15}/></div><div className="mt-3 flex flex-wrap items-start justify-between gap-2"><p className="pt-2.5 text-sm"><span className={term}>Koordinatlar </span><span className="tabular-nums text-fg">{formatCoordinates(pin)}</span></p><VendorCopyButton value={formatCoordinates(pin)} label={SELLER_CUSTOMER_CARD_TEXT.copyCoordinates} done={SELLER_CUSTOMER_CARD_TEXT.coordinatesCopied}/></div></section>}
         </div>
       </div>
     </div>

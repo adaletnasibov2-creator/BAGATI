@@ -79,19 +79,47 @@ export function maskCoordinates(point: Coordinates): string {
 }
 
 export type DispatchLinks = {
+  /** Google Maps pin/search link (admin "Google Maps" link, WhatsApp share text and copy text). Unchanged. */
   googleMaps: string;
+  /** Admin coordinates card only (the seller menu no longer offers OpenStreetMap). Unchanged. */
   openStreetMap: string;
-  /** Only with a pin: Uber needs a drop-off point. Pickup is the seller's current location. */
+  /**
+   * SELLER-CUSTOMER-CARD-1: one link per app, built ONLY from formats in each app's official documentation
+   * (sources and VERIFIED status: release-output/seller-customer-card-1-report.md and the comments below).
+   * A pin is used when it exists, otherwise the address text. Never the customer's name or phone.
+   */
+  apps: DispatchAppLinks;
+  /** Only with a pin: Uber's documented universal link needs drop-off coordinates. Same as `apps.uber`. */
   uber: string | null;
-  /** Only with a pin. Format from Google's Waze deep-link docs: https://waze.com/ul?ll=LAT,LNG&navigate=yes */
+  /** Same as `apps.waze` (kept for existing callers). */
   waze: string | null;
   /** "Ünvanı göndər": wa.me with no number (the seller picks the chat), the address text and, with a pin, a Google Maps link. */
   whatsapp: string;
-  /** Clipboard text for Bolt (no verified public deep link) and for "Ünvanı kopyala". */
+  /** Clipboard text for Bolt and the old "Ünvanı kopyala": address, coordinates and the Google Maps link. */
   copyText: string;
+  /** "Ünvanı kopyala": the address text only (line1, line2, city, postal code). */
+  addressText: string;
+  /** "Koordinatları kopyala": "40.377712, 49.892034", or null without a pin. */
+  coordinatesText: string | null;
 };
 
-/** Seller dispatch links for one order. Text is URL-encoded; the nickname is the order number, never the customer's name. */
+export type DispatchAppLinks = {
+  /** https://developers.google.com/maps/documentation/urls/get-started (Directions): /maps/dir/?api=1&destination=…&travelmode=driving */
+  googleMaps: string;
+  /** https://developers.google.com/waze/deeplinks: ?ll=LAT,LNG&navigate=yes with a pin; ?q=TEXT (search) without one. */
+  waze: string;
+  /** https://developer.apple.com/documentation/mapkit/unified-map-urls: /directions?destination=…&mode=driving (iOS 18.4+, macOS 15.4+). */
+  appleMaps: string;
+  /** https://yandex.com/dev/yandex-apps-launch-maps/doc/en/concepts/yandexmaps-web: ?pt=LON,LAT (longitude first) with a pin; ?text=TEXT without. */
+  yandexMaps: string;
+  /** https://developer.uber.com/docs/riders/ride-requests/tutorials/deep-links/introduction: m.uber.com/looking?drop[0]=<JSON>. Pin only. */
+  uber: string | null;
+};
+
+/** Hosts a seller dispatch link may point to (tests assert every generated link stays on this list). */
+export const DISPATCH_LINK_HOSTS = ["www.google.com", "waze.com", "maps.apple.com", "yandex.ru", "m.uber.com", "wa.me", "www.openstreetmap.org"] as const;
+
+/** Seller dispatch links for one order. Text is URL-encoded; the Uber label is the order number, never the customer's name. */
 export function buildDispatchLinks(address: DeliveryAddressView, orderRef: string): DispatchLinks {
   const addressText = deliveryAddressText(address);
   const point = address.coordinates;
@@ -100,14 +128,30 @@ export function buildDispatchLinks(address: DeliveryAddressView, orderRef: strin
   const openStreetMap = point
     ? `https://www.openstreetmap.org/?mlat=${point.latitude}&mlon=${point.longitude}#map=17/${point.latitude}/${point.longitude}`
     : `https://www.openstreetmap.org/search?query=${encodeURIComponent(addressText)}`;
-  const nickname = encodeURIComponent(`Sifariş #${orderRef.slice(-8).toUpperCase()}`);
+  const encodedAddress = encodeURIComponent(addressText);
+  // Google: "You must encode the comma as %2C"; Waze and Apple document a plain comma in their own examples.
+  const destination = point ? `${point.latitude}%2C${point.longitude}` : encodedAddress;
+  const label = `Sifariş #${orderRef.slice(-8).toUpperCase()}`;
   const uber = point
-    ? `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=${point.latitude}&dropoff[longitude]=${point.longitude}&dropoff[nickname]=${nickname}`
+    ? `https://m.uber.com/looking?drop%5B0%5D=${encodeURIComponent(JSON.stringify({ latitude: point.latitude, longitude: point.longitude, addressLine1: label }))}`
     : null;
-  const waze = point ? `https://waze.com/ul?ll=${point.latitude},${point.longitude}&navigate=yes` : null;
+  const apps: DispatchAppLinks = {
+    googleMaps: `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`,
+    waze: point ? `https://waze.com/ul?ll=${point.latitude},${point.longitude}&navigate=yes` : `https://waze.com/ul?q=${encodedAddress}`,
+    appleMaps: `https://maps.apple.com/directions?destination=${point ? `${point.latitude},${point.longitude}` : encodedAddress}&mode=driving`,
+    yandexMaps: point ? `https://yandex.ru/maps/?pt=${point.longitude},${point.latitude}&z=17&l=map` : `https://yandex.ru/maps/?text=${encodedAddress}`,
+    uber,
+  };
   const whatsapp = `https://wa.me/?text=${encodeURIComponent([addressText, point ? googleMaps : ""].filter(Boolean).join("\n"))}`;
-  const copyText = [addressText, point ? formatCoordinates(point) : "", point ? googleMaps : ""].filter(Boolean).join("\n");
-  return { googleMaps, openStreetMap, uber, waze, whatsapp, copyText };
+  const coordinatesText = point ? formatCoordinates(point) : null;
+  const copyText = [addressText, coordinatesText ?? "", point ? googleMaps : ""].filter(Boolean).join("\n");
+  return { googleMaps, openStreetMap, apps, uber, waze: point ? apps.waze : null, whatsapp, copyText, addressText, coordinatesText };
+}
+
+/** The address as separate lines for the seller's card: street (line1), extra (line2), city, postal code. Empty parts dropped. */
+export function deliveryAddressParts(address: Pick<DeliveryAddressView, "line1" | "line2" | "city" | "postalCode">): { label: string; value: string }[] {
+  return ([["Şəhər", address.city], ["Ünvan", address.line1], ["Əlavə məlumat", address.line2], ["Poçt indeksi", address.postalCode]] as const)
+    .filter(([, value]) => Boolean(value)).map(([label, value]) => ({ label, value }));
 }
 
 /** How long the seller keeps the pin and the dispatch menu after the shipment is marked delivered. */

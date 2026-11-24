@@ -170,6 +170,18 @@ function baseFile(path: string) {
   try { return execFileSync("git", ["show", `${BASE}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n"); } catch { return ""; }
 }
 
+/** Existing wording reused on the seller order page by SELLER-CUSTOMER-CARD-1, with the file it already came from. */
+const REUSED_ON_ORDER_PAGE: Record<string, string> = {
+  "Zəng et": "components/customer-footer.tsx",
+  "Ünvanı kopyala": "components/vendor-delivery-address-menu.tsx",
+  "Ünvan kopyalandı.": "components/vendor-delivery-address-menu.tsx",
+  "Xəritə nöqtəsi yoxdur.": "app/admin/_sections/order-detail.tsx",
+};
+
+test("reused wording on the order page already exists elsewhere", () => {
+  for (const [text, source] of Object.entries(REUSED_ON_ORDER_PAGE)) assert.ok(read(source).includes(text), `${text} in ${source}`);
+});
+
 test("texts: no new visible Azerbaijani text in the changed files; legal pages unchanged", () => {
   const changed = ["components/checkout-form.tsx", "app/api/orders/route.ts", "app/api/account/addresses/route.ts", "app/api/account/addresses/[addressId]/route.ts", "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx", "lib/az-phone.ts", "lib/profile-phone.ts"];
   const fragments = (source: string) => new Set(source.split(/["'`<>{}]|\$\{/).map((part) => part.trim()).filter((part) => AZ.test(part) && !part.startsWith("//") && !part.startsWith("*")));
@@ -177,7 +189,9 @@ test("texts: no new visible Azerbaijani text in the changed files; legal pages u
     const before = fragments(baseFile(path));
     // Comments are not visible text.
     const now = read(path).split("\n").filter((line) => !/^\s*(\/\/|\*|\/\*\*)/.test(line)).join("\n");
-    const added = [...fragments(now)].filter((fragment) => !before.has(fragment));
+    // SELLER-CUSTOMER-CARD-1 reused existing wording on the order page; each text is checked to exist in another file below.
+    const reusedLater = path === "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx" ? new Set(Object.keys(REUSED_ON_ORDER_PAGE)) : new Set<string>();
+    const added = [...fragments(now)].filter((fragment) => !before.has(fragment) && !reusedLater.has(fragment));
     assert.deepEqual(added, [], `${path}: new Azerbaijani text`);
   }
   for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) {

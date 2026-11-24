@@ -15,6 +15,25 @@ export const SELLER_ORDERS_TEXT = {
   timeline: "Sifariş tarixçəsi",
 } as const;
 
+/**
+ * SELLER-CUSTOMER-CARD-1: new visible words of the customer card and the address sheet, in one place.
+ * PENDING OWNER APPROVAL ("mətnlər ok"). App names are brand names. Everything else reuses existing wording.
+ */
+export const SELLER_CUSTOMER_CARD_TEXT = {
+  copyPhone: "Nömrəni kopyala",
+  phoneCopied: "Nömrə kopyalandı.",
+  copyCoordinates: "Koordinatları kopyala",
+  coordinatesCopied: "Koordinatlar kopyalandı.",
+  appleMaps: "Apple Maps",
+  yandexMaps: "Yandex Maps",
+} as const;
+
+/** "Leyla Məmmədova" -> "LM": two letters for the avatar (first letters of the first two words, Azerbaijani upper case). */
+export function customerInitials(name: string): string {
+  const letters = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((word) => Array.from(word)[0] ?? "");
+  return letters.join("").toLocaleUpperCase("az-AZ") || "?";
+}
+
 /** Statuses in the order the tabs show them (the seller's normal flow). Legacy statuses get a tab only when used. */
 export const ORDER_TAB_STATUSES = ["NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "DELIVERED", "CANCELLED", "RETURNED"] as const;
 export const LEGACY_ORDER_STATUSES = ["PENDING", "PROCESSING", "SHIPPED"] as const;

@@ -265,9 +265,10 @@ test("seller routes: store creation and publishing return 409 SELLER_TERMS_REQUI
   const patch = read("lib/vendor-product-patch.ts");
   assert.match(patch, /if \(activating && !await hasAcceptedCurrent\(tx, input\.actorUserId, "SELLER_TERMS"\)\) \{\s*throw new VendorProductPatchError\(SELLER_TERMS_REQUIRED\);/);
   assert.match(read("app/api/vendor/[storeId]/products/[productId]/route.ts"), /error\.code === SELLER_TERMS_REQUIRED\) return NextResponse\.json\(\{ error: LEGAL_GATE_MESSAGES\.sellerTermsRequired, code: SELLER_TERMS_REQUIRED \}, \{ status: 409 \}\)/);
+  // CLEANUP-1 (L4): the unreachable legacy product PATCH in [section] (products/route.ts takes that path) was removed, so
+  // publishing only happens through the two gated paths above; [section] must not grow a publish path again.
   const section = read("app/api/vendor/[storeId]/[section]/route.ts");
-  assert.match(section, /if\(isVendorProductActivation\(current\.status,v\.status\)\)\{\s*\/\/[^\n]*\n\s*if\(!await hasAcceptedCurrent\(tx,access\.user\.id,"SELLER_TERMS"\)\)return \{error:SELLER_TERMS_REQUIRED\};/);
-  assert.match(section, /result\.error===SELLER_TERMS_REQUIRED\)return NextResponse\.json\(\{error:LEGAL_GATE_MESSAGES\.sellerTermsRequired,code:SELLER_TERMS_REQUIRED\},\{status:409\}\)/);
+  assert.doesNotMatch(section, /isVendorProductActivation|section==="products"/);
 });
 
 test("seller panel route: the signed-in active seller accepts for themself only; strict body; SELLER_PANEL", () => {

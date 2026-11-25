@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
+import { PageHeader } from "@/components/admin-ui/page-header";
+import { buttonClass } from "@/components/admin-ui/styles";
 import type { SystemStatusData as CachedCardData } from "@/lib/admin-system-status-cards";
 import type { ClientIpDiagnostics } from "@/lib/client-ip-diagnostics";
 import { evaluateSpoofTest, SPOOF_TEST_HEADERS, SPOOF_TEST_TEXTS, spoofTestDisplay, type SpoofTestOutcome } from "@/lib/admin-ip-spoof-test";
@@ -11,7 +13,7 @@ type SystemStatusData = CachedCardData & { "client-ip": ClientIpDiagnostics };
 type CardName = keyof SystemStatusData;
 type CardState = { status: "loading" | "ready" | "unavailable"; data?: SystemStatusData[CardName]; generatedAt?: string };
 
-const card = "rounded-2xl border border-[#e7e3d9] bg-white p-5";
+const card = "rounded-card border border-line bg-white p-5";
 const BAKU = "Asia/Baku";
 
 function formatDateTime(value: string | null | undefined) {
@@ -47,23 +49,23 @@ const workerLabel: Record<string, string> = {
 };
 
 function Row({ label, children, tone }: { label: string; children: ReactNode; tone?: "good" | "warn" | "bad" }) {
-  const color = tone === "good" ? "text-green-800" : tone === "warn" ? "text-amber-800" : tone === "bad" ? "text-red-700" : "text-[#0d1b2a]";
-  return <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-[#f0ece4] py-2.5 text-sm last:border-0">
-    <dt className="text-slate-500">{label}</dt>
+  const color = tone === "good" ? "text-green-800" : tone === "warn" ? "text-amber-800" : tone === "bad" ? "text-red-700" : "text-fg";
+  return <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line py-2.5 text-sm last:border-0">
+    <dt className="text-fg-secondary">{label}</dt>
     <dd className={`min-w-0 break-words text-right font-medium ${color}`}>{children}</dd>
   </div>;
 }
 
 function CountGrid({ counts, labels }: { counts: Record<string, number>; labels: Record<string, string> }) {
   const keys = Object.keys(labels);
-  return <div className="mt-3 grid grid-cols-2 gap-2">{keys.map((key) => <div key={key} className="rounded-xl bg-[#f8f7f4] px-3 py-2.5">
-    <p className="text-xs text-slate-500">{labels[key]}</p>
-    <p className="mt-1 text-xl font-semibold text-[#0d1b2a]">{counts[key] ?? 0}</p>
+  return <div className="mt-3 grid grid-cols-2 gap-2">{keys.map((key) => <div key={key} className="rounded-control bg-surface-page px-3 py-2.5">
+    <p className="text-xs text-fg-secondary">{labels[key]}</p>
+    <p className="mt-1 text-xl font-semibold text-fg">{counts[key] ?? 0}</p>
   </div>)}</div>;
 }
 
 function Warning({ children }: { children: ReactNode }) {
-  return <p role="status" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{children}</p>;
+  return <p role="status" className="mt-3 rounded-control border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{children}</p>;
 }
 
 function DatabaseBody({ data }: { data: SystemStatusData["database"] }) {
@@ -74,7 +76,7 @@ function DatabaseBody({ data }: { data: SystemStatusData["database"] }) {
       <Row label="Server saat qurşağı">{data.timezone ?? "—"}</Row>
       <Row label="PostgreSQL versiyası">{data.postgresMajor ?? "—"}</Row>
       <Row label="Tətbiq olunmuş miqrasiyalar">{data.appliedMigrations}</Row>
-      <Row label="Son miqrasiya">{data.latestMigration ? <><span className="block font-mono text-xs">{data.latestMigration.name}</span><span className="text-xs text-slate-500">{formatDateTime(data.latestMigration.finishedAt)}</span></> : "—"}</Row>
+      <Row label="Son miqrasiya">{data.latestMigration ? <><span className="block font-mono text-xs">{data.latestMigration.name}</span><span className="text-xs text-fg-secondary">{formatDateTime(data.latestMigration.finishedAt)}</span></> : "—"}</Row>
     </dl>
     {!data.repoMigrationsReadable && <Warning>Repozitoriyadakı miqrasiya qovluğu oxunmadı, müqayisə aparılmadı.</Warning>}
     {data.missingMigrations?.length > 0 && <Warning>Repozitoriyada olan, lakin bazada tətbiq olunmamış miqrasiyalar ({data.missingMigrations.length}):<span className="mt-1 block break-all font-mono text-xs">{data.missingMigrations.join(", ")}</span></Warning>}
@@ -98,9 +100,9 @@ function EmailBody({ data }: { data: SystemStatusData["email"] }) {
       <Row label="SMTP konfiqurasiyası" tone={data.smtpConfigured ? "good" : "bad"}>{yesNo(data.smtpConfigured)}</Row>
       <Row label="EMAIL_ENCRYPTION_KEY" tone={data.encryptionKeyConfigured ? "good" : "warn"}>{yesNo(data.encryptionKeyConfigured)}</Row>
       <Row label="Daxili göndərici (EMAIL_WORKER_ENABLED)" tone={data.inProcessWorkerEnabled ? "good" : "warn"}>{data.inProcessWorkerEnabled ? "Aktivdir" : "Söndürülüb"}</Row>
-      <Row label="Worker" tone={data.workerState === "alive" && !data.workerLastPollErrorCode ? "good" : "warn"}>{workerLabel[data.workerState] ?? workerLabel.unknown}{data.workerHeartbeatAt && <span className="block text-xs text-slate-500">Son siqnal: {formatDateTime(data.workerHeartbeatAt)}{data.workerHeartbeatSource === "file" ? " (CLI worker)" : ""}</span>}{data.workerLastPollErrorCode && <span className="block text-xs text-amber-800">Son xəta kodu: {data.workerLastPollErrorCode}</span>}</Row>
+      <Row label="Worker" tone={data.workerState === "alive" && !data.workerLastPollErrorCode ? "good" : "warn"}>{workerLabel[data.workerState] ?? workerLabel.unknown}{data.workerHeartbeatAt && <span className="block text-xs text-fg-secondary">Son siqnal: {formatDateTime(data.workerHeartbeatAt)}{data.workerHeartbeatSource === "file" ? " (CLI worker)" : ""}</span>}{data.workerLastPollErrorCode && <span className="block text-xs text-amber-800">Son xəta kodu: {data.workerLastPollErrorCode}</span>}</Row>
     </dl>
-    {!data.encryptionKeyConfigured && data.encryptionUsable && <p className="mt-2 text-xs text-slate-500">Ayrıca açar yoxdur; şifrələmə ehtiyat açarla işləyir.</p>}
+    {!data.encryptionKeyConfigured && data.encryptionUsable && <p className="mt-2 text-xs text-fg-secondary">Ayrıca açar yoxdur; şifrələmə ehtiyat açarla işləyir.</p>}
   </>;
 }
 
@@ -112,19 +114,19 @@ function ImportsBody({ data }: { data: SystemStatusData["imports"] }) {
       <Row label="Son 24 saatda uğursuz" tone={data.failedLast24h ? "bad" : undefined}>{data.failedLast24h}</Row>
     </dl>
     <h3 className="mt-4 text-sm font-semibold">Son 10 iş</h3>
-    {data.recent.length ? <ul className="mt-2 divide-y divide-[#f0ece4] text-sm">{data.recent.map((job) => <li key={job.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2">
+    {data.recent.length ? <ul className="mt-2 divide-y divide-line text-sm">{data.recent.map((job) => <li key={job.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2">
       <span className="min-w-0 break-words font-medium">{job.storeName}</span>
-      <span className="text-xs text-slate-500">{importStatus[job.status] ?? job.status} · {job.processedRows}/{job.totalRows} sətir{job.failedRows ? ` · ${job.failedRows} xəta` : ""} · {formatDateTime(job.createdAt)}</span>
-    </li>)}</ul> : <p className="mt-2 rounded-xl bg-[#f8f7f4] p-3 text-sm text-slate-500">İdxal işi yoxdur.</p>}
+      <span className="text-xs text-fg-secondary">{importStatus[job.status] ?? job.status} · {job.processedRows}/{job.totalRows} sətir{job.failedRows ? ` · ${job.failedRows} xəta` : ""} · {formatDateTime(job.createdAt)}</span>
+    </li>)}</ul> : <p className="mt-2 rounded-control bg-surface-page p-3 text-sm text-fg-secondary">İdxal işi yoxdur.</p>}
   </>;
 }
 
 function SecurityBody({ data }: { data: SystemStatusData["security"] }) {
   return <>
     {data.byType.length ? <div className="mt-1 overflow-x-auto"><table className="w-full text-left text-sm">
-      <thead className="text-xs text-slate-500"><tr><th className="py-2 font-medium">Hadisə növü</th><th className="py-2 text-right font-medium">24 saat</th><th className="py-2 text-right font-medium">7 gün</th></tr></thead>
-      <tbody className="divide-y divide-[#f0ece4]">{data.byType.map((row) => <tr key={row.eventType}><td className="break-all py-2 font-mono text-xs">{row.eventType}</td><td className="py-2 text-right">{row.last24h}</td><td className="py-2 text-right">{row.last7d}</td></tr>)}</tbody>
-    </table></div> : <p className="rounded-xl bg-[#f8f7f4] p-3 text-sm text-slate-500">Son 7 gündə təhlükəsizlik hadisəsi yoxdur.</p>}
+      <thead className="text-xs text-fg-secondary"><tr><th className="py-2 font-medium">Hadisə növü</th><th className="py-2 text-right font-medium">24 saat</th><th className="py-2 text-right font-medium">7 gün</th></tr></thead>
+      <tbody className="divide-y divide-line">{data.byType.map((row) => <tr key={row.eventType}><td className="break-all py-2 font-mono text-xs">{row.eventType}</td><td className="py-2 text-right">{row.last24h}</td><td className="py-2 text-right">{row.last7d}</td></tr>)}</tbody>
+    </table></div> : <p className="rounded-control bg-surface-page p-3 text-sm text-fg-secondary">Son 7 gündə təhlükəsizlik hadisəsi yoxdur.</p>}
   </>;
 }
 
@@ -153,7 +155,7 @@ function ApplicationBody({ data }: { data: SystemStatusData["application"] }) {
 
 function ClientIpBody({ data }: { data: SystemStatusData["client-ip"] }) {
   return <>
-    <p className="text-xs text-slate-500">Yalnız sizin bu sorğunuz. Dəyərlər maskalanıb; tam IP göstərilmir.</p>
+    <p className="text-xs text-fg-secondary">Yalnız sizin bu sorğunuz. Dəyərlər maskalanıb; tam IP göstərilmir.</p>
     <dl className="mt-2">
       {data.headers.map((header) => <Row key={header.name} label={header.name} tone={header.present ? undefined : "warn"}>
         {header.present ? <span className="font-mono text-xs">{header.values.join(", ") || "boş"}</span> : "yoxdur"}
@@ -162,8 +164,8 @@ function ClientIpBody({ data }: { data: SystemStatusData["client-ip"] }) {
     </dl>
     {data.forwardedChain.length > 0 && <>
       <h3 className="mt-4 text-sm font-semibold">X-Forwarded-For zənciri (soldan sağa)</h3>
-      <ol className="mt-2 space-y-1 text-xs">{data.forwardedChain.map((hop, index) => <li key={index} className="flex justify-between gap-3 rounded-lg bg-[#f8f7f4] px-3 py-1.5">
-        <span className="font-mono">{hop.masked}</span><span className={hop.cloudflare ? "font-semibold text-green-800" : "text-slate-500"}>{hop.cloudflare ? "Cloudflare diapazonu" : "Cloudflare deyil"}</span>
+      <ol className="mt-2 space-y-1 text-xs">{data.forwardedChain.map((hop, index) => <li key={index} className="flex justify-between gap-3 rounded-lg bg-surface-page px-3 py-1.5">
+        <span className="font-mono">{hop.masked}</span><span className={hop.cloudflare ? "font-semibold text-green-800" : "text-fg-secondary"}>{hop.cloudflare ? "Cloudflare diapazonu" : "Cloudflare deyil"}</span>
       </li>)}</ol>
     </>}
     <dl className="mt-3">
@@ -196,15 +198,15 @@ function SpoofTest({ baselineIp }: { baselineIp: string | null }) {
     } finally { setBusy(false); }
   }
   const display = outcome ? spoofTestDisplay(outcome) : null;
-  const box = display?.tone === "bad" ? "border-red-200 bg-red-50 text-red-800" : display?.tone === "good" ? "border-green-200 bg-green-50 text-green-900" : "border-[#e7e3d9] bg-[#f8f7f4] text-slate-700";
-  return <div className="mt-4 border-t border-[#f0ece4] pt-4">
-    <p className="text-xs text-slate-500">{SPOOF_TEST_TEXTS.intro}</p>
-    <button type="button" onClick={() => void run()} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#c7ad78] bg-white px-4 py-2 text-sm font-semibold text-[#85621d] disabled:opacity-60">
+  const box = display?.tone === "bad" ? "border-red-200 bg-red-50 text-red-800" : display?.tone === "good" ? "border-green-200 bg-green-50 text-green-900" : "border-line bg-surface-page text-fg-body";
+  return <div className="mt-4 border-t border-line pt-4">
+    <p className="text-xs text-fg-secondary">{SPOOF_TEST_TEXTS.intro}</p>
+    <button type="button" onClick={() => void run()} disabled={busy} className="mt-3 inline-flex items-center gap-2 rounded-control border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-gold-700 disabled:opacity-60">
       {busy ? SPOOF_TEST_TEXTS.busy : SPOOF_TEST_TEXTS.button}
     </button>
-    {outcome && display && <div role="status" className={`mt-3 rounded-xl border p-3 text-sm ${box}`}>
+    {outcome && display && <div role="status" className={`mt-3 rounded-control border p-3 text-sm ${box}`}>
       {display.message && <p className="font-semibold">{display.message}</p>}
-      {display.note && <p className={display.message ? "mt-1 text-slate-700" : undefined}>{display.note}</p>}
+      {display.note && <p className={display.message ? "mt-1 text-fg-body" : undefined}>{display.note}</p>}
       <p className="mt-2 text-xs">{SPOOF_TEST_TEXTS.returnedIp}: <span className="font-mono">{outcome.returnedIp ?? SPOOF_TEST_TEXTS.none}</span>{outcome.reason === "refused" && <> · {SPOOF_TEST_TEXTS.requestFailed}{outcome.httpStatus ? ` (HTTP ${outcome.httpStatus})` : ""}</>}</p>
     </div>}
   </div>;
@@ -251,29 +253,22 @@ export default function AdminSystemStatus() {
   useEffect(() => { void load(false); }, [load]);
 
   return <>
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>
-        <h1 className="mt-2 text-3xl font-semibold text-[#0d1b2a]">Sistem vəziyyəti</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500">Yalnız oxuma. Hər kart ayrıca yüklənir və 15 saniyəyə qədər yaddaşdan göstərilə bilər. Avtomatik yenilənmə yoxdur.</p>
-      </div>
-      <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl bg-[#173c40] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+    <PageHeader title="Sistem vəziyyəti" description="Yalnız oxuma. Hər kart ayrıca yüklənir və 15 saniyəyə qədər yaddaşdan göstərilə bilər. Avtomatik yenilənmə yoxdur." actions={<button type="button" onClick={() => void load(true)} disabled={refreshing} className={buttonClass("primary")}>
         <RefreshCw size={16} aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />
         Yenilə
-      </button>
-    </div>
-    <div className="mt-7 grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      </button>} />
+    <div className="mt-1 grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
       {cards.map((item) => {
         const state = states[item.name];
         return <section key={item.name} aria-busy={state.status === "loading"} className={card}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">{item.title}</h2>
-            {state.generatedAt && <span className="text-xs text-slate-400">{formatDateTime(state.generatedAt)}</span>}
+            {state.generatedAt && <span className="text-xs text-fg-muted">{formatDateTime(state.generatedAt)}</span>}
           </div>
           <div className="mt-3">
-            {state.status === "unavailable" ? <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">Məlumat əlçatan deyil.</p>
+            {state.status === "unavailable" ? <p className="rounded-control border border-red-200 bg-red-50 p-3 text-sm text-red-800">Məlumat əlçatan deyil.</p>
               : state.data ? <div className={state.status === "loading" ? "opacity-50" : undefined}>{item.render(state.data)}</div>
-                : <p className="text-sm text-slate-500">Yüklənir…</p>}
+                : <p className="text-sm text-fg-secondary">Yüklənir…</p>}
           </div>
         </section>;
       })}

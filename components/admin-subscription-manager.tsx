@@ -62,22 +62,22 @@ export default function AdminSubscriptionManager({ storeId, plans, subscription 
     finally { setBusy(false); }
   }
 
-  const input = "min-h-10 w-full rounded-lg border border-[#ded9cf] bg-white px-3 py-2 text-sm";
-  return <div className="mt-4 rounded-xl border border-[#e7e3d9] bg-[#fbfaf7] p-4">{dialog}
+  const input = "min-h-10 w-full rounded-lg border border-line-strong bg-white px-3 py-2 text-sm";
+  return <div className="mt-4 rounded-control border border-line bg-surface-page p-4">{dialog}
     <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-      <div><h3 className="font-semibold">Abunəliyə əl ilə nəzarət</h3><p className="mt-1 text-xs text-slate-600">Əl ilə verilən giriş ödəniş və ya ödəniş təsdiqi deyil.</p></div>
+      <div><h3 className="font-semibold">Abunəliyə əl ilə nəzarət</h3><p className="mt-1 text-xs text-fg-secondary">Əl ilə verilən giriş ödəniş və ya ödəniş təsdiqi deyil.</p></div>
       {subscription && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900">{subscription.accessSource === "PAYMENT_CONFIRMED" ? "Ödəniş təsdiqlənib" : subscription.accessSource === "ADMIN_MANUAL" ? "Admin tərəfindən əl ilə" : "Mənbə məlum deyil"}</span>}
     </div>
-    {subscription && <p className="mb-3 text-xs text-slate-600">Son əl ilə səbəb: {subscription.grantReason || "—"}{subscription.grantedByAdmin?.email ? ` · ${subscription.grantedByAdmin.email}` : ""}</p>}
+    {subscription && <p className="mb-3 text-xs text-fg-secondary">Son əl ilə səbəb: {subscription.grantReason || "—"}{subscription.grantedByAdmin?.email ? ` · ${subscription.grantedByAdmin.email}` : ""}</p>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      <label className="grid gap-1 text-xs text-slate-600">Plan<select className={input} value={planId} onChange={(event) => setPlanId(event.target.value)}>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatMoney(plan.monthlyPrice)}/ay</option>)}</select></label>
-      <label className="grid gap-1 text-xs text-slate-600">Status<select className={input} value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((value) => <option key={value} value={value}>{adminStatusLabel("subscription", value)}</option>)}</select></label>
-      <label className="grid gap-1 text-xs text-slate-600">Dövrün başlanğıcı<input className={input} type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} required /></label>
-      <label className="grid gap-1 text-xs text-slate-600">Dövrün sonu<input className={input} type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} required /></label>
-      <label className="grid gap-1 text-xs text-slate-600 sm:col-span-2">Dəyişiklik səbəbi<textarea className={input} minLength={8} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} required /></label>
+      <label className="grid gap-1 text-xs text-fg-secondary">Plan<select className={input} value={planId} onChange={(event) => setPlanId(event.target.value)}>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatMoney(plan.monthlyPrice)}/ay</option>)}</select></label>
+      <label className="grid gap-1 text-xs text-fg-secondary">Status<select className={input} value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((value) => <option key={value} value={value}>{adminStatusLabel("subscription", value)}</option>)}</select></label>
+      <label className="grid gap-1 text-xs text-fg-secondary">Dövrün başlanğıcı<input className={input} type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} required /></label>
+      <label className="grid gap-1 text-xs text-fg-secondary">Dövrün sonu<input className={input} type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} required /></label>
+      <label className="grid gap-1 text-xs text-fg-secondary sm:col-span-2">Dəyişiklik səbəbi<textarea className={input} minLength={8} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} required /></label>
     </div>
     {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-2.5 text-sm text-red-700">{error}</p>}
     {message && <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-2.5 text-sm text-emerald-800">{message}</p>}
-    <button type="button" disabled={busy || !planId || !periodStart || !periodEnd} onClick={() => void save()} className="mt-3 min-h-10 rounded-lg bg-[#173c40] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Yadda saxlanılır…" : subscription ? "Dəyişikliyi saxla" : "Abunəlik yarat və saxla"}</button>
+    <button type="button" disabled={busy || !planId || !periodStart || !periodEnd} onClick={() => void save()} className="mt-3 min-h-10 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Yadda saxlanılır…" : subscription ? "Dəyişikliyi saxla" : "Abunəlik yarat və saxla"}</button>
   </div>;
 }

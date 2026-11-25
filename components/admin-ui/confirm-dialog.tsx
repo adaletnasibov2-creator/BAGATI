@@ -50,11 +50,11 @@ export function ConfirmDialog({ options, onClose }: { options: ConfirmOptions; o
     aria-labelledby="admin-confirm-title"
     aria-describedby="admin-confirm-message"
     onCancel={(event) => { event.preventDefault(); onClose(false); }}
-    className="w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-[#e7e3d9] bg-white p-0 text-[#0d1b2a] shadow-xl backdrop:bg-black/40"
+    className="w-[min(28rem,calc(100vw-2rem))] rounded-card border border-line bg-white p-0 text-fg shadow-xl backdrop:bg-black/40"
   >
     <div className="p-5">
       <h2 id="admin-confirm-title" className="text-lg font-semibold">{options.title ?? "Təsdiq edin"}</h2>
-      <p id="admin-confirm-message" className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{options.message}</p>
+      <p id="admin-confirm-message" className="mt-2 whitespace-pre-line text-sm leading-6 text-fg-secondary">{options.message}</p>
       <div className="mt-5 flex flex-wrap justify-end gap-2">
         <button ref={cancelRef} type="button" onClick={() => onClose(false)} className={buttonClass("secondary")}>{options.cancelLabel ?? "Ləğv et"}</button>
         <button type="button" onClick={() => onClose(true)} className={options.danger ? buttonClass("primary", "bg-red-700 hover:bg-red-800") : buttonClass("primary")}>{options.confirmLabel ?? "Təsdiqlə"}</button>

@@ -21,7 +21,7 @@ export async function renderCategoryProductMove({ sp, shell }: SectionContext) {
     const todo = tree.filter((top) => top.children.length && top._count.products > 0);
     return shell(<>
       <PageHeader title="Məhsulları köçür" description="Alt kateqoriyası olan üst kateqoriyalarda alt kateqoriyasız qalan məhsullar." actions={back} />
-      {todo.length ? <ul className="grid gap-2">{todo.map((top) => <li key={top.id}><Link href={`/admin/categories/move?from=${encodeURIComponent(top.id)}`} className={`${cardClass} flex min-h-14 items-center justify-between gap-3 hover:bg-[#fbfaf7]`}><span className="font-semibold">{top.name}</span><span className="text-sm text-amber-900">{top._count.products} məhsul alt kateqoriyasız →</span></Link></li>)}</ul>
+      {todo.length ? <ul className="grid gap-2">{todo.map((top) => <li key={top.id}><Link href={`/admin/categories/move?from=${encodeURIComponent(top.id)}`} className={`${cardClass} flex min-h-14 items-center justify-between gap-3 hover:bg-surface-page`}><span className="font-semibold">{top.name}</span><span className="text-sm text-amber-900">{top._count.products} məhsul alt kateqoriyasız →</span></Link></li>)}</ul>
         : <EmptyState title="Köçürüləcək məhsul yoxdur" description="Alt kateqoriyası olan üst kateqoriyalarda alt kateqoriyasız məhsul qalmayıb." />}
     </>);
   }
@@ -59,6 +59,6 @@ export async function renderCategoryProductMove({ sp, shell }: SectionContext) {
         products={products.map((product) => ({ id: product.id, name: product.name, sku: product.sku, status: adminStatusLabel("product", product.status), store: product.store.name, version: product.updatedAt.toISOString() }))}
       />
     ) : <EmptyState title="Bu kateqoriyada məhsul yoxdur" />}
-    {pages > 1 && <nav aria-label="Səhifələr" className="mt-4 flex items-center justify-between text-sm"><span className="text-slate-500">Səhifə {page} / {pages}</span><span className="flex gap-2">{page > 1 && <Link className={buttonClass("secondary")} href={`/admin/categories/move?from=${encodeURIComponent(from.id)}&page=${page - 1}`}>Əvvəlki</Link>}{page < pages && <Link className={buttonClass("secondary")} href={`/admin/categories/move?from=${encodeURIComponent(from.id)}&page=${page + 1}`}>Növbəti</Link>}</span></nav>}
+    {pages > 1 && <nav aria-label="Səhifələr" className="mt-4 flex items-center justify-between text-sm"><span className="text-fg-secondary">Səhifə {page} / {pages}</span><span className="flex gap-2">{page > 1 && <Link className={buttonClass("secondary")} href={`/admin/categories/move?from=${encodeURIComponent(from.id)}&page=${page - 1}`}>Əvvəlki</Link>}{page < pages && <Link className={buttonClass("secondary")} href={`/admin/categories/move?from=${encodeURIComponent(from.id)}&page=${page + 1}`}>Növbəti</Link>}</span></nav>}
   </>);
 }

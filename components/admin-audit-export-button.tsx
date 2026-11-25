@@ -52,7 +52,7 @@ export default function AdminAuditExportButton({ filters, maxRows }: Props) {
   }
 
   return <div className="grid justify-items-end gap-1">
-    <button type="button" onClick={() => void exportCsv()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-[#c7ad78] bg-white px-4 py-2.5 text-sm font-semibold text-[#85621d] disabled:opacity-60">
+    <button type="button" onClick={() => void exportCsv()} disabled={busy} className="inline-flex items-center gap-2 rounded-control border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-gold-700 disabled:opacity-60">
       <Download size={16} aria-hidden="true" />
       {busy ? "Hazırlanır…" : `CSV ixrac (maks. ${formatRowLimit(maxRows)} sətir)`}
     </button>

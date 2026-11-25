@@ -65,7 +65,7 @@ test("labels: status-suffixed codes, unknown codes and the security list", () =>
 
 test("labels: /admin/audit-log shows the label (code kept small) and labels the action filter", () => {
   const page = read("app/admin/audit-log/page.tsx");
-  assert.match(page, /\{auditActionLabel\(row\.action\)\}\{auditActionLabel\(row\.action\) !== row\.action && <span className="mt-0\.5 block font-mono text-\[11px\] text-slate-400">\{row\.action\}<\/span>\}/);
+  assert.match(page, /\{auditActionLabel\(row\.action\)\}\{auditActionLabel\(row\.action\) !== row\.action && <span className="mt-0\.5 block font-mono text-\[11px\] text-fg-muted">\{row\.action\}<\/span>\}/);
   assert.match(page, /<Select name="action" title="Əməl" values=\{distinct\.actions\} selected=\{filters\.action\} labelFor=\{auditActionLabel\} \/>/);
   assert.doesNotMatch(page, /<td className="px-4 py-3\.5">\{row\.action\}<\/td>/);
 });

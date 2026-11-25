@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { adminSearchContains } from "@/lib/admin-list-where";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,8 @@ export async function GET(request: NextRequest) {
   const items = await prisma.store.findMany({
     where: query ? {
       OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { vendor: { displayName: { contains: query, mode: "insensitive" } } },
+        { name: adminSearchContains(query) },
+        { vendor: { displayName: adminSearchContains(query) } },
       ],
     } : {},
     select: { id: true, name: true, status: true, vendor: { select: { displayName: true } } },

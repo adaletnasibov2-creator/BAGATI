@@ -93,7 +93,7 @@ test("Part 2 UI: inline validation mirrors the registry rules for text, integer 
 test("Part 2 UI: 30-second note for cached settings, live announcement preview, no lib/settings in the client", () => {
   const field = read("components/admin-setting-field.tsx");
   assert.doesNotMatch(field, /@\/lib\/settings\//);
-  assert.match(field, /\{view\.cached && <p className="text-slate-500">Dəyişiklik 30 saniyə ərzində tətbiq olunur\.<\/p>\}/);
+  assert.match(field, /\{view\.cached && <p className="text-fg-secondary">Dəyişiklik 30 saniyə ərzində tətbiq olunur\.<\/p>\}/);
   assert.match(field, /aria-label="Elan zolağının önizləməsi" className=\{`\$\{ANNOUNCEMENT_TONE_CLASSES\[value\.tone\]\}/, "preview uses the same tone styles as the live bar");
   assert.match(field, /<AnnouncementEditor value=\{form\} onChange=\{setForm\}/);
   assert.match(field, /disabled=\{busy \|\| Boolean\(issue\) \|\| empty\}/);

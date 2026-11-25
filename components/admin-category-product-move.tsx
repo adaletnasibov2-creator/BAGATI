@@ -52,7 +52,7 @@ export default function AdminCategoryProductMove({ fromCategoryId, groups, produ
   if (!groups.length) return <ResultMessage tone="info">Köçürmək üçün aktiv alt kateqoriya yoxdur. Əvvəlcə alt kateqoriya yaradın.</ResultMessage>;
   return (
     <div className="grid gap-4">
-      <div className="sticky top-0 z-10 flex flex-wrap items-end gap-3 rounded-2xl border border-[#e7e3d9] bg-white p-4">
+      <div className="sticky top-0 z-10 flex flex-wrap items-end gap-3 rounded-card border border-line bg-white p-4">
         <label htmlFor={targetId} className="grid min-w-0 flex-1 gap-1 text-sm">Hədəf alt kateqoriya
           <select id={targetId} value={target} onChange={(event) => setTarget(event.target.value)} className={inputClass}>
             {groups.map((group) => <optgroup key={group.id} label={group.name}>{group.options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</optgroup>)}
@@ -61,9 +61,9 @@ export default function AdminCategoryProductMove({ fromCategoryId, groups, produ
         <button type="button" disabled={busy || !selected.size || !target} onClick={() => void move()} className={buttonClass("primary")}>{busy ? "Köçürülür…" : `Köçür (${selected.size})`}</button>
       </div>
       {feedback && <ResultMessage tone={feedback.tone}>{feedback.text}</ResultMessage>}
-      <div className="overflow-x-auto rounded-2xl border border-[#e7e3d9] bg-white">
+      <div className="overflow-x-auto rounded-card border border-line bg-white">
         <table className="w-full min-w-[560px] text-left text-sm">
-          <thead className="bg-[#f8f7f4] text-xs uppercase tracking-wide text-slate-500">
+          <thead className="bg-surface-page text-xs uppercase tracking-wide text-fg-secondary">
             <tr>
               <th className="w-12 px-4 py-3"><input type="checkbox" aria-label="Hamısını seç" checked={all} onChange={() => setSelected(all ? new Set() : new Set(products.map((product) => product.id)))} className="h-4 w-4" /></th>
               <th className="px-4 py-3 font-medium">Məhsul</th>
@@ -71,11 +71,11 @@ export default function AdminCategoryProductMove({ fromCategoryId, groups, produ
               <th className="px-4 py-3 font-medium">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#eeeae2]">
+          <tbody className="divide-y divide-line">
             {products.map((product) => (
-              <tr key={product.id} className={selected.has(product.id) ? "bg-[#f6faf7]" : undefined}>
+              <tr key={product.id} className={selected.has(product.id) ? "bg-primary-subtle" : undefined}>
                 <td className="px-4 py-3"><input type="checkbox" aria-label={`${product.name} seç`} checked={selected.has(product.id)} onChange={() => toggle(product.id)} className="h-4 w-4" /></td>
-                <td className="px-4 py-3"><span className="font-medium text-[#0d1b2a]">{product.name}</span>{product.sku && <span className="block text-xs text-slate-500">{product.sku}</span>}</td>
+                <td className="px-4 py-3"><span className="font-medium text-fg">{product.name}</span>{product.sku && <span className="block text-xs text-fg-secondary">{product.sku}</span>}</td>
                 <td className="px-4 py-3">{product.store}</td>
                 <td className="px-4 py-3">{product.status}</td>
               </tr>

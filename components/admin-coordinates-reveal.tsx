@@ -34,9 +34,9 @@ export function AdminCoordinatesReveal({ orderId, masked }: { orderId: string; m
     </p>;
   }
   return <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-    <span className="font-mono text-slate-500" aria-label="Koordinatlar gizlədilib">{masked}</span>
+    <span className="font-mono text-fg-secondary" aria-label="Koordinatlar gizlədilib">{masked}</span>
     <button type="button" onClick={() => void reveal()} disabled={busy} className={buttonClass("secondary")}>{busy ? "Gözləyin…" : "Koordinatları göstər"}</button>
-    <span className="text-xs text-slate-500">Baxış audit jurnalına yazılır.</span>
+    <span className="text-xs text-fg-secondary">Baxış audit jurnalına yazılır.</span>
     {error && <span role="alert" className="w-full text-xs text-red-700">{error}</span>}
   </div>;
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin-shell";
+import { PageHeader } from "@/components/admin-ui/page-header";
 import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import { AdminVoenBulk } from "@/components/admin-voen-bulk";
 import { requireRole } from "@/lib/auth";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 const FILTERS = ["UNVERIFIED", "VERIFIED", "ALL"] as const;
 const FILTER_LABELS = { UNVERIFIED: "Yoxlanmayıb", VERIFIED: "Təsdiqlənib", ALL: "Hamısı" } as const;
-const input = "rounded-lg border border-[#ded9cf] bg-white px-3 py-2.5 text-sm text-slate-800";
+const input = "rounded-lg border border-line-strong bg-white px-3 py-2.5 text-sm text-fg";
 
 /** VÖEN yoxlaması: every seller's VÖEN status; bulk verify after checking each number on the official search. */
 export default async function AdminVoenPage({ searchParams }: { searchParams: Promise<AdminSearchParams> }) {
@@ -36,20 +37,16 @@ export default async function AdminVoenPage({ searchParams }: { searchParams: Pr
   });
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
-    <div className="mb-6">
-      <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>
-      <h1 className="mt-2 text-3xl font-semibold text-[#0d1b2a]">VÖEN yoxlaması</h1>
-      <p className="mt-2 max-w-3xl text-sm text-slate-500">Mağaza səhifəsində “Təsdiqlənmiş satıcı” nişanı yalnız VÖEN admin tərəfindən təsdiqlənəndə görünür. Hər VÖEN-i rəsmi vergi axtarışında yoxlayın (“e-taxes-də yoxla”, VÖEN-i yapışdırın), uyğun olanları seçin və bir qeydlə təsdiqləyin. Hər təsdiq audit jurnalına yazılır.</p>
-    </div>
-    <form action="/admin/voen" className="mb-4 grid gap-3 rounded-2xl border border-[#e7e3d9] bg-white p-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]">
-      <label className="grid min-w-0 gap-1 text-xs text-slate-500">Status<select name="status" defaultValue={filter} className={input}>
+    <PageHeader title="VÖEN yoxlaması" description="Mağaza səhifəsində “Təsdiqlənmiş satıcı” nişanı yalnız VÖEN admin tərəfindən təsdiqlənəndə görünür. Hər VÖEN-i rəsmi vergi axtarışında yoxlayın (“e-taxes-də yoxla”, VÖEN-i yapışdırın), uyğun olanları seçin və bir qeydlə təsdiqləyin. Hər təsdiq audit jurnalına yazılır." />
+    <form action="/admin/voen" className="mb-4 grid gap-3 rounded-card border border-line bg-white p-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]">
+      <label className="grid min-w-0 gap-1 text-xs text-fg-secondary">Status<select name="status" defaultValue={filter} className={input}>
         {FILTERS.map((value) => <option key={value} value={value}>{FILTER_LABELS[value]}</option>)}
       </select></label>
-      <label className="grid min-w-0 gap-1 text-xs text-slate-500">Axtarış<input name="q" defaultValue={q} placeholder="Ad, e-poçt və ya VÖEN" className={input} /></label>
-      <button className="self-end rounded-lg bg-[#173c40] px-4 py-2.5 text-sm font-semibold text-white">Göstər</button>
+      <label className="grid min-w-0 gap-1 text-xs text-fg-secondary">Axtarış<input name="q" defaultValue={q} placeholder="Ad, e-poçt və ya VÖEN" className={input} /></label>
+      <button className="self-end rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white">Göstər</button>
     </form>
-    {!result && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">Siyahını yükləmək alınmadı.</p>}
-    {result && <p className="mb-3 text-sm text-slate-500">{result.total} satıcı · səhifə {page} / {pages}</p>}
+    {!result && <p role="alert" className="mb-4 rounded-control bg-red-50 p-4 text-sm text-red-800">Siyahını yükləmək alınmadı.</p>}
+    {result && <p className="mb-3 text-sm text-fg-secondary">{result.total} satıcı · səhifə {page} / {pages}</p>}
     <AdminVoenBulk rows={rows} />
     {pages > 1 && <nav aria-label="Səhifələr" className="mt-4 flex gap-2 text-sm">
       {page > 1 && <Link href={query(page - 1)} className="rounded-lg border px-3 py-2">← Əvvəlki</Link>}

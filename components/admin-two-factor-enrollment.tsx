@@ -10,8 +10,8 @@ type Props = {
   onFinished: () => void;
 };
 
-const input = "w-full rounded-xl border border-[#ded9cf] px-4 py-3 text-center font-mono text-lg tracking-[.3em] outline-none focus:border-[#bd9a5e]";
-const passwordField = "rounded-xl border border-[#ded9cf] px-4 py-3 outline-none focus:border-[#bd9a5e]";
+const input = "w-full rounded-control border border-line-strong px-4 py-3 text-center font-mono text-lg tracking-[.3em] outline-none focus:border-brand-200";
+const passwordField = "rounded-control border border-line-strong px-4 py-3 outline-none focus:border-brand-200";
 
 export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
   const [setup, setSetup] = useState<Setup | null>(null);
@@ -64,47 +64,47 @@ export default function AdminTwoFactorEnrollment({ mode, onFinished }: Props) {
 
   if (codes) {
     return <div className="space-y-4">
-      <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+      <div className="flex items-start gap-3 rounded-control border border-green-200 bg-green-50 p-4 text-sm text-green-900">
         <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
         <p>İki mərhələli təsdiq aktivləşdirildi. {mode === "settings" ? "Digər sessiyalar bağlandı." : ""}</p>
       </div>
       <div>
-        <h3 className="font-semibold text-[#0b1726]">Bərpa kodları</h3>
-        <p className="mt-1 text-sm text-slate-600">Bu kodlar yalnız indi göstərilir. Telefonunuz əlçatan olmadıqda hər kod bir dəfə girişə imkan verir. Onları təhlükəsiz yerdə saxlayın.</p>
+        <h3 className="font-semibold text-fg">Bərpa kodları</h3>
+        <p className="mt-1 text-sm text-fg-secondary">Bu kodlar yalnız indi göstərilir. Telefonunuz əlçatan olmadıqda hər kod bir dəfə girişə imkan verir. Onları təhlükəsiz yerdə saxlayın.</p>
       </div>
-      <ol className="grid grid-cols-1 gap-2 rounded-xl bg-[#f8f7f4] p-4 font-mono text-sm sm:grid-cols-2" aria-label="Bərpa kodları">
+      <ol className="grid grid-cols-1 gap-2 rounded-control bg-surface-page p-4 font-mono text-sm sm:grid-cols-2" aria-label="Bərpa kodları">
         {codes.map((code) => <li key={code} className="rounded-lg bg-white px-3 py-2 text-center tracking-wider">{code}</li>)}
       </ol>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={download} className="inline-flex items-center gap-2 rounded-xl border border-[#ded9cf] bg-white px-4 py-2.5 text-sm font-semibold"><Download size={16} aria-hidden="true" />Yüklə (.txt)</button>
-        <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-2 rounded-xl border border-[#ded9cf] bg-white px-4 py-2.5 text-sm font-semibold"><Copy size={16} aria-hidden="true" />{copied ? "Kopyalandı" : "Kopyala"}</button>
+        <button type="button" onClick={download} className="inline-flex items-center gap-2 rounded-control border border-line-strong bg-white px-4 py-2.5 text-sm font-semibold"><Download size={16} aria-hidden="true" />Yüklə (.txt)</button>
+        <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-2 rounded-control border border-line-strong bg-white px-4 py-2.5 text-sm font-semibold"><Copy size={16} aria-hidden="true" />{copied ? "Kopyalandı" : "Kopyala"}</button>
       </div>
       <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={saved} onChange={(event) => setSaved(event.target.checked)} className="mt-1 h-4 w-4" />Bərpa kodlarını təhlükəsiz yerdə saxladım.</label>
-      <button type="button" disabled={!saved} onClick={onFinished} className="w-full rounded-xl bg-[#0b1726] px-4 py-3 font-semibold text-white disabled:opacity-50 sm:w-auto">{mode === "login" ? "Admin panelinə keç" : "Hazırdır"}</button>
+      <button type="button" disabled={!saved} onClick={onFinished} className="w-full rounded-control bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50 sm:w-auto">{mode === "login" ? "Admin panelinə keç" : "Hazırdır"}</button>
     </div>;
   }
 
   if (!setup) {
     return <div className="space-y-4">
-      <p className="text-sm leading-6 text-slate-600">Google Authenticator, Microsoft Authenticator və ya oxşar tətbiqdə QR kodu skan edin. Sonra tətbiqin göstərdiyi 6 rəqəmli kodu daxil edin.</p>
+      <p className="text-sm leading-6 text-fg-secondary">Google Authenticator, Microsoft Authenticator və ya oxşar tətbiqdə QR kodu skan edin. Sonra tətbiqin göstərdiyi 6 rəqəmli kodu daxil edin.</p>
       {needsPassword && <label className="grid max-w-xl gap-1.5 text-sm font-medium">Cari şifrə<input className={passwordField} type="password" name="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <button type="button" disabled={busy || (needsPassword && !password)} onClick={() => void start()} className="inline-flex items-center gap-2 rounded-xl bg-[#0b1726] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"><KeyRound size={16} aria-hidden="true" />{busy ? "Hazırlanır…" : "QR kodu yarat"}</button>
+      <button type="button" disabled={busy || (needsPassword && !password)} onClick={() => void start()} className="inline-flex items-center gap-2 rounded-control bg-primary px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"><KeyRound size={16} aria-hidden="true" />{busy ? "Hazırlanır…" : "QR kodu yarat"}</button>
     </div>;
   }
 
   return <form onSubmit={activate} className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-[200px_1fr] sm:items-start">
       {/* SVG is generated on our server from the otpauth URI; it contains only path data. */}
-      <div className="mx-auto w-[200px] rounded-xl border border-[#e7e3d9] bg-white p-2" dangerouslySetInnerHTML={{ __html: setup.qrSvg }} />
+      <div className="mx-auto w-[200px] rounded-control border border-line bg-white p-2" dangerouslySetInnerHTML={{ __html: setup.qrSvg }} />
       <div className="min-w-0 space-y-2 text-sm">
-        <p className="text-slate-600">QR kodu skan edə bilmirsinizsə, bu açarı tətbiqə əl ilə daxil edin (növ: vaxta əsaslanan):</p>
-        <p className="break-all rounded-lg bg-[#f8f7f4] px-3 py-2 font-mono text-sm tracking-wide" aria-label="Əl ilə daxil ediləcək açar">{setup.manualKey}</p>
-        <p className="text-xs text-slate-500">Açarı heç kimlə paylaşmayın. Bu səhifəni bağlasanız, yeni QR kod yaradın.</p>
+        <p className="text-fg-secondary">QR kodu skan edə bilmirsinizsə, bu açarı tətbiqə əl ilə daxil edin (növ: vaxta əsaslanan):</p>
+        <p className="break-all rounded-lg bg-surface-page px-3 py-2 font-mono text-sm tracking-wide" aria-label="Əl ilə daxil ediləcək açar">{setup.manualKey}</p>
+        <p className="text-xs text-fg-secondary">Açarı heç kimlə paylaşmayın. Bu səhifəni bağlasanız, yeni QR kod yaradın.</p>
       </div>
     </div>
     <label className="grid gap-1.5 text-sm font-medium">Tətbiqdəki 6 rəqəmli kod<input className={input} name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} required autoFocus /></label>
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-    <button disabled={busy} className="w-full rounded-xl bg-[#0b1726] px-4 py-3 font-semibold text-white disabled:opacity-50 sm:w-auto sm:px-6">{busy ? "Yoxlanılır…" : "Təsdiqlə və aktivləşdir"}</button>
+    <button disabled={busy} className="w-full rounded-control bg-primary px-4 py-3 font-semibold text-white disabled:opacity-50 sm:w-auto sm:px-6">{busy ? "Yoxlanılır…" : "Təsdiqlə və aktivləşdir"}</button>
   </form>;
 }

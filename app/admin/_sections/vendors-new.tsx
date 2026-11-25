@@ -1,11 +1,13 @@
 /** Satıcı hesabı yarat (/admin/vendors/new). Moved unchanged from app/admin/[...section]/page.tsx. */
 import AdminMutationForm from "@/components/admin-mutation-form";
 import { prisma } from "@/lib/prisma";
-import { type SectionContext, card, Header } from "./shared";
+import { type SectionContext, card } from "./shared";
+import { AdminDetailHeader } from "@/components/admin-ui/detail-header";
+import { ADMIN_BACK_LINKS } from "@/lib/admin-power-1";
 
 export async function renderVendorsNew({ shell }: SectionContext) {
    const cities=await prisma.city.findMany({where:{isActive:true},orderBy:{name:"asc"},select:{id:true,name:true}});
-   return shell(<><Header title="Satıcı hesabı yarat" detail="Yeni satıcı hesabı, onun hüquqi məlumatları və ilk mağazası eyni əməliyyatda yaradılır. Hüquqi təsdiq və mağaza yoxlaması tamamlanmadan mağaza ictimai satışa çıxmır."/><section className={`${card} max-w-4xl`}>
+   return shell(<><AdminDetailHeader back={ADMIN_BACK_LINKS.vendors} title="Satıcı hesabı yarat" detail="Yeni satıcı hesabı, onun hüquqi məlumatları və ilk mağazası eyni əməliyyatda yaradılır. Hüquqi təsdiq və mağaza yoxlaması tamamlanmadan mağaza ictimai satışa çıxmır."/><section className={`${card} max-w-4xl`}>
     <AdminMutationForm resource="vendors" button="Satıcı və mağaza yarat" confirmMessage="Bu şəxs üçün satıcı hesabı və mağaza yaradılsın?" fields={[
      {name:"firstName",label:"Ad",required:true},
      {name:"lastName",label:"Soyad",required:true},

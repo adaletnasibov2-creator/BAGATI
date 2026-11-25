@@ -42,12 +42,12 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
      <p className="mt-3 text-sm">{order.user.customerProfile?.firstName || ""} {order.user.customerProfile?.lastName || ""} · {order.user.email}</p>
      <h3 className="mt-4 text-sm font-semibold">Çatdırılma ünvanı</h3>
      <p className="mt-1 text-sm">{[delivery.recipientName, delivery.phone].filter(Boolean).join(" · ") || "Alıcı qeyd edilməyib"}</p>
-     <p className="mt-1 text-sm text-slate-600">{deliveryAddressText(delivery) || "Ünvan məlumatı yoxdur"}</p>
-     {delivery.coordinates ? <AdminCoordinatesReveal orderId={order.id} masked={maskCoordinates(delivery.coordinates)} /> : <p className="mt-1 text-xs text-slate-500">Xəritə nöqtəsi yoxdur.</p>}
+     <p className="mt-1 text-sm text-fg-secondary">{deliveryAddressText(delivery) || "Ünvan məlumatı yoxdur"}</p>
+     {delivery.coordinates ? <AdminCoordinatesReveal orderId={order.id} masked={maskCoordinates(delivery.coordinates)} /> : <p className="mt-1 text-xs text-fg-secondary">Xəritə nöqtəsi yoxdur.</p>}
      <h3 className="mt-5 font-semibold">Ödəniş</h3>
      {order.payments.length
       ? order.payments.map((payment: any) => <p key={payment.id} className="mt-2 text-sm">{adminStatusLabel("payment", payment.status)} · {payment.currency === "AZN" ? formatPrice(payment.amount) : `${formatAmount(payment.amount)} ${payment.currency}`} · {payment.provider || "Provayder təyin edilməyib"}{payment.providerReference && !String(payment.providerReference).startsWith("claim:") ? ` · ${payment.providerReference}` : ""}</p>)
-      : <p className="mt-2 text-sm text-slate-500">Ödəniş qeydi yoxdur.</p>}
+      : <p className="mt-2 text-sm text-fg-secondary">Ödəniş qeydi yoxdur.</p>}
     </section>
     <section className={card}>
      <h2 className="font-semibold">Cəmlər və çatdırılma</h2>
@@ -62,14 +62,14 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
     {order.storeOrders.map((group: any) => <section key={group.id} className={card}>
      <h2 className="font-semibold">{group.store.name} · {adminStatusLabel("order", group.status)} · {formatPrice(group.subtotal)}</h2>
      {refundNeeded(order, group) && <p className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900" data-refund-needed>{CANCELLATION_TEXT.refundPending}: ləğv edilib, ödəniş alınıb</p>}
-     {group.cancellationRequests?.[0] && <p className="mt-2 text-sm text-slate-600">Müştərinin ləğv müraciəti: {({ REQUESTED: "açıq", APPROVED: "təsdiqlənib", REJECTED: "rədd edilib", WITHDRAWN: "geri götürülüb" } as Record<string, string>)[group.cancellationRequests[0].status]} · {group.cancellationRequests[0].reason}</p>}
-     <p className="mt-2 text-sm text-slate-600">
+     {group.cancellationRequests?.[0] && <p className="mt-2 text-sm text-fg-secondary">Müştərinin ləğv müraciəti: {({ REQUESTED: "açıq", APPROVED: "təsdiqlənib", REJECTED: "rədd edilib", WITHDRAWN: "geri götürülüb" } as Record<string, string>)[group.cancellationRequests[0].status]} · {group.cancellationRequests[0].reason}</p>}
+     <p className="mt-2 text-sm text-fg-secondary">
       Çatdırılma: {group.deliveryMethod || "Mağaza ilə dəqiqləşdirilir"}
       {group.deliveryCarrier ? ` · ${group.deliveryCarrier}` : ""}
       {group.deliveryTrackingCode ? ` · İzləmə: ${group.deliveryTrackingCode}` : ""}
      </p>
-     {group.deliveryNote && <p className="mt-1 text-sm text-slate-500">{group.deliveryNote}</p>}
-     <p className="mt-1 text-xs text-slate-500">Satıcı: {group.store.vendor.displayName} · {group.store.vendor.user.email}</p>
+     {group.deliveryNote && <p className="mt-1 text-sm text-fg-secondary">{group.deliveryNote}</p>}
+     <p className="mt-1 text-xs text-fg-secondary">Satıcı: {group.store.vendor.displayName} · {group.store.vendor.user.email}</p>
      <AdminShipmentStatusControl storeOrderId={group.id} shipmentStatus={group.shipmentStatus} orderStatus={group.status} />
      <div className="mt-3 divide-y">
       {group.items.map((item: any) => <div key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm">

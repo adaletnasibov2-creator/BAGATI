@@ -6,7 +6,7 @@ import { adminStatusLabel } from "@/lib/admin-labels";
 
 type StoreOption = { id: string; name: string; vendorName: string; status: string };
 
-const input = "w-full rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
+const input = "w-full rounded-control border border-line-strong bg-white px-3 py-2.5 text-sm";
 
 export default function AdminProductImport() {
   const [query, setQuery] = useState("");
@@ -34,14 +34,14 @@ export default function AdminProductImport() {
     }
   }
 
-  return <section className="mb-5 rounded-2xl border border-[#e7e3d9] bg-white p-5">
+  return <section className="mb-5 rounded-card border border-line bg-white p-5">
     <h2 className="font-semibold">Məhsulları toplu idxal et</h2>
-    <p className="mt-1 text-sm text-slate-500">Hədəf mağazanı axtarıb seçin. Yeni məhsullar qaralama kimi yaradılır; SKU uyğunluğu yalnız seçilmiş mağaza daxilində yoxlanır.</p>
+    <p className="mt-1 text-sm text-fg-secondary">Hədəf mağazanı axtarıb seçin. Yeni məhsullar qaralama kimi yaradılır; SKU uyğunluğu yalnız seçilmiş mağaza daxilində yoxlanır.</p>
     <form onSubmit={search} className="mt-4 flex flex-col gap-3 sm:flex-row">
       <label className="grid flex-1 gap-1 text-sm">Mağaza adı və ya satıcı
         <input className={input} maxLength={120} value={query} onChange={(event) => setQuery(event.target.value)} />
       </label>
-      <button disabled={busy} className="self-end rounded-xl bg-[#173c40] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+      <button disabled={busy} className="self-end rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
         {busy ? "Axtarılır…" : "Mağaza axtar"}
       </button>
     </form>
@@ -52,7 +52,7 @@ export default function AdminProductImport() {
         {stores.map((store) => <option key={store.id} value={store.id}>{store.name} · {store.vendorName} · {adminStatusLabel("store", store.status)}</option>)}
       </select>
     </label>}
-    {stores.length === 0 && !busy && !error && <p className="mt-3 text-xs text-slate-500">Mağaza tapmaq üçün axtarış edin. Maksimum 25 nəticə göstərilir.</p>}
+    {stores.length === 0 && !busy && !error && <p className="mt-3 text-xs text-fg-secondary">Mağaza tapmaq üçün axtarış edin. Maksimum 25 nəticə göstərilir.</p>}
     {selected && <VendorImport key={selected.id} storeId={selected.id} endpointUrl={`/api/admin/stores/${encodeURIComponent(selected.id)}/imports`} assetEndpointUrl={`/api/admin/stores/${encodeURIComponent(selected.id)}/assets`} />}
   </section>;
 }

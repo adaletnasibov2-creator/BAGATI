@@ -21,7 +21,7 @@ import { authRateLimitKey } from "../lib/auth-rate-limit";
 import { RATE_LIMITED_MESSAGE } from "../lib/rate-limit-response";
 import { orderCreateResponse } from "../lib/order-create-response";
 import { calculateCampaignPrice, calculateEffectivePrice } from "../lib/promotion-pricing";
-import { ADMIN_POWER_1_API_ROUTES, isAllowedAdminChange } from "./admin-power-1-scope";
+import { ALLOWED_ADMIN_API_ROUTES, isAllowedAdminChange } from "./admin-power-1-scope";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
@@ -155,8 +155,9 @@ test("admin pages, admin APIs and legal pages are untouched by this task", () =>
   const changed = changedSinceBase();
   if (!changed) return; // no git history available (exported copy): nothing to compare
   // ADMIN-DESIGN-1 / ADMIN-POWER-1 (owner-approved): their listed admin UI files may change; admin APIs stay forbidden
-  // except the two new ADMIN-POWER-1 routes (search, list export), pinned by scripts/admin-power-1.test.ts.
-  const forbidden = changed.filter((file) => ((file.startsWith("app/admin/") || /^components\/admin/.test(file)) && !isAllowedAdminChange(file)) || (file.startsWith("app/api/admin/") && !(ADMIN_POWER_1_API_ROUTES as readonly string[]).includes(file))
+  // except the two new ADMIN-POWER-1 routes (search, list export) and ADMIN-DESIGN-2's two q-filter escapes (products
+  // export, import store picker), pinned by scripts/admin-power-1.test.ts and scripts/admin-design-2.test.ts.
+  const forbidden = changed.filter((file) => ((file.startsWith("app/admin/") || /^components\/admin/.test(file)) && !isAllowedAdminChange(file)) || (file.startsWith("app/api/admin/") && !ALLOWED_ADMIN_API_ROUTES.includes(file))
     // SEO-TITLES-1 (owner-approved): /delivery-returns gained only a <title>/canonical; its visible content is pinned as
     // unchanged by scripts/seo-titles-1.test.ts. The three legal pages stay fully untouched.
     || /^app\/\(customer\)\/(terms|privacy|seller-terms)\//.test(file) || file.startsWith("lib/legal"));

@@ -42,7 +42,7 @@ export default function AdminProductEditForm({ productId, initial, categories, b
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const router = useRouter();
-  const input = "w-full rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
+  const input = "w-full rounded-control border border-line-strong bg-white px-3 py-2.5 text-sm";
 
   function update<K extends keyof ProductEditValues>(key: K, value: ProductEditValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -81,9 +81,9 @@ export default function AdminProductEditForm({ productId, initial, categories, b
     }
   }
 
-  return <section className="mb-5 rounded-2xl border border-[#e7e3d9] bg-white p-5">
+  return <section className="mb-5 rounded-card border border-line bg-white p-5">
     <h2 className="font-semibold">Məhsul məlumatlarını redaktə et</h2>
-    <p className="mt-1 text-sm text-slate-500">Şəkillər yalnız bu mağazaya aid yüklənmiş resurslardan seçilə bilər. Sifariş tarixçəsi dəyişdirilmir.</p>
+    <p className="mt-1 text-sm text-fg-secondary">Şəkillər yalnız bu mağazaya aid yüklənmiş resurslardan seçilə bilər. Sifariş tarixçəsi dəyişdirilmir.</p>
     <form onSubmit={submit} className="mt-4 grid gap-4 sm:grid-cols-2">
       <label className="grid gap-1 text-sm">Məhsul adı<input className={input} required maxLength={160} value={values.name} onChange={(event) => update("name", event.target.value)} /></label>
       <label className="grid gap-1 text-sm">SKU<input className={input} maxLength={80} value={values.sku ?? ""} onChange={(event) => update("sku", event.target.value || null)} /></label>
@@ -95,7 +95,7 @@ export default function AdminProductEditForm({ productId, initial, categories, b
       <label className="grid gap-1 text-sm sm:col-span-2">Şəkil URL-ləri (hər sətirdə biri)<textarea className={input} rows={3} value={values.images.join("\n")} onChange={(event) => update("images", event.target.value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean))} /></label>
       <label className="grid gap-1 text-sm">Stok<input className={input} type="number" min="0" step="1" value={values.quantity} onChange={(event) => { const parsed = presentStockQuantity(event.target.value); if (parsed !== null) update("quantity", parsed); }} /></label>
       <label className="grid gap-1 text-sm">Az stok həddi<input className={input} type="number" min="0" step="1" value={values.lowStockThreshold} onChange={(event) => { const parsed = presentStockQuantity(event.target.value); if (parsed !== null) update("lowStockThreshold", parsed); }} /></label>
-      {values.variants.map((variant, index) => <fieldset key={variant.id} className="grid gap-3 rounded-xl border border-[#e7e3d9] p-4 sm:col-span-2 sm:grid-cols-2">
+      {values.variants.map((variant, index) => <fieldset key={variant.id} className="grid gap-3 rounded-control border border-line p-4 sm:col-span-2 sm:grid-cols-2">
         <legend className="px-1 text-sm font-medium">Variant: {variant.name} · rezerv: {variant.reserved}</legend>
         <label className="grid gap-1 text-sm">Variant adı<input className={input} required maxLength={100} value={variant.name} onChange={(event) => update("variants", values.variants.map((item, i) => i === index ? { ...item, name: event.target.value } : item))} /></label>
         <label className="grid gap-1 text-sm">Variant SKU<input className={input} maxLength={80} value={variant.sku ?? ""} onChange={(event) => update("variants", values.variants.map((item, i) => i === index ? { ...item, sku: event.target.value || null } : item))} /></label>
@@ -106,7 +106,7 @@ export default function AdminProductEditForm({ productId, initial, categories, b
       </fieldset>)}
       {error && <p role="alert" className="sm:col-span-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {message && <p role="status" className="sm:col-span-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
-      <button disabled={busy} className="w-fit rounded-xl bg-[#173c40] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Gözləyin…" : "Dəyişiklikləri saxla"}</button>
+      <button disabled={busy} className="w-fit rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Gözləyin…" : "Dəyişiklikləri saxla"}</button>
     </form>
   </section>;
 }

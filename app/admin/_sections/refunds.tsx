@@ -21,15 +21,15 @@ export async function renderRefunds({ shell }: SectionContext) {
   });
   return shell(<>
     <Header title="Geri ödənişlər"/>
-    <div className={card}><p className="font-medium">Xarici ödəniş provayderi qoşulmayıb</p><p className="mt-2 text-sm text-slate-500">Qaytarılma sorğuları mövcuddur, lakin geri ödəniş yalnız REFUND_PENDING vəziyyətində saxlanılır. Provayderdən təsdiq gəlmədən tamamlanmış geri ödəniş qeydi yaradılmır.</p></div>
+    <div className={card}><p className="font-medium">Xarici ödəniş provayderi qoşulmayıb</p><p className="mt-2 text-sm text-fg-secondary">Qaytarılma sorğuları mövcuddur, lakin geri ödəniş yalnız REFUND_PENDING vəziyyətində saxlanılır. Provayderdən təsdiq gəlmədən tamamlanmış geri ödəniş qeydi yaradılmır.</p></div>
     <section className="mt-5" data-refund-needed-list>
       <h2 className="mb-1 text-lg font-semibold">{CANCELLATION_TEXT.refundPending}</h2>
-      <p className="mb-3 text-sm text-slate-500">Ləğv edilmiş, lakin ödənişi alınmış mağaza sifarişləri. Geri ödəniş əl ilə edilir; burada heç bir məbləğ avtomatik qaytarılmır.</p>
+      <p className="mb-3 text-sm text-fg-secondary">Ləğv edilmiş, lakin ödənişi alınmış mağaza sifarişləri. Geri ödəniş əl ilə edilir; burada heç bir məbləğ avtomatik qaytarılmır.</p>
       <Table
         rows={refundNeeded}
         empty="Geri ödəniş gözləyən ləğv edilmiş sifariş yoxdur."
         columns={[
-          { label: "Sifariş", cell: (row) => <Link href={`/admin/orders/${row.order.id}`} className="font-semibold text-[#173c40]">#{row.order.id.slice(-8).toUpperCase()}</Link> },
+          { label: "Sifariş", cell: (row) => <Link href={`/admin/orders/${row.order.id}`} className="font-semibold text-primary">#{row.order.id.slice(-8).toUpperCase()}</Link> },
           { label: "Mağaza", cell: (row) => row.store.name },
           { label: "Müştəri", cell: (row) => row.order.user.email },
           { label: "Məbləğ", cell: (row) => formatMoney(Number(row.subtotal) + Number(row.deliveryFee)) },

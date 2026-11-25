@@ -4,8 +4,12 @@
  * listed explicitly and tested in scripts/admin-power-1.test.ts (ADMIN only, rate limited, bounded, escaped).
  */
 import { ADMIN_DESIGN_1_FILES } from "./admin-design-1-scope";
+import { ADMIN_DESIGN_2_API_ROUTES, ADMIN_DESIGN_2_FILES } from "./admin-design-2-scope";
 
 export const ADMIN_POWER_1_API_ROUTES = ["app/api/admin/search/route.ts", "app/api/admin/list-export/[list]/route.ts"] as const;
+
+/** Every admin API route an owner-approved admin task may have changed (POWER-1 new routes, DESIGN-2 q-filter lines). */
+export const ALLOWED_ADMIN_API_ROUTES: readonly string[] = [...ADMIN_POWER_1_API_ROUTES, ...ADMIN_DESIGN_2_API_ROUTES];
 
 export const ADMIN_POWER_1_FILES: ReadonlySet<string> = new Set([
   "app/admin/page.tsx",
@@ -31,9 +35,9 @@ export const ADMIN_POWER_1_FILES: ReadonlySet<string> = new Set([
   ...ADMIN_POWER_1_API_ROUTES,
 ]);
 
-/** Files an older pin may see as changed: this task's and ADMIN-DESIGN-1's. */
+/** Files an older pin may see as changed: this task's, ADMIN-DESIGN-1's and ADMIN-DESIGN-2's. */
 export function isAllowedAdminChange(path: string): boolean {
-  return ADMIN_POWER_1_FILES.has(path) || ADMIN_DESIGN_1_FILES.has(path);
+  return ADMIN_POWER_1_FILES.has(path) || ADMIN_DESIGN_1_FILES.has(path) || ADMIN_DESIGN_2_FILES.has(path);
 }
 
 /** A `git diff --name-only` output without the allowed admin files (empty when nothing else changed). */

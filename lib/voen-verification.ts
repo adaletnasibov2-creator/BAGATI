@@ -10,6 +10,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { maskVoenDigits, parseVoen } from "@/lib/voen";
 import { normalizeVoen } from "@/lib/seller-application";
+import { adminLikePattern } from "@/lib/admin-list-where";
 
 export const VOEN_NOTE_MIN = 3;
 export const VOEN_NOTE_MAX = 300;
@@ -170,7 +171,7 @@ export async function listSellersForVoenReview(db: Pick<PrismaClient, "$queryRaw
   const q = input.q.trim().slice(0, 100);
   const searchDigits = q.replace(/\D/g, "");
   const searchWhere = q
-    ? P.sql`(p."displayName" ILIKE ${`%${q}%`} OR u."email" ILIKE ${`%${q}%`}${searchDigits.length >= 3 ? P.sql` OR ${digitsExpr} LIKE ${`%${searchDigits}%`}` : P.empty})`
+    ? P.sql`(p."displayName" ILIKE ${adminLikePattern(q)} OR u."email" ILIKE ${adminLikePattern(q)}${searchDigits.length >= 3 ? P.sql` OR ${digitsExpr} LIKE ${`%${searchDigits}%`}` : P.empty})`
     : P.sql`TRUE`;
   const from = P.sql`
     FROM "VendorProfile" p

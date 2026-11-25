@@ -38,24 +38,24 @@ export default function AdminStoreReviewActions(props: Props) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Qərarı saxlamaq mümkün olmadı."); }
     finally { setBusy(false); }
   }
-  const input = "w-full rounded-xl border border-[#ded9cf] bg-white px-3.5 py-2.5 text-sm";
+  const input = "w-full rounded-control border border-line-strong bg-white px-3.5 py-2.5 text-sm";
   const actions = props.status === "PENDING_REVIEW" ? ["approve", "reject", "suspend"] as const : props.status === "ACTIVE" ? ["approve", "suspend"] as const : props.status === "SUSPENDED" ? ["reactivate"] as const : [];
-  return <section className="mt-5 rounded-2xl border border-[#e7e3d9] bg-white p-5">{dialog}
-    <h2 className="font-semibold text-[#142d38]">Satıcı məlumatları və admin qərarı</h2>
-    <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2"><dt className="text-slate-500">Satıcı növü</dt><dd>{props.sellerType === "INDIVIDUAL_ENTREPRENEUR" ? "Fərdi sahibkar" : props.sellerType === "REGISTERED_COMPANY" ? "Qeydiyyatdan keçmiş şirkət" : "Seçilməyib"}</dd><dt className="text-slate-500">Hüquqi ad</dt><dd>{props.legalName || "Daxil edilməyib"}</dd><dt className="text-slate-500">VÖEN</dt><dd>{props.voen || "Daxil edilməyib"}</dd><dt className="text-slate-500">Hüquqi ünvan</dt><dd>{props.legalAddress || "Daxil edilməyib"}</dd><dt className="text-slate-500">Hüquqi məlumatların admin yoxlaması</dt><dd>{props.legalInfoApproved ? "Təsdiqlənib" : "Təsdiqlənməyib"}</dd></dl>
-    <p className="mt-3 text-xs leading-5 text-slate-500">Tələb olunan sahələr serverdəki satıcı növü siyasətinə əsaslanır. Bu panel məlumatların dövlət reyestrində yoxlanmasını həyata keçirmir.</p>
+  return <section className="mt-5 rounded-card border border-line bg-white p-5">{dialog}
+    <h2 className="font-semibold text-fg">Satıcı məlumatları və admin qərarı</h2>
+    <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2"><dt className="text-fg-secondary">Satıcı növü</dt><dd>{props.sellerType === "INDIVIDUAL_ENTREPRENEUR" ? "Fərdi sahibkar" : props.sellerType === "REGISTERED_COMPANY" ? "Qeydiyyatdan keçmiş şirkət" : "Seçilməyib"}</dd><dt className="text-fg-secondary">Hüquqi ad</dt><dd>{props.legalName || "Daxil edilməyib"}</dd><dt className="text-fg-secondary">VÖEN</dt><dd>{props.voen || "Daxil edilməyib"}</dd><dt className="text-fg-secondary">Hüquqi ünvan</dt><dd>{props.legalAddress || "Daxil edilməyib"}</dd><dt className="text-fg-secondary">Hüquqi məlumatların admin yoxlaması</dt><dd>{props.legalInfoApproved ? "Təsdiqlənib" : "Təsdiqlənməyib"}</dd></dl>
+    <p className="mt-3 text-xs leading-5 text-fg-secondary">Tələb olunan sahələr serverdəki satıcı növü siyasətinə əsaslanır. Bu panel məlumatların dövlət reyestrində yoxlanmasını həyata keçirmir.</p>
     {(props.status === "PENDING_REVIEW" || props.status === "ACTIVE" || props.status === "SUSPENDED") && <>
       <label className="mt-4 grid gap-1 text-sm">Rədd etmə / dayandırma səbəbi<textarea className={input} rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)}/></label>
-      {(actions as readonly string[]).includes("approve") && <fieldset className="mt-4 rounded-xl border border-[#ece7dc] p-3">
+      {(actions as readonly string[]).includes("approve") && <fieldset className="mt-4 rounded-control border border-line p-3">
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={freeSale} disabled={busy || props.hasActiveGrant} onChange={(event) => setFreeSale(event.target.checked)}/>Ödənişsiz satış (admin icazəsi)</label>
-        <p className="mt-1 text-xs leading-5 text-slate-500">{props.hasActiveGrant ? "Bu mağazanın artıq ödənişsiz satış icazəsi var; onu aşağıdakı bölmədən idarə edin." : "Seçilməsə, satış üçün aktiv və qüvvədə olan ödənişli Basic və ya Pro abunəliyi tələb olunur."}</p>
+        <p className="mt-1 text-xs leading-5 text-fg-secondary">{props.hasActiveGrant ? "Bu mağazanın artıq ödənişsiz satış icazəsi var; onu aşağıdakı bölmədən idarə edin." : "Seçilməsə, satış üçün aktiv və qüvvədə olan ödənişli Basic və ya Pro abunəliyi tələb olunur."}</p>
         {freeSale && <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm">Paket<select className={input} value={freeTier} onChange={(event) => setFreeTier(event.target.value as "BASIC" | "PRO")}><option value="BASIC">BASIC (300 məhsul)</option><option value="PRO">PRO (2 000 məhsul)</option></select></label>
           <label className="grid gap-1 text-sm">Bitmə tarixi (istəyə bağlı)<input type="date" className={input} value={freeEndsAt} onChange={(event) => setFreeEndsAt(event.target.value)}/></label>
           <label className="grid gap-1 text-sm sm:col-span-2">Ödənişsiz satışın səbəbi (məcburi)<textarea className={input} rows={2} maxLength={500} value={freeReason} onChange={(event) => setFreeReason(event.target.value)}/></label>
         </div>}
       </fieldset>}
-      <div className="mt-4 flex flex-wrap gap-2">{actions.map((action) => <button key={action} type="button" disabled={busy} onClick={() => void act(action)} className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${action === "reject" || action === "suspend" ? "border border-red-200 text-red-800" : "bg-[#173c40] text-white"}`}>{busy ? "Gözləyin…" : ({ approve: "Təsdiqlə", reject: "Rədd et", suspend: "Dayandır", reactivate: "Yenidən aktivləşdir" } as const)[action]}</button>)}</div>
+      <div className="mt-4 flex flex-wrap gap-2">{actions.map((action) => <button key={action} type="button" disabled={busy} onClick={() => void act(action)} className={`rounded-control px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${action === "reject" || action === "suspend" ? "border border-red-200 text-red-800" : "bg-primary text-white"}`}>{busy ? "Gözləyin…" : ({ approve: "Təsdiqlə", reject: "Rədd et", suspend: "Dayandır", reactivate: "Yenidən aktivləşdir" } as const)[action]}</button>)}</div>
     </>}
     {message && <p role="status" className="mt-3 text-sm text-emerald-800">{message}</p>}{error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
     <AdminStoreProductPublishingResult result={productResult}/>

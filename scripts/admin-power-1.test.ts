@@ -26,6 +26,8 @@ import { ADMIN_POWER_1_API_ROUTES, isAllowedAdminChange } from "./admin-power-1-
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "ac3823d";
+// ADMIN-DESIGN-2: the scope checks look at this task's own commit (later approved admin tasks change admin files again).
+const TASK = "9ea73f5";
 const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 const baseFile = (path: string) => { try { return git("show", `${BASE}:${path}`); } catch { return ""; } };
 const html = (element: React.ReactElement) => renderToStaticMarkup(element);
@@ -256,7 +258,7 @@ test("export route: ADMIN only first, known lists only, rate limited, bounded se
   assert.equal((body.match(/prisma\.\w+\.(create|update|upsert|delete)/g) ?? []).length, 1, "the audit row is the only write");
   assert.match(read("lib/audit-action-labels.ts"), /ADMIN_LIST_EXPORT: "Admin siyahısı ixrac edildi"/);
   // C1: the products list keeps its existing export.
-  assert.equal(git("diff", "--name-only", BASE, "--", "app/api/admin/products").trim(), "");
+  assert.equal(git("diff", "--name-only", BASE, TASK, "--", "app/api/admin/products").trim(), "");
 });
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -273,7 +275,7 @@ test("fonts: admin shell only (own .bagati-admin scope), never the public theme;
 });
 
 test("scope: only listed admin files and the two new admin routes; no packages, no migration, no Prisma change, legal untouched", () => {
-  const changed = git("diff", "--name-only", BASE, "--", "app/admin", "app/api/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|app\/api\/admin\/|components\/admin)/.test(path));
+  const changed = git("diff", "--name-only", BASE, TASK, "--", "app/admin", "app/api/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|app\/api\/admin\/|components\/admin)/.test(path));
   assert.deepEqual(changed.filter((path) => !isAllowedAdminChange(path)), []);
   assert.deepEqual(changed.filter((path) => path.startsWith("app/api/admin/")).sort(), [...ADMIN_POWER_1_API_ROUTES].sort());
   assert.equal(git("diff", "--name-only", BASE, "--", "package.json", "package-lock.json", "prisma", "lib/legal", "lib/auth.ts", "lib/admin-2fa.ts", "lib/auth-rate-limit.ts", "lib/order-fulfillment.ts", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms").trim(), "");

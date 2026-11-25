@@ -44,23 +44,23 @@ export function AdminVoenPanel({ view }: { view: AdminVoenView }) {
     }
   }
 
-  return <section data-voen-panel className="rounded-2xl border border-[#e7e3d9] bg-white p-5">
+  return <section data-voen-panel className="rounded-card border border-line bg-white p-5">
     <div className="flex flex-wrap items-start justify-between gap-2">
-      <h2 className="font-semibold text-[#0d1b2a]">VÖEN yoxlaması</h2>
-      <span data-voen-status={view.status} className={`rounded-full px-3 py-1 text-xs font-semibold ${verified ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{view.statusLabel}</span>
+      <h2 className="font-semibold text-fg">VÖEN yoxlaması</h2>
+      <span data-voen-status={view.status} className={`rounded-full px-3 py-1 text-xs font-semibold ${verified ? "bg-emerald-50 text-emerald-800" : "bg-surface-sunken text-fg-body"}`}>{view.statusLabel}</span>
     </div>
     {view.voen ? <>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-lg tracking-wider text-[#0d1b2a]">{view.voen}</span>
+        <span className="font-mono text-lg tracking-wider text-fg">{view.voen}</span>
         <button type="button" onClick={() => void copy()} className={buttonClass("secondary")} aria-label="VÖEN-i kopyala"><Copy aria-hidden="true" size={14} />{copied ? "Kopyalandı" : "Kopyala"}</button>
         <a href={VOEN_LOOKUP_URL} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}><ExternalLink aria-hidden="true" size={14} />e-taxes-də yoxla</a>
       </div>
-      <p className="mt-1 text-xs text-slate-500">{view.formatValid ? `Son rəqəmə görə: ${view.kindLabel}.` : "Format yanlışdır (köhnə dəyər): 10 rəqəm, sonuncu 1 və ya 2 olmalıdır. Satıcı düzəltməyincə təsdiq mümkün deyil."} Rəsmi axtarışda “VÖEN” meyarını seçib nömrəni yapışdırın.</p>
-    </> : <p className="mt-3 text-sm text-slate-600">VÖEN qeyd edilməyib.</p>}
+      <p className="mt-1 text-xs text-fg-secondary">{view.formatValid ? `Son rəqəmə görə: ${view.kindLabel}.` : "Format yanlışdır (köhnə dəyər): 10 rəqəm, sonuncu 1 və ya 2 olmalıdır. Satıcı düzəltməyincə təsdiq mümkün deyil."} Rəsmi axtarışda “VÖEN” meyarını seçib nömrəni yapışdırın.</p>
+    </> : <p className="mt-3 text-sm text-fg-secondary">VÖEN qeyd edilməyib.</p>}
     {view.verifiedLabel && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">Təsdiqləyib: {view.verifiedLabel}</p>}
-    {view.revokedLabel && <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">{view.revokedLabel}</p>}
+    {view.revokedLabel && <p className="mt-3 rounded-lg bg-surface-page px-3 py-2 text-sm text-fg-body">{view.revokedLabel}</p>}
     {view.voen && (verified || view.formatValid) && <div className="mt-4 grid gap-2">
-      <label className="grid gap-1 text-sm text-slate-700">Qısa qeyd (məcburi: nəyi yoxladınız)
+      <label className="grid gap-1 text-sm text-fg-body">Qısa qeyd (məcburi: nəyi yoxladınız)
         <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder={verified ? "Məsələn: satıcı səhv VÖEN göndərib" : "Məsələn: e-taxes-də yoxlandı, ad uyğundur"} className={inputClass} />
       </label>
       <div className="flex flex-wrap gap-2">

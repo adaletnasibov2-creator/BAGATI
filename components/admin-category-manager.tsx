@@ -114,7 +114,7 @@ export default function AdminCategoryManager({ tree }: { tree: AdminCategoryNode
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">{tree.length} üst kateqoriya · {tree.reduce((sum, top) => sum + top.children.length, 0)} alt kateqoriya</p>
+        <p className="text-sm text-fg-secondary">{tree.length} üst kateqoriya · {tree.reduce((sum, top) => sum + top.children.length, 0)} alt kateqoriya</p>
         <button type="button" className={buttonClass("primary")} disabled={busy} onClick={() => { setFeedback(null); setEditor({ mode: "create", parentId: null }); }}><Plus aria-hidden="true" size={16} />Üst kateqoriya əlavə et</button>
       </div>
       {feedback && <ResultMessage tone={feedback.tone}>{feedback.text}</ResultMessage>}
@@ -124,7 +124,7 @@ export default function AdminCategoryManager({ tree }: { tree: AdminCategoryNode
           <li key={top.id} className={cardClass}>
             <CategoryRow category={top} siblings={tops} index={index} parent={null} actions={rowActions} />
             {top.children.length > 0 && (
-              <ol className="mt-4 grid gap-3 border-t border-[#eeeae2] pt-4 sm:ml-6">
+              <ol className="mt-4 grid gap-3 border-t border-line pt-4 sm:ml-6">
                 {top.children.map((child, childIndex) => (
                   <li key={child.id}><CategoryRow category={child} siblings={top.children} index={childIndex} parent={top} actions={rowActions} /></li>
                 ))}
@@ -164,7 +164,7 @@ type RowActions = {
   remove: (category: AdminCategoryRow) => unknown;
 };
 
-const iconButton = "grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#e7e3d9] bg-white text-[#173c40] hover:bg-[#f8f7f4] disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#173c40]";
+const iconButton = "grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-line bg-white text-primary hover:bg-surface-page disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus";
 
 function CategoryRow({ category, siblings, index, parent, actions }: { category: AdminCategoryRow; siblings: AdminCategoryRow[]; index: number; parent: AdminCategoryRow | null; actions: RowActions }) {
 const { busy, reorder, edit, addChild, toggleActive, remove, switching, activeOf } = actions;
@@ -175,20 +175,20 @@ const { busy, reorder, edit, addChild, toggleActive, remove, switching, activeOf
   const lastMovable = siblings.filter((row) => row.name.trim().toLocaleLowerCase("az-AZ") !== "digər").length - 1;
   const directOnTopWithChildren = !parent && category.childCount > 0 ? category.productCount : 0;
   return (
-    <div className={`flex min-w-0 flex-col gap-3 rounded-xl sm:flex-row sm:items-center ${shownPublicly ? "" : "bg-slate-50 p-2 -m-2"}`} data-category-active={active ? "true" : "false"}>
+    <div className={`flex min-w-0 flex-col gap-3 rounded-control sm:flex-row sm:items-center ${shownPublicly ? "" : "bg-surface-page p-2 -m-2"}`} data-category-active={active ? "true" : "false"}>
       <div className={`flex min-w-0 flex-1 items-center gap-3 ${shownPublicly ? "" : "opacity-60 grayscale"}`}>
         {parent ? (
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#f1f6f3] text-[#1f5a4f]"><CategoryGlyph category={{ ...category, parentIconKey: parent.iconKey }} size={18} /></span>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary-hover"><CategoryGlyph category={{ ...category, parentIconKey: parent.iconKey }} size={18} /></span>
         ) : (
           <CategoryIcon category={category} size="small" />
         )}
         <div className="min-w-0">
-          <p className="flex min-w-0 flex-wrap items-center gap-2 font-semibold text-[#0d1b2a]">
+          <p className="flex min-w-0 flex-wrap items-center gap-2 font-semibold text-fg">
             <span className="min-w-0 truncate">{category.name}</span>
-            {!active && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">Deaktiv</span>}
+            {!active && <span className="rounded-full bg-line px-2 py-0.5 text-xs font-medium text-fg-body">Deaktiv</span>}
             {active && parentInactive && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">Üst kateqoriya deaktivdir</span>}
           </p>
-          <p className="truncate text-xs text-slate-500">/{category.slug} · {category.totalCount} məhsul · mağazada {category.visibleCount}</p>
+          <p className="truncate text-xs text-fg-secondary">/{category.slug} · {category.totalCount} məhsul · mağazada {category.visibleCount}</p>
           {directOnTopWithChildren > 0 && (
             <Link href={`/admin/categories/move?from=${encodeURIComponent(category.id)}`} className="mt-1 inline-flex min-h-8 items-center rounded-full bg-amber-50 px-2.5 text-xs font-medium text-amber-900 hover:bg-amber-100">
               Alt kateqoriyasız: {directOnTopWithChildren} məhsul → köçür
@@ -209,14 +209,14 @@ const { busy, reorder, edit, addChild, toggleActive, remove, switching, activeOf
           aria-label={`${category.name}: ${active ? "aktivdir, deaktiv et" : "deaktivdir, aktiv et"}`}
           disabled={busy || switching === category.id}
           onClick={() => toggleActive(category)}
-          className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-[#173c40] hover:bg-[#f8f7f4] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#173c40]"
+          className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-primary hover:bg-surface-page disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
         >
-          <span aria-hidden="true" className={`relative inline-block h-6 w-11 shrink-0 rounded-full transition-colors motion-reduce:transition-none ${active ? "bg-[#1f6f5c]" : "bg-slate-300"}`}>
+          <span aria-hidden="true" className={`relative inline-block h-6 w-11 shrink-0 rounded-full transition-colors motion-reduce:transition-none ${active ? "bg-primary-hover" : "bg-line-strong"}`}>
             <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] motion-reduce:transition-none ${active ? "left-[22px]" : "left-0.5"}`} />
           </span>
           {active ? "Aktiv" : "Deaktiv"}
         </button>
-        <button type="button" className={iconButton} disabled={busy} aria-label={`${category.name}: sil`} title={category.productCount || category.childCount ? "Məhsulu və ya alt kateqoriyası olan kateqoriya silinmir" : "Sil"} onClick={() => remove(category)}><Trash2 aria-hidden="true" size={16} className={category.productCount || category.childCount ? "text-slate-400" : "text-red-700"} /></button>
+        <button type="button" className={iconButton} disabled={busy} aria-label={`${category.name}: sil`} title={category.productCount || category.childCount ? "Məhsulu və ya alt kateqoriyası olan kateqoriya silinmir" : "Sil"} onClick={() => remove(category)}><Trash2 aria-hidden="true" size={16} className={category.productCount || category.childCount ? "text-fg-muted" : "text-red-700"} /></button>
       </div>
     </div>
   );
@@ -282,39 +282,39 @@ function CategoryEditor({
 
   const preview = { name: name || "Önbaxış", slug: effectiveSlug, parentId, iconKey, imageUrl: imageUrl.trim() || null, parentIconKey: parent?.iconKey ?? null };
   return (
-    <form onSubmit={submit} className={`${cardClass} grid gap-4 border-[#173c40]`} aria-label={title}>
+    <form onSubmit={submit} className={`${cardClass} grid gap-4 border-primary`} aria-label={title}>
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-1 text-sm">Ad<input required minLength={2} maxLength={100} value={name} onChange={(event) => setName(event.target.value)} className={inputClass} /></label>
         <label className="grid gap-1 text-sm">Slug (URL)
           <input required minLength={2} maxLength={120} value={effectiveSlug} onChange={(event) => { setSlugTouched(true); setSlug(event.target.value); }} className={inputClass} />
-          <span className="text-xs text-slate-500">Kiçik latın hərfləri və tire; addan avtomatik. Dəyişsə köhnə link işləməz.</span>
+          <span className="text-xs text-fg-secondary">Kiçik latın hərfləri və tire; addan avtomatik. Dəyişsə köhnə link işləməz.</span>
         </label>
         <label className="grid gap-1 text-sm">Üst kateqoriya
           <select value={parentId ?? ""} disabled={cannotMove} onChange={(event) => setParentId(event.target.value || null)} className={inputClass}>
             <option value="">Yoxdur (üst səviyyə)</option>
             {tops.filter((top) => top.id !== current?.id).map((top) => <option key={top.id} value={top.id}>{top.name}</option>)}
           </select>
-          {cannotMove && <span className="text-xs text-slate-500">Alt kateqoriyaları olan kateqoriya başqasının altına köçürülə bilməz (yalnız iki səviyyə).</span>}
+          {cannotMove && <span className="text-xs text-fg-secondary">Alt kateqoriyaları olan kateqoriya başqasının altına köçürülə bilməz (yalnız iki səviyyə).</span>}
         </label>
         <label className="flex min-h-11 items-center gap-2 self-end text-sm"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} className="h-4 w-4" />Aktiv (mağazada görünə bilər)</label>
       </div>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
         <AdminCategoryIconPicker value={iconKey} onChange={setIconKey} />
-        <div className="grid content-start gap-3 rounded-xl border border-[#e7e3d9] p-3">
+        <div className="grid content-start gap-3 rounded-control border border-line p-3">
           <p className="text-sm font-medium">Önbaxış</p>
           <div className="flex items-center gap-3">
             <CategoryIcon category={preview} size="large" />
-            <span className="inline-flex min-w-0 items-center gap-2 text-sm"><CategoryGlyph category={preview} size={18} className="text-[#1f5a4f]" /><span className="truncate">{preview.name}</span></span>
+            <span className="inline-flex min-w-0 items-center gap-2 text-sm"><CategoryGlyph category={preview} size={18} className="text-primary-hover" /><span className="truncate">{preview.name}</span></span>
           </div>
           <label className="grid gap-1 text-sm">Şəkil (istəyə bağlı)
             <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => void upload(event.target.files?.[0])} className="text-xs" />
           </label>
           <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="və ya şəkil ünvanı (https)" className={inputClass} aria-label="Şəkil ünvanı" />
           {imageUrl && <button type="button" onClick={() => setImageUrl("")} className={buttonClass("ghost", "min-h-9 justify-start px-2")}>Şəkli sil</button>}
-          {uploading && <p className="text-xs text-slate-500">Yüklənir…</p>}
+          {uploading && <p className="text-xs text-fg-secondary">Yüklənir…</p>}
           {uploadError && <p role="alert" className="text-xs text-red-700">{uploadError}</p>}
-          <p className="text-xs text-slate-500">Şəkil yoxdursa ikon göstərilir. Alt kateqoriya ikonsuzdursa üst kateqoriyanın ikonu istifadə olunur.</p>
+          <p className="text-xs text-fg-secondary">Şəkil yoxdursa ikon göstərilir. Alt kateqoriya ikonsuzdursa üst kateqoriyanın ikonu istifadə olunur.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

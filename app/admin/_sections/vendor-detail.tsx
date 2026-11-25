@@ -58,6 +58,6 @@ export async function renderVendorDetail({ parts, shell }: SectionContext) {
      {label:"Abunəlik",cell:r=>r.subscription ? (r.subscription.plan?.name || "Plan yoxdur") + " · " + adminStatusLabel("subscription", r.subscription.status) : "Abunəlik yoxdur"},
      {label:"Məhsul / sifariş",cell:r=>r._count.products + " / " + r._count.storeOrders},
     ]}/>
-    {vendor._count.stores > vendor.stores.length && <p className="mt-3 text-xs text-slate-500">Siyahıda ən son 50 mağaza göstərilir.</p>}
+    {vendor._count.stores > vendor.stores.length && <p className="mt-3 text-xs text-fg-secondary">Siyahıda ən son 50 mağaza göstərilir.</p>}
    </>);
 }

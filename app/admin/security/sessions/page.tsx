@@ -24,10 +24,10 @@ export default async function AdminSessionsPage() {
   }));
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <div className="mb-6">
-      <Link href="/admin/security" className="text-sm font-medium text-[#85621d]">← Hesab təhlükəsizliyi</Link>
-      <p className="mt-4 text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>
-      <h1 className="mt-2 text-3xl font-semibold text-[#0d1b2a]">Aktiv sessiyalar</h1>
-      <p className="mt-2 text-sm text-slate-500">Hesabınızın açıq olduğu cihazlar. Tanımadığınız sessiyanı dərhal bağlayın və şifrənizi dəyişin.</p>
+      <Link href="/admin/security" className="text-sm font-medium text-gold-700">← Hesab təhlükəsizliyi</Link>
+      <p className="mt-4 text-kicker uppercase text-gold-700">BAGATI · ADMIN</p>
+      <h1 className="mt-1.5 text-h1 text-fg">Aktiv sessiyalar</h1>
+      <p className="mt-2 text-sm text-fg-secondary">Hesabınızın açıq olduğu cihazlar. Tanımadığınız sessiyanı dərhal bağlayın və şifrənizi dəyişin.</p>
     </div>
     <AdminSessionsList sessions={rows} />
   </AdminShell>;

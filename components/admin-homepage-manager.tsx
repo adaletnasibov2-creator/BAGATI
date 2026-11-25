@@ -29,7 +29,7 @@ const blankBanner = (): BannerForm => ({
   isActive: false,
   sortOrder: 0,
 });
-const input = "w-full rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
+const input = "w-full rounded-control border border-line-strong bg-white px-3 py-2.5 text-sm";
 const localInputValue = (value: string) => {
   const date = new Date(value);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -160,7 +160,7 @@ export default function AdminHomepageManager() {
   }
 
   return <div className="space-y-5">
-    <section className="rounded-2xl border border-[#e7e3d9] bg-white p-5">
+    <section className="rounded-card border border-line bg-white p-5">
       <h2 className="font-semibold">{form.id ? "Banneri redaktə et" : "Yeni banner"}</h2>
       <form onSubmit={saveBanner} className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1 text-sm">Başlıq<input className={input} maxLength={160} required value={form.title} onChange={(event) => setValue("title", event.target.value)} /></label>
@@ -178,27 +178,27 @@ export default function AdminHomepageManager() {
         {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 sm:col-span-2">{error}</p>}
         {message && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 sm:col-span-2">{message}</p>}
         <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <button disabled={busy} className="min-h-11 rounded-xl bg-[#173c40] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Saxlanılır…" : form.id ? "Dəyişikliyi saxla" : "Banner yarat"}</button>
-          {form.id && <button type="button" onClick={() => setForm(blankBanner())} className="min-h-11 rounded-xl border px-4 text-sm">Ləğv et</button>}
+          <button disabled={busy} className="min-h-11 rounded-control bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Saxlanılır…" : form.id ? "Dəyişikliyi saxla" : "Banner yarat"}</button>
+          {form.id && <button type="button" onClick={() => setForm(blankBanner())} className="min-h-11 rounded-control border px-4 text-sm">Ləğv et</button>}
         </div>
       </form>
-      <div className="mt-5 divide-y rounded-xl border">
+      <div className="mt-5 divide-y rounded-control border">
         {banners.map((banner) => <div key={banner.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
-          <div className="min-w-0"><p className="font-medium">{banner.title}</p><p className="text-xs text-slate-500">{banner.isActive ? "Aktiv" : "Deaktiv"} · {new Date(banner.startsAt).toLocaleString("az-AZ")} — {new Date(banner.endsAt).toLocaleString("az-AZ")}</p></div>
+          <div className="min-w-0"><p className="font-medium">{banner.title}</p><p className="text-xs text-fg-secondary">{banner.isActive ? "Aktiv" : "Deaktiv"} · {new Date(banner.startsAt).toLocaleString("az-AZ")} — {new Date(banner.endsAt).toLocaleString("az-AZ")}</p></div>
           <button type="button" onClick={() => editBanner(banner)} className="min-h-10 rounded-lg border px-3 text-sm">Redaktə</button>
         </div>)}
-        {!banners.length && <p className="p-4 text-sm text-slate-500">Banner yoxdur.</p>}
+        {!banners.length && <p className="p-4 text-sm text-fg-secondary">Banner yoxdur.</p>}
       </div>
     </section>
 
-    <form onSubmit={saveFeatured} className="grid gap-5 rounded-2xl border border-[#e7e3d9] bg-white p-5 lg:grid-cols-2">
-      <div><h2 className="font-semibold">Ana səhifədə seçilmiş məhsullar</h2><p className="mt-1 text-xs text-slate-500">Maksimum 12 seçim. Alışa yararlı olmayan məhsul müştəriyə göstərilmir.</p>
-        <div className="mt-3 max-h-72 overflow-y-auto rounded-xl border p-2">{featured.products.map((item) => <label key={item.id} className="flex items-center gap-2 rounded-lg p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={featured.productIds.includes(item.id)} onChange={(event) => toggleSelection("productIds", item.id, event.target.checked)} />{item.name}</label>)}</div>
+    <form onSubmit={saveFeatured} className="grid gap-5 rounded-card border border-line bg-white p-5 lg:grid-cols-2">
+      <div><h2 className="font-semibold">Ana səhifədə seçilmiş məhsullar</h2><p className="mt-1 text-xs text-fg-secondary">Maksimum 12 seçim. Alışa yararlı olmayan məhsul müştəriyə göstərilmir.</p>
+        <div className="mt-3 max-h-72 overflow-y-auto rounded-control border p-2">{featured.products.map((item) => <label key={item.id} className="flex items-center gap-2 rounded-lg p-2 text-sm hover:bg-surface-page"><input type="checkbox" checked={featured.productIds.includes(item.id)} onChange={(event) => toggleSelection("productIds", item.id, event.target.checked)} />{item.name}</label>)}</div>
       </div>
-      <div><h2 className="font-semibold">Ana səhifədə seçilmiş mağazalar</h2><p className="mt-1 text-xs text-slate-500">Maksimum 12 seçim. Mağaza aktivlik və satış uyğunluğu şərtlərinə tabedir.</p>
-        <div className="mt-3 max-h-72 overflow-y-auto rounded-xl border p-2">{featured.stores.map((item) => <label key={item.id} className="flex items-center gap-2 rounded-lg p-2 text-sm hover:bg-slate-50"><input type="checkbox" checked={featured.storeIds.includes(item.id)} onChange={(event) => toggleSelection("storeIds", item.id, event.target.checked)} />{item.name}</label>)}</div>
+      <div><h2 className="font-semibold">Ana səhifədə seçilmiş mağazalar</h2><p className="mt-1 text-xs text-fg-secondary">Maksimum 12 seçim. Mağaza aktivlik və satış uyğunluğu şərtlərinə tabedir.</p>
+        <div className="mt-3 max-h-72 overflow-y-auto rounded-control border p-2">{featured.stores.map((item) => <label key={item.id} className="flex items-center gap-2 rounded-lg p-2 text-sm hover:bg-surface-page"><input type="checkbox" checked={featured.storeIds.includes(item.id)} onChange={(event) => toggleSelection("storeIds", item.id, event.target.checked)} />{item.name}</label>)}</div>
       </div>
-      <button disabled={busy} className="min-h-11 rounded-xl bg-[#173c40] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50 lg:col-span-2">{busy ? "Saxlanılır…" : "Seçimləri yadda saxla"}</button>
+      <button disabled={busy} className="min-h-11 rounded-control bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50 lg:col-span-2">{busy ? "Saxlanılır…" : "Seçimləri yadda saxla"}</button>
     </form>
   </div>;
 }

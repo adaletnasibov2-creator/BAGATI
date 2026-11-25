@@ -9,6 +9,7 @@
  */
 import { VENDOR_ORDER_STATUSES } from "@/lib/order-status";
 import { dayKey, monthKey, toCents, weekKey } from "@/lib/vendor-finance";
+import { formatPriceCents } from "@/lib/price";
 
 type MoneyValue = string | number | { toString(): string };
 
@@ -19,9 +20,9 @@ export const TOP_GROUPS_LIMIT = 6;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The one money format of the dashboard: AZN, two decimals, az-AZ grouping. */
+/** PRICE-SYMBOL-1: the site-wide money format "1234.50 ₼" (lib/price.ts); was az-AZ "1.234,50 ₼". */
 export function formatAzn(cents: number): string {
-  return `${(cents / 100).toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₼`;
+  return formatPriceCents(cents);
 }
 
 export function rangeDays(start: Date, end: Date): number {

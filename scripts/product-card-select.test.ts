@@ -105,7 +105,7 @@ test("ProductGrid renders the same HTML from a full row and from the card select
     assert.match(after, /Kətan köynək/);
     assert.match(after, /PRO mağaza/, "PRO badge from the store's subscription");
     assert.match(after, /1 variant/, "in-stock variant count");
-    assert.match(after, /120 ₼/, "original price");
+    assert.match(after, /120\.00 ₼/, "original price"); // PRICE-SYMBOL-1: the card always shows 2 decimals (was "120 ₼")
     assert.doesNotMatch(after, /Uzun təsvir/, "the card never showed the description");
   }
 });

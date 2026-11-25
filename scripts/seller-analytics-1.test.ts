@@ -130,9 +130,9 @@ test("topByValue / categoryTotals / normalizeCityRows / barPercent", () => {
   assert.equal(barPercent(1, 1000), 2, "a non-zero value is always visible");
 });
 
-test("formatAzn: the one money format (AZN, 2 decimals, az-AZ) — same output as the page used before", () => {
-  const old = (cents: number) => `${(cents / 100).toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₼`;
-  for (const cents of [0, 5, 1999, 123456, 100000000]) assert.equal(formatAzn(cents), old(cents));
+test("formatAzn: the site-wide money format from lib/price.ts (PRICE-SYMBOL-1; was az-AZ \"1.234,56 ₼\")", () => {
+  const expected: Record<number, string> = { 0: "0.00 ₼", 5: "0.05 ₼", 1999: "19.99 ₼", 123456: "1234.56 ₼", 100000000: "1000000.00 ₼" };
+  for (const cents of [0, 5, 1999, 123456, 100000000]) assert.equal(formatAzn(cents), expected[cents]);
   assert.match(formatAzn(123456), /₼$/);
   assert.doesNotMatch(formatAzn(123456), /\$|USD|EUR/);
 });

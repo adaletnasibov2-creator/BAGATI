@@ -144,9 +144,11 @@ test("texts: the only new visible words are the button label and the message", (
   assert.deepEqual([...added].sort(), ["Alıcıya “Yoldadır” yaz", "mağazasından", "sifarişiniz yoldadır. Təşəkkür edirik!"].sort());
 });
 
-test("admin, public and legal files untouched since main", () => {
-  const diff = execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "app/(customer)", "components/admin-ui", "app/globals.css", "prisma"], { cwd: root, encoding: "utf8" }).trim();
+test("admin, public and legal files untouched by this task (main 67a98bb -> task commit 8484ba6)", () => {
+  // Compares the task's own commit, so later tasks (e.g. PRICE-SYMBOL-1) can change these files on purpose.
+  const TASK = "8484ba6";
+  const diff = execFileSync("git", ["diff", "--name-only", BASE, TASK, "--", "app/admin", "app/(customer)", "components/admin-ui", "app/globals.css", "prisma"], { cwd: root, encoding: "utf8" }).trim();
   assert.equal(diff, "");
-  const all = execFileSync("git", ["diff", "--name-only", BASE], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter(Boolean);
+  const all = execFileSync("git", ["diff", "--name-only", BASE, TASK], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter(Boolean);
   for (const path of all) assert.ok([PAGE, LIST, ROUTE, "lib/vendor-order-view.ts", "lib/seller-on-the-way.ts", "scripts/seller-orders-design-2.test.ts"].includes(path) || path.startsWith("scripts/"), path);
 });

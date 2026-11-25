@@ -104,8 +104,9 @@ test("texts: only the three approved labels are new; legal pages, admin and sell
   const added = new Set(changed.flatMap((path) => [...fragments(read(path))].filter((fragment) => !before.has(fragment))));
   assert.deepEqual([...added].sort(), ["Hesabım", "Hesabım,", "Sevimlilərim", "Səbətim"].sort());
   for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(read(path), baseFile(path), path);
-  // Seller files changed later on purpose by SELLER-ORDERS-DESIGN-1 (its own test pins them); admin stays untouched.
-  const laterSellerChanges = new Set(["app/vendor/[storeId]/layout.tsx", "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx"]);
+  // Seller files changed later on purpose by SELLER-ORDERS-DESIGN-1 (its own test pins them) and PRICE-SYMBOL-1 (dashboard
+  // money "… ₼", scripts/price-symbol-1.test.ts); admin stays untouched.
+  const laterSellerChanges = new Set(["app/vendor/[storeId]/layout.tsx", "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx", "app/vendor/[storeId]/page.tsx"]);
   const diff = execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "app/vendor", "components/admin-ui"], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter((path) => path && !laterSellerChanges.has(path)).join("\n");
   assert.equal(diff, "", "admin and seller files untouched");
 });

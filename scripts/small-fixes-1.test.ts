@@ -67,12 +67,12 @@ test("B: the threshold sentence needs a fee above 0 and delivery not free yet", 
 
 test("B: cart and checkout use the helper; fee 0 still shows the amount (no PULSUZ); no new text", () => {
   const cart = read("components/cart-page-client.tsx");
-  assert.match(cart, /\{showFreeDeliveryThresholdNote\(group\.delivery\) && <p className="mt-1 text-xs text-fg-muted">\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/);
+  assert.match(cart, /\{showFreeDeliveryThresholdNote\(group\.delivery\) && <p className="mt-1 text-xs text-fg-muted">\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} ₼ və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/); // PRICE-SYMBOL-1: unit is ₼ (was AZN)
   // PULSUZ only from freeDelivery (threshold reached), never from a 0 fee.
   assert.match(cart, /\{group\.delivery\.freeDelivery \? "PULSUZ" : money\(group\.delivery\.deliveryFeeCents \/ 100\)\}/);
   const form = read("components/checkout-form.tsx");
-  assert.match(form, /\{showFreeDeliveryThresholdNote\(\{freeDelivery:store\.freeDelivery,deliveryFeeCents:Math\.round\(store\.deliveryFee\*100\)\}\)&&<p className="mt-1 text-xs text-fg-muted">\{store\.freeDeliveryThreshold\.toFixed\(2\)\} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/);
-  assert.match(form, /\{store\.freeDelivery\?"PULSUZ":`\$\{store\.deliveryFee\.toFixed\(2\)\} AZN`\}/);
+  assert.match(form, /\{showFreeDeliveryThresholdNote\(\{freeDelivery:store\.freeDelivery,deliveryFeeCents:Math\.round\(store\.deliveryFee\*100\)\}\)&&<p className="mt-1 text-xs text-fg-muted">\{store\.freeDeliveryThreshold\.toFixed\(2\)\} ₼ və yuxarı sifarişlərdə çatdırılma pulsuzdur\.<\/p>\}/);
+  assert.match(form, /\{store\.freeDelivery\?"PULSUZ":formatPrice\(store\.deliveryFee\)\}/); // PRICE-SYMBOL-1: fee 0 still shows the amount ("0.00 ₼") via lib/price.ts
   // The "pulsuz" counts stay as pinned in design-t6 / cart-polish-share (no text added or removed).
   const count = (source: string) => (source.match(/pulsuz/gi) ?? []).length;
   assert.equal(count(cart), 3);

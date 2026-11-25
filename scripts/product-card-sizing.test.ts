@@ -68,7 +68,7 @@ test("quick add: no empty line under the button; the live region stays and canno
 
 test("design T3: price hierarchy, tokens, CSS-only hover lift, one shared skeleton", () => {
   const card = read("components/product-card.tsx");
-  assert.match(card, /<p className="text-base font-bold tabular-nums tracking-tight text-fg sm:text-\[1\.0625rem\]">\s*\{price\} ₼/, "current price is the strongest text");
+  assert.match(card, /<p className="text-base font-bold tabular-nums tracking-tight text-fg sm:text-\[1\.0625rem\]">\s*\{formatPrice\(price\)\}/, "current price is the strongest text"); // PRICE-SYMBOL-1: always 2 decimals + ₼ via lib/price.ts
   assert.match(card, /<del className="text-xs tabular-nums text-fg-muted">\s*<span className="sr-only">Əvvəlki qiymət: <\/span>/, "old price struck through, muted, announced");
   assert.match(card, /badgeClass\(discounted \|\| campaignName \? "gold" : "primary"\)/);
   assert.match(card, /<div className="mt-2 flex flex-col gap-y-0 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">/, "phones: old price on its own line (no uneven wrap in 2-column grids)");

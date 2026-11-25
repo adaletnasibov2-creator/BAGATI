@@ -10,6 +10,7 @@ import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { cx, focusRing } from "@/components/ui/cx";
 import { centsToFixed, lineTotalCents, remainingForFreeDeliveryCents, showFreeDeliveryThresholdNote, storeDeliveryCents, type StoreDeliveryCents } from "@/lib/delivery-cents";
 import { notifyCartChanged } from "@/lib/cart-events";
+import { formatPrice } from "@/lib/price";
 
 type CartItem = {
   id: string; productId: string; variantId: string | null; quantity: number;
@@ -21,7 +22,8 @@ type CartItem = {
 type Cart = { id: string; items: CartItem[] } | null;
 /** Loading and loaded cart share this box: the same padding and a minimum height, so the footer does not jump. */
 const CART_PAGE = "container min-h-[80svh] py-10 md:py-14";
-const money = (value: number) => new Intl.NumberFormat("az-AZ", { style: "currency", currency: "AZN", maximumFractionDigits: 2 }).format(value);
+// PRICE-SYMBOL-1: "42.90 ₼" from lib/price.ts (was Intl "az-AZ" AZN, whose text differs between browsers).
+const money = (value: number) => formatPrice(value);
 
 export function CartPageClient() {
   const [cart, setCart] = useState<Cart>(null), [loading, setLoading] = useState(true), [error, setError] = useState(""), [busy, setBusy] = useState<string | null>(null);
@@ -104,9 +106,9 @@ export function CartPageClient() {
         {/* Delivery of this store: the checkout's texts and numbers (the fee, or none once the store's own threshold is reached). */}
         <div data-cart-store-delivery="" className="border-t border-line bg-surface-page px-5 py-4 text-sm">
           <div className="flex justify-between gap-3 text-fg-secondary"><span>Çatdırılma</span><b className="text-fg">{group.delivery.freeDelivery ? "PULSUZ" : money(group.delivery.deliveryFeeCents / 100)}</b></div>
-          {showFreeDeliveryThresholdNote(group.delivery) && <p className="mt-1 text-xs text-fg-muted">{centsToFixed(group.delivery.freeDeliveryThresholdCents)} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur.</p>}
+          {showFreeDeliveryThresholdNote(group.delivery) && <p className="mt-1 text-xs text-fg-muted">{centsToFixed(group.delivery.freeDeliveryThresholdCents)} ₼ və yuxarı sifarişlərdə çatdırılma pulsuzdur.</p>}
           {/* CART-POLISH: the gap to the store's own threshold (threshold minus store subtotal, in cents); hidden when delivery is already free, the fee is 0 or nothing is left. */}
-          {remainingForFreeDeliveryCents(group.delivery) !== null && <p data-cart-free-delivery-remaining="" className="mt-1 text-xs font-medium text-primary">Pulsuz çatdırılmaya {centsToFixed(remainingForFreeDeliveryCents(group.delivery)!)} AZN qaldı</p>}
+          {remainingForFreeDeliveryCents(group.delivery) !== null && <p data-cart-free-delivery-remaining="" className="mt-1 text-xs font-medium text-primary">Pulsuz çatdırılmaya {centsToFixed(remainingForFreeDeliveryCents(group.delivery)!)} ₼ qaldı</p>}
           <p className="mt-2 flex justify-between gap-3 border-t border-line pt-2 font-semibold text-fg"><span>Mağaza cəmi:</span><span>{money(group.delivery.storeTotalCents / 100)}</span></p>
         </div></section>)}</div>
       <aside className="h-fit space-y-4 lg:sticky lg:top-36">

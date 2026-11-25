@@ -191,7 +191,8 @@ test("texts: no new visible Azerbaijani text in the changed files; legal pages u
     const now = read(path).split("\n").filter((line) => !/^\s*(\/\/|\*|\/\*\*)/.test(line)).join("\n");
     // SELLER-CUSTOMER-CARD-1 reused existing wording on the order page; each text is checked to exist in another file below.
     const reusedLater = path === "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx" ? new Set(Object.keys(REUSED_ON_ORDER_PAGE)) : new Set<string>();
-    const added = [...fragments(now)].filter((fragment) => !before.has(fragment) && !reusedLater.has(fragment));
+    // PRICE-SYMBOL-1 only swapped the unit AZN -> ₼ inside existing sentences: such a fragment is not new text.
+    const added = [...fragments(now)].filter((fragment) => !before.has(fragment) && !before.has(fragment.replace(/₼/g, "AZN")) && !reusedLater.has(fragment));
     assert.deepEqual(added, [], `${path}: new Azerbaijani text`);
   }
   for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { escapeAdminReportCsvCell } from "@/lib/admin-report-csv";
 import { prisma } from "@/lib/prisma";
+import { adminSearchContains } from "@/lib/admin-list-where";
 
 export const dynamic = "force-dynamic";
 const exportQuerySchema = z.object({
@@ -57,9 +58,9 @@ export async function GET(request: NextRequest) {
     ...(storeId ? { storeId } : {}),
     ...(categoryId ? { category: { OR: [{ id: categoryId }, { parentId: categoryId }] } } : {}),
     ...(q ? { OR: [
-      { name: { contains: q, mode: "insensitive" } },
-      { sku: { contains: q, mode: "insensitive" } },
-      { store: { name: { contains: q, mode: "insensitive" } } },
+      { name: adminSearchContains(q) },
+      { sku: adminSearchContains(q) },
+      { store: { name: adminSearchContains(q) } },
     ] } : {}),
   };
 

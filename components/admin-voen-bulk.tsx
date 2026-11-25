@@ -54,30 +54,30 @@ export function AdminVoenBulk({ rows }: { rows: VoenBulkRow[] }) {
   }
 
   return <div className="grid gap-4">
-    <div className="overflow-hidden rounded-2xl border border-[#e7e3d9] bg-white">
-      {rows.length ? <ul className="divide-y divide-[#eeeae2]">
+    <div className="overflow-hidden rounded-card border border-line bg-white">
+      {rows.length ? <ul className="divide-y divide-line">
         {rows.map((row) => {
           const canSelect = !row.verified && row.formatValid && !row.duplicate;
           return <li key={row.userId} data-voen-row className="grid gap-2 p-4 text-sm sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-            <input type="checkbox" aria-label={`${row.displayName} seç`} disabled={!canSelect} checked={selected.has(row.userId)} onChange={() => toggle(row.userId)} className="h-5 w-5 accent-[#173c40] disabled:opacity-30" />
+            <input type="checkbox" aria-label={`${row.displayName} seç`} disabled={!canSelect} checked={selected.has(row.userId)} onChange={() => toggle(row.userId)} className="h-5 w-5 accent-primary disabled:opacity-30" />
             <div className="min-w-0">
-              <p className="font-medium text-[#0d1b2a]">{row.displayName} <span className="font-normal text-slate-500">· {row.email}</span></p>
-              <p className="mt-0.5 text-xs text-slate-500">{row.stores ? `${row.stores} mağaza: ${row.storeNames ?? ""}` : "Mağaza yoxdur"}{row.storeHref && <> · <Link href={row.storeHref} className="underline">Mağaza səhifəsi</Link></>}</p>
+              <p className="font-medium text-fg">{row.displayName} <span className="font-normal text-fg-secondary">· {row.email}</span></p>
+              <p className="mt-0.5 text-xs text-fg-secondary">{row.stores ? `${row.stores} mağaza: ${row.storeNames ?? ""}` : "Mağaza yoxdur"}{row.storeHref && <> · <Link href={row.storeHref} className="underline">Mağaza səhifəsi</Link></>}</p>
               <p className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="font-mono tracking-wider">{row.digits || "VÖEN yoxdur"}</span>
-                {row.digits && <button type="button" onClick={() => void copy(row.digits)} className="inline-flex items-center gap-1 text-xs text-[#176b63] underline"><Copy aria-hidden="true" size={12} />{copied === row.digits ? "Kopyalandı" : "Kopyala"}</button>}
+                {row.digits && <button type="button" onClick={() => void copy(row.digits)} className="inline-flex items-center gap-1 text-xs text-primary underline"><Copy aria-hidden="true" size={12} />{copied === row.digits ? "Kopyalandı" : "Kopyala"}</button>}
                 {!row.formatValid && row.digits && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">Format yanlışdır</span>}
                 {row.duplicate && <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-800">Başqa satıcıda da var</span>}
-                {row.kindLabel && <span className="text-xs text-slate-500">{row.kindLabel}</span>}
+                {row.kindLabel && <span className="text-xs text-fg-secondary">{row.kindLabel}</span>}
               </p>
             </div>
-            <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${row.verified ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{row.verified ? "Təsdiqlənib" : "Yoxlanmayıb"}</span>
+            <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${row.verified ? "bg-emerald-50 text-emerald-800" : "bg-surface-sunken text-fg-body"}`}>{row.verified ? "Təsdiqlənib" : "Yoxlanmayıb"}</span>
           </li>;
         })}
-      </ul> : <p className="p-5 text-sm text-slate-500">Bu filtrə uyğun satıcı yoxdur.</p>}
+      </ul> : <p className="p-5 text-sm text-fg-secondary">Bu filtrə uyğun satıcı yoxdur.</p>}
     </div>
-    {selectable.length > 0 && <div className="sticky bottom-3 grid gap-2 rounded-2xl border border-[#e7e3d9] bg-white p-4 shadow-lg sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-      <label className="grid gap-1 text-sm text-slate-700">Qısa qeyd (hamısı üçün, məcburi)
+    {selectable.length > 0 && <div className="sticky bottom-3 grid gap-2 rounded-card border border-line bg-white p-4 shadow-lg sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+      <label className="grid gap-1 text-sm text-fg-body">Qısa qeyd (hamısı üçün, məcburi)
         <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder="Məsələn: e-taxes-də bir-bir yoxlandı, adlar uyğundur" className={inputClass} />
       </label>
       <div className="flex flex-wrap gap-2">

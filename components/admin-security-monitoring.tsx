@@ -42,16 +42,16 @@ const TONE_CLASSES: Record<Tone, string> = {
   good: "bg-green-50 text-green-900 ring-green-200",
   warn: "bg-amber-50 text-amber-900 ring-amber-200",
   bad: "bg-red-50 text-red-800 ring-red-200",
-  neutral: "bg-[#f3f1ec] text-slate-600 ring-[#e7e3d9]",
+  neutral: "bg-surface-page text-fg-secondary ring-line",
 };
 const TONE_ICONS: Record<Tone, typeof Clock> = { good: CheckCircle2, warn: AlertTriangle, bad: XCircle, neutral: Clock };
 
-const panelClass = "rounded-2xl border border-[#e7e3d9] bg-white p-4 sm:p-5";
-const inputClass = "min-h-11 w-full rounded-xl border border-[#ded9cf] bg-white px-3 text-sm text-[#0d1b2a] outline-none focus:border-[#173c40] focus:ring-2 focus:ring-[#173c40]/20";
-const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173c40]";
-const primary = "border-[#173c40] bg-[#173c40] text-white hover:bg-[#10302f]";
-const secondary = "border-[#c7ad78] bg-white text-[#85621d] hover:bg-[#fbf8f1]";
-const plain = "border-[#e7e3d9] bg-white text-slate-700 hover:bg-[#f8f7f4]";
+const panelClass = "rounded-card border border-line bg-white p-4 sm:p-5";
+const inputClass = "min-h-11 w-full rounded-control border border-line-strong bg-white px-3 text-sm text-fg outline-none focus:border-primary focus:ring-2 focus:ring-brand-200";
+const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-control border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
+const primary = "border-primary bg-primary text-white hover:bg-primary";
+const secondary = "border-brand-200 bg-white text-gold-700 hover:bg-surface-page";
+const plain = "border-line bg-white text-fg-body hover:bg-surface-page";
 const ACTION_CLASSES: Record<IncidentStatus, string> = { RESOLVED: primary, ACKNOWLEDGED: secondary, FALSE_POSITIVE: plain, OPEN: plain };
 
 const time = (value: string | null) => (value ? new Intl.DateTimeFormat("az-AZ", { timeZone: "Asia/Baku", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)) : "—");
@@ -73,7 +73,7 @@ function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
 
 function ErrorBox({ message }: { message: string | null }) {
   if (!message) return null;
-  return <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</p>;
+  return <p role="alert" className="rounded-control border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</p>;
 }
 
 export default function AdminSecurityMonitoring({ refreshedAt }: { refreshedAt?: string }) {
@@ -151,9 +151,9 @@ function IncidentsPanel({ refreshedAt }: { refreshedAt?: string }) {
         ))}
       </div>
       <ErrorBox message={error} />
-      <div role="status" aria-live="polite">{result && <p className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900"><CheckCircle2 size={16} aria-hidden="true" />{result}</p>}</div>
-      {!data ? <p role="status" className={`${panelClass} text-sm text-slate-600`}>Yüklənir…</p> : data.items.length === 0 ? (
-        <p className={`${panelClass} text-sm text-slate-500`}>Bu statusda insident yoxdur.</p>
+      <div role="status" aria-live="polite">{result && <p className="flex items-center gap-2 rounded-control border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900"><CheckCircle2 size={16} aria-hidden="true" />{result}</p>}</div>
+      {!data ? <p role="status" className={`${panelClass} text-sm text-fg-secondary`}>Yüklənir…</p> : data.items.length === 0 ? (
+        <p className={`${panelClass} text-sm text-fg-secondary`}>Bu statusda insident yoxdur.</p>
       ) : (
         <ul className="space-y-2">
           {data.items.map((incident) => (
@@ -163,10 +163,10 @@ function IncidentsPanel({ refreshedAt }: { refreshedAt?: string }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={SEVERITY_TONES[incident.severity]}>{SEVERITY_LABELS[incident.severity]}</Badge>
                     <Badge tone={STATUS_TONES[incident.status]}>{STATUS_LABELS[incident.status]}</Badge>
-                    <span className="text-xs text-slate-500">{dateTime(incident.createdAt)}</span>
+                    <span className="text-xs text-fg-secondary">{dateTime(incident.createdAt)}</span>
                   </div>
-                  <p className="mt-1.5 break-words text-sm font-medium text-[#0d1b2a]">{incident.title}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Məsul: {incident.assignee ?? "təyin edilməyib"} · Qeydlər: {incident.noteCount}</p>
+                  <p className="mt-1.5 break-words text-sm font-medium text-fg">{incident.title}</p>
+                  <p className="mt-0.5 text-xs text-fg-secondary">Məsul: {incident.assignee ?? "təyin edilməyib"} · Qeydlər: {incident.noteCount}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {incident.allowedTransitions.filter((next) => next === "ACKNOWLEDGED" || next === "RESOLVED").map((next) => (
@@ -183,7 +183,7 @@ function IncidentsPanel({ refreshedAt }: { refreshedAt?: string }) {
         </ul>
       )}
       {data && pages > 1 && (
-        <div className="flex items-center justify-between gap-2 text-sm text-slate-500">
+        <div className="flex items-center justify-between gap-2 text-sm text-fg-secondary">
           <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className={`${buttonClass} ${plain}`}><ChevronLeft size={15} aria-hidden="true" /> Əvvəlki</button>
           <span>{page} / {pages}</span>
           <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)} className={`${buttonClass} ${plain}`}>Növbəti <ChevronRight size={15} aria-hidden="true" /></button>
@@ -234,25 +234,25 @@ function IncidentDetail({ id, assignees, onChanged }: { id: string; assignees: A
       setBusy(false);
     }
   };
-  if (!incident) return <div className="mt-4"><ErrorBox message={error} />{!error && <p className="text-sm text-slate-500">Yüklənir…</p>}</div>;
+  if (!incident) return <div className="mt-4"><ErrorBox message={error} />{!error && <p className="text-sm text-fg-secondary">Yüklənir…</p>}</div>;
   return (
-    <div className="mt-4 grid gap-4 border-t border-[#eeeae2] pt-4 lg:grid-cols-2">
-      <div className="space-y-3 text-sm text-slate-700">
+    <div className="mt-4 grid gap-4 border-t border-line pt-4 lg:grid-cols-2">
+      <div className="space-y-3 text-sm text-fg-body">
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs">
-          <dt className="text-slate-500">Ölçülən dəyər</dt><dd className="tabular-nums">{incident.observedValue} (hədd {incident.threshold})</dd>
-          <dt className="text-slate-500">Pəncərə</dt><dd>{dateTime(incident.windowStart)} – {time(incident.windowEnd)}</dd>
-          <dt className="text-slate-500">Qəbul edib</dt><dd className="break-words">{incident.acknowledgedBy ?? "—"} {incident.acknowledgedAt ? `· ${dateTime(incident.acknowledgedAt)}` : ""}</dd>
-          <dt className="text-slate-500">Bağlayıb</dt><dd className="break-words">{incident.resolvedBy ?? "—"} {incident.resolvedAt ? `· ${dateTime(incident.resolvedAt)}` : ""}</dd>
+          <dt className="text-fg-secondary">Ölçülən dəyər</dt><dd className="tabular-nums">{incident.observedValue} (hədd {incident.threshold})</dd>
+          <dt className="text-fg-secondary">Pəncərə</dt><dd>{dateTime(incident.windowStart)} – {time(incident.windowEnd)}</dd>
+          <dt className="text-fg-secondary">Qəbul edib</dt><dd className="break-words">{incident.acknowledgedBy ?? "—"} {incident.acknowledgedAt ? `· ${dateTime(incident.acknowledgedAt)}` : ""}</dd>
+          <dt className="text-fg-secondary">Bağlayıb</dt><dd className="break-words">{incident.resolvedBy ?? "—"} {incident.resolvedAt ? `· ${dateTime(incident.resolvedAt)}` : ""}</dd>
         </dl>
         <label className="block text-xs">
-          <span className="text-slate-500">Məsul şəxs</span>
+          <span className="text-fg-secondary">Məsul şəxs</span>
           <select className={`${inputClass} mt-1`} value={incident.assigneeId ?? ""} disabled={busy} onChange={(event) => void patch({ assigneeId: event.target.value || null })}>
             <option value="">Təyin edilməyib</option>
             {assignees.map((admin) => <option key={admin.id} value={admin.id}>{admin.email}</option>)}
           </select>
         </label>
         <label className="block text-xs">
-          <span className="text-slate-500">Status dəyişikliyinə şərh (istəyə görə)</span>
+          <span className="text-fg-secondary">Status dəyişikliyinə şərh (istəyə görə)</span>
           <textarea className={`${inputClass} mt-1 min-h-16 py-2`} maxLength={1500} value={comment} onChange={(event) => setComment(event.target.value)} />
         </label>
         <div className="flex flex-wrap gap-2">
@@ -265,17 +265,17 @@ function IncidentDetail({ id, assignees, onChanged }: { id: string; assignees: A
         <ErrorBox message={error} />
       </div>
       <div className="min-w-0">
-        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500"><ListChecks size={14} aria-hidden="true" /> Qeydlər</h3>
+        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-fg-secondary"><ListChecks size={14} aria-hidden="true" /> Qeydlər</h3>
         <ol className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
           {(incident.notes ?? []).map((item) => (
-            <li key={item.id} className="rounded-xl border border-[#eeeae2] bg-[#f8f7f4] p-2 text-xs">
-              <p className="text-[11px] text-slate-500">{item.author} · {dateTime(item.createdAt)}</p>
-              <p className="mt-1 whitespace-pre-line break-words text-slate-700">{item.body}</p>
+            <li key={item.id} className="rounded-control border border-line bg-surface-page p-2 text-xs">
+              <p className="text-[11px] text-fg-secondary">{item.author} · {dateTime(item.createdAt)}</p>
+              <p className="mt-1 whitespace-pre-line break-words text-fg-body">{item.body}</p>
             </li>
           ))}
         </ol>
         <form onSubmit={addNote} className="mt-3 space-y-2">
-          <label className="block text-xs text-slate-500" htmlFor={`note-${id}`}>Yeni qeyd</label>
+          <label className="block text-xs text-fg-secondary" htmlFor={`note-${id}`}>Yeni qeyd</label>
           <textarea id={`note-${id}`} className={`${inputClass} min-h-16 py-2`} maxLength={2000} value={note} onChange={(event) => setNote(event.target.value)} />
           <button type="submit" disabled={busy || !note.trim()} className={`${buttonClass} ${secondary}`}>Qeyd əlavə et</button>
         </form>
@@ -301,9 +301,9 @@ function RulesPanel() {
   useEffect(() => { void load(); }, [load]);
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-500">Hər qayda pəncərə ərzində həddə çatanda bir insident açır; gözləmə müddətində eyni qayda yeni insident açmır. Dəyişikliklər audit jurnalına yazılır.</p>
+      <p className="text-sm text-fg-secondary">Hər qayda pəncərə ərzində həddə çatanda bir insident açır; gözləmə müddətində eyni qayda yeni insident açmır. Dəyişikliklər audit jurnalına yazılır.</p>
       <ErrorBox message={error} />
-      {!rules || !bounds ? <p role="status" className={`${panelClass} text-sm text-slate-600`}>Yüklənir…</p> : (
+      {!rules || !bounds ? <p role="status" className={`${panelClass} text-sm text-fg-secondary`}>Yüklənir…</p> : (
         <div className="grid gap-4 xl:grid-cols-2">
           {rules.map((rule) => <RuleCard key={`${rule.key}:${rule.version}`} rule={rule} bounds={bounds} onSaved={(updated) => setRules((current) => current?.map((item) => (item.key === updated.key ? updated : item)) ?? null)} />)}
         </div>
@@ -330,29 +330,29 @@ function RuleCard({ rule, bounds, onSaved }: { rule: Rule; bounds: Bounds; onSav
   };
   const field = (key: "threshold" | "windowMinutes" | "cooldownMinutes", label: string, unit: string) => (
     <label className="block text-xs">
-      <span className="text-slate-500">{label}</span>
+      <span className="text-fg-secondary">{label}</span>
       <span className="mt-1 flex items-center gap-2">
         <input type="number" inputMode="numeric" className={inputClass} min={bounds[key][0]} max={bounds[key][1]} step={1} value={Number.isNaN(form[key]) ? "" : form[key]}
           onChange={(event) => { setForm({ ...form, [key]: event.target.valueAsNumber }); setMessage(null); }} aria-describedby={`${rule.key}-${key}-hint`} />
-        <span className="shrink-0 text-slate-500">{unit}</span>
+        <span className="shrink-0 text-fg-secondary">{unit}</span>
       </span>
-      <span id={`${rule.key}-${key}-hint`} className="mt-1 block text-[11px] text-slate-500">Standart {rule.defaults[key]} · {bounds[key][0]}–{number(bounds[key][1])}</span>
+      <span id={`${rule.key}-${key}-hint`} className="mt-1 block text-[11px] text-fg-secondary">Standart {rule.defaults[key]} · {bounds[key][0]}–{number(bounds[key][1])}</span>
     </label>
   );
   return (
     <article className={`${panelClass} min-w-0`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-semibold text-[#0d1b2a]">{rule.label}</h3>
-          <p className="mt-1 text-xs leading-5 text-slate-500">{rule.description}</p>
+          <h3 className="font-semibold text-fg">{rule.label}</h3>
+          <p className="mt-1 text-xs leading-5 text-fg-secondary">{rule.description}</p>
         </div>
         <div className="flex flex-wrap gap-1.5">
           <Badge tone={SEVERITY_TONES[rule.severity]}>{SEVERITY_LABELS[rule.severity]}</Badge>
           <Badge tone={rule.isDefault ? "neutral" : "warn"}>{rule.isDefault ? "Standart" : "Dəyişdirilib"}</Badge>
         </div>
       </div>
-      <label className="mt-3 flex min-h-11 items-center gap-2 text-sm text-slate-700">
-        <input type="checkbox" className="h-4 w-4 accent-[#173c40]" checked={form.enabled} onChange={(event) => { setForm({ ...form, enabled: event.target.checked }); setMessage(null); }} />
+      <label className="mt-3 flex min-h-11 items-center gap-2 text-sm text-fg-body">
+        <input type="checkbox" className="h-4 w-4 accent-primary" checked={form.enabled} onChange={(event) => { setForm({ ...form, enabled: event.target.checked }); setMessage(null); }} />
         Aktivdir
       </label>
       <div className="mt-2 grid gap-3 sm:grid-cols-3">
@@ -360,7 +360,7 @@ function RuleCard({ rule, bounds, onSaved }: { rule: Rule; bounds: Bounds; onSav
         {field("windowMinutes", "Pəncərə", "dəq")}
         {field("cooldownMinutes", "Gözləmə", "dəq")}
       </div>
-      {!rule.isDefault && <p className="mt-2 text-[11px] text-slate-500">Son dəyişiklik: {rule.updatedBy ?? "—"} · {dateTime(rule.updatedAt)} · versiya {rule.version}</p>}
+      {!rule.isDefault && <p className="mt-2 text-[11px] text-fg-secondary">Son dəyişiklik: {rule.updatedBy ?? "—"} · {dateTime(rule.updatedAt)} · versiya {rule.version}</p>}
       {!valid && <p className="mt-2 text-xs text-amber-900"><AlertTriangle size={13} className="mr-1 inline" aria-hidden="true" />Dəyərlər icazə verilən hədlərdə tam ədəd olmalıdır.</p>}
       {message && <p role={message.ok ? "status" : "alert"} className={`mt-2 text-xs ${message.ok ? "text-green-900" : "text-red-800"}`}>{message.text}</p>}
       <div className="mt-3 flex flex-wrap gap-2">

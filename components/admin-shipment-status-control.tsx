@@ -32,8 +32,8 @@ export function AdminShipmentStatusControl({ storeOrderId, shipmentStatus, order
     }
   }
 
-  return <form onSubmit={save} className="mt-3 grid gap-2 rounded-xl bg-[#f8f7f4] p-3 sm:grid-cols-[1fr_auto] sm:items-end">
-    <label className="grid gap-1 text-sm text-slate-700">
+  return <form onSubmit={save} className="mt-3 grid gap-2 rounded-control bg-surface-page p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+    <label className="grid gap-1 text-sm text-fg-body">
       <span>Göndəriş statusu: <b>{shipmentStatus ? shipmentStatusLabel(shipmentStatus) : "Başlanmayıb"}</b></span>
       <select value={target} onChange={(event) => setTarget(event.target.value)} disabled={!options.length || busy} className={inputClass}>
         <option value="">{options.length ? "Növbəti statusu seçin" : "Dəyişiklik mümkün deyil"}</option>
@@ -41,7 +41,7 @@ export function AdminShipmentStatusControl({ storeOrderId, shipmentStatus, order
       </select>
     </label>
     <button type="submit" disabled={!target || busy} className={buttonClass("secondary")}>{busy ? "Gözləyin…" : "Göndəriş statusunu saxla"}</button>
-    <p className="text-xs text-slate-500 sm:col-span-2">Audit jurnalına yazılır. Sifariş və ödəniş statusu dəyişmir; alıcıya e-poçt göndərilmir.</p>
+    <p className="text-xs text-fg-secondary sm:col-span-2">Audit jurnalına yazılır. Sifariş və ödəniş statusu dəyişmir; alıcıya e-poçt göndərilmir.</p>
     {result && <div className="sm:col-span-2"><ResultMessage tone={result.tone}>{result.text}</ResultMessage></div>}
   </form>;
 }

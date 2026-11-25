@@ -22,8 +22,8 @@ export function AdminReportDecision({ reportId }: { reportId: string }) {
     router.refresh();
   }
   return <div className="flex flex-wrap items-center gap-2">
-    <button type="button" disabled={busy} onClick={() => void decide("REVIEWED")} className="rounded-lg bg-[#173c40] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">Baxıldı</button>
-    <button type="button" disabled={busy} onClick={() => void decide("DISMISSED")} className="rounded-lg border border-[#ded9cf] bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60">Rədd et</button>
+    <button type="button" disabled={busy} onClick={() => void decide("REVIEWED")} className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">Baxıldı</button>
+    <button type="button" disabled={busy} onClick={() => void decide("DISMISSED")} className="rounded-lg border border-line-strong bg-white px-4 py-2.5 text-sm font-semibold text-fg-body disabled:opacity-60">Rədd et</button>
     {error && <p role="alert" className="w-full text-sm text-red-700">{error}</p>}
   </div>;
 }

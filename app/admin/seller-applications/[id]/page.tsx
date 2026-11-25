@@ -17,10 +17,10 @@ import { adminVoenView, currentVoenOf } from "@/lib/voen-verification";
 
 export const dynamic = "force-dynamic";
 
-const card = "rounded-2xl border border-[#e7e3d9] bg-white p-5";
+const card = "rounded-card border border-line bg-white p-5";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="min-w-0"><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-0.5 break-words text-sm text-slate-900">{children || "—"}</dd></div>;
+  return <div className="min-w-0"><dt className="text-xs text-fg-secondary">{label}</dt><dd className="mt-0.5 break-words text-sm text-fg">{children || "—"}</dd></div>;
 }
 
 export default async function AdminSellerApplicationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -59,7 +59,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
       facts={[["E-poçt", application.user.email], ["Satıcı növü", application.sellerType ? SELLER_TYPE_LABELS[application.sellerType] : "—"]]}
     />
 
-    {duplicateCount > 0 && <div role="alert" className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+    {duplicateCount > 0 && <div role="alert" className="mb-4 rounded-card border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
       <p className="font-semibold">Bu VÖEN başqa yerdə də istifadə olunur ({duplicateCount})</p>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         {duplicates.profiles.map((row) => <li key={row.vendorProfileId} className="break-words">Satıcı profili: {row.displayName} · {row.email} · rol {row.role}</li>)}
@@ -71,7 +71,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="grid min-w-0 content-start gap-4">
         <section className={card}>
-          <h2 className="font-semibold text-[#0d1b2a]">Satıcı məlumatları</h2>
+          <h2 className="font-semibold text-fg">Satıcı məlumatları</h2>
           <dl className="mt-3 grid gap-3 sm:grid-cols-2">
             <Field label="Satıcı / mağaza adı">{application.displayName}</Field>
             <Field label="Planlaşdırılan mağaza adı">{application.plannedStoreName}</Field>
@@ -83,12 +83,12 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
           </dl>
         </section>
         <section className={card}>
-          <h2 className="font-semibold text-[#0d1b2a]">Müraciətçinin qeydi</h2>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-700">{application.applicantNote || "Qeyd yoxdur."}</p>
-          <p className="mt-2 text-xs text-slate-500">Yalnız adminlər görür.</p>
+          <h2 className="font-semibold text-fg">Müraciətçinin qeydi</h2>
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm text-fg-body">{application.applicantNote || "Qeyd yoxdur."}</p>
+          <p className="mt-2 text-xs text-fg-secondary">Yalnız adminlər görür.</p>
         </section>
         {application.status !== "PENDING" && <section className={card}>
-          <h2 className="font-semibold text-[#0d1b2a]">Qərar</h2>
+          <h2 className="font-semibold text-fg">Qərar</h2>
           <dl className="mt-3 grid gap-3 sm:grid-cols-2">
             <Field label="Qərar vaxtı">{application.reviewedAt ? formatBakuDateTime(application.reviewedAt) : application.withdrawnAt ? `Geri götürülüb: ${formatBakuDateTime(application.withdrawnAt)}` : null}</Field>
             <Field label="Admin">{application.reviewedBy?.email ?? (application.source === "LEGACY" ? "Köhnə satıcı (avtomatik)" : null)}</Field>
@@ -101,7 +101,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
 
       <div className="grid min-w-0 content-start gap-4">
         <section className={card}>
-          <h2 className="font-semibold text-[#0d1b2a]">Hesab</h2>
+          <h2 className="font-semibold text-fg">Hesab</h2>
           <dl className="mt-3 grid gap-3">
             <Field label="E-poçt"><span className="break-all">{application.user.email}</span></Field>
             <Field label="Hazırkı rol">{application.user.role}</Field>
@@ -114,9 +114,9 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
         <AdminVoenPanel view={voenView} />
         {application.status === "PENDING" && <AdminSellerApplicationReview applicationId={application.id} duplicateCount={duplicateCount} accountReady={accountReady} />}
         {history.length > 0 && <section className={card}>
-          <h2 className="font-semibold text-[#0d1b2a]">Əvvəlki müraciətlər</h2>
+          <h2 className="font-semibold text-fg">Əvvəlki müraciətlər</h2>
           <ul className="mt-3 grid gap-2 text-sm">{history.map((row) => <li key={row.id} className="flex flex-wrap items-center gap-2">
-            <Link className="text-[#173c40] underline-offset-2 hover:underline" href={`/admin/seller-applications/${row.id}`}>{formatBakuDateTime(row.createdAt)}</Link>
+            <Link className="text-primary underline-offset-2 hover:underline" href={`/admin/seller-applications/${row.id}`}>{formatBakuDateTime(row.createdAt)}</Link>
             <StatusBadge status={row.status} />
           </li>)}</ul>
         </section>}

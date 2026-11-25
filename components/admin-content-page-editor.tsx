@@ -60,15 +60,15 @@ export default function AdminContentPageEditor({ data }: { data: EditorData }) {
   return <div className="grid gap-5 xl:grid-cols-2">
     <Section title="Redaktə" description={data.updatedAtLabel ? `Son yenilənmə: ${data.updatedAtLabel}${data.updatedBy ? ` · ${data.updatedBy}` : ""}` : "Hələ yadda saxlanmayıb."}>
       <form onSubmit={save} className="grid gap-4">
-        <label className="grid gap-1 text-sm font-medium text-slate-700">Başlıq
+        <label className="grid gap-1 text-sm font-medium text-fg-body">Başlıq
           <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required className={inputClass} />
         </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">Mətn
+        <label className="grid gap-1 text-sm font-medium text-fg-body">Mətn
           <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={18} className={`${inputClass} font-mono leading-6`} aria-describedby="content-format-help" />
-          <span className="text-xs font-normal text-slate-500">{body.length} / {BODY_MAX} simvol</span>
+          <span className="text-xs font-normal text-fg-secondary">{body.length} / {BODY_MAX} simvol</span>
         </label>
-        <details id="content-format-help" className="rounded-xl bg-[#f8f7f4] p-3 text-xs text-slate-600">
-          <summary className="cursor-pointer font-medium text-slate-700">Format qaydaları</summary>
+        <details id="content-format-help" className="rounded-control bg-surface-page p-3 text-xs text-fg-secondary">
+          <summary className="cursor-pointer font-medium text-fg-body">Format qaydaları</summary>
           <ul className="mt-2 grid gap-1">
             <li><code>## Başlıq</code>, <code>### Alt başlıq</code></li>
             <li>Boş sətir yeni abzas başladır</li>
@@ -78,7 +78,7 @@ export default function AdminContentPageEditor({ data }: { data: EditorData }) {
             <li>HTML qəbul edilmir; mətn olduğu kimi göstərilir.</li>
           </ul>
         </details>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">Qısa qeyd (istəyə bağlı)
+        <label className="grid gap-1 text-sm font-medium text-fg-body">Qısa qeyd (istəyə bağlı)
           <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={200} placeholder="Məsələn: çatdırılma bəndi yeniləndi" className={inputClass} />
         </label>
         {issue && <p className="text-sm text-red-700" aria-live="polite">{issue}</p>}
@@ -87,25 +87,25 @@ export default function AdminContentPageEditor({ data }: { data: EditorData }) {
       </form>
     </Section>
     <Section title="Önizləmə" description="Saytda belə görünəcək (eyni təhlükəsiz göstərici).">
-      <article className="rounded-xl border border-[#eeeae2] p-4">
-        <h1 className="mb-3 text-2xl font-semibold text-[#173A3A]">{title || "Başlıq"}</h1>
+      <article className="rounded-control border border-line p-4">
+        <h1 className="mb-3 text-h1 text-fg">{title || "Başlıq"}</h1>
         <ContentBody body={body} />
       </article>
     </Section>
     <Section className="xl:col-span-2" title="Tarixçə" description={`Son ${data.revisions.length} versiya (ən çox 20 saxlanılır). Bərpa yeni versiya yaradır, heç nə silinmir.`}>
       {data.revisions.length
-        ? <ol className="divide-y divide-[#eeeae2]">
+        ? <ol className="divide-y divide-line">
           {data.revisions.map((revision) => <li key={revision.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
             <span className="min-w-0">
               <b>{revision.createdAtLabel}</b> · {revision.createdBy ?? "İlkin mətn"}
-              <span className="block text-slate-600">{revision.title} · {revision.bodyLength} simvol{revision.note ? ` · ${revision.note}` : ""}</span>
+              <span className="block text-fg-secondary">{revision.title} · {revision.bodyLength} simvol{revision.note ? ` · ${revision.note}` : ""}</span>
             </span>
             {revision.current
               ? <span className="text-xs font-medium text-emerald-800">Hazırkı versiya</span>
               : <button type="button" disabled={busy} onClick={() => void restore(revision)} className={buttonClass("secondary")}>Bu versiyaya qayıt</button>}
           </li>)}
         </ol>
-        : <p className="text-sm text-slate-500">Hələ versiya yoxdur.</p>}
+        : <p className="text-sm text-fg-secondary">Hələ versiya yoxdur.</p>}
     </Section>
     {dialog}
   </div>;

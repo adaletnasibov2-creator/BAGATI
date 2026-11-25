@@ -30,8 +30,8 @@ export async function renderSettings({ sp, shell }: SectionContext) {
     <AdminSettingsTabs active="general"/>
     <AdminSiteSettingsForm initial={settings??SITE_SETTINGS_DEFAULTS}/>
     {[contact, footer].map((group) => <section key={group.group.label} className="mt-8" aria-labelledby={`settings-group-${group.group.label}`}>
-      <h2 id={`settings-group-${group.group.label}`} className="text-lg font-semibold text-[#0d1b2a]">{group.group.label}</h2>
-      <p className="mb-3 mt-1 text-sm text-slate-500">{group.group.description}</p>
+      <h2 id={`settings-group-${group.group.label}`} className="text-lg font-semibold text-fg">{group.group.label}</h2>
+      <p className="mb-3 mt-1 text-sm text-fg-secondary">{group.group.description}</p>
       <div className="grid gap-4">{group.settings.map((view) => <AdminSettingField key={view.key} view={view}/>)}</div>
     </section>)}
   </>);

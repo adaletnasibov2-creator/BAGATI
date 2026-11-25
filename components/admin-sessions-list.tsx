@@ -41,24 +41,24 @@ export default function AdminSessionsList({ sessions }: { sessions: AdminSession
 
   return <div className="space-y-4">{dialog}
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-slate-500">{sessions.length} aktiv sessiya{others ? `, ${others} digər cihazda` : ""}.</p>
-      <button type="button" disabled={!others || busy !== ""} onClick={() => void act({ action: "revoke-others" }, "Cari sessiyadan başqa bütün sessiyalar bağlansın?")} className="rounded-xl bg-[#142d38] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+      <p className="text-sm text-fg-secondary">{sessions.length} aktiv sessiya{others ? `, ${others} digər cihazda` : ""}.</p>
+      <button type="button" disabled={!others || busy !== ""} onClick={() => void act({ action: "revoke-others" }, "Cari sessiyadan başqa bütün sessiyalar bağlansın?")} className="rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
         {busy === "others" ? "Bağlanır…" : "Bütün digər sessiyaları bağla"}
       </button>
     </div>
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {message && <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">{message}</p>}
-    <ul className="divide-y divide-[#eeeae2] rounded-2xl border border-[#e7e3d9] bg-white">
+    <ul className="divide-y divide-line rounded-card border border-line bg-white">
       {sessions.map((session) => <li key={session.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
         <div className="flex min-w-0 items-start gap-3">
-          <Monitor size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-slate-400" />
+          <Monitor size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-fg-muted" />
           <div className="min-w-0 text-sm">
-            <p className="font-medium text-[#0d1b2a]">
+            <p className="font-medium text-fg">
               {session.userAgent ?? "Naməlum cihaz"}
               {session.current && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Bu cihaz</span>}
             </p>
-            <p className="mt-1 text-slate-500">IP: <span className="font-mono">{session.ipMasked ?? "məlum deyil"}</span></p>
-            <p className="mt-1 text-xs text-slate-500">Yaradılıb: {session.createdLabel} · Son aktivlik: {session.lastSeenLabel} · Bitir: {session.expiresLabel}</p>
+            <p className="mt-1 text-fg-secondary">IP: <span className="font-mono">{session.ipMasked ?? "məlum deyil"}</span></p>
+            <p className="mt-1 text-xs text-fg-secondary">Yaradılıb: {session.createdLabel} · Son aktivlik: {session.lastSeenLabel} · Bitir: {session.expiresLabel}</p>
           </div>
         </div>
         {!session.current && <button type="button" disabled={busy !== ""} onClick={() => void act({ action: "revoke", sessionId: session.id }, "Bu sessiya bağlansın?")} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
@@ -66,6 +66,6 @@ export default function AdminSessionsList({ sessions }: { sessions: AdminSession
         </button>}
       </li>)}
     </ul>
-    <p className="text-xs text-slate-500">Vaxtlar Bakı vaxtı ilə göstərilir. Admin sessiyası 12 saat, 2 saat fəaliyyətsizlikdən sonra isə avtomatik bitir.</p>
+    <p className="text-xs text-fg-secondary">Vaxtlar Bakı vaxtı ilə göstərilir. Admin sessiyası 12 saat, 2 saat fəaliyyətsizlikdən sonra isə avtomatik bitir.</p>
   </div>;
 }

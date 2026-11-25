@@ -12,8 +12,8 @@ import { storeProfileChangeConfirmation, type AdminStoreProfileView, type Profil
  */
 export default function AdminStoreProfileForm({ store, vendorOptions, cityOptions }: { store: AdminStoreProfileView; vendorOptions: ProfileOption[]; cityOptions: ProfileOption[] }) {
   const label = (options: ProfileOption[]) => (id: string) => options.find((option) => option.value === id)?.label ?? "seçilməyib";
-  return <section className="mb-5 rounded-2xl border border-[#e7e3d9] bg-white p-5">
-    <h2 className="mb-1 font-semibold">Mağaza profilini redaktə et</h2><p className="mb-4 text-sm text-slate-500">Sahiblik və mağaza məlumatlarındakı dəyişikliklər audit jurnalına yazılır.</p>
+  return <section className="mb-5 rounded-card border border-line bg-white p-5">
+    <h2 className="mb-1 font-semibold">Mağaza profilini redaktə et</h2><p className="mb-4 text-sm text-fg-secondary">Sahiblik və mağaza məlumatlarındakı dəyişikliklər audit jurnalına yazılır.</p>
     <AdminMutationForm resource="stores" method="PATCH" className="grid gap-3 sm:grid-cols-2"
       confirmWhen={(payload) => storeProfileChangeConfirmation(store, payload, { vendor: label(vendorOptions), city: label(cityOptions) })}
       fields={[

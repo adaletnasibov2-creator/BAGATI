@@ -31,9 +31,9 @@ export default async function AdminSecurityAuditPage({ searchParams }: { searchP
       {!audit ? unavailable : !audit.rows.length ? empty("Qeyd yoxdur.") : <RowTable head={["Nə vaxt", "Kim", "Əməl"]}
         rows={audit.rows.map((row) => ({ key: row.id, cells: [<span key="d" className="whitespace-nowrap">{date(row.createdAt)}</span>, row.actor?.email ?? "Sistem", auditActionLabel(row.action)] }))}/>}
       {audit && pages > 1 && <nav aria-label="Səhifələr" className="mt-4 flex items-center justify-between gap-2 text-sm">
-        {audit.page > 1 ? <Link href={href(audit.page - 1)} prefetch={false} className="inline-flex min-h-11 items-center rounded-xl border border-[#e7e3d9] px-4">Əvvəlki</Link> : <span />}
-        <span className="text-slate-500">{audit.page} / {pages}</span>
-        {audit.page < pages ? <Link href={href(audit.page + 1)} prefetch={false} className="inline-flex min-h-11 items-center rounded-xl border border-[#e7e3d9] px-4">Növbəti</Link> : <span />}
+        {audit.page > 1 ? <Link href={href(audit.page - 1)} prefetch={false} className="inline-flex min-h-11 items-center rounded-control border border-line px-4">Əvvəlki</Link> : <span />}
+        <span className="text-fg-secondary">{audit.page} / {pages}</span>
+        {audit.page < pages ? <Link href={href(audit.page + 1)} prefetch={false} className="inline-flex min-h-11 items-center rounded-control border border-line px-4">Növbəti</Link> : <span />}
       </nav>}
       <Link href="/admin/audit-log" className={`mt-3 inline-block ${linkClass}`}>Audit jurnalı →</Link>
     </Block>

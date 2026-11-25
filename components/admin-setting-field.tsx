@@ -42,8 +42,8 @@ type Pending =
   | { kind: "restore"; revisionId: string; version: number; toDisplay: string };
 
 const ACTION_LABELS = { UPDATE: "Dəyişiklik", RESET: "Standarta qaytarıldı", ROLLBACK: "Əvvəlki versiya bərpa edildi" } as const;
-const field = "w-full rounded-xl border border-[#ded9cf] bg-white px-3 py-2.5 text-sm";
-const button = "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50";
+const field = "w-full rounded-control border border-line-strong bg-white px-3 py-2.5 text-sm";
+const button = "inline-flex items-center justify-center gap-2 rounded-control px-4 py-2.5 text-sm font-semibold disabled:opacity-50";
 const TONES = ["info", "success", "warning", "danger"] as const;
 
 function toAnnouncementForm(form: Record<string, string | boolean> | null): AnnouncementForm {
@@ -81,12 +81,12 @@ export function linksInputIssue(form: LinksForm, maxItems: number, labelMax: num
 
 function LinksEditor({ value, onChange, maxItems, labelMax }: { value: LinksForm; onChange: (next: LinksForm) => void; maxItems: number; labelMax: number }) {
   return <fieldset className="grid w-full gap-2">
-    <legend className="mb-1 text-sm text-slate-700">Keçidlər (ad və ünvan; boş sətirlər nəzərə alınmır)</legend>
+    <legend className="mb-1 text-sm text-fg-body">Keçidlər (ad və ünvan; boş sətirlər nəzərə alınmır)</legend>
     {Array.from({ length: maxItems }, (_, index) => <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-      <label className="grid gap-1 text-xs text-slate-600">{index + 1}. Ad
+      <label className="grid gap-1 text-xs text-fg-secondary">{index + 1}. Ad
         <input value={value[`label${index}`] ?? ""} maxLength={labelMax + 10} onChange={(event) => onChange({ ...value, [`label${index}`]: event.target.value })} className={field} />
       </label>
-      <label className="grid gap-1 text-xs text-slate-600">{index + 1}. Keçid
+      <label className="grid gap-1 text-xs text-fg-secondary">{index + 1}. Keçid
         <input value={value[`href${index}`] ?? ""} placeholder="/terms və ya https://…" onChange={(event) => onChange({ ...value, [`href${index}`]: event.target.value })} className={field} />
       </label>
     </div>)}
@@ -141,39 +141,39 @@ function AnnouncementEditor({ value, onChange, textMax }: { value: AnnouncementF
   const set = (patch: Partial<AnnouncementForm>) => onChange({ ...value, ...patch });
   const previewText = value.text.replace(/\s+/g, " ").trim();
   return <div className="grid w-full gap-3">
-    <label className="flex items-center gap-2 text-sm text-slate-700">
+    <label className="flex items-center gap-2 text-sm text-fg-body">
       <input type="checkbox" checked={value.enabled} onChange={(event) => set({ enabled: event.target.checked })} />
       Elan zolağı aktivdir
     </label>
-    <label className="grid gap-1 text-sm text-slate-700">Mətn (bir sətir)
+    <label className="grid gap-1 text-sm text-fg-body">Mətn (bir sətir)
       <input value={value.text} onChange={(event) => set({ text: event.target.value })} maxLength={textMax + 50} className={field} />
-      <span className="text-xs text-slate-500">{previewText.length} / {textMax}</span>
+      <span className="text-xs text-fg-secondary">{previewText.length} / {textMax}</span>
     </label>
     <div className="grid gap-3 sm:grid-cols-2">
-      <label className="grid gap-1 text-sm text-slate-700">Keçid (istəyə bağlı)
+      <label className="grid gap-1 text-sm text-fg-body">Keçid (istəyə bağlı)
         <input value={value.href} onChange={(event) => set({ href: event.target.value })} placeholder="/kampaniyalar və ya https://…" className={field} />
       </label>
-      <label className="grid gap-1 text-sm text-slate-700">Növ
+      <label className="grid gap-1 text-sm text-fg-body">Növ
         <select value={value.tone} onChange={(event) => set({ tone: event.target.value as AnnouncementForm["tone"] })} className={field}>
           {TONES.map((tone) => <option key={tone} value={tone}>{ANNOUNCEMENT_TONE_LABELS[tone]}</option>)}
         </select>
       </label>
-      <label className="grid gap-1 text-sm text-slate-700">Başlanğıc (Bakı vaxtı, istəyə bağlı)
+      <label className="grid gap-1 text-sm text-fg-body">Başlanğıc (Bakı vaxtı, istəyə bağlı)
         <input type="datetime-local" value={value.startsAt} onChange={(event) => set({ startsAt: event.target.value })} className={field} />
       </label>
-      <label className="grid gap-1 text-sm text-slate-700">Bitmə (Bakı vaxtı, istəyə bağlı)
+      <label className="grid gap-1 text-sm text-fg-body">Bitmə (Bakı vaxtı, istəyə bağlı)
         <input type="datetime-local" value={value.endsAt} onChange={(event) => set({ endsAt: event.target.value })} className={field} />
       </label>
     </div>
     <div>
-      <p className="mb-1 text-xs font-medium text-slate-500">Önizləmə</p>
-      <div aria-label="Elan zolağının önizləməsi" className={`${ANNOUNCEMENT_TONE_CLASSES[value.tone]} overflow-hidden rounded-xl text-sm ${value.enabled ? "" : "opacity-50"}`}>
+      <p className="mb-1 text-xs font-medium text-fg-secondary">Önizləmə</p>
+      <div aria-label="Elan zolağının önizləməsi" className={`${ANNOUNCEMENT_TONE_CLASSES[value.tone]} overflow-hidden rounded-control text-sm ${value.enabled ? "" : "opacity-50"}`}>
         <div className="flex min-h-10 items-center gap-3 px-4 py-2">
           <p className="min-w-0 flex-1 break-words text-center font-medium leading-5">{previewText ? (value.href.trim() ? <span className="underline underline-offset-2">{previewText}</span> : previewText) : "Mətn yazın…"}</p>
           <X size={16} aria-hidden="true" />
         </div>
       </div>
-      {!value.enabled && <p className="mt-1 text-xs text-slate-500">Söndürülüb: saytda göstərilmir.</p>}
+      {!value.enabled && <p className="mt-1 text-xs text-fg-secondary">Söndürülüb: saytda göstərilmir.</p>}
     </div>
   </div>;
 }
@@ -251,21 +251,21 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
     } else start({ kind: "update", value: value.trim(), toDisplay: displayFor(view, value) });
   }
 
-  return <section className="rounded-2xl border border-[#e7e3d9] bg-white p-5" aria-labelledby={`setting-${view.key}`}>
+  return <section className="rounded-card border border-line bg-white p-5" aria-labelledby={`setting-${view.key}`}>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h2 id={`setting-${view.key}`} className="font-semibold text-[#0d1b2a]">{view.label}</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{view.description}</p>
+        <h2 id={`setting-${view.key}`} className="font-semibold text-fg">{view.label}</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-fg-secondary">{view.description}</p>
       </div>
       {view.isDefault
-        ? <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600">Standart dəyər</span>
+        ? <span className="rounded-full border border-line bg-surface-page px-2.5 py-0.5 text-xs font-medium text-fg-secondary">Standart dəyər</span>
         : <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900">Dəyişdirilib</span>}
     </div>
 
     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-      <div className="min-w-0"><dt className="text-xs text-slate-500">Hazırkı dəyər</dt><dd className="mt-0.5 break-words font-semibold text-slate-900">{view.currentDisplay}</dd></div>
-      <div className="min-w-0"><dt className="text-xs text-slate-500">Standart dəyər</dt><dd className="mt-0.5 break-words text-slate-800">{view.defaultDisplay}</dd></div>
-      <div className="min-w-0"><dt className="text-xs text-slate-500">Son dəyişiklik</dt><dd className="mt-0.5 break-words text-slate-800">{view.changedAt ? `${view.changedBy}, ${view.changedAt} (Bakı vaxtı)` : "Dəyişdirilməyib"}</dd></div>
+      <div className="min-w-0"><dt className="text-xs text-fg-secondary">Hazırkı dəyər</dt><dd className="mt-0.5 break-words font-semibold text-fg">{view.currentDisplay}</dd></div>
+      <div className="min-w-0"><dt className="text-xs text-fg-secondary">Standart dəyər</dt><dd className="mt-0.5 break-words text-fg">{view.defaultDisplay}</dd></div>
+      <div className="min-w-0"><dt className="text-xs text-fg-secondary">Son dəyişiklik</dt><dd className="mt-0.5 break-words text-fg">{view.changedAt ? `${view.changedBy}, ${view.changedAt} (Bakı vaxtı)` : "Dəyişdirilməyib"}</dd></div>
     </dl>
     {view.storedValueInvalid && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">Saxlanmış dəyər qaydalara uyğun deyil, ona görə standart dəyər tətbiq olunur. Yeni dəyər yadda saxlayın və ya standarta qaytarın.</p>}
 
@@ -273,33 +273,33 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
       {composite
         ? <AnnouncementEditor value={form} onChange={setForm} textMax={view.input.kind === "announcement" ? view.input.textMax : 200} />
         : links ? <LinksEditor value={linkForm} onChange={setLinkForm} maxItems={links.maxItems} labelMax={links.labelMax} />
-        : toggle ? <label className="flex w-full items-center gap-3 text-sm text-slate-800">
+        : toggle ? <label className="flex w-full items-center gap-3 text-sm text-fg">
           <input type="checkbox" role="switch" aria-checked={value === "true"} checked={value === "true"} onChange={(event) => setValue(event.target.checked ? "true" : "false")} className="h-5 w-5 accent-red-700" />
           <span>{value === "true" ? view.toggleLabels?.on ?? "Açıq" : view.toggleLabels?.off ?? "Söndürülüb"}</span>
         </label>
-        : <label className={`grid min-w-0 gap-1 text-sm text-slate-700 ${small ? "" : "w-full"}`}>
+        : <label className={`grid min-w-0 gap-1 text-sm text-fg-body ${small ? "" : "w-full"}`}>
           Yeni dəyər{view.input.kind === "percent" ? " (faizlə, məsələn 10)" : ""}
           <span className="flex items-center gap-2">
             {view.input.kind === "text" && view.input.multiline
               ? <textarea name="value" value={value} onChange={(event) => setValue(event.target.value)} rows={3} className={field} aria-describedby={`setting-${view.key}-hint`} maxLength={view.input.maxLength + 50} placeholder={view.input.placeholder} />
               : <input name="value" value={value} onChange={(event) => setValue(event.target.value)} className={`${field} ${small ? "w-32" : ""}`} aria-describedby={`setting-${view.key}-hint`} {...inputProps} />}
-            {view.input.kind === "percent" && <span className="text-sm text-slate-600">%</span>}
-            {view.input.kind === "integer" && view.input.unit && <span className="text-sm text-slate-600">{view.input.unit}</span>}
+            {view.input.kind === "percent" && <span className="text-sm text-fg-secondary">%</span>}
+            {view.input.kind === "integer" && view.input.unit && <span className="text-sm text-fg-secondary">{view.input.unit}</span>}
           </span>
         </label>}
-      <button type="submit" disabled={busy || Boolean(issue) || empty} className={`${button} bg-[#173c40] text-white`}>Yadda saxla</button>
-      {!view.isDefault && <button type="button" disabled={busy} onClick={() => start({ kind: "reset", toDisplay: view.defaultDisplay })} className={`${button} border border-[#ded9cf] text-slate-700`}><RotateCcw size={16} aria-hidden />Standarta qaytar</button>}
-      <button type="button" onClick={() => setHistoryOpen((open) => !open)} aria-expanded={historyOpen} className={`${button} border border-[#ded9cf] text-slate-700`}><History size={16} aria-hidden />Tarixçə ({view.history.length})</button>
+      <button type="submit" disabled={busy || Boolean(issue) || empty} className={`${button} bg-primary text-white`}>Yadda saxla</button>
+      {!view.isDefault && <button type="button" disabled={busy} onClick={() => start({ kind: "reset", toDisplay: view.defaultDisplay })} className={`${button} border border-line-strong text-fg-body`}><RotateCcw size={16} aria-hidden />Standarta qaytar</button>}
+      <button type="button" onClick={() => setHistoryOpen((open) => !open)} aria-expanded={historyOpen} className={`${button} border border-line-strong text-fg-body`}><History size={16} aria-hidden />Tarixçə ({view.history.length})</button>
     </form>
     <div id={`setting-${view.key}-hint`} className="mt-2 grid gap-1 text-xs">
-      {view.input.kind === "percent" && <p className="text-slate-500">{view.input.min}–{view.input.max}% aralığında, ən çox iki onluq rəqəm (addım {view.input.step}%).</p>}
-      {view.input.kind === "integer" && <p className="text-slate-500">{view.input.min}–{view.input.max} aralığında tam ədəd.</p>}
-      {view.input.kind === "text" && <p className="text-slate-500">{value.replace(/\s+/g, " ").trim().length} / {view.input.maxLength} simvol{view.input.minLength > 1 ? ` (ən azı ${view.input.minLength})` : ""}. Sətir keçidləri boşluğa çevrilir.</p>}
+      {view.input.kind === "percent" && <p className="text-fg-secondary">{view.input.min}–{view.input.max}% aralığında, ən çox iki onluq rəqəm (addım {view.input.step}%).</p>}
+      {view.input.kind === "integer" && <p className="text-fg-secondary">{view.input.min}–{view.input.max} aralığında tam ədəd.</p>}
+      {view.input.kind === "text" && <p className="text-fg-secondary">{value.replace(/\s+/g, " ").trim().length} / {view.input.maxLength} simvol{view.input.minLength > 1 ? ` (ən azı ${view.input.minLength})` : ""}. Sətir keçidləri boşluğa çevrilir.</p>}
       {issue && !empty && <p className="font-medium text-red-700" aria-live="polite">{issue}</p>}
-      {view.cached && <p className="text-slate-500">Dəyişiklik 30 saniyə ərzində tətbiq olunur.</p>}
+      {view.cached && <p className="text-fg-secondary">Dəyişiklik 30 saniyə ərzində tətbiq olunur.</p>}
     </div>
 
-    {pending && <div role="dialog" aria-modal="false" aria-labelledby={`confirm-${view.key}`} className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+    {pending && <div role="dialog" aria-modal="false" aria-labelledby={`confirm-${view.key}`} className="mt-4 rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
       <p id={`confirm-${view.key}`} className="font-semibold">
         {pending.kind === "update" ? "Dəyişikliyi təsdiqləyin" : pending.kind === "reset" ? "Standart dəyərə qaytarılsın?" : `Versiya ${pending.version} bərpa edilsin?`}
       </p>
@@ -318,27 +318,27 @@ export default function AdminSettingField({ view }: { view: SettingFieldView }) 
         {conflict && <button type="button" onClick={() => { setPending(null); router.refresh(); }} className="mt-2 font-semibold underline">Səhifəni yenilə</button>}
       </div>}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" disabled={busy || !reasonOk || !confirmOk} onClick={send} className={`${button} bg-[#173c40] text-white`}>{busy ? "Göndərilir…" : "Təsdiqlə və yadda saxla"}</button>
-        <button type="button" disabled={busy} onClick={() => setPending(null)} className={`${button} border border-[#ded9cf] bg-white text-slate-700`}>İmtina</button>
+        <button type="button" disabled={busy || !reasonOk || !confirmOk} onClick={send} className={`${button} bg-primary text-white`}>{busy ? "Göndərilir…" : "Təsdiqlə və yadda saxla"}</button>
+        <button type="button" disabled={busy} onClick={() => setPending(null)} className={`${button} border border-line-strong bg-white text-fg-body`}>İmtina</button>
       </div>
     </div>}
     {message && <p role="status" className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">{message}</p>}
 
-    {historyOpen && <div className="mt-4 rounded-xl border border-[#e7e3d9] bg-[#f8f7f4] p-4">
+    {historyOpen && <div className="mt-4 rounded-control border border-line bg-surface-page p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-[#0d1b2a]">Dəyişiklik tarixçəsi</h3>
-        <button type="button" onClick={() => setHistoryOpen(false)} aria-label="Tarixçəni bağla" className="rounded-lg p-1 text-slate-500"><X size={16} aria-hidden /></button>
+        <h3 className="text-sm font-semibold text-fg">Dəyişiklik tarixçəsi</h3>
+        <button type="button" onClick={() => setHistoryOpen(false)} aria-label="Tarixçəni bağla" className="rounded-lg p-1 text-fg-secondary"><X size={16} aria-hidden /></button>
       </div>
       {!view.history.length
-        ? <p className="mt-2 text-sm text-slate-500">Hələ dəyişiklik olmayıb.</p>
-        : <ol className="mt-3 grid gap-3">{view.history.map((item) => <li key={item.id} className="rounded-lg border border-[#e7e3d9] bg-white p-3 text-sm">
+        ? <p className="mt-2 text-sm text-fg-secondary">Hələ dəyişiklik olmayıb.</p>
+        : <ol className="mt-3 grid gap-3">{view.history.map((item) => <li key={item.id} className="rounded-lg border border-line bg-white p-3 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-medium text-slate-900">v{item.version} · {ACTION_LABELS[item.action]}</span>
-            <span className="text-xs text-slate-500">{item.changedAt} (Bakı)</span>
+            <span className="font-medium text-fg">v{item.version} · {ACTION_LABELS[item.action]}</span>
+            <span className="text-xs text-fg-secondary">{item.changedAt} (Bakı)</span>
           </div>
-          <p className="mt-1 break-words text-slate-700">{item.previousDisplay} → <span className="font-medium">{item.valueDisplay}</span></p>
-          <p className="mt-1 break-words text-xs text-slate-500">{item.changedBy}{item.reason ? ` · Səbəb: ${item.reason}` : ""}</p>
-          {item.restorable && <button type="button" disabled={busy} onClick={() => start({ kind: "restore", revisionId: item.id, version: item.version, toDisplay: item.valueDisplay })} className="mt-2 text-sm font-semibold text-[#173c40] underline">Bu versiyanı bərpa et</button>}
+          <p className="mt-1 break-words text-fg-body">{item.previousDisplay} → <span className="font-medium">{item.valueDisplay}</span></p>
+          <p className="mt-1 break-words text-xs text-fg-secondary">{item.changedBy}{item.reason ? ` · Səbəb: ${item.reason}` : ""}</p>
+          {item.restorable && <button type="button" disabled={busy} onClick={() => start({ kind: "restore", revisionId: item.id, version: item.version, toDisplay: item.valueDisplay })} className="mt-2 text-sm font-semibold text-primary underline">Bu versiyanı bərpa et</button>}
         </li>)}</ol>}
     </div>}
   </section>;

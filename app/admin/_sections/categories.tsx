@@ -40,10 +40,10 @@ export async function renderCategories({ q, shell }: SectionContext) {
       title="Kateqoriyalar"
       description={<>İki səviyyə: üst kateqoriya və alt kateqoriya. Mağazada yalnız aktiv kateqoriyalar göstərilir{showEmpty ? " (məhsulu olmayanlar da)" : " (yalnız görünən məhsulu olanlar)"}; satıcılar bütün aktiv kateqoriyaları seçə bilər.{todo > 0 && <> Alt kateqoriyası olan üst kateqoriyalarda hələ <b>{todo}</b> məhsul alt kateqoriyasızdır.</>}</>}
     />
-    <p className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[#e7e3d9] bg-white px-4 py-3 text-sm text-slate-600">
-      <span>Boş kateqoriyaları göstər: <b className="text-[#0d1b2a]">{showEmpty ? "Açıqdır — məhsulu olmayan aktiv kateqoriyalar da mağazada görünür" : "Söndürülüb — yalnız məhsulu olanlar görünür"}</b>.</span>
-      <Link href="/admin/settings?tab=catalog" className="font-semibold text-[#173c40] underline-offset-2 hover:underline">Dəyiş</Link>
-      <span className="text-slate-500">Deaktiv kateqoriyalar hər halda gizlidir.</span>
+    <p className="mb-4 flex flex-wrap items-center gap-2 rounded-control border border-line bg-white px-4 py-3 text-sm text-fg-secondary">
+      <span>Boş kateqoriyaları göstər: <b className="text-fg">{showEmpty ? "Açıqdır — məhsulu olmayan aktiv kateqoriyalar da mağazada görünür" : "Söndürülüb — yalnız məhsulu olanlar görünür"}</b>.</span>
+      <Link href="/admin/settings?tab=catalog" className="font-semibold text-primary underline-offset-2 hover:underline">Dəyiş</Link>
+      <span className="text-fg-secondary">Deaktiv kateqoriyalar hər halda gizlidir.</span>
     </p>
     <Filters path="/admin/categories" q={q} />
     {shown.length ? <AdminCategoryManager tree={shown} /> : <EmptyState title="Kateqoriya tapılmadı" description="Axtarışı dəyişin və ya təmizləyin." />}

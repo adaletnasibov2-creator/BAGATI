@@ -25,10 +25,10 @@ export async function renderCommissions({ page, take, skip, pageQuery, shell }: 
    <Header title="Komissiyalar" detail="Komissiya faizi və tətbiq müddəti sxemdəki real məlumatlardır." />
    <section className={`${card} mb-5 flex flex-wrap items-center justify-between gap-3`} aria-label="Standart komissiya">
     <div className="min-w-0">
-     <p className="text-sm font-semibold text-[#0d1b2a]">Standart komissiya: {defaultCommission.display}</p>
-     <p className="mt-1 text-sm text-slate-600">{defaultCommission.isSet ? "Öz qaydası olmayan mağazaların yeni sifarişlərinə tətbiq olunur. Aşağıdakı mağaza qaydaları üstündür." : "Öz qaydası olmayan mağazaların sifarişlərində komissiya qeydə alınmır. Aşağıdakı mağaza qaydaları üstündür."}</p>
+     <p className="text-sm font-semibold text-fg">Standart komissiya: {defaultCommission.display}</p>
+     <p className="mt-1 text-sm text-fg-secondary">{defaultCommission.isSet ? "Öz qaydası olmayan mağazaların yeni sifarişlərinə tətbiq olunur. Aşağıdakı mağaza qaydaları üstündür." : "Öz qaydası olmayan mağazaların sifarişlərində komissiya qeydə alınmır. Aşağıdakı mağaza qaydaları üstündür."}</p>
     </div>
-    <Link href="/admin/settings?tab=finance" className="rounded-xl border border-[#ded9cf] px-4 py-2.5 text-sm font-semibold text-[#173c40]">Maliyyə parametrlərinə keç</Link>
+    <Link href="/admin/settings?tab=finance" className="rounded-control border border-line-strong px-4 py-2.5 text-sm font-semibold text-primary">Maliyyə parametrlərinə keç</Link>
    </section>
    <section className={card}>
     <h2 className="mb-3 font-semibold">Komissiya əlavə et</h2>
@@ -36,7 +36,7 @@ export async function renderCommissions({ page, take, skip, pageQuery, shell }: 
    </section>
    <div className="mt-5">
     <Table rows={rows} columns={[
-     { label: "Mağaza", cell: (row) => <Link className="text-[#173c40]" href={`/admin/stores/${row.store.id}`}>{row.store.name}</Link> },
+     { label: "Mağaza", cell: (row) => <Link className="text-primary" href={`/admin/stores/${row.store.id}`}>{row.store.name}</Link> },
      { label: "Faiz", cell: (row) => `${(Number(row.rate) * 100).toFixed(2)}%` },
      { label: "Başlanğıc", cell: (row) => row.startsAt.toLocaleDateString("az-AZ") },
      { label: "Son", cell: (row) => row.endsAt?.toLocaleDateString("az-AZ") || "Davam edir" },

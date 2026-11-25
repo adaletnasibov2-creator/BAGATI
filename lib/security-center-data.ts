@@ -14,6 +14,7 @@ import { utcTimestamp } from "@/lib/sql-timestamp";
 import { EVENT_WINDOWS, EVENTS_PAGE_SIZE, loginAuditBySession, NOT_FOUND_GROUPS, type EventWindow } from "@/lib/security-center-view";
 import { bakuDaysStart, isAdminSessionActive, SCAN_NOISE_RULE_KEYS } from "@/lib/security-center-status";
 import { ADMIN_IDLE_TIMEOUT_MS } from "@/lib/session-policy";
+import { adminSearchContains, adminSearchContainsExact } from "@/lib/admin-list-where";
 
 export const SECURITY_PAGE_TIMEOUT_MS = 4_000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -265,7 +266,7 @@ export async function listSecurityEvents(input: { window: EventWindow; eventType
     occurredAt: { gte: since },
     ...(input.eventType ? { eventType: input.eventType } : {}),
     ...(input.severity ? { severity: input.severity } : {}),
-    ...(input.q ? { OR: [{ path: { contains: input.q, mode: "insensitive" } }, { sourceIp: { contains: input.q } }, { sourceIpMasked: { contains: input.q } }] } : {}),
+    ...(input.q ? { OR: [{ path: adminSearchContains(input.q) }, { sourceIp: adminSearchContainsExact(input.q) }, { sourceIpMasked: adminSearchContainsExact(input.q) }] } : {}),
   };
   return block(async (tx) => {
     const total = await tx.securityEvent.count({ where });

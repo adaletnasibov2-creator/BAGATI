@@ -6,6 +6,26 @@
 import type { Prisma } from "@prisma/client";
 import { normalizeAdminEnumFilter } from "@/lib/admin-pagination";
 import { adminOrderStatusWhere } from "@/lib/admin-order-filters";
+import { escapeLikePattern } from "@/lib/admin-audit-log";
+
+/**
+ * ADMIN-DESIGN-2 (security): the ONE helper for every admin `?q=` filter. Prisma `contains` does not escape LIKE
+ * wildcards (on 5433 "%" matched every row), so % _ and \ are escaped with escapeLikePattern and match literally.
+ * Same fields and the same case-insensitive match as before; only the wildcard meaning is gone.
+ */
+export function adminSearchContains(q: string): { contains: string; mode: "insensitive" } {
+  return { contains: escapeLikePattern(q), mode: "insensitive" };
+}
+
+/** Same, case-sensitive: for the fields that were searched without `mode` before (e.g. IP addresses). */
+export function adminSearchContainsExact(q: string): { contains: string } {
+  return { contains: escapeLikePattern(q) };
+}
+
+/** The escaped `%q%` pattern for raw SQL ILIKE/LIKE (PostgreSQL's default escape character is the backslash). */
+export function adminLikePattern(q: string): string {
+  return `%${escapeLikePattern(q)}%`;
+}
 
 export const ADMIN_STORE_STATUSES = ["DRAFT", "PENDING_REVIEW", "ACTIVE", "SUSPENDED", "REJECTED"];
 export const ADMIN_ORDER_STATUSES = ["PENDING", "NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"];
@@ -21,10 +41,10 @@ export function storesListWhere(sp: AdminListParams, q: string): Prisma.StoreWhe
     ...(sp.cityId ? { cityId: sp.cityId } : {}),
     ...(sp.vendorId ? { vendorId: sp.vendorId } : {}),
     ...(q ? { OR: [
-      { name: { contains: q, mode: "insensitive" } },
-      { slug: { contains: q, mode: "insensitive" } },
-      { vendor: { displayName: { contains: q, mode: "insensitive" } } },
-      { vendor: { user: { email: { contains: q, mode: "insensitive" } } } },
+      { name: adminSearchContains(q) },
+      { slug: adminSearchContains(q) },
+      { vendor: { displayName: adminSearchContains(q) } },
+      { vendor: { user: { email: adminSearchContains(q) } } },
     ] } : {}),
   };
 }
@@ -39,9 +59,9 @@ export function ordersListWhere(sp: AdminListParams, q: string): Prisma.OrderWhe
     ...(sp.storeId ? { storeOrders: { some: { storeId: sp.storeId } } } : {}),
     ...((from || to) ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lt: to } : {}) } } : {}),
     ...(q ? { OR: [
-      { id: { contains: q, mode: "insensitive" } },
-      { user: { email: { contains: q, mode: "insensitive" } } },
-      { storeOrders: { some: { store: { name: { contains: q, mode: "insensitive" } } } } },
+      { id: adminSearchContains(q) },
+      { user: { email: adminSearchContains(q) } },
+      { storeOrders: { some: { store: { name: adminSearchContains(q) } } } },
     ] } : {}),
   };
 }
@@ -52,9 +72,9 @@ export function customersListWhere(sp: AdminListParams, q: string): Prisma.UserW
     role: "CUSTOMER",
     ...(sp.status === "active" ? { isActive: true } : sp.status === "inactive" ? { isActive: false } : {}),
     ...(q ? { OR: [
-      { email: { contains: q, mode: "insensitive" } },
-      { customerProfile: { firstName: { contains: q, mode: "insensitive" } } },
-      { customerProfile: { lastName: { contains: q, mode: "insensitive" } } },
+      { email: adminSearchContains(q) },
+      { customerProfile: { firstName: adminSearchContains(q) } },
+      { customerProfile: { lastName: adminSearchContains(q) } },
     ] } : {}),
   };
 }

@@ -8,7 +8,8 @@ import { focusRing } from "@/components/admin-ui/styles";
  * that already exist on the page) and optional actions. Display only: the facts come from data the page already read.
  */
 export function AdminDetailHeader({ back, eyebrow = "BAGATI · ADMIN", title, detail, badge, facts = [], actions }: {
-  back: { href: string; label: string };
+  /** ADMIN-DESIGN-2: optional; left out where no existing back-link text fits (no new text). */
+  back?: { href: string; label: string };
   eyebrow?: string;
   title: ReactNode;
   detail?: ReactNode;
@@ -17,8 +18,8 @@ export function AdminDetailHeader({ back, eyebrow = "BAGATI · ADMIN", title, de
   actions?: ReactNode;
 }) {
   return <div className="mb-6">
-    <Link href={back.href} className={`rounded text-sm font-medium text-primary underline-offset-2 hover:underline ${focusRing}`}>{back.label}</Link>
-    <div className="mt-3 rounded-card border border-line bg-white p-5 shadow-subtle sm:p-6">
+    {back && <Link href={back.href} className={`mb-3 inline-block rounded text-sm font-medium text-primary underline-offset-2 hover:underline ${focusRing}`}>{back.label}</Link>}
+    <div className="rounded-card border border-line bg-white p-5 shadow-subtle sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-kicker uppercase text-gold-700">{eyebrow}</p>

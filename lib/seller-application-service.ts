@@ -6,6 +6,7 @@ import type { Prisma, SellerType } from "@prisma/client";
 import { claimVoenForUser, findDuplicateVoen } from "@/lib/voen-uniqueness";
 import { normalizeVoen, reapplyDecision, type ReapplyRules, type SellerApplicationInput } from "@/lib/seller-application";
 import { recordAcceptance } from "@/lib/legal-acceptance";
+import { adminSearchContains } from "@/lib/admin-list-where";
 
 /**
  * Records a seller created directly by an admin as an APPROVED application with source ADMIN.
@@ -214,9 +215,9 @@ export function sellerApplicationListWhere(filters: SellerApplicationListFilters
     ...(filters.status === "ALL" ? {} : { status: filters.status }),
     ...(q ? {
       OR: [
-        { displayName: { contains: q, mode: "insensitive" } },
-        { legalName: { contains: q, mode: "insensitive" } },
-        { user: { email: { contains: q, mode: "insensitive" } } },
+        { displayName: adminSearchContains(q) },
+        { legalName: adminSearchContains(q) },
+        { user: { email: adminSearchContains(q) } },
         ...(digits && digits.length >= 3 ? [{ voenNormalized: { contains: digits } }] : []),
       ],
     } : {}),

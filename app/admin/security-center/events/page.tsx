@@ -10,8 +10,8 @@ import { DASHBOARD_TEXT } from "@/lib/security-center-status";
 
 export const dynamic = "force-dynamic";
 
-const card = "rounded-2xl border border-[#e7e3d9] bg-white p-5";
-const field = "min-h-11 w-full min-w-0 rounded-xl border border-[#ded9cf] bg-white px-3 text-sm";
+const card = "rounded-card border border-line bg-white p-5";
+const field = "min-h-11 w-full min-w-0 rounded-control border border-line-strong bg-white px-3 text-sm";
 const WINDOW_LABELS = { "24h": "Son 24 saat", "7d": "Son 7 gün", "30d": "Son 30 gün" } as const;
 const FEW = 5;
 
@@ -33,12 +33,12 @@ export default async function AdminSecurityEventsPage({ searchParams }: { search
     return `/admin/security-center/events?${params.toString()}`;
   };
   const reveal = full
-    ? <a href={query(filters.page).replace("&ip=full", "")} className="inline-flex min-h-11 items-center rounded-xl border border-[#c7ad78] bg-white px-4 text-sm font-semibold text-[#85621d]">IP-ləri gizlət</a>
-    : <a href={`${query(filters.page)}&ip=full`} className="inline-flex min-h-11 items-center rounded-xl border border-[#c7ad78] bg-white px-4 text-sm font-semibold text-[#85621d]">Tam IP-ləri göstər</a>;
+    ? <a href={query(filters.page).replace("&ip=full", "")} className="inline-flex min-h-11 items-center rounded-control border border-brand-200 bg-white px-4 text-sm font-semibold text-gold-700">IP-ləri gizlət</a>
+    : <a href={`${query(filters.page)}&ip=full`} className="inline-flex min-h-11 items-center rounded-control border border-brand-200 bg-white px-4 text-sm font-semibold text-gold-700">Tam IP-ləri göstər</a>;
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <SecurityCenterHeader active="events" renderedAt={now.toISOString()} fullIp={full} actions={reveal}/>
-    {filters.fullIp && !full && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">Tam IP-lərə baxış audit jurnalına yazıla bilmədi; IP-lər maskalı qalır.</p>}
+    {filters.fullIp && !full && <p role="alert" className="mb-4 rounded-control border border-red-200 bg-red-50 p-3 text-sm text-red-800">Tam IP-lərə baxış audit jurnalına yazıla bilmədi; IP-lər maskalı qalır.</p>}
 
     <div className="mb-5"><Block title="Şübhəli fəaliyyət" note="404 skanları sayğaclardır (IP saxlanmır); IP siyahısı qeydə alınmış hadisələrdəndir.">
       {!suspicious ? unavailable : <div className="grid gap-5">
@@ -54,7 +54,7 @@ export default async function AdminSecurityEventsPage({ searchParams }: { search
             // data even when the IP shown is masked (found in the DESIGN-1 live check).
             rows={suspicious.topIps.map((row, index) => ({ key: `top-ip-${index}`, cells: [
               <Ip key="ip" value={shownIp(row.raw, row.masked, full)} />, row.count,
-              <span key="w">{row.eventTypes.map(eventTypeLabel).join(", ")}{row.paths.length > 0 && <span className="mt-1 block break-all font-mono text-xs text-slate-500">{row.paths.map((item) => `${item.path ?? "—"} (${item.count})`).join(", ")}</span>}</span>,
+              <span key="w">{row.eventTypes.map(eventTypeLabel).join(", ")}{row.paths.length > 0 && <span className="mt-1 block break-all font-mono text-xs text-fg-secondary">{row.paths.map((item) => `${item.path ?? "—"} (${item.count})`).join(", ")}</span>}</span>,
               date(row.latestAt),
             ] }))}/>}</div>
         </div>
@@ -62,8 +62,8 @@ export default async function AdminSecurityEventsPage({ searchParams }: { search
     </Block></div>
 
     <section className="min-w-0" aria-labelledby="events-title">
-      <h2 id="events-title" className="font-semibold text-[#0d1b2a]">Ətraflı hadisələr</h2>
-      <p className="mt-1 text-sm text-slate-500">Tətbiqin qeydə aldığı uğursuz girişlər, limit aşımları və IP başlıqlarının uyğunsuzluğu.</p>
+      <h2 id="events-title" className="font-semibold text-fg">Ətraflı hadisələr</h2>
+      <p className="mt-1 text-sm text-fg-secondary">Tətbiqin qeydə aldığı uğursuz girişlər, limit aşımları və IP başlıqlarının uyğunsuzluğu.</p>
       <form method="get" action="/admin/security-center/events" className={`${card} my-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5`}>
         <label className="grid gap-1 text-sm">Müddət<select name="window" defaultValue={filters.window} className={field}>{Object.entries(WINDOW_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="grid gap-1 text-sm">Hadisə<select name="type" defaultValue={filters.eventType} className={field}><option value="">Hamısı</option>{PRODUCED_EVENT_TYPES.map((type) => <option key={type} value={type}>{EVENT_TYPE_LABELS[type]}</option>)}</select></label>
@@ -71,23 +71,23 @@ export default async function AdminSecurityEventsPage({ searchParams }: { search
         <label className="grid gap-1 text-sm">Yol və ya IP<input name="q" defaultValue={filters.q} maxLength={100} className={field} /></label>
         <div className="flex items-end gap-2">
           {full && <input type="hidden" name="ip" value="full" />}
-          <button className="min-h-11 rounded-xl bg-[#173c40] px-4 text-sm font-semibold text-white">Göstər</button>
+          <button className="min-h-11 rounded-control bg-primary px-4 text-sm font-semibold text-white">Göstər</button>
         </div>
       </form>
-      <p className="mb-3 text-sm text-slate-500">{result ? `${result.total} hadisə` : ""}</p>
+      <p className="mb-3 text-sm text-fg-secondary">{result ? `${result.total} hadisə` : ""}</p>
       {!result ? unavailable
         : !result.rows.length ? empty("Bu süzgəclərlə hadisə yoxdur.")
           : <div className={card}><RowTable head={["Nə vaxt (Bakı)", "Hadisə", "Risk", "Yer", "IP"]} rows={result.rows.map((row) => ({ key: row.id, cells: [
               <span key="d" className="whitespace-nowrap">{date(row.occurredAt)}</span>,
               eventTypeLabel(row.eventType),
               SEVERITY_LABELS[row.severity] ?? row.severity,
-              <span key="p">{portalForPath(row.path)}{row.path && portalForPath(row.path) !== row.path && <span className="block break-all font-mono text-xs text-slate-500">{row.path}</span>}</span>,
+              <span key="p">{portalForPath(row.path)}{row.path && portalForPath(row.path) !== row.path && <span className="block break-all font-mono text-xs text-fg-secondary">{row.path}</span>}</span>,
               <Ip key="ip" value={shownIp(row.sourceIp, row.sourceIpMasked, full)} />,
             ] }))}/></div>}
       {result && pages > 1 && <nav className="mt-4 flex items-center justify-between text-sm">
-        {filters.page > 1 ? <a href={query(filters.page - 1)} className="inline-flex min-h-11 items-center rounded-xl border border-[#e7e3d9] px-4">Əvvəlki</a> : <span />}
-        <span className="text-slate-500">{filters.page} / {pages}</span>
-        {filters.page < pages ? <a href={query(filters.page + 1)} className="inline-flex min-h-11 items-center rounded-xl border border-[#e7e3d9] px-4">Növbəti</a> : <span />}
+        {filters.page > 1 ? <a href={query(filters.page - 1)} className="inline-flex min-h-11 items-center rounded-control border border-line px-4">Əvvəlki</a> : <span />}
+        <span className="text-fg-secondary">{filters.page} / {pages}</span>
+        {filters.page < pages ? <a href={query(filters.page + 1)} className="inline-flex min-h-11 items-center rounded-control border border-line px-4">Növbəti</a> : <span />}
       </nav>}
     </section>
   </AdminShell>;

@@ -185,7 +185,8 @@ test("live-check layout fixes: phone rows put buttons under the text; events tab
   // At 1280 the half-width top-IP table was cut off and the filter selects overlapped.
   const events = read(PAGES.events);
   assert.match(events, /\{!suspicious \? unavailable : <div className="grid gap-5">/);
-  assert.match(events, /const field = "min-h-11 w-full min-w-0 rounded-xl/);
+  // ADMIN-DESIGN-2: the radius is the kit's control token (was rounded-xl).
+  assert.match(events, /const field = "min-h-11 w-full min-w-0 rounded-control/);
 });
 
 // ================================================================= tabs

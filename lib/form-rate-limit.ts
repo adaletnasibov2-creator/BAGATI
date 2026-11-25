@@ -13,6 +13,11 @@ export const SHIPMENT_EMAIL_ORDER_LIMIT = { limit: 10, windowMs: 24 * 60 * 60 * 
 export const SHIPMENT_EMAIL_STORE_LIMIT = { limit: 200, windowMs: 60 * 60 * 1000 } as const; // per store
 export const ORDER_RECEIPT_RATE_LIMIT = { limit: 30, windowMs: 10 * 60 * 1000 } as const; // per account (ORDER-NOTIFY-1)
 export const ORDER_RECEIPT_IP_RATE_LIMIT = { limit: 120, windowMs: 10 * 60 * 1000 } as const; // per trusted client IP
+// SECURITY-AUDIT-1 (M5): order creation attempts that reach the stock step. Every order holds stock until a store acts,
+// so one account must not place unlimited orders. The IP limit is looser: mobile carriers in Azerbaijan share one IP
+// between many customers (carrier NAT). No limit on open unpaid orders: every real order is unpaid until Epoint is live.
+export const ORDER_CREATE_RATE_LIMIT = { limit: 10, windowMs: 60 * 60 * 1000 } as const; // per account
+export const ORDER_CREATE_IP_RATE_LIMIT = { limit: 60, windowMs: 60 * 60 * 1000 } as const; // per trusted client IP
 
 type Scope = Parameters<typeof authRateLimitKey>[0];
 export type FormRateBucket = { scope: Scope; identity: string; limit: number; windowMs: number };

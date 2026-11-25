@@ -20,6 +20,9 @@ import { ORDER_STOCK_ERROR_MESSAGES } from "@/lib/order-stock-errors";
 import { orderCreateResponse, publicOrderErrorCode } from "@/lib/order-create-response";
 import { AZ_PHONE_ERROR, normalizeAzMobilePhone } from "@/lib/az-phone";
 import { rememberOrderPhone } from "@/lib/profile-phone";
+import { ORDER_CREATE_IP_RATE_LIMIT, ORDER_CREATE_RATE_LIMIT, withinFormRateLimits } from "@/lib/form-rate-limit";
+import { rateLimitedResponse } from "@/lib/rate-limit-response";
+import { trustedCloudflareClientIp } from "@/lib/trusted-proxy";
 const db: any = prisma;
 // acceptTerms: the checkout checkbox, shown only while the current customer terms are not accepted. The server decides
 // from the database (customerTermsGate); the flag alone never skips the check.
@@ -47,6 +50,14 @@ export async function POST(request:NextRequest) {
  try{termsGate=await customerTermsGate(prisma,user.id,parsed.data.acceptTerms===true)}
  catch{return NextResponse.json({error:"Sifariş yaradılmadı. Bir az sonra yenidən yoxlayın.",code:"TERMS_CHECK_FAILED"},{status:503})}
  if(!termsGate.ok)return NextResponse.json({error:termsGate.error,code:termsGate.code},{status:termsGate.status});
+ // SECURITY-AUDIT-1 (M5): at most 10 order attempts per account and 60 per trusted client IP per hour (lib/form-rate-limit.ts).
+ // Counted here, after the body and terms checks and before any stock is touched; the existing 429 text, no new text.
+ const clientIp=trustedCloudflareClientIp(request.headers);
+ const allowed=await withinFormRateLimits([
+  {scope:"order-create",identity:`user:${user.id}`,...ORDER_CREATE_RATE_LIMIT},
+  ...(clientIp?[{scope:"order-create" as const,identity:`ip:${clientIp}`,...ORDER_CREATE_IP_RATE_LIMIT}]:[]),
+ ],"order_create_rate_limit");
+ if(!allowed)return rateLimitedResponse(60*60);
  const now=new Date();
  // The map pin is optional and never blocks an order: a missing, half-filled, malformed or out-of-Azerbaijan pin is
  // dropped here and the order is created from the address text (lib/delivery-location.ts).

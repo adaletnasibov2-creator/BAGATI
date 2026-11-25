@@ -9,6 +9,7 @@ import { isAdminPreview } from "@/lib/maintenance-preview";
 import { isStaticAssetPath } from "@/lib/static-asset-paths";
 import { EDGE_CACHE_HEADER, EDGE_CACHE_VALUE, shouldAddEdgeCacheHeader } from "@/lib/edge-cache";
 import { isPersonalApiPath, PERSONAL_API_CACHE_CONTROL } from "@/lib/personal-api-cache";
+import { isPrivateNoindexPath, PRIVATE_X_ROBOTS_TAG } from "@/lib/private-noindex";
 
 export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
@@ -51,6 +52,8 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   // Header (not robots.txt): noindex without advertising the admin path.
   if (adminSurface) response.headers.set("X-Robots-Tag", ADMIN_X_ROBOTS_TAG);
+  // LAUNCH-TECH-1: private customer / seller / sign-in pages are never indexed (header only, no visible change).
+  else if (isPrivateNoindexPath(pathname)) response.headers.set("X-Robots-Tag", PRIVATE_X_ROBOTS_TAG);
   if (personalizedDocument(pathname, request.cookies.has("bagati_session"))) {
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Vary", "Cookie");

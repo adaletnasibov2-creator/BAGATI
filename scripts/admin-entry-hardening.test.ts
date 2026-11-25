@@ -104,8 +104,13 @@ test("middleware sets X-Robots-Tag on admin pages and APIs (also on a CSRF rejec
   const crossSite = await middleware(new NextRequest("http://localhost:3000/api/admin/login", { method: "POST", headers: { host: "localhost:3000", origin: "https://evil.example", "sec-fetch-site": "cross-site" } }));
   assert.equal(crossSite.status, 403, "cross-site admin POST is rejected by the middleware");
   assert.equal(crossSite.headers.get("x-robots-tag"), ADMIN_X_ROBOTS_TAG);
-  for (const url of ["http://localhost:3000/", "http://localhost:3000/login", "http://localhost:3000/vendor/login", "http://localhost:3000/products"]) {
+  for (const url of ["http://localhost:3000/", "http://localhost:3000/products"]) {
     assert.equal(await headerFor(url), null, url);
+  }
+  // LAUNCH-TECH-1: private sign-in pages are noindex too, with the general private value (never the admin value).
+  for (const url of ["http://localhost:3000/login", "http://localhost:3000/vendor/login"]) {
+    assert.equal(await headerFor(url), "noindex, nofollow", url);
+    assert.notEqual(await headerFor(url), ADMIN_X_ROBOTS_TAG, url);
   }
   globalThis.fetch = realFetch;
 });

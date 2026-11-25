@@ -102,7 +102,7 @@ test("share preview: a product image already on the CDN (https) stays as is", ()
 });
 
 test("share preview: no image (or an unusable one) falls back to the site image with its size", () => {
-  const fallback = { url: `https://shopbagati.com${DEFAULT_SHARE_IMAGE.path}`, width: 1664, height: 928, alt: "Məhsul" };
+  const fallback = { url: `https://shopbagati.com${DEFAULT_SHARE_IMAGE.path}`, width: 1200, height: 630, alt: "Məhsul" }; // LAUNCH-TECH-1: dedicated 1200x630 image
   assert.deepEqual(shareImage([undefined, null, ""], "Məhsul", BASE), fallback);
   assert.deepEqual(shareImage(["http://insecure.example/x.jpg"], "Məhsul", BASE), fallback, "http is not used");
   assert.deepEqual(shareImage(["//evil.example/x.jpg"], "Məhsul", BASE), fallback, "protocol-relative is not used");
@@ -112,7 +112,7 @@ test("share preview: no image (or an unusable one) falls back to the site image 
   const noBase = sharePreviewMetadata({ title: "X", path: "/products/p", siteName: "BAGATI", image: shareImage([], "X", ""), base: "" });
   assert.equal((noBase.openGraph as { url?: string }).url, undefined);
   assert.equal((noBase.openGraph as { images?: unknown }).images, undefined);
-  assert.equal(DEFAULT_SHARE_IMAGE.path, "/bagati-logo-reference.png.png", "an existing file in public/");
+  assert.equal(DEFAULT_SHARE_IMAGE.path, "/images/share/bagati-share-1200x630.png", "an existing file in public/");
   assert.ok(readFileSync(join(root, "public", DEFAULT_SHARE_IMAGE.path.slice(1))).length > 0);
 });
 

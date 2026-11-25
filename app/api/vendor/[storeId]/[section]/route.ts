@@ -3,7 +3,6 @@ import { loadVendorSalesAnalytics } from "@/lib/vendor-sales-analytics-query";
 import { analyticsRangeAllowed } from "@/lib/vendor-sales-analytics";
 import { shipmentEmailAllowed } from "@/lib/shipment-email-guard";
 import { bodyTooLargeResponse, JSON_BODY_LIMITS, readJsonCapped } from "@/lib/json-body";
-import { productCategoryChoiceError, readCategoryParentId } from "@/lib/product-category-choice";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireStoreAccess } from "@/lib/auth";
@@ -15,21 +14,18 @@ import { OrderFulfillmentError, transitionVendorStoreOrder } from "@/lib/order-f
 import { isOwnedStoreAssetUrl } from "@/lib/storage/store-assets";
 import { deliveryAmountSchema } from "@/lib/delivery";
 import { allowedShipmentTransitions, shipmentChangeAllowedForOrder, shipmentTimestamps, SHIPMENT_STATUSES, type ShipmentStatusValue } from "@/lib/shipment-tracking";
-import { hasOverlappingEnabledPromotion } from "@/lib/promotion-pricing";
 import { countProductsWithLowStock } from "@/lib/vendor-inventory";
-import { activeComplimentaryEntitlementSelect, assertFeature, complimentaryFromRows, EntitlementError, entitlementErrorResponse, getStoreEntitlements } from "@/lib/subscription-entitlements";
+import { assertFeature, EntitlementError, entitlementErrorResponse, getStoreEntitlements } from "@/lib/subscription-entitlements";
 import { enqueueEmail } from "@/lib/email-outbox";
 import { checkImportRows, ImportInventoryReservationError, isSafeImportImageUrl, parseImportVariants } from "@/lib/product-import";
 import { CatalogSkuConflictError, findExistingProductSkuMatches, findExistingVariantSkuKeys, isSkuUniqueViolation } from "@/lib/catalog-import-persistence";
 import { invalidatePublicCategoryCache } from "@/lib/public-category-tree";
 import { CANCELLATION_REQUEST_OPEN_MESSAGE, hasOpenCancellationRequest, isDispatchShipmentStatus } from "@/lib/order-cancellation-guard";
-import { legacyVendorProductPatchSchema } from "@/lib/vendor-product-schemas";
 import { vendorLegacyImportBodySchema } from "@/lib/vendor-legacy-import";
 import { isStorefrontTheme } from "@/lib/storefront-themes";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
 import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { checkStoreSubmission } from "@/lib/store-submission";
-import { checkVendorProductActivation, isVendorProductActivation } from "@/lib/vendor-product-publication";
 import { optionalStockQuantitySchema, requiredStockQuantitySchema } from "@/lib/stock-quantity";
 import { generateProductCode } from "@/lib/product-code";
 import { parseVoen } from "@/lib/voen";
@@ -40,8 +36,6 @@ import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
 import { countsFromGroups, itemThumbnail } from "@/lib/vendor-order-view";
 import { ORDER_PROGRESS_STATUSES } from "@/lib/order-progress-emails";
-import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
-import { LEGAL_GATE_MESSAGES, SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
 import { normalizeStoreHoursInput, STORE_HOURS_TEXTS } from "@/lib/store-hours";
 
 const statuses = ["NEW", "CONFIRMED", "PREPARING", "READY", "HANDED_TO_COURIER", "DELIVERED", "CANCELLED", "RETURNED"] as const;
@@ -74,14 +68,6 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
   return NextResponse.json({items,page,pageSize,total,totalPages,counts:countsFromGroups(groups)});
  }
   if(section==="inventory")return NextResponse.json({items:await db.inventory.findMany({where:{product:{storeId}},include:{product:{select:{name:true,sku:true}},variant:{select:{id:true,name:true,sku:true,options:true,isActive:true}},adjustments:{orderBy:{createdAt:"desc"},take:5}},orderBy:{updatedAt:"desc"}})});
- if(section==="campaigns"){
-  const q=req.nextUrl.searchParams.get("q")?.trim()||"";
-  const [items,products]=await Promise.all([
-   db.promotion.findMany({where:{storeId},include:{products:{include:{product:{select:{id:true,name:true,sku:true,status:true,price:true}}}}},orderBy:{startsAt:"desc"}}),
-   db.product.findMany({where:{storeId,status:"ACTIVE",...(q?{OR:[{name:{contains:q,mode:"insensitive"}},{sku:{contains:q,mode:"insensitive"}}]}:{})},select:{id:true,name:true,sku:true,price:true},orderBy:{name:"asc"},take:30}),
-  ]);
-  return NextResponse.json({items,products});
- }
  if(section==="profile"){
   const [store,branding,cities]=await Promise.all([
    db.store.findUnique({
@@ -171,17 +157,6 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
 export async function POST(req:NextRequest,{params}:{params:Promise<{storeId:string;section:string}>}){
   const {storeId,section}=await params; const access=await scope(storeId); if(!access)return NextResponse.json({error:"Mağazaya giriş icazəsi yoxdur"},{status:403});
   let body:any; try{body=await readJsonCapped(req,section==="imports"?JSON_BODY_LIMITS.legacyImport:JSON_BODY_LIMITS.medium)}catch(error){return bodyTooLargeResponse(error)??NextResponse.json({error:"Sorğu məlumatı yanlışdır"},{status:400})}
-  if(section==="campaigns"){
-   const s=z.object({name:z.string().trim().min(2).max(160),discountType:z.enum(["PERCENT","FIXED"]),discountValue:z.coerce.number().positive(),startsAt:z.string(),endsAt:z.string(),productIds:z.array(z.string()).max(200).default([])}).safeParse(body);
-   if(!s.success)return NextResponse.json({error:"Kampaniya məlumatları yanlışdır"},{status:422});
-   const start=new Date(s.data.startsAt),end=new Date(s.data.endsAt);
-   if(isNaN(start.valueOf())||isNaN(end.valueOf())||start>=end)return NextResponse.json({error:"Kampaniya tarixi yanlışdır"},{status:422});
-   if(s.data.productIds.length){const owned=await db.product.count({where:{id:{in:s.data.productIds},storeId}});if(owned!==s.data.productIds.length)return NextResponse.json({error:"Yalnız öz məhsullarınızı seçin"},{status:403});}
-    const existingPromotions=await db.promotion.findMany({where:{storeId,isActive:true},select:{startsAt:true,endsAt:true}});if(hasOverlappingEnabledPromotion(start,end,existingPromotions))return NextResponse.json({error:"Eyni dövrdə başqa kampaniya aktivdir"},{status:409});
-   const promotion=await db.promotion.create({data:{storeId,name:s.data.name,discountType:s.data.discountType,discountValue:new Prisma.Decimal(s.data.discountValue),startsAt:start,endsAt:end,products:{create:s.data.productIds.map(id=>({productId:id}))}}});
-   return NextResponse.json(promotion,{status:201});
-  }
-
   if(section==="submit"){
    const store=await db.store.findUnique({where:{id:storeId},select:{id:true,status:true,isActive:true,legalInfoApproved:true,subscription:{select:{id:true,status:true}},adminManaged:true,vendor:{select:{sellerType:true,legalName:true,legalAddress:true,voen:true}}}});
    if(!store)return NextResponse.json({error:"Mağaza tapılmadı"},{status:404});
@@ -358,93 +333,6 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
    }
    return NextResponse.json({error:"Sifari\u015f yenil\u0259nm\u0259di"},{status:500});
   }
- }
- if(section==="products"){
-  const s=legacyVendorProductPatchSchema.safeParse(b);
-  if(!s.success)return NextResponse.json({error:"Məhsul məlumatlarını yoxlayın"},{status:422});
-  const {id,...v}=s.data;
-  if(v.categoryId){const existing=await db.product.findFirst({where:{id,storeId},select:{categoryId:true}});const categoryError=await productCategoryChoiceError(db,{categoryId:v.categoryId,previousCategoryId:existing?existing.categoryId:undefined,expectedParentId:readCategoryParentId(b)});if(categoryError)return NextResponse.json({error:categoryError},{status:422});}
-  if(v.price!==undefined&&v.discountPrice!==undefined&&v.discountPrice!==null&&v.discountPrice>=v.price)return NextResponse.json({error:"Endirimli qiymət əsas qiymətdən az olmalıdır"},{status:422});
-  const updateData={...v,...(v.price!==undefined?{price:new Prisma.Decimal(v.price)}:{}),...(v.discountPrice!==undefined?{discountPrice:v.discountPrice===null?null:new Prisma.Decimal(v.discountPrice)}:{})};
-  if(v.status==="ACTIVE"){
-   try{
-    const result=await db.$transaction(async(tx:any)=>{
-     await tx.$queryRaw`SELECT "id" FROM "Store" WHERE "id" = ${storeId} FOR UPDATE`;
-     await tx.$queryRaw`SELECT "id" FROM "Product" WHERE "id" = ${id} AND "storeId" = ${storeId} FOR UPDATE`;
-     const current=await tx.product.findFirst({where:{id,storeId},include:{category:{select:{isActive:true}},inventory:{select:{variantId:true,quantity:true,reserved:true}},variants:{select:{id:true,name:true,options:true,isActive:true,price:true,discountPrice:true,inventory:{select:{variantId:true,quantity:true,reserved:true}}}}}});
-     if(!current)return {error:"NOT_FOUND" as const};
-     if(v.sku&&(await findExistingProductSkuMatches(tx,storeId,[v.sku],current.id)).length)throw new CatalogSkuConflictError("PRODUCT");
-     if(v.images?.some((url:string)=>!isOwnedStoreAssetUrl(storeId,url)&&!current.images.includes(url)))return {error:"IMAGE_NOT_OWNED" as const};
-
-     if(isVendorProductActivation(current.status,v.status)){
-      // Publishing needs the CURRENT seller terms (lib/legal-gates.ts); an already active product is not affected.
-      if(!await hasAcceptedCurrent(tx,access.user.id,"SELLER_TERMS"))return {error:SELLER_TERMS_REQUIRED};
-      const store=await tx.store.findUnique({where:{id:storeId},select:{
-       status:true,isActive:true,legalInfoApproved:true,adminManaged:true,
-       city:{select:{isActive:true}},
-       vendor:{select:{sellerType:true,legalName:true,voen:true,legalAddress:true,user:{select:{isActive:true}}}},
-       subscription:{select:{status:true,currentPeriodStart:true,currentPeriodEnd:true,plan:{select:{slug:true,isActive:true}}}},
-       complimentaryEntitlements:activeComplimentaryEntitlementSelect,
-      }});
-      if(!store)return {error:"STORE_NOT_ELIGIBLE" as const,blockers:["Mağaza tapılmadı."]};
-      const categoryId=v.categoryId!==undefined?v.categoryId:current.categoryId;
-      const category=categoryId===current.categoryId
-       ?current.category
-       :categoryId===null?null:await tx.category.findFirst({where:{id:categoryId,isActive:true},select:{isActive:true}});
-      const productCandidate={
-       id:current.id,
-       name:v.name??current.name,
-       description:v.description!==undefined?v.description:current.description,
-       price:v.price!==undefined?v.price:current.price,
-       discountPrice:v.discountPrice!==undefined?v.discountPrice:current.discountPrice,
-       categoryId,
-       category,
-       inventory:current.inventory,
-       variants:current.variants,
-      };
-      const activeProductCount=await tx.product.count({where:{storeId,status:"ACTIVE"}});
-      const check=checkVendorProductActivation({
-       store:{
-        status:store.status,isActive:store.isActive,legalInfoApproved:store.legalInfoApproved,adminManaged:store.adminManaged,
-        vendorActive:store.vendor.user.isActive,cityActive:store.city.isActive,
-        sellerType:store.vendor.sellerType,legalName:store.vendor.legalName,voen:store.vendor.voen,legalAddress:store.vendor.legalAddress,
-        subscriptionStatus:store.subscription?.status??null,planSlug:store.subscription?.plan.slug??null,planActive:store.subscription?.plan.isActive??false,
-        periodStart:store.subscription?.currentPeriodStart??null,periodEnd:store.subscription?.currentPeriodEnd??null,
-        complimentary:complimentaryFromRows(store.complimentaryEntitlements),
-       },
-       product:productCandidate,
-       activeProductCount,
-      });
-      if(!check.ok)return {error:check.reason,check};
-     }
-     const item=await tx.product.update({where:{id:current.id},data:updateData});
-     return {item};
-    });
-    if("error" in result){
-     if(result.error==="NOT_FOUND")return NextResponse.json({error:"Məhsul tapılmadı"},{status:404});
-     if(result.error===SELLER_TERMS_REQUIRED)return NextResponse.json({error:LEGAL_GATE_MESSAGES.sellerTermsRequired,code:SELLER_TERMS_REQUIRED},{status:409});
-     if(result.error==="IMAGE_NOT_OWNED")return NextResponse.json({error:"Yeni şəkilləri bu mağazanın yükləmə bölməsindən əlavə edin"},{status:422});
-     if(result.error==="PRODUCT_LIMIT_REACHED"&&"check" in result&&result.check.reason==="PRODUCT_LIMIT_REACHED"){
-      return entitlementErrorResponse(new EntitlementError("PRODUCT_LIMIT_REACHED",result.check.plan,result.check.current,result.check.limit));
-     }
-     if("check" in result&&result.check.reason==="PRODUCT_NOT_READY")return NextResponse.json({error:"Məhsul yayımlanmağa hazır deyil",blockers:result.check.blockers},{status:422});
-     const blockers="check" in result&&result.check.reason==="STORE_NOT_ELIGIBLE"?result.check.blockers:("blockers" in result?result.blockers:[]);
-     return NextResponse.json({error:"Mağaza məhsul yayımlamaq üçün uyğun deyil",code:"STORE_NOT_ELIGIBLE",blockers},{status:409});
-    }
-    return NextResponse.json({item:result.item});
-   }catch(error){
-    if(error instanceof EntitlementError)return entitlementErrorResponse(error);
-    if(error instanceof CatalogSkuConflictError||isSkuUniqueViolation(error))return NextResponse.json({error:"Bu məhsul kodu mağazanızda artıq istifadə olunur"},{status:409});
-    return NextResponse.json({error:"Məhsul yenilənmədi"},{status:500});
-   }
-  }
-
-  const found=await db.product.findFirst({where:{id,storeId}});
-  if(!found)return NextResponse.json({error:"Məhsul tapılmadı"},{status:404});
-  if(v.images?.some((url)=>!isOwnedStoreAssetUrl(storeId,url)&&!found.images.includes(url)))return NextResponse.json({error:"Yeni şəkilləri bu mağazanın yükləmə bölməsindən əlavə edin"},{status:422});
-  if(v.sku&&(await findExistingProductSkuMatches(db,storeId,[v.sku],found.id)).length)return NextResponse.json({error:"Bu məhsul kodu mağazanızda artıq istifadə olunur"},{status:409});
-  try{return NextResponse.json({item:await db.product.update({where:{id:found.id},data:updateData})});}
-  catch(error){if(isSkuUniqueViolation(error))return NextResponse.json({error:"Bu məhsul kodu mağazanızda artıq istifadə olunur"},{status:409});throw error;}
  }
  if(section==="inventory"){
   const s=z.object({id:z.string(),quantity:requiredStockQuantitySchema,reason:z.string().trim().min(2).max(300),lowStockThreshold:optionalStockQuantitySchema}).safeParse(b);if(!s.success)return NextResponse.json({error:"Stok məlumatlarını yoxlayın"},{status:422});const prior=await db.inventory.findFirst({where:{id:s.data.id,product:{storeId}},select:{id:true}});if(!prior)return NextResponse.json({error:"Stok qeydi tapılmadı"},{status:404});try{const item=await db.$transaction(async(tx:any)=>{await tx.$queryRaw`SELECT "id" FROM "Inventory" WHERE "id" = ${prior.id} FOR UPDATE`;const current=await tx.inventory.findUnique({where:{id:prior.id}});if(!current)throw new Error("INVENTORY_NOT_FOUND");if(s.data.quantity<current.reserved)throw new Error("STOCK_BELOW_RESERVED");const updated=await tx.inventory.update({where:{id:prior.id},data:{quantity:s.data.quantity,...(s.data.lowStockThreshold!==undefined?{lowStockThreshold:s.data.lowStockThreshold}:{})}});if(current.quantity!==s.data.quantity)await tx.inventoryAdjustment.create({data:{inventoryId:prior.id,actorUserId:access.user.id,delta:s.data.quantity-current.quantity,previousQuantity:current.quantity,newQuantity:s.data.quantity,reason:s.data.reason}});return updated});return NextResponse.json({item})}catch(error){if(error instanceof Error&&error.message==="STOCK_BELOW_RESERVED")return NextResponse.json({error:"Yeni stok rezerv edilmiş miqdardan az ola bilməz"},{status:422});return NextResponse.json({error:"Stok yenilənə bilmədi"},{status:500})}

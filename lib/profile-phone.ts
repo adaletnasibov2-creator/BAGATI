@@ -10,6 +10,18 @@ import { normalizeAzMobilePhone } from "@/lib/az-phone";
 
 type ProfileWriter = Pick<Prisma.TransactionClient, "customerProfile">;
 
+/**
+ * CLEANUP-1 (L3): the phone sent to PATCH /api/account/profile, checked with the SAME validator as orders
+ * (normalizeAzMobilePhone). Not sent: undefined (the saved phone is kept). Empty: "" (still allowed, as before).
+ * A valid Azerbaijani mobile number: its +994XXXXXXXXX form (the format orders store). Anything else: null (refused).
+ */
+export function profilePhoneInput(phone: string | undefined): string | undefined | null {
+  if (phone === undefined) return undefined;
+  const value = phone.trim();
+  if (!value) return "";
+  return normalizeAzMobilePhone(value);
+}
+
 export async function rememberProfilePhoneIfEmpty(db: ProfileWriter, userId: string, phone: string): Promise<"saved" | "kept" | "created"> {
   const value = phone.trim().slice(0, 30);
   if (!value) return "kept";

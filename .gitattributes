@@ -1,0 +1,2 @@
+# CLEANUP-1: SQL files (Prisma migrations, scale-audit scripts) are always LF, also in Windows working copies.
+*.sql text eol=lf

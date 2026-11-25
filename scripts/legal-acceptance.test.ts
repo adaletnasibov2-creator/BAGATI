@@ -111,7 +111,7 @@ test("Phase B: exactly the expected application code calls the helper (registrat
   assert.deepEqual(callers.sort(), [
     "app/(customer)/checkout/page.tsx",
     "app/api/auth/register/route.ts",
-    "app/api/vendor/[storeId]/[section]/route.ts",
+    // CLEANUP-1 (L4): "app/api/vendor/[storeId]/[section]/route.ts" left the list with its unreachable product PATCH.
     "app/vendor/[storeId]/layout.tsx",
     "app/vendor/page.tsx",
     "app/vendor/stores/new/page.tsx",

@@ -11,6 +11,8 @@ import { AdminLegalAcceptances, adminLegalAcceptanceSelect } from "@/components/
 import { SELLER_APPLICATION_SOURCE_LABELS, SELLER_TYPE_LABELS } from "@/lib/seller-application";
 import { findDuplicateVoen } from "@/lib/seller-application-service";
 import { AdminVoenPanel } from "@/components/admin-voen-panel";
+import { AdminDetailHeader } from "@/components/admin-ui/detail-header";
+import { ADMIN_BACK_LINKS } from "@/lib/admin-power-1";
 import { adminVoenView, currentVoenOf } from "@/lib/voen-verification";
 
 export const dynamic = "force-dynamic";
@@ -49,15 +51,13 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
   const accountReady = application.user.role === "CUSTOMER" && application.user.isActive && Boolean(application.user.emailVerifiedAt);
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
-    <Link href="/admin/seller-applications" className="text-sm text-[#173c40] underline-offset-2 hover:underline">← Satıcı müraciətləri</Link>
-    <div className="mb-6 mt-3 flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#9b7840]">BAGATI · ADMIN</p>
-        <h1 className="mt-2 break-words text-3xl font-semibold text-[#0d1b2a]">{application.displayName}</h1>
-        <p className="mt-2 text-sm text-slate-500">Göndərilib: {formatBakuDateTime(application.createdAt)} · {SELLER_APPLICATION_SOURCE_LABELS[application.source]}</p>
-      </div>
-      <StatusBadge status={application.status} />
-    </div>
+    <AdminDetailHeader
+      back={ADMIN_BACK_LINKS.sellerApplications}
+      title={application.displayName}
+      detail={<>Göndərilib: {formatBakuDateTime(application.createdAt)} · {SELLER_APPLICATION_SOURCE_LABELS[application.source]}</>}
+      badge={<StatusBadge status={application.status} />}
+      facts={[["E-poçt", application.user.email], ["Satıcı növü", application.sellerType ? SELLER_TYPE_LABELS[application.sellerType] : "—"]]}
+    />
 
     {duplicateCount > 0 && <div role="alert" className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
       <p className="font-semibold">Bu VÖEN başqa yerdə də istifadə olunur ({duplicateCount})</p>

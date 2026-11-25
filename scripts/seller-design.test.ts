@@ -81,6 +81,10 @@ test("the seller layout and the four portal pages render VendorTheme; admin, the
   const outside = [...walk("app/admin"), ...walk("app/(customer)"), "app/layout.tsx", "components/admin-shell.tsx", "components/public-theme.tsx", "components/header.tsx", "components/customer-footer.tsx"];
   for (const path of outside) assert.doesNotMatch(read(path), /VendorTheme|vendor-theme|bagati-vendor/, path);
   for (const path of walk("components").filter((path) => /components\/admin-/.test(path))) assert.doesNotMatch(read(path), /VendorTheme|bagati-vendor/, path);
+  // ADMIN-POWER-1 (owner-approved): the admin shell uses the same fonts through its own scope (.bagati-admin,
+  // components/admin-theme.tsx), never the seller scope; the seller scope block is unchanged.
+  assert.match(read("components/admin-shell.tsx"), /className="bagati-admin /);
+  assert.match(read("app/globals.css"), /\n\.bagati-admin \{\n  --bagati-font-sans: var\(--bagati-font-inter, ui-sans-serif\)/);
   // The seller panel still never renders the public theme.
   for (const path of walk("app/vendor")) assert.doesNotMatch(read(path), /PublicTheme|bagati-public/, path);
 });

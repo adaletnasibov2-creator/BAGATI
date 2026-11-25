@@ -66,5 +66,7 @@ test("admin pages show labels, not raw status values, in selects and status cell
     assert.doesNotMatch(source, /cell:r=>r\.status\}/, `${file}: status cells use AdminStatusBadge`);
   }
   // Filter values stay the raw enum (URLs like ?status=PENDING_REVIEW keep working).
-  assert.match(readFileSync(join(dir, "stores.tsx"), "utf8"), /normalizeAdminEnumFilter\(sp\.status,storeStatuses\)/);
+  // ADMIN-POWER-1: the stores filter moved unchanged to lib/admin-list-where.ts (shared with the CSV export).
+  assert.match(readFileSync(join(__dirname, "..", "lib/admin-list-where.ts"), "utf8"), /normalizeAdminEnumFilter\(sp\.status, ADMIN_STORE_STATUSES\)/);
+  assert.match(readFileSync(join(dir, "stores.tsx"), "utf8"), /const where=storesListWhere\(sp,q\);/);
 });

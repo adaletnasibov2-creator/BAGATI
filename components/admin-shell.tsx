@@ -7,6 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { finishAuthNavigation, postLogout } from "@/lib/auth-client";
 import { ChevronDown, Menu, Search, X } from "lucide-react";
 import { ADMIN_MESSAGING_NAV_HREF, ADMIN_NAV_GROUPS, activeAdminNavGroup, activeAdminNavHref } from "@/lib/admin-nav";
+import { AdminGlobalSearch } from "@/components/admin-global-search";
+import { AdminFontVariables } from "@/components/admin-theme";
+import { ADMIN_POWER_1_TEXT } from "@/lib/admin-power-1";
 
 // Menu groups and items: lib/admin-nav.ts (Ödənişlər and Geri ödənişlər are hidden stubs).
 // ADMIN-DESIGN-1: the seller panel's look (components/vendor-navigation.tsx): white sidebar with a hairline, gold group
@@ -20,6 +23,7 @@ type AdminShellProps = { children: ReactNode; email: string; messagingEnabled?: 
 export default function AdminShell({ children, email, messagingEnabled = false }: AdminShellProps) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [logoutError, setLogoutError] = useState("");
@@ -140,7 +144,8 @@ export default function AdminShell({ children, email, messagingEnabled = false }
     </nav>;
   }
 
-  return <div className="min-h-screen bg-surface-page text-fg-body">
+  return <div className="bagati-admin min-h-screen bg-surface-page text-fg-body">
+    <AdminFontVariables />
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-line bg-white p-4 lg:flex">
       <Link href="/admin" className={`flex items-center gap-3 border-b border-line px-2.5 pb-5 pt-2 ${focusRing}`}>
         <span className="grid h-10 w-10 place-items-center rounded-control bg-primary font-serif text-xl font-bold text-white">B</span>
@@ -156,25 +161,35 @@ export default function AdminShell({ children, email, messagingEnabled = false }
       </div>
     </aside>
     <div className="lg:pl-[264px]">
-      <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-line bg-white/95 px-4 backdrop-blur sm:px-7">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between gap-3 border-b border-line bg-white/95 px-4 backdrop-blur sm:px-7">
+        <div className="flex min-w-0 items-center gap-3">
           <button
             ref={mobileMenuButton}
             aria-label="Naviqasiyanı aç"
             aria-expanded={open}
             aria-controls="admin-mobile-navigation"
-            className={`grid h-11 w-11 place-items-center rounded-full border border-line-strong text-fg transition-colors hover:border-primary lg:hidden ${focusRing}`}
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line-strong text-fg transition-colors hover:border-primary lg:hidden ${focusRing}`}
             onClick={() => setOpen(true)}
           ><Menu size={20} aria-hidden="true" /></button>
-          <p className="text-sm font-semibold text-fg">Bazar yeri idarəetməsi</p>
+          <p className="truncate text-sm font-semibold text-fg">Bazar yeri idarəetməsi</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden max-w-60 truncate text-sm text-fg-secondary sm:inline">{email}</span>
+        {/* ADMIN-POWER-1: global admin search; inline from 1024 px, a button + panel below the bar on smaller screens. */}
+        <div className="hidden max-w-xl flex-1 lg:block"><AdminGlobalSearch /></div>
+        <div className="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            aria-label={ADMIN_POWER_1_TEXT.searchOpen}
+            aria-expanded={searchOpen}
+            onClick={() => setSearchOpen((value) => !value)}
+            className={`grid h-11 w-11 place-items-center rounded-full border border-line-strong text-fg transition-colors hover:border-primary lg:hidden ${focusRing}`}
+          ><Search size={18} aria-hidden="true" /></button>
+          <span className="hidden max-w-60 truncate text-sm text-fg-secondary xl:inline">{email}</span>
           <span aria-label="İdarəçi hesabı" className="grid h-9 w-9 place-items-center rounded-full bg-gold-100 text-sm font-semibold text-gold-700 ring-1 ring-inset ring-gold-200">
             {email.slice(0, 1).toLocaleUpperCase("az-AZ")}
           </span>
         </div>
       </header>
+      {searchOpen && <div className="sticky top-[68px] z-20 border-b border-line bg-white px-4 py-3 sm:px-7 lg:hidden"><AdminGlobalSearch autoFocus onClose={() => setSearchOpen(false)} /></div>}
       <main className="mx-auto max-w-[1600px] p-4 sm:p-7 lg:p-9">{children}</main>
     </div>
     {open && <div

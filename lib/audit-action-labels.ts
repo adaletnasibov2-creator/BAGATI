@@ -27,6 +27,7 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
   SECURITY_IP_BLOCK_REMOVE: "IP bloku götürüldü",
   // Viewing personal data / exports
   AUDIT_EXPORT: "Audit jurnalı ixrac edildi",
+  ADMIN_LIST_EXPORT: "Admin siyahısı ixrac edildi", // ADMIN-POWER-1 (T21, owner decision B1)
   ORDER_COORDINATES_VIEW: "Sifarişin xəritə koordinatlarına baxıldı",
   CONVERSATION_ADMIN_VIEW: "Admin yazışmaya baxdı",
   CONVERSATION_REPORT_REVIEWED: "Yazışma şikayətinə baxıldı",

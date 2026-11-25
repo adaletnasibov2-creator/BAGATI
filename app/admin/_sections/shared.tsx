@@ -9,6 +9,7 @@ import AdminMutationForm from "@/components/admin-mutation-form";
 import AdminStoreActivationAction from "@/components/admin-store-activation-action";
 import { adminStatusLabel, type AdminStatusKind } from "@/lib/admin-labels";
 import { buttonClass } from "@/components/admin-ui/styles";
+import { ADMIN_ORDER_STATUSES, ADMIN_PRODUCT_STATUSES, ADMIN_STORE_STATUSES } from "@/lib/admin-list-where";
 
 /** Everything a section renderer needs from the catch-all router. */
 export type SectionContext = {
@@ -25,9 +26,10 @@ export type SectionContext = {
 };
 
 export const card="rounded-card border border-line bg-white p-5";
-export const storeStatuses=["DRAFT","PENDING_REVIEW","ACTIVE","SUSPENDED","REJECTED"];
-export const orderStatuses=["PENDING","NEW","CONFIRMED","PREPARING","READY","HANDED_TO_COURIER","PROCESSING","SHIPPED","DELIVERED","CANCELLED","RETURNED"];
-export const productStatuses=["DRAFT","ACTIVE","ARCHIVED"];
+// ADMIN-POWER-1: one list of statuses, shared with the list filters and CSV exports (lib/admin-list-where.ts).
+export const storeStatuses=ADMIN_STORE_STATUSES;
+export const orderStatuses=ADMIN_ORDER_STATUSES;
+export const productStatuses=ADMIN_PRODUCT_STATUSES;
 
 export function Header({title,detail}:{title:string;detail?:string}){return <div className="mb-6"><p className="text-kicker uppercase text-gold-700">BAGATI · ADMIN</p><h1 className="mt-1.5 break-words text-h1 text-fg">{title}</h1>{detail&&<p className="mt-1.5 max-w-3xl text-sm text-fg-secondary">{detail}</p>}</div>}
 export function formatStoreCityName(city?:{name?:string|null}|null){return city?.name || "Şəhər yoxdur";}

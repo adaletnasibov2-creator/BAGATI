@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { CircleX, ClipboardCheck, Clock, Package, PackageCheck, ShoppingBag, Store, UserRound, Users, type LucideIcon } from "lucide-react";
 import AdminShell from "@/components/admin-shell";
 import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
-import AdminVerificationSummary from "@/components/admin-verification-summary";
+import AdminVerificationSummary, { loadUnverifiedCounts } from "@/components/admin-verification-summary";
+import { AdminActivityChart } from "@/components/admin-activity-chart";
+import { AdminAttentionQueue } from "@/components/admin-attention-queue";
+import { loadDashboardActivity } from "@/lib/admin-dashboard-activity";
+import { attentionItems } from "@/lib/admin-power-1";
 import { AdminStatusBadge } from "@/components/admin-ui/admin-status-badge";
 import { EmptyState } from "@/components/admin-ui/empty-state";
 import { PageHeader } from "@/components/admin-ui/page-header";
@@ -13,7 +17,7 @@ import { buttonClass, focusRing } from "@/components/admin-ui/styles";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_PENDING_ORDER_STATUSES, ADMIN_PENDING_ORDERS_HREF } from "@/lib/admin-order-filters";
-import { formatMoney } from "@/lib/format-money";
+import { formatPrice } from "@/lib/price";
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 
@@ -38,6 +42,11 @@ const ATTENTION_HREFS = new Set<string>(["/admin/stores?status=PENDING_REVIEW", 
 export default async function AdminDashboard() {
   const admin = await requireRole("ADMIN");
   if (!admin) redirect("/admin/login");
+  // ADMIN-POWER-1: the chart and queue reads (counts only, lib/admin-dashboard-activity.ts) start first and run in
+  // parallel with the counts below.
+  const messagingPromise = adminMessagingNavEnabled();
+  const activityPromise = messagingPromise.then((messaging) => loadDashboardActivity(prisma, new Date(), messaging));
+  const unverifiedPromise = loadUnverifiedCounts();
   const [customers, vendors, stores, activeStores, pendingStores, products, activeProducts, orders, pendingOrders, completedOrders, cancelledOrders, subscriptions, recentOrders, recentStores, maintenanceOn] = await Promise.all([
     prisma.user.count({ where: { role: "CUSTOMER" } }),
     prisma.user.count({ where: { role: "VENDOR" } }),
@@ -72,7 +81,9 @@ export default async function AdminDashboard() {
   // (the same numbers as before; no new query).
   const statIcon = (href: string) => { const Icon = STAT_ICONS[href]; return Icon ? <Icon size={16} /> : undefined; };
   const seeAll = (href: string, label: string) => <Link href={href} className={`rounded text-sm font-semibold text-primary hover:underline ${focusRing}`}>{label} →</Link>;
-  return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
+  const [messagingEnabled, activity, unverified] = await Promise.all([messagingPromise, activityPromise, unverifiedPromise]);
+  const queue = attentionItems({ pendingApplications: activity.pendingApplications, storesInReview: pendingStores, pendingOrders, openSupport: activity.openSupport, openReports: activity.openReports, unverifiedAccounts: unverified.customers + unverified.vendors }, ADMIN_PENDING_ORDERS_HREF);
+  return <AdminShell email={admin.email} messagingEnabled={messagingEnabled}>
     {maintenanceOn === true && <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-900">
       <p><b>Texniki iş rejimi açıqdır.</b> Müştəri və satıcı səhifələri və API-ləri 503 qaytarır; alış-veriş dayanıb. Admin paneli və ödəniş bildirişləri işləyir.</p>
       <Link href="/admin/settings?tab=maintenance" className={buttonClass("danger")}>Rejimi idarə et</Link>
@@ -86,7 +97,11 @@ export default async function AdminDashboard() {
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {stats.map(([label, value, href]) => <StatCard key={label} label={label} value={value} href={href} icon={statIcon(href)} attention={ATTENTION_HREFS.has(href) && value > 0} />)}
     </div>
-    <AdminVerificationSummary />
+    <div className={`mt-5 grid gap-5 ${queue.length ? "xl:grid-cols-3" : ""}`}>
+      <div className={queue.length ? "min-w-0 xl:col-span-2" : "min-w-0"}><AdminActivityChart days={activity.days} /></div>
+      {queue.length > 0 && <AdminAttentionQueue items={queue} />}
+    </div>
+    <AdminVerificationSummary counts={unverified} />
     <div className="mt-7 grid gap-5 xl:grid-cols-2">
       <Section title="Abunəlik statusları" actions={seeAll("/admin/subscriptions", "Baxış")}>
         {subscriptions.length
@@ -95,7 +110,7 @@ export default async function AdminDashboard() {
       </Section>
       <Section title="Son sifarişlər" actions={seeAll("/admin/orders", "Hamısı")}>
         {recentOrders.length
-          ? <div className="-mx-2 divide-y divide-line">{recentOrders.map((order) => <Link href={`/admin/orders/${order.id}`} key={order.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-control px-2 py-3 text-sm transition-colors hover:bg-surface-page ${focusRing}`}><span className="min-w-0 break-all"><b className="font-semibold text-fg">#{order.id.slice(-8).toUpperCase()}</b> · <span className="text-fg-secondary">{order.user.email}</span></span><span className="flex items-center gap-2"><AdminStatusBadge kind="order" value={order.status} /><span className="whitespace-nowrap font-semibold tabular-nums text-fg">{formatMoney(order.total)}</span></span></Link>)}</div>
+          ? <div className="-mx-2 divide-y divide-line">{recentOrders.map((order) => <Link href={`/admin/orders/${order.id}`} key={order.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-control px-2 py-3 text-sm transition-colors hover:bg-surface-page ${focusRing}`}><span className="min-w-0 break-all"><b className="font-semibold text-fg">#{order.id.slice(-8).toUpperCase()}</b> · <span className="text-fg-secondary">{order.user.email}</span></span><span className="flex items-center gap-2"><AdminStatusBadge kind="order" value={order.status} /><span className="whitespace-nowrap font-semibold tabular-nums text-fg">{formatPrice(order.total)}</span></span></Link>)}</div>
           : <EmptyState title="Sifariş yoxdur." />}
       </Section>
     </div>

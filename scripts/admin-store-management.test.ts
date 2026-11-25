@@ -367,7 +367,9 @@ test("delete removes history-free stores and archives stores with history instea
   assert.match(deleteStoreRoute, /kind: "ARCHIVED"/);
   assert.doesNotMatch(deleteStoreRoute, /kind: "HAS_HISTORY"/);
   assert.match(adminPage, /AdminStoreArchiveAction storeId=\{r\.id\}/);
-  assert.match(adminPage, /NOT:\{status:"SUSPENDED",isActive:false\}/);
+  // ADMIN-POWER-1: the stores list filter moved unchanged to lib/admin-list-where.ts (shared with the CSV export).
+  assert.match(readFileSync(resolve(__dirname, "..", "lib/admin-list-where.ts"), "utf8"), /NOT: \{ status: "SUSPENDED", isActive: false \}/);
+  assert.match(adminPage, /const where=storesListWhere\(sp,q\);/);
 });
 
 test("category deletion is limited to unused leaf categories and records an audit event", () => {

@@ -31,6 +31,11 @@ const customerName = (conversation: { customerId: string | null; customer: { cus
   conversation.customerId === null ? DELETED_CUSTOMER_LABEL : customerDisplayName(conversation.customer?.customerProfile?.firstName, conversation.customer?.customerProfile?.lastName);
 
 /** Report list (newest first). No message text and no reporter note: those are shown only when a report is opened. */
+/** ADMIN-POWER-1: the number of OPEN reports for the dashboard queue (a count only: no report, conversation or message is read). */
+export function countOpenConversationReports(db: Pick<PrismaClient, "conversationReport">): Promise<number> {
+  return db.conversationReport.count({ where: { status: "OPEN" } });
+}
+
 export async function listConversationReports(db: Db, input: { status?: ReportStatus | null; skip?: number; take?: number }) {
   const where: Prisma.ConversationReportWhereInput = input.status ? { status: input.status } : {};
   const take = Math.min(Math.max(input.take ?? 25, 1), 100);

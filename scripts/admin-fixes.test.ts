@@ -127,7 +127,9 @@ test("dashboard pending orders: count and link use the same status group", () =>
   assert.deepEqual(adminOrderStatusWhere("SHIPPED", statuses), { status: "SHIPPED" });
   assert.deepEqual(adminOrderStatusWhere("bogus", statuses), {});
   assert.deepEqual(adminOrderStatusWhere(undefined, statuses), {});
-  assert.match(sectionPage, /const where:any=\{\.\.\.adminOrderStatusWhere\(sp\.status,orderStatuses\),/);
+  // ADMIN-POWER-1: the orders filter moved unchanged to lib/admin-list-where.ts (shared with the CSV export).
+  assert.match(readFileSync(join(__dirname, "..", "lib/admin-list-where.ts"), "utf8"), /\.\.\.\(adminOrderStatusWhere\(sp\.status, ADMIN_ORDER_STATUSES\) as Prisma\.OrderWhereInput\),/);
+  assert.match(sectionPage, /const where=ordersListWhere\(sp,q\);/);
   // Phase B: the other options show Azerbaijani labels (lib/admin-labels.ts); their values stay the raw statuses.
   assert.match(sectionPage, /values=\{\[\{id:ADMIN_PENDING_ORDER_GROUP,name:"Gözləyən \(bütün açıq statuslar\)"\},\.\.\.adminStatusOptions\("order",orderStatuses\)\]\}/);
 });

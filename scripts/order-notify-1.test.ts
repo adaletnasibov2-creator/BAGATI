@@ -18,9 +18,10 @@ import { confirmStoreOrderReceipt, OrderReceiptError, RECEIPT_ALLOWED_STATUSES, 
 import { transitionVendorStoreOrder } from "../lib/order-fulfillment";
 import { ORDER_NOTIFY_TEXT } from "../lib/order-notify-text";
 import { SELLER_PANEL_3_REUSED, SELLER_PANEL_3_TEXT } from "../lib/seller-panel-3";
+import { ADMIN_BACK_LINKS, ADMIN_POWER_1_REUSED, ADMIN_POWER_1_TEXT } from "../lib/admin-power-1";
 import { VENDOR_NOTIFICATION_TITLES, vendorNotificationHref } from "../lib/vendor-notifications";
 import { AUDIT_ACTION_LABELS } from "../lib/audit-action-labels";
-import { ADMIN_DESIGN_1_FILES, withoutAdminDesign1 } from "./admin-design-1-scope";
+import { isAllowedAdminChange, withoutAllowedAdminChanges } from "./admin-power-1-scope";
 
 process.env.EMAIL_ENCRYPTION_KEY = "a".repeat(64);
 const root = join(__dirname, "..");
@@ -334,6 +335,8 @@ test("texts: the only new Azerbaijani text is ORDER_NOTIFY_TEXT (plus the owner'
   approved.add("Alıcı təhvil aldığını təsdiqlədi");
   // SELLER-PANEL-3: texts the owner approved later ("mətnlər ok") plus reused existing wording (pinned in its own test).
   for (const value of [...Object.values(SELLER_PANEL_3_TEXT), ...Object.values(SELLER_PANEL_3_REUSED)]) for (const part of fragments(`"${typeof value === "function" ? value("X") : value}"`)) approved.add(part);
+  // ADMIN-POWER-1 (owner: "mətnlər ok", T1-T22): its texts, back links and reused wording (sources pinned in admin-power-1.test.ts).
+  for (const value of [...Object.values(ADMIN_POWER_1_TEXT), ...Object.values(ADMIN_BACK_LINKS).map((link) => link.label), ...Object.keys(ADMIN_POWER_1_REUSED)]) for (const part of fragments(`"${value}"`)) approved.add(part);
   for (const reused of ["Məhsul məlumatları yüklənir…", "Endirimli qiymət əsas qiymətdən aşağı olmalıdır."]) approved.add(reused);
   // The two halves of the approved T6 sentence around `${name}` in its template literal.
   for (const piece of ["Məlumatlar “", "” məhsulundan köçürüldü. Məhsul kodları və stok boş saxlanıldı; yadda saxlayana qədər heç nə yaradılmır."]) approved.add(piece);
@@ -347,8 +350,8 @@ test("texts: the only new Azerbaijani text is ORDER_NOTIFY_TEXT (plus the owner'
 });
 
 test("admin UI and legal pages untouched since main", () => {
-  // ADMIN-DESIGN-1 (owner-approved, visual only) may change its listed admin UI files; everything else stays as in main.
-  const diff = withoutAdminDesign1(execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "components/admin-ui", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms"], { cwd: root, encoding: "utf8" }).trim());
+  // ADMIN-DESIGN-1 / ADMIN-POWER-1 (owner-approved) may change their listed admin UI files; everything else stays as in main.
+  const diff = withoutAllowedAdminChanges(execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "components/admin-ui", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms"], { cwd: root, encoding: "utf8" }).trim());
   assert.equal(diff, "");
-  for (const name of readdirSync(join(root, "components")).filter((n) => n.startsWith("admin") && n.endsWith(".tsx") && !ADMIN_DESIGN_1_FILES.has(`components/${n}`))) assert.equal(read(`components/${name}`), baseFile(`components/${name}`), name);
+  for (const name of readdirSync(join(root, "components")).filter((n) => n.startsWith("admin") && n.endsWith(".tsx") && !isAllowedAdminChange(`components/${n}`))) assert.equal(read(`components/${name}`), baseFile(`components/${name}`), name);
 });

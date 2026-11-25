@@ -113,6 +113,21 @@ body:has(> .bagati-vendor),
   font-optical-sizing: auto;
 }
 
+/* Admin panel (ADMIN-POWER-1). components/admin-shell.tsx puts .bagati-admin on its root element and renders
+   components/admin-theme.tsx, which defines the two font variables. Fonts and the green focus outline as in the seller
+   panel; only inside the admin shell (never the public site; /admin/login has no shell). */
+.bagati-admin {
+  --bagati-font-sans: var(--bagati-font-inter, ui-sans-serif), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bagati-font-serif: var(--bagati-font-fraunces, Georgia), Georgia, "Times New Roman", serif;
+  --bagati-focus-outline: var(--bagati-primary);
+  font-family: var(--bagati-font-sans);
+}
+
+:where(.bagati-admin) :where(h1) {
+  font-family: var(--bagati-font-serif);
+  font-optical-sizing: auto;
+}
+
 /* Seller forms with a sticky save bar (components/vendor-form.tsx, SELLER-DESIGN-2): when the browser scrolls a field into
    view (Tab focus, its own validation, scrollIntoView), keep it above the bar, so focus is never hidden (WCAG 2.4.11). */
 html:has([data-vendor-sticky-actions]) {

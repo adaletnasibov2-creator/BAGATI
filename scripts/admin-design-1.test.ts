@@ -25,13 +25,16 @@ const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\
 const BASE = "fea627a";
 const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 const baseFile = (path: string) => { try { return git("show", `${BASE}:${path}`).replace(/\r\n/g, "\n"); } catch { return ""; } };
+// ADMIN-POWER-1: this task's own commit is checked (later owner-approved admin tasks change these files again).
+const TASK = "43793b0";
+const taskFile = (path: string) => { try { return git("show", `${TASK}:${path}`).replace(/\r\n/g, "\n"); } catch { return ""; } };
 const FILES = [...ADMIN_DESIGN_1_FILES];
 
 test("scope: only the listed admin UI files; APIs, noindex layout, middleware, robots, legal, Prisma and packages untouched", () => {
-  const changed = git("diff", "--name-only", BASE, "--", "app/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|components\/admin)/.test(path));
+  const changed = git("diff", "--name-only", BASE, TASK, "--", "app/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|components\/admin)/.test(path));
   assert.deepEqual(changed.filter((path) => !ADMIN_DESIGN_1_FILES.has(path)), []);
-  for (const path of FILES) assert.notEqual(read(path), baseFile(path), `${path} is listed, so it changed`);
-  assert.equal(git("diff", "--name-only", BASE, "--", "app/api", "app/admin/layout.tsx", "middleware.ts", "app/robots.ts", "lib/admin-surface.ts", "lib/legal", "lib/auth.ts", "lib/admin-nav.ts", "prisma", "package.json", "package-lock.json", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms").trim(), "");
+  for (const path of FILES) assert.notEqual(taskFile(path), baseFile(path), `${path} is listed, so it changed`);
+  assert.equal(git("diff", "--name-only", BASE, TASK, "--", "app/api", "app/admin/layout.tsx", "middleware.ts", "app/robots.ts", "lib/admin-surface.ts", "lib/legal", "lib/auth.ts", "lib/admin-nav.ts", "prisma", "package.json", "package-lock.json", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms").trim(), "");
 });
 
 // Visible words: Azerbaijani fragments (as in the order-notify-1 text pin) and plain JSX text nodes.
@@ -42,7 +45,7 @@ const textNodes = (source: string) => new Set([...code(source).matchAll(/>([^<>{
 
 test("texts: no new visible words and none removed (the applications kicker now comes from PageHeader's default)", () => {
   for (const path of FILES) {
-    const before = baseFile(path), after = read(path);
+    const before = baseFile(path), after = taskFile(path);
     const beforeAz = fragments(before), afterAz = fragments(after);
     assert.deepEqual([...afterAz].filter((part) => !beforeAz.has(part)), [], `${path}: new Azerbaijani text`);
     const beforeText = textNodes(before);
@@ -50,24 +53,24 @@ test("texts: no new visible words and none removed (the applications kicker now 
     assert.deepEqual([...beforeAz].filter((part) => !afterAz.has(part)), [], `${path}: removed text`);
   }
   // The applications page's old inline kicker "BAGATI · ADMIN" is PageHeader's default eyebrow (same words).
-  assert.match(read("app/admin/seller-applications/page.tsx"), /<PageHeader title="Satıcı müraciətləri" description="/);
+  assert.match(taskFile("app/admin/seller-applications/page.tsx"), /<PageHeader title="Satıcı müraciətləri" description="/);
   assert.match(read("components/admin-ui/page-header.tsx"), /eyebrow = "BAGATI · ADMIN"/);
 });
 
 test("no logic change: the same number of data reads, auth checks, redirects, requests and handlers in every file", () => {
   const LOGIC = { prisma: /prisma\./g, query: /\$query/g, role: /requireRole\(/g, redirect: /redirect\(/g, fetch: /fetch\(/g, await: /\bawait\b/g, method: /method[=:]/g, action: /\baction=/g, submit: /onSubmit/g, click: /onClick/g, change: /onChange/g, href: /href=/g };
   for (const path of FILES) {
-    const before = baseFile(path), after = read(path);
+    const before = baseFile(path), after = taskFile(path);
     for (const [name, pattern] of Object.entries(LOGIC)) assert.equal((after.match(pattern) ?? []).length, (before.match(pattern) ?? []).length, `${path}: ${name}`);
   }
   // Dashboard: the same queries (byte-identical Promise.all block) and the same 11 cards with the same links.
   const block = (source: string) => source.slice(source.indexOf("await Promise.all(["), source.indexOf("const stats = ["));
-  assert.equal(block(read("app/admin/page.tsx")), block(baseFile("app/admin/page.tsx")));
+  assert.equal(block(taskFile("app/admin/page.tsx")), block(baseFile("app/admin/page.tsx")));
   const stats = (source: string) => source.slice(source.indexOf("const stats = ["), source.indexOf("] as const;"));
-  assert.equal(stats(read("app/admin/page.tsx")), stats(baseFile("app/admin/page.tsx")));
+  assert.equal(stats(taskFile("app/admin/page.tsx")), stats(baseFile("app/admin/page.tsx")));
   // Attention edge only on the two "waiting" counts, and only above 0 (no invented signal).
-  assert.match(read("app/admin/page.tsx"), /const ATTENTION_HREFS = new Set<string>\(\["\/admin\/stores\?status=PENDING_REVIEW", ADMIN_PENDING_ORDERS_HREF\]\);/);
-  assert.match(read("app/admin/page.tsx"), /attention=\{ATTENTION_HREFS\.has\(href\) && value > 0\}/);
+  assert.match(taskFile("app/admin/page.tsx"), /const ATTENTION_HREFS = new Set<string>\(\["\/admin\/stores\?status=PENDING_REVIEW", ADMIN_PENDING_ORDERS_HREF\]\);/);
+  assert.match(taskFile("app/admin/page.tsx"), /attention=\{ATTENTION_HREFS\.has\(href\) && value > 0\}/);
 });
 
 test("look: seller-panel tokens; the old admin hex palette is gone from the restyled files", () => {

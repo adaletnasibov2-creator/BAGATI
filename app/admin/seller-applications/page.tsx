@@ -8,6 +8,7 @@ import { normalizeAdminEnumFilter, normalizeAdminPage, normalizeAdminSearch, nor
 import { formatBakuDateTime } from "@/lib/admin-audit-log";
 import StatusBadge from "@/components/seller-application-status-badge";
 import { EmptyState } from "@/components/admin-ui/empty-state";
+import { AdminListToolbar } from "@/components/admin-list-toolbar";
 import { PageHeader } from "@/components/admin-ui/page-header";
 import { buttonClass, focusRing, inputClass } from "@/components/admin-ui/styles";
 import { maskVoen, SELLER_APPLICATION_SOURCE_LABELS, SELLER_APPLICATION_STATUS_LABELS, SELLER_TYPE_LABELS } from "@/lib/seller-application";
@@ -34,6 +35,7 @@ export default async function AdminSellerApplicationsPage({ searchParams }: { se
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     <PageHeader title="Satıcı müraciətləri" description="Müştəri hesabı yalnız burada təsdiqləndikdən sonra satıcı hesabına çevrilir. VÖEN siyahıda qismən göstərilir; tam məlumat müraciət səhifəsindədir." />
+    <AdminListToolbar path="/admin/seller-applications" sp={sp} options={STATUS_FILTERS.filter((status) => status !== "ALL").map((status) => ({ id: status, name: SELLER_APPLICATION_STATUS_LABELS[status] }))} selected={filters.status} allValue="ALL" exportList="seller-applications" />
 
     <form action="/admin/seller-applications" className="mb-4 grid gap-3 rounded-card border border-line bg-white p-4 shadow-subtle sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]">
       <label className={label}>Status<select name="status" defaultValue={filters.status} className={input}>
@@ -62,16 +64,16 @@ export default async function AdminSellerApplicationsPage({ searchParams }: { se
           <div className="hidden overflow-x-auto rounded-card border border-line bg-white shadow-subtle lg:block">
             <table className="w-full min-w-[760px] text-left text-sm text-fg-body">
               <thead className="border-b border-line bg-surface-page text-xs uppercase tracking-wide text-fg-secondary">
-                <tr>{["Göndərilib (Bakı)", "Müraciətçi", "Satıcı adı", "Növ", "VÖEN", "Status", "Mənbə"].map((title) => <th key={title} className="whitespace-nowrap px-4 py-3 font-semibold">{title}</th>)}</tr>
+                <tr>{["Müraciətçi", "Satıcı adı", "Növ", "VÖEN", "Mənbə", "Status", "Göndərilib (Bakı)"].map((title) => <th key={title} className="whitespace-nowrap px-4 py-3 font-semibold">{title}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-line">{result.rows.map((row) => <tr key={row.id} className="align-top transition-colors hover:bg-surface-page motion-reduce:transition-none">
-                <td className="whitespace-nowrap px-4 py-3.5">{formatBakuDateTime(row.createdAt)}</td>
                 <td className="px-4 py-3.5"><Link className={`rounded font-semibold text-primary underline-offset-2 hover:underline ${focusRing}`} href={`/admin/seller-applications/${row.id}`}>{row.user.email}</Link></td>
                 <td className="px-4 py-3.5">{row.displayName}</td>
                 <td className="px-4 py-3.5">{row.sellerType ? SELLER_TYPE_LABELS[row.sellerType] : "—"}</td>
                 <td className="whitespace-nowrap px-4 py-3.5 font-mono text-xs">{maskVoen(row.voenNormalized)}{row.duplicateVoen && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 font-sans text-[11px] font-medium text-amber-800" title="Bu VÖEN başqa satıcıda və ya açıq müraciətdə var">təkrar</span>}</td>
-                <td className="px-4 py-3.5"><StatusBadge status={row.status} /></td>
                 <td className="px-4 py-3.5 text-xs text-fg-secondary">{SELLER_APPLICATION_SOURCE_LABELS[row.source]}</td>
+                <td className="px-4 py-3.5"><StatusBadge status={row.status} /></td>
+                <td className="whitespace-nowrap px-4 py-3.5">{formatBakuDateTime(row.createdAt)}</td>
               </tr>)}</tbody>
             </table>
           </div>

@@ -2,9 +2,13 @@
 import { notFound } from "next/navigation";
 import { allowedAdminOrderTransitions } from "@/lib/order-fulfillment";
 import { prisma } from "@/lib/prisma";
-import { type SectionContext, card, Header, StatusForm } from "./shared";
+import { type SectionContext, card, StatusForm } from "./shared";
 import { adminStatusLabel } from "@/lib/admin-labels";
-import { formatAmount, formatMoney } from "@/lib/format-money";
+import { formatAmount } from "@/lib/format-money";
+import { formatPrice } from "@/lib/price";
+import { AdminDetailHeader } from "@/components/admin-ui/detail-header";
+import { AdminStatusBadge } from "@/components/admin-ui/admin-status-badge";
+import { ADMIN_BACK_LINKS } from "@/lib/admin-power-1";
 import { AdminShipmentStatusControl } from "@/components/admin-shipment-status-control";
 import { AdminCoordinatesReveal } from "@/components/admin-coordinates-reveal";
 import { deliveryAddressText, maskCoordinates, readAddressSnapshot } from "@/lib/delivery-location";
@@ -31,7 +35,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
   const delivery = readAddressSnapshot(order.addressSnapshot);
   const allowedOrderStatuses = allowedAdminOrderTransitions(order.storeOrders.map((group: any) => group.status));
   return shell(<>
-   <Header title={`Sifariş · ${order.id.slice(-8).toUpperCase()}`} detail={`Yaradılıb ${order.createdAt.toLocaleString("az-AZ")} · Ümumi status ${adminStatusLabel("order", order.status)}`} />
+   <AdminDetailHeader back={ADMIN_BACK_LINKS.orders} title={`Sifariş · ${order.id.slice(-8).toUpperCase()}`} detail={`Yaradılıb ${order.createdAt.toLocaleString("az-AZ")} · Ümumi status ${adminStatusLabel("order", order.status)}`} badge={<AdminStatusBadge kind="order" value={order.status} />} facts={[["Müştəri", order.user.email], ["Mağazalar", order.storeOrders.map((group: any) => group.store.name).join(", ")], ["Cəmi", formatPrice(order.total)]]} />
    <div className="grid gap-5 xl:grid-cols-2">
     <section className={card}>
      <h2 className="font-semibold">Müştəri</h2>
@@ -42,21 +46,21 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
      {delivery.coordinates ? <AdminCoordinatesReveal orderId={order.id} masked={maskCoordinates(delivery.coordinates)} /> : <p className="mt-1 text-xs text-slate-500">Xəritə nöqtəsi yoxdur.</p>}
      <h3 className="mt-5 font-semibold">Ödəniş</h3>
      {order.payments.length
-      ? order.payments.map((payment: any) => <p key={payment.id} className="mt-2 text-sm">{adminStatusLabel("payment", payment.status)} · {payment.currency === "AZN" ? formatMoney(payment.amount) : `${formatAmount(payment.amount)} ${payment.currency}`} · {payment.provider || "Provayder təyin edilməyib"}{payment.providerReference && !String(payment.providerReference).startsWith("claim:") ? ` · ${payment.providerReference}` : ""}</p>)
+      ? order.payments.map((payment: any) => <p key={payment.id} className="mt-2 text-sm">{adminStatusLabel("payment", payment.status)} · {payment.currency === "AZN" ? formatPrice(payment.amount) : `${formatAmount(payment.amount)} ${payment.currency}`} · {payment.provider || "Provayder təyin edilməyib"}{payment.providerReference && !String(payment.providerReference).startsWith("claim:") ? ` · ${payment.providerReference}` : ""}</p>)
       : <p className="mt-2 text-sm text-slate-500">Ödəniş qeydi yoxdur.</p>}
     </section>
     <section className={card}>
      <h2 className="font-semibold">Cəmlər və çatdırılma</h2>
-     <p className="mt-3 text-sm">Ara cəm: {formatMoney(order.subtotal)}</p>
-     <p className="mt-1 text-sm">Çatdırılma haqqı: {formatMoney(order.deliveryFee)}</p>
-     <p className="mt-1 text-sm font-semibold">Cəmi: {formatMoney(order.total)}</p>
+     <p className="mt-3 text-sm">Ara cəm: {formatPrice(order.subtotal)}</p>
+     <p className="mt-1 text-sm">Çatdırılma haqqı: {formatPrice(order.deliveryFee)}</p>
+     <p className="mt-1 text-sm font-semibold">Cəmi: {formatPrice(order.total)}</p>
      <p className="mt-4 text-sm">Çatdırılma: {order.delivery ? `${order.delivery.status} · ${order.delivery.carrier || "Daşıyıcı təyin edilməyib"} · ${order.delivery.trackingCode || "İzləmə kodu yoxdur"}` : "Çatdırılma qeydi yoxdur"}</p>
     </section>
    </div>
    <div className="mt-5"><StatusForm resource="orders" id={order.id} status={order.status} options={allowedOrderStatuses} button="Statusu saxla" /></div>
    <div className="mt-5 grid gap-4">
     {order.storeOrders.map((group: any) => <section key={group.id} className={card}>
-     <h2 className="font-semibold">{group.store.name} · {adminStatusLabel("order", group.status)} · {formatMoney(group.subtotal)}</h2>
+     <h2 className="font-semibold">{group.store.name} · {adminStatusLabel("order", group.status)} · {formatPrice(group.subtotal)}</h2>
      {refundNeeded(order, group) && <p className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900" data-refund-needed>{CANCELLATION_TEXT.refundPending}: ləğv edilib, ödəniş alınıb</p>}
      {group.cancellationRequests?.[0] && <p className="mt-2 text-sm text-slate-600">Müştərinin ləğv müraciəti: {({ REQUESTED: "açıq", APPROVED: "təsdiqlənib", REJECTED: "rədd edilib", WITHDRAWN: "geri götürülüb" } as Record<string, string>)[group.cancellationRequests[0].status]} · {group.cancellationRequests[0].reason}</p>}
      <p className="mt-2 text-sm text-slate-600">
@@ -70,7 +74,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
      <div className="mt-3 divide-y">
       {group.items.map((item: any) => <div key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm">
        <span>{item.productName}{item.variant ? ` · ${item.variant.name}` : ""} × {item.quantity} {item.sku ? `· SKU ${item.sku}` : ""}</span>
-       <span>{formatMoney(item.unitPrice)} × {item.quantity} = {formatMoney(item.lineTotal)}</span>
+       <span>{formatPrice(item.unitPrice)} × {item.quantity} = {formatPrice(item.lineTotal)}</span>
       </div>)}
      </div>
     </section>)}

@@ -206,11 +206,11 @@ export const SELLER_APPLICATION_PAGE_SIZE = 25;
 
 export type SellerApplicationListFilters = { status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "ALL"; q: string };
 
-/** Admin queue: newest first within the chosen status; search by name, legal name, VÖEN digits or e-mail. */
-export async function listSellerApplications(db: Prisma.TransactionClient, filters: SellerApplicationListFilters, page: number) {
+/** The list filter (ADMIN-POWER-1: shared with the list's CSV export, unchanged). */
+export function sellerApplicationListWhere(filters: SellerApplicationListFilters): Prisma.VendorApplicationWhereInput {
   const q = filters.q.trim().slice(0, 100);
   const digits = normalizeVoen(q);
-  const where: Prisma.VendorApplicationWhereInput = {
+  return {
     ...(filters.status === "ALL" ? {} : { status: filters.status }),
     ...(q ? {
       OR: [
@@ -221,10 +221,20 @@ export async function listSellerApplications(db: Prisma.TransactionClient, filte
       ],
     } : {}),
   };
+}
+
+/** Oldest first while pending (the queue), otherwise newest first. */
+export function sellerApplicationListOrder(filters: SellerApplicationListFilters): Prisma.VendorApplicationOrderByWithRelationInput {
+  return filters.status === "PENDING" ? { createdAt: "asc" } : { createdAt: "desc" };
+}
+
+/** Admin queue: newest first within the chosen status; search by name, legal name, VÖEN digits or e-mail. */
+export async function listSellerApplications(db: Prisma.TransactionClient, filters: SellerApplicationListFilters, page: number) {
+  const where = sellerApplicationListWhere(filters);
   const [rows, total] = await Promise.all([
     db.vendorApplication.findMany({
       where,
-      orderBy: filters.status === "PENDING" ? { createdAt: "asc" } : { createdAt: "desc" },
+      orderBy: sellerApplicationListOrder(filters),
       skip: (page - 1) * SELLER_APPLICATION_PAGE_SIZE,
       take: SELLER_APPLICATION_PAGE_SIZE,
       select: {

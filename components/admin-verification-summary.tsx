@@ -2,11 +2,17 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { cardClass, focusRing } from "@/components/admin-ui/styles";
 
-export default async function AdminVerificationSummary() {
+/** Active accounts without a confirmed e-mail (ADMIN-POWER-1: also feeds the dashboard queue; read once per page). */
+export async function loadUnverifiedCounts() {
   const [customers, vendors] = await Promise.all([
     prisma.user.count({ where: { role: "CUSTOMER", isActive: true, emailVerifiedAt: null } }),
     prisma.user.count({ where: { role: "VENDOR", isActive: true, emailVerifiedAt: null } }),
   ]);
+  return { customers, vendors };
+}
+
+export default async function AdminVerificationSummary({ counts }: { counts?: { customers: number; vendors: number } } = {}) {
+  const { customers, vendors } = counts ?? await loadUnverifiedCounts();
 
   // ADMIN-DESIGN-1: seller-panel card look (admin kit classes); same counts, links and text.
   return <section aria-labelledby="verification-summary-title" className={`mt-5 ${cardClass}`}>

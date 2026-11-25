@@ -13,7 +13,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { BagIcon, HeartIcon, UserIcon } from "../components/header-icons";
 import { headerActionCircle, headerActionItem, headerActionLabel } from "../components/header-actions";
 import { headerBadgeText } from "../lib/cart-events";
-import { ADMIN_DESIGN_1_FILES } from "./admin-design-1-scope";
+import { isAllowedAdminChange } from "./admin-power-1-scope";
 
 // tsx compiles the components' JSX with the classic runtime, which needs a global React (as in admin-ui-kit.test.ts).
 (globalThis as { React?: typeof React }).React = React;
@@ -109,7 +109,7 @@ test("texts: only the three approved labels are new; legal pages, admin and sell
   // money "… ₼", scripts/price-symbol-1.test.ts); admin stays untouched.
   // + SELLER-PANEL-3 (the add-product page reads ?copy= for "Surətini yarat"; pinned by scripts/seller-panel-3.test.ts).
   const laterSellerChanges = new Set(["app/vendor/[storeId]/layout.tsx", "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx", "app/vendor/[storeId]/page.tsx", "app/vendor/[storeId]/products/new/page.tsx"]);
-  const diff = execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "app/vendor", "components/admin-ui"], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter((path) => path && !laterSellerChanges.has(path) && !ADMIN_DESIGN_1_FILES.has(path)).join("\n");
-  // + ADMIN-DESIGN-1 (owner-approved admin restyle, its own test scripts/admin-design-1.test.ts pins the files).
+  const diff = execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "app/vendor", "components/admin-ui"], { cwd: root, encoding: "utf8" }).trim().split(/\r?\n/).filter((path) => path && !laterSellerChanges.has(path) && !isAllowedAdminChange(path)).join("\n");
+  // + ADMIN-DESIGN-1 / ADMIN-POWER-1 (owner-approved admin work; scripts/admin-design-1.test.ts and admin-power-1.test.ts pin the files).
   assert.equal(diff, "", "admin and seller files untouched");
 });

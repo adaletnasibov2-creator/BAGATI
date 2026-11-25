@@ -91,6 +91,13 @@ test("only public routes render the public theme; admin and the seller panel do 
   for (const path of [...walk("app/admin"), ...walk("app/vendor"), "app/layout.tsx", "components/admin-shell.tsx"]) {
     assert.doesNotMatch(read(path), /PublicTheme|public-fonts|bagati-public/, path);
   }
+  // ADMIN-POWER-1 (owner-approved): the admin shell gets the self-hosted fonts ONLY through components/admin-theme.tsx
+  // (font variables, no public theme CSS), rendered by the shell alone; /admin/login (no shell) stays as it was.
+  const adminTheme = read("components/admin-theme.tsx");
+  assert.match(adminTheme, /from "@\/app\/fonts\/public-fonts"/);
+  assert.doesNotMatch(adminTheme, /PublicTheme|bagati-public/);
+  assert.deepEqual(walk("components").concat(walk("app")).filter((path) => read(path).includes("@/components/admin-theme")), ["components/admin-shell.tsx"]);
+  assert.doesNotMatch(read("app/admin/login/page.tsx"), /AdminShell|admin-theme|bagati-admin/);
   const theme = read("components/public-theme.tsx");
   assert.match(theme, /<div className="bagati-public contents">/, "no extra box around the layout");
   assert.match(theme, /<style href="bagati-public-fonts" precedence="default">/);

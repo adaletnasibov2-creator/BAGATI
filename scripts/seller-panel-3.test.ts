@@ -15,7 +15,7 @@ import { getProductPublicationBlockers } from "../lib/admin-store-product-publis
 import { EntitlementError, entitlementErrorResponse, productLimitReachedMessage } from "../lib/subscription-entitlements";
 import { formatPrice } from "../lib/price";
 import { storeHoursLine } from "../lib/store-hours";
-import { withoutAdminDesign1 } from "./admin-design-1-scope";
+import { withoutAllowedAdminChanges } from "./admin-power-1-scope";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
@@ -155,7 +155,8 @@ test("dashboard: real data only; pending money is pending; Baku dates; bounded s
 });
 
 test("unchanged: product API routes and rules, legal pages, admin files", () => {
-  assert.equal(changedSince("app/api", "lib/vendor-product-patch.ts", "lib/admin-store-product-publishing.ts", "lib/vendor-product-publication.ts", "lib/stock-quantity.ts", "lib/product-category-choice.ts", "prisma"), "");
-  // ADMIN-DESIGN-1 (owner-approved, visual only) may change its listed admin UI files.
-  assert.equal(withoutAdminDesign1(changedSince("app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "app/admin", "components/admin-ui")), "");
+  // ADMIN-POWER-1 added exactly two admin routes (search, list export), pinned by scripts/admin-power-1.test.ts.
+  assert.equal(withoutAllowedAdminChanges(changedSince("app/api", "lib/vendor-product-patch.ts", "lib/admin-store-product-publishing.ts", "lib/vendor-product-publication.ts", "lib/stock-quantity.ts", "lib/product-category-choice.ts", "prisma")), "");
+  // ADMIN-DESIGN-1 / ADMIN-POWER-1 (owner-approved) may change their listed admin UI files.
+  assert.equal(withoutAllowedAdminChanges(changedSince("app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "app/admin", "components/admin-ui")), "");
 });

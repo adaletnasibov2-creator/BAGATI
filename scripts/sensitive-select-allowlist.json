@@ -1,0 +1,29 @@
+{
+  "_how": "SECURITY-AUDIT-1 static guard (scripts/security-audit-1.test.ts). Counts, per non-admin file under app/, the Prisma selections that pull an account e-mail (email: true), a store contact e-mail (contactEmail: true), a phone (phone: true / contactPhone: true) or a password hash (passwordHash). A file not listed here, or a count higher than listed, fails the test. To extend: first check that the value never reaches a response or a page the viewer must not see (send an allow-listed DTO, not the Prisma object), then add or raise the entry below with the reason. Lower counts are fine; lower the entry when you remove a use.",
+  "entries": {
+    "app/(customer)/stores/[storeId]/page.tsx phone:true": { "count": 1, "reason": "Store contactPhone: the store's public contact number shown on its own public page by design (contactEmail is deliberately not selected)." },
+    "app/api/account/returns/route.ts email:true": { "count": 2, "reason": "Seller account e-mail, used only as the recipient of the queued seller e-mail; the response is an explicit select without it." },
+    "app/api/account/security/password/route.ts email:true": { "count": 1, "reason": "The user's own e-mail, recipient of the account-security e-mail; never returned." },
+    "app/api/account/security/password/route.ts passwordHash": { "count": 4, "reason": "Server-side bcrypt compare and hash of the user's own password; never returned." },
+    "app/api/auth/forgot-password/route.ts email:true": { "count": 1, "reason": "Recipient of the reset e-mail; the response never says whether the account exists." },
+    "app/api/auth/google/link/route.ts passwordHash": { "count": 1, "reason": "Server-side bcrypt compare; never returned." },
+    "app/api/auth/login/route.ts passwordHash": { "count": 1, "reason": "Server-side bcrypt compare; never returned." },
+    "app/api/auth/register/route.ts email:true": { "count": 1, "reason": "The new account's own e-mail (verification mail); never another person's." },
+    "app/api/auth/register/route.ts passwordHash": { "count": 3, "reason": "Hash of the new password and the existing-account compare; never returned." },
+    "app/api/auth/resend-verification/route.ts email:true": { "count": 1, "reason": "Recipient of the verification e-mail; not returned." },
+    "app/api/auth/reset-password/route.ts email:true": { "count": 1, "reason": "Recipient of the account-security e-mail after a reset; not returned." },
+    "app/api/auth/reset-password/route.ts passwordHash": { "count": 2, "reason": "Hash of the new password; never returned." },
+    "app/api/auth/vendor-login/route.ts passwordHash": { "count": 1, "reason": "Server-side bcrypt compare; never returned." },
+    "app/api/orders/route.ts email:true": { "count": 3, "reason": "Customer e-mail (order confirmation) and seller account e-mail (seller new-order e-mail), queued server-side; the response is orderCreateResponse = { order: { id } } (lib/order-create-response.ts)." },
+    "app/api/vendor/[storeId]/returns/route.ts email:true": { "count": 1, "reason": "Customer e-mail, recipient of the return-status e-mail; the response is an explicit select without it." },
+    "app/api/vendor/[storeId]/[section]/route.ts email:true": { "count": 2, "reason": "(1) The seller's OWN account e-mail in its own profile section; (2) the customer e-mail as recipient of the order-status / shipment e-mails, never returned." },
+    "app/api/vendor/[storeId]/[section]/route.ts contactEmail:true": { "count": 1, "reason": "The seller's own store contact e-mail in its own profile section." },
+    "app/api/vendor/[storeId]/[section]/route.ts phone:true": { "count": 2, "reason": "The seller's own store contact phone and own seller phone in its own profile section." },
+    "app/vendor/apply/page.tsx phone:true": { "count": 1, "reason": "The applicant's own profile phone, prefilled in their own application form." },
+    "app/vendor/[storeId]/inquiries/page.tsx contactEmail:true": { "count": 2, "reason": "The store's own contact e-mail, and the e-mail a visitor typed into a message to this store (given to the store on purpose)." },
+    "app/vendor/[storeId]/inquiries/page.tsx phone:true": { "count": 1, "reason": "The phone a visitor typed into a message to this store (given to the store on purpose)." },
+    "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx phone:true": { "count": 1, "reason": "The customer's phone on this store's own order, needed to call / deliver (customer e-mail is not selected)." },
+    "app/vendor/[storeId]/page.tsx contactEmail:true": { "count": 1, "reason": "The seller's own store contact e-mail on its own dashboard." },
+    "app/vendor/[storeId]/page.tsx phone:true": { "count": 1, "reason": "The seller's own store contact phone on its own dashboard." }
+  }
+}

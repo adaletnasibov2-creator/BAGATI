@@ -1,7 +1,7 @@
 ﻿import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ImageOff, MessageCircle, Phone, Truck } from "lucide-react";
+import { ImageOff, MessageCircle, PackageCheck, Phone, Truck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
 import { statusLabel, paymentStatusLabel } from "@/lib/order-status";
@@ -21,6 +21,7 @@ import { VendorOrderPrintButton } from "@/components/vendor-order-print-button";
 import { customerInitials, formatOrderDateTime, itemThumbnail, orderNumber, orderTimeline, SELLER_CUSTOMER_CARD_TEXT, SELLER_ORDERS_DESIGN_2_TEXT, SELLER_ORDERS_TEXT, storeOrderTotal } from "@/lib/vendor-order-view";
 import { buildOnTheWayWhatsAppUrl } from "@/lib/seller-on-the-way";
 import { formatPrice } from "@/lib/price";
+import { ORDER_NOTIFY_TEXT } from "@/lib/order-notify-text";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
@@ -110,6 +111,12 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
       />
 
       <VendorCancellationRequest storeId={storeId} request={openRequest ? { id: openRequest.id, reason: openRequest.reason, createdAt: openRequest.createdAt.toISOString(), createdAtText: formatOrderDateTime(openRequest.createdAt) } : null} paid={paid} refundPending={order.status === "CANCELLED" && paid}/>
+
+      {/* ORDER-NOTIFY-1: the customer confirmed receiving this store order (stored time, Baku). The status itself is unchanged. */}
+      {order.customerConfirmedAt && <p data-customer-confirmed="" className="flex items-start gap-2 rounded-card border border-[#cfe0da] bg-[#f3f8f6] px-5 py-4 text-sm font-medium text-primary">
+        <PackageCheck aria-hidden="true" size={18} strokeWidth={2} className="mt-0.5 shrink-0"/>
+        <span>{ORDER_NOTIFY_TEXT.sellerConfirmed} · <time dateTime={order.customerConfirmedAt.toISOString()} className="tabular-nums">{formatOrderDateTime(order.customerConfirmedAt)}</time></span>
+      </p>}
 
       {timeline.length > 1 && <section aria-labelledby="order-timeline-title" className={panel} data-order-timeline="">
         <h2 id="order-timeline-title" className="text-sm font-semibold text-fg">{SELLER_ORDERS_TEXT.timeline}</h2>

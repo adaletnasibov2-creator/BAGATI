@@ -137,7 +137,7 @@ export async function expireUnpaidOrder(db: Db, input: { orderId: string; now: D
     for (const storeOrder of order.storeOrders) {
       if (storeOrder.status === "CANCELLED" || storeOrder.status === "RETURNED") continue;
       // Actor of the stock-restore rows = the order's customer (owner decision 3; InventoryAdjustment needs a user).
-      await cancelStoreOrderLocked(tx, { id: storeOrder.id, storeId: storeOrder.storeId, actorUserId: order.userId });
+      await cancelStoreOrderLocked(tx, { id: storeOrder.id, storeId: storeOrder.storeId, actorUserId: order.userId, source: "UNPAID_EXPIRY" });
       cancelled.push(storeOrder.id);
     }
     // Payments the customer never opened on Epoint end here. (An attempt Epoint reported as failed is FAILED already.)

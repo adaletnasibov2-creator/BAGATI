@@ -39,6 +39,7 @@ import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-no
 import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
 import { countsFromGroups, itemThumbnail } from "@/lib/vendor-order-view";
+import { ORDER_PROGRESS_STATUSES } from "@/lib/order-progress-emails";
 import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
 import { LEGAL_GATE_MESSAGES, SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
 import { normalizeStoreHoursInput, STORE_HOURS_TEXTS } from "@/lib/store-hours";
@@ -326,7 +327,9 @@ export async function PATCH(req:NextRequest,{params}:{params:Promise<{storeId:st
     const order=await tx.order.findUnique({where:{id:locked.orderId},select:{id:true,user:{select:{email:true}}}});
     const store=await tx.store.findUnique({where:{id:storeId},select:{name:true}});
     if(order&&store){
-     if(targetOrderStatus&&targetOrderStatus!==locked.status){
+     // ORDER-NOTIFY-1: CONFIRMED / HANDED_TO_COURIER / SHIPPED / DELIVERED / CANCELLED have their own e-mail from the
+     // transition hook (lib/order-progress-emails.ts); the generic status e-mail stays for the other statuses only.
+     if(targetOrderStatus&&targetOrderStatus!==locked.status&&!(ORDER_PROGRESS_STATUSES as readonly string[]).includes(targetOrderStatus)){
       await enqueueEmail(tx,{eventKey:`order-status:${locked.id}:${targetOrderStatus}`,recipient:order.user.email,template:"ORDER_STATUS",payload:{orderRef:order.id,storeName:store.name,status:targetOrderStatus}});
      }
      const trackingCode=s.data.deliveryTrackingCode??locked.deliveryTrackingCode;

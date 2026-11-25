@@ -20,7 +20,7 @@ function authRateLimitSecret() {
 /** Current-password checks by a signed-in user (password change, admin 2FA enroll/disable), per user (SEC-FIX-1 L3). */
 export const PASSWORD_CHECK_RATE_LIMIT = { limit: 10, windowMs: 15 * 60 * 1000 } as const;
 
-export function authRateLimitKey(scope: "login" | "vendor-login" | "admin-login-account" | "password-check" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "google-complete-register" | "support" | "epoint-reconcile" | "shipment-email" | "store-inquiry" | "store-notification-email" | "admin-2fa" | "admin-email-test" | "admin-email-drain" | "admin-login" | "messaging" | "seller-application", identity: string) {
+export function authRateLimitKey(scope: "login" | "vendor-login" | "admin-login-account" | "password-check" | "password-reset" | "registration" | "google-oauth-start" | "google-oauth-callback" | "google-complete-register" | "support" | "epoint-reconcile" | "shipment-email" | "store-inquiry" | "order-receipt" | "store-notification-email" | "admin-2fa" | "admin-email-test" | "admin-email-drain" | "admin-login" | "messaging" | "seller-application", identity: string) {
   return createHmac("sha256", authRateLimitSecret())
     .update(`BAGATI_AUTH_RATE_LIMIT_V1:${scope}:${identity.trim().toLowerCase()}`)
     .digest("hex");

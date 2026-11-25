@@ -83,7 +83,7 @@ export async function cancelOrderByCustomer(db: Db, input: { orderId: string; cu
     const cancelled: string[] = [];
     for (const storeOrder of order.storeOrders) {
       if (storeOrder.status === "CANCELLED" || storeOrder.status === "RETURNED") continue;
-      await cancelStoreOrderLocked(tx, { id: storeOrder.id, storeId: storeOrder.storeId, actorUserId: input.customerId });
+      await cancelStoreOrderLocked(tx, { id: storeOrder.id, storeId: storeOrder.storeId, actorUserId: input.customerId, source: "CUSTOMER_CANCEL" });
       cancelled.push(storeOrder.id);
     }
     // Open payment attempts end here; a payment the provider still confirms later is recorded for a manual refund.
@@ -188,7 +188,7 @@ export async function decideStoreOrderCancellation(db: Db, input: { storeId: str
     if (input.decision === "APPROVE") {
       // Cannot be dispatched (dispatch is refused while the request is open), but re-check rather than assume.
       if (isStoreOrderDispatched(storeOrder)) throw new OrderCancellationError("NOT_ALLOWED");
-      await cancelStoreOrderLocked(tx, { id: storeOrder.id, storeId: input.storeId, actorUserId: input.actorUserId });
+      await cancelStoreOrderLocked(tx, { id: storeOrder.id, storeId: input.storeId, actorUserId: input.actorUserId, source: "STORE_APPROVED_CANCEL_REQUEST" });
       await tx.orderCancellationRequest.update({ where: { id: request.id }, data: { status: "APPROVED", storeResponse: response, decidedById: input.actorUserId, decidedAt: now } });
     } else {
       const changed = await tx.orderCancellationRequest.updateMany({ where: { id: request.id, status: "REQUESTED" }, data: { status: "REJECTED", storeResponse: response, decidedById: input.actorUserId, decidedAt: now } });

@@ -11,6 +11,8 @@ export const EPOINT_RECONCILE_RATE_LIMIT = { limit: 20, windowMs: 10 * 60 * 1000
 export const EPOINT_RECONCILE_IP_RATE_LIMIT = { limit: 60, windowMs: 10 * 60 * 1000 } as const; // per trusted client IP
 export const SHIPMENT_EMAIL_ORDER_LIMIT = { limit: 10, windowMs: 24 * 60 * 60 * 1000 } as const; // per store order
 export const SHIPMENT_EMAIL_STORE_LIMIT = { limit: 200, windowMs: 60 * 60 * 1000 } as const; // per store
+export const ORDER_RECEIPT_RATE_LIMIT = { limit: 30, windowMs: 10 * 60 * 1000 } as const; // per account (ORDER-NOTIFY-1)
+export const ORDER_RECEIPT_IP_RATE_LIMIT = { limit: 120, windowMs: 10 * 60 * 1000 } as const; // per trusted client IP
 
 type Scope = Parameters<typeof authRateLimitKey>[0];
 export type FormRateBucket = { scope: Scope; identity: string; limit: number; windowMs: number };

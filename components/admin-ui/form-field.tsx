@@ -5,10 +5,10 @@ import type { ReactNode } from "react";
  * error is shown, `aria-describedby={`${htmlFor}-hint`}` / `${htmlFor}-error`.
  */
 export function FormField({ label, htmlFor, hint, error, required, children }: { label: ReactNode; htmlFor: string; hint?: ReactNode; error?: ReactNode; required?: boolean; children: ReactNode }) {
-  return <div className="grid gap-1 text-sm text-slate-700">
-    <label htmlFor={htmlFor} className="font-medium">{label}{required && <span aria-hidden="true" className="ml-0.5 text-red-700">*</span>}</label>
+  return <div className="grid gap-1.5 text-sm text-fg-body">
+    <label htmlFor={htmlFor} className="font-medium text-fg">{label}{required && <span aria-hidden="true" className="ml-0.5 text-red-700">*</span>}</label>
     {children}
-    {hint && !error && <p id={`${htmlFor}-hint`} className="text-xs text-slate-500">{hint}</p>}
+    {hint && !error && <p id={`${htmlFor}-hint`} className="text-xs text-fg-secondary">{hint}</p>}
     {error && <p id={`${htmlFor}-error`} role="alert" className="text-xs text-red-700">{error}</p>}
   </div>;
 }

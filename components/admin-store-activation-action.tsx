@@ -125,10 +125,10 @@ export default function AdminStoreActivationAction({
       type="button"
       disabled={busy}
       onClick={() => void toggleVisibility()}
-      className={`w-fit rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-wait disabled:opacity-50 ${visible ? "border border-amber-200 text-amber-900 hover:bg-amber-50" : "bg-[#173c40] text-white hover:bg-[#24575b]"}`}
+      className={`w-fit rounded-control px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-50 ${visible ? "border border-amber-200 text-amber-900 hover:bg-amber-50" : "bg-primary text-white hover:bg-primary-hover"}`}
     >
       {busy ? "Gözləyin…" : visible ? "İctimai görünürlüğü deaktiv et" : "İctimai görünürlüğü aktiv et"}
-    </button> : <p className="max-w-96 text-xs text-slate-600">
+    </button> : <p className="max-w-96 text-xs text-fg-secondary">
       {status === "PENDING_REVIEW" ? "İctimai görünürlükdən əvvəl mağaza admin yoxlamasından keçməlidir." :
         status === "SUSPENDED" ? "Mağaza dayandırılıb. Görünürlüyü birbaşa aktiv etmək olmaz; bərpa qərarı tələb olunur." :
           status === "REJECTED" ? "Rədd edilmiş mağazanı ictimai etmək olmaz." :
@@ -138,16 +138,16 @@ export default function AdminStoreActivationAction({
       type="button"
       disabled={busy}
       onClick={() => void publishEligibleDrafts()}
-      className="w-fit rounded-lg border border-[#173c40] px-3 py-2 text-xs font-semibold text-[#173c40] disabled:opacity-50"
+      className="w-fit rounded-control border border-primary px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50"
     >
       Uyğun qaralama məhsulları yoxla və yayımla
     </button>}
-    <p className="max-w-64 text-xs text-slate-500">
+    <p className="max-w-64 text-xs text-fg-secondary">
       Hüquqi baxış: {legalInfoApproved ? "təsdiqlənib" : "tamamlanmayıb"}. Bu görünürlük əməliyyatı abunəliyi və alış hüququnu dəyişmir.
     </p>
-    {(status === "PENDING_REVIEW" || (status === "ACTIVE" && !legalInfoApproved)) && <button type="button" disabled={busy} onClick={() => void review("approve")} className="w-fit rounded-lg border border-[#173c40] px-3 py-2 text-xs font-semibold text-[#173c40] disabled:opacity-50">Hüquqi baxışdan sonra təsdiqlə</button>}
-    {status === "SUSPENDED" && <button type="button" disabled={busy} onClick={() => void review("reactivate")} className="w-fit rounded-lg border border-[#173c40] px-3 py-2 text-xs font-semibold text-[#173c40] disabled:opacity-50">Hüquqi baxışdan sonra bərpa et</button>}
-    {(status === "DRAFT" || status === "REJECTED") && <p className="text-xs text-slate-500">{status === "DRAFT" ? "Müraciət qaralama vəziyyətindədir." : "Müraciət rədd edilib."}</p>}
+    {(status === "PENDING_REVIEW" || (status === "ACTIVE" && !legalInfoApproved)) && <button type="button" disabled={busy} onClick={() => void review("approve")} className="w-fit rounded-control border border-primary px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50">Hüquqi baxışdan sonra təsdiqlə</button>}
+    {status === "SUSPENDED" && <button type="button" disabled={busy} onClick={() => void review("reactivate")} className="w-fit rounded-control border border-primary px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary-subtle focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50">Hüquqi baxışdan sonra bərpa et</button>}
+    {(status === "DRAFT" || status === "REJECTED") && <p className="text-xs text-fg-secondary">{status === "DRAFT" ? "Müraciət qaralama vəziyyətindədir." : "Müraciət rədd edilib."}</p>}
     {error && <p role="alert" className="max-w-64 text-xs text-red-800">{error}</p>}
     {message && <p role="status" className="max-w-96 text-xs text-emerald-800">{message}</p>}
     <AdminStoreProductPublishingResult result={productResult}/>

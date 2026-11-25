@@ -9,6 +9,10 @@ import { ChevronDown, Menu, Search, X } from "lucide-react";
 import { ADMIN_MESSAGING_NAV_HREF, ADMIN_NAV_GROUPS, activeAdminNavGroup, activeAdminNavHref } from "@/lib/admin-nav";
 
 // Menu groups and items: lib/admin-nav.ts (Ödənişlər and Geri ödənişlər are hidden stubs).
+// ADMIN-DESIGN-1: the seller panel's look (components/vendor-navigation.tsx): white sidebar with a hairline, gold group
+// kickers, the active page as a green tint with a bar on the left, bold text and aria-current. Behaviour unchanged.
+/** Visible keyboard focus ring: the green ring of the admin kit and the seller panel (components/ui/cx.ts). */
+const focusRing = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 /** messagingEnabled: the "Mesaj şikayətləri" menu item is shown only while messaging is ON (cached setting). */
 type AdminShellProps = { children: ReactNode; email: string; messagingEnabled?: boolean };
@@ -89,14 +93,14 @@ export default function AdminShell({ children, email, messagingEnabled = false }
     const activeHref = activeAdminNavHref(path);
     const prefix = mobile ? "admin-nav-m" : "admin-nav";
     return <nav aria-label="Admin naviqasiyası" className="space-y-1">
-      <label className="mb-3 flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-slate-400 focus-within:border-[#C79A52]">
+      <label className="mb-3 flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface-page px-3 text-fg-muted transition-colors focus-within:border-primary focus-within:bg-white">
         <Search size={15} aria-hidden="true" />
         <span className="sr-only">Bölmələr üzrə axtarış</span>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Bölmə axtarışı"
-          className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+          className="min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-fg-muted"
         />
       </label>
       {ADMIN_NAV_GROUPS.map((group) => {
@@ -111,7 +115,7 @@ export default function AdminShell({ children, email, messagingEnabled = false }
             onClick={() => toggleGroup(group.id)}
             aria-expanded={expanded}
             aria-controls={listId}
-            className="flex min-h-9 w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[.14em] text-slate-400 transition hover:bg-white/5 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#C79A52]"
+            className={`flex min-h-9 w-full items-center justify-between rounded-control px-2.5 py-1.5 text-left text-kicker uppercase text-gold-700 transition-colors hover:bg-primary-subtle motion-reduce:transition-none ${focusRing}`}
           >
             <span>{group.label}{group.id === activeGroup && !expanded ? <span className="sr-only"> (cari bölmə burada)</span> : null}</span>
             <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
@@ -121,14 +125,14 @@ export default function AdminShell({ children, email, messagingEnabled = false }
               href={href}
               onClick={() => mobile && setOpen(false)}
               aria-current={href === activeHref ? "page" : undefined}
-              className={`flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#C79A52] ${
+              className={`relative flex min-h-11 items-center gap-2.5 rounded-control px-2.5 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${focusRing} ${
                 href === activeHref
-                  ? "bg-[#25374a] font-medium text-white shadow-[inset_3px_0_0_#C79A52]"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  ? "bg-primary-tint font-semibold text-primary before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-primary"
+                  : "text-fg-secondary hover:bg-primary-subtle hover:text-fg"
               }`}
             >
-              <Icon size={17} aria-hidden="true" />
-              <span>{label}</span>
+              <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center"><Icon size={18} /></span>
+              <span className="min-w-0 flex-1">{label}</span>
             </Link></li>)}
           </ul>}
         </div>;
@@ -136,37 +140,37 @@ export default function AdminShell({ children, email, messagingEnabled = false }
     </nav>;
   }
 
-  return <div className="min-h-screen bg-[#f5f3ee] text-[#172333]">
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col bg-[#122E2E] p-4 text-white lg:flex">
-      <Link href="/admin" className="flex items-center gap-3 border-b border-white/10 px-3 pb-5 pt-2">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#C79A52] font-serif text-xl font-bold text-[#122E2E]">B</span>
-        <span><b className="block tracking-[.16em]">BAGATI</b><small className="text-xs text-slate-400">İdarəetmə paneli</small></span>
+  return <div className="min-h-screen bg-surface-page text-fg-body">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-line bg-white p-4 lg:flex">
+      <Link href="/admin" className={`flex items-center gap-3 border-b border-line px-2.5 pb-5 pt-2 ${focusRing}`}>
+        <span className="grid h-10 w-10 place-items-center rounded-control bg-primary font-serif text-xl font-bold text-white">B</span>
+        <span><b className="block tracking-[.16em] text-fg">BAGATI</b><small className="text-xs text-fg-muted">İdarəetmə paneli</small></span>
       </Link>
       <div className="mt-5 min-h-0 flex-1 overflow-y-auto">{navigation()}</div>
-      <div className="mt-4 border-t border-white/10 pt-4">
-        <p className="truncate px-3 text-xs text-slate-400">{email}</p>
-        {logoutError && <p role="alert" className="px-3 pt-2 text-xs text-red-300">{logoutError}</p>}
-        <button disabled={busy} onClick={() => void logout()} className="mt-2 w-full rounded-xl px-3 py-2 text-left text-sm text-slate-300 hover:bg-white/10 disabled:opacity-60">
+      <div className="mt-4 border-t border-line pt-4">
+        <p className="truncate px-2.5 text-xs text-fg-muted">{email}</p>
+        {logoutError && <p role="alert" className="px-2.5 pt-2 text-xs text-red-700">{logoutError}</p>}
+        <button disabled={busy} onClick={() => void logout()} className={`mt-2 min-h-11 w-full rounded-control px-2.5 py-2 text-left text-sm font-medium text-fg-secondary transition-colors hover:bg-primary-subtle hover:text-fg disabled:opacity-60 ${focusRing}`}>
           {busy ? "Çıxış edilir…" : "Çıxış"}
         </button>
       </div>
     </aside>
     <div className="lg:pl-[264px]">
-      <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-[#e6e2d8] bg-white/95 px-4 backdrop-blur sm:px-7">
+      <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-line bg-white/95 px-4 backdrop-blur sm:px-7">
         <div className="flex items-center gap-3">
           <button
             ref={mobileMenuButton}
             aria-label="Naviqasiyanı aç"
             aria-expanded={open}
             aria-controls="admin-mobile-navigation"
-            className="rounded-lg border p-2 lg:hidden"
+            className={`grid h-11 w-11 place-items-center rounded-full border border-line-strong text-fg transition-colors hover:border-primary lg:hidden ${focusRing}`}
             onClick={() => setOpen(true)}
           ><Menu size={20} aria-hidden="true" /></button>
-          <p className="text-sm font-semibold text-[#26384b]">Bazar yeri idarəetməsi</p>
+          <p className="text-sm font-semibold text-fg">Bazar yeri idarəetməsi</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden max-w-60 truncate text-sm text-slate-500 sm:inline">{email}</span>
-          <span aria-label="İdarəçi hesabı" className="grid h-9 w-9 place-items-center rounded-full bg-[#f3eee1] text-sm font-semibold text-[#85621d]">
+          <span className="hidden max-w-60 truncate text-sm text-fg-secondary sm:inline">{email}</span>
+          <span aria-label="İdarəçi hesabı" className="grid h-9 w-9 place-items-center rounded-full bg-gold-100 text-sm font-semibold text-gold-700 ring-1 ring-inset ring-gold-200">
             {email.slice(0, 1).toLocaleUpperCase("az-AZ")}
           </span>
         </div>
@@ -179,15 +183,15 @@ export default function AdminShell({ children, email, messagingEnabled = false }
       role="dialog"
       aria-modal="true"
       aria-label="Admin naviqasiyası"
-      className="fixed inset-0 z-50 bg-[#122E2E] p-4 text-white lg:hidden"
+      className="fixed inset-0 z-50 flex flex-col bg-white p-4 text-fg-body lg:hidden"
     >
-      <div className="mb-5 flex items-center justify-between">
-        <b className="tracking-[.16em]">BAGATI ADMIN</b>
-        <button aria-label="Naviqasiyanı bağla" onClick={() => setOpen(false)} className="rounded-lg p-2"><X aria-hidden="true" /></button>
+      <div className="mb-4 flex items-center justify-between border-b border-line pb-4">
+        <b className="tracking-[.16em] text-fg">BAGATI ADMIN</b>
+        <button aria-label="Naviqasiyanı bağla" onClick={() => setOpen(false)} className={`grid h-11 w-11 place-items-center rounded-full border border-line-strong text-fg hover:border-primary ${focusRing}`}><X size={19} aria-hidden="true" /></button>
       </div>
-      <div className="max-h-[calc(100vh-90px)] overflow-y-auto">{navigation(true)}</div>
-      {logoutError && <p role="alert" className="pt-3 text-xs text-red-300">{logoutError}</p>}
-      <button disabled={busy} onClick={() => void logout()} className="mt-5 rounded-xl border border-white/20 px-4 py-2 text-sm disabled:opacity-60">
+      <div className="min-h-0 flex-1 overflow-y-auto">{navigation(true)}</div>
+      {logoutError && <p role="alert" className="pt-3 text-xs text-red-700">{logoutError}</p>}
+      <button disabled={busy} onClick={() => void logout()} className={`mt-4 min-h-11 shrink-0 rounded-full border border-line-strong px-5 text-sm font-medium text-fg transition-colors hover:border-primary disabled:opacity-60 ${focusRing}`}>
         {busy ? "Çıxış edilir…" : "Çıxış"}
       </button>
     </div>}

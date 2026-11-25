@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CircleX, ClipboardCheck, Clock, Package, PackageCheck, ShoppingBag, Store, UserRound, Users, type LucideIcon } from "lucide-react";
 import AdminShell from "@/components/admin-shell";
 import { adminMessagingNavEnabled } from "@/lib/messaging-pages";
 import AdminVerificationSummary from "@/components/admin-verification-summary";
@@ -17,6 +18,21 @@ import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 
 export const dynamic = "force-dynamic";
+
+const STAT_ICONS: Record<string, LucideIcon> = {
+  "/admin/customers": UserRound,
+  "/admin/vendors": Users,
+  "/admin/stores": Store,
+  "/admin/stores?status=ACTIVE": Store,
+  "/admin/stores?status=PENDING_REVIEW": ClipboardCheck,
+  "/admin/products": Package,
+  "/admin/products?status=ACTIVE": Package,
+  "/admin/orders": ShoppingBag,
+  [ADMIN_PENDING_ORDERS_HREF]: Clock,
+  "/admin/orders?status=DELIVERED": PackageCheck,
+  "/admin/orders?status=CANCELLED": CircleX,
+};
+const ATTENTION_HREFS = new Set<string>(["/admin/stores?status=PENDING_REVIEW", ADMIN_PENDING_ORDERS_HREF]);
 
 /** Admin dashboard (İcmal): live counts and recent records. Same queries and links as before Phase B; UI kit layout. */
 export default async function AdminDashboard() {
@@ -52,7 +68,10 @@ export default async function AdminDashboard() {
     ["Çatdırılıb", completedOrders, "/admin/orders?status=DELIVERED"],
     ["Ləğv edilib", cancelledOrders, "/admin/orders?status=CANCELLED"],
   ] as const;
-  const seeAll = (href: string, label: string) => <Link href={href} className={`rounded text-sm text-[#85621d] ${focusRing}`}>{label} →</Link>;
+  // ADMIN-DESIGN-1: a decorative icon per card and a gold edge on the two "waiting" counts when they are above 0
+  // (the same numbers as before; no new query).
+  const statIcon = (href: string) => { const Icon = STAT_ICONS[href]; return Icon ? <Icon size={16} /> : undefined; };
+  const seeAll = (href: string, label: string) => <Link href={href} className={`rounded text-sm font-semibold text-primary hover:underline ${focusRing}`}>{label} →</Link>;
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
     {maintenanceOn === true && <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-900">
       <p><b>Texniki iş rejimi açıqdır.</b> Müştəri və satıcı səhifələri və API-ləri 503 qaytarır; alış-veriş dayanıb. Admin paneli və ödəniş bildirişləri işləyir.</p>
@@ -65,24 +84,24 @@ export default async function AdminDashboard() {
       actions={<Link href="/admin/stores?status=PENDING_REVIEW" className={buttonClass("primary")}>Yoxlanmalı mağazalar · {pendingStores}</Link>}
     />
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {stats.map(([label, value, href]) => <StatCard key={label} label={label} value={value} href={href} />)}
+      {stats.map(([label, value, href]) => <StatCard key={label} label={label} value={value} href={href} icon={statIcon(href)} attention={ATTENTION_HREFS.has(href) && value > 0} />)}
     </div>
     <AdminVerificationSummary />
     <div className="mt-7 grid gap-5 xl:grid-cols-2">
       <Section title="Abunəlik statusları" actions={seeAll("/admin/subscriptions", "Baxış")}>
         {subscriptions.length
-          ? <div className="grid gap-2 sm:grid-cols-2">{subscriptions.map((row) => <div key={row.status} className="flex items-center justify-between rounded-xl bg-[#f8f7f4] px-4 py-3 text-sm"><AdminStatusBadge kind="subscription" value={row.status} /><b>{row._count._all}</b></div>)}</div>
+          ? <div className="grid gap-2 sm:grid-cols-2">{subscriptions.map((row) => <div key={row.status} className="flex items-center justify-between rounded-control bg-surface-page px-4 py-3 text-sm"><AdminStatusBadge kind="subscription" value={row.status} /><b className="tabular-nums text-fg">{row._count._all}</b></div>)}</div>
           : <EmptyState title="Abunəlik qeydi yoxdur." />}
       </Section>
       <Section title="Son sifarişlər" actions={seeAll("/admin/orders", "Hamısı")}>
         {recentOrders.length
-          ? <div className="divide-y">{recentOrders.map((order) => <Link href={`/admin/orders/${order.id}`} key={order.id} className={`flex flex-wrap items-center justify-between gap-2 py-3 text-sm ${focusRing}`}><span className="min-w-0 break-all">#{order.id.slice(-8).toUpperCase()} · {order.user.email}</span><span className="flex items-center gap-2"><AdminStatusBadge kind="order" value={order.status} /><span className="whitespace-nowrap">{formatMoney(order.total)}</span></span></Link>)}</div>
+          ? <div className="-mx-2 divide-y divide-line">{recentOrders.map((order) => <Link href={`/admin/orders/${order.id}`} key={order.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-control px-2 py-3 text-sm transition-colors hover:bg-surface-page ${focusRing}`}><span className="min-w-0 break-all"><b className="font-semibold text-fg">#{order.id.slice(-8).toUpperCase()}</b> · <span className="text-fg-secondary">{order.user.email}</span></span><span className="flex items-center gap-2"><AdminStatusBadge kind="order" value={order.status} /><span className="whitespace-nowrap font-semibold tabular-nums text-fg">{formatMoney(order.total)}</span></span></Link>)}</div>
           : <EmptyState title="Sifariş yoxdur." />}
       </Section>
     </div>
     <Section className="mt-5" title="Yeni mağazalar" actions={seeAll("/admin/stores", "Hamısı")}>
       {recentStores.length
-        ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{recentStores.map((store) => <Link key={store.id} href={`/admin/stores/${store.id}`} className={`rounded-xl bg-[#f8f7f4] p-4 ${focusRing}`}><b>{store.name}</b><p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500"><span>{store.city.name}</span><AdminStatusBadge kind="store" value={store.status} /></p></Link>)}</div>
+        ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{recentStores.map((store) => <Link key={store.id} href={`/admin/stores/${store.id}`} className={`rounded-control border border-transparent bg-surface-page p-4 transition-colors hover:border-brand-200 hover:bg-primary-subtle ${focusRing}`}><b className="text-fg">{store.name}</b><p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-fg-secondary"><span>{store.city.name}</span><AdminStatusBadge kind="store" value={store.status} /></p></Link>)}</div>
         : <EmptyState title="Mağaza yoxdur." />}
     </Section>
   </AdminShell>;

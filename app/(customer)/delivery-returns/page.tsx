@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { getSiteSettings } from "@/lib/site-settings";
+import { absoluteSiteUrl } from "@/lib/category-seo";
 
 export const dynamic = "force-dynamic";
+// SEO-TITLES-1: the page's own heading as <title> (root template adds the site name) and the canonical URL.
+export function generateMetadata(): Metadata {
+  const canonical = absoluteSiteUrl("/delivery-returns");
+  return { title: "Çatdırılma", robots: { index: true, follow: true }, ...(canonical ? { alternates: { canonical } } : {}) };
+}
 
 export default async function DeliveryReturnsPage() {
   const settings = await getSiteSettings();

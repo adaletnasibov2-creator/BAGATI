@@ -12,6 +12,7 @@ import { categoryBreadcrumbs, categoryHref, categorySiblingLinks, findCategoryBy
 import { CategoryEmptyState } from "@/components/category-empty-state";
 import { categoryScopeWhere } from "@/lib/category-where";
 import { categorySharePreviewMetadata } from "@/lib/share-preview";
+import { absoluteSiteUrl } from "@/lib/category-seo";
 import { getSiteSettings } from "@/lib/site-settings";
 import { CategoryGlyph } from "@/components/category-icon";
 import { CategoryBreadcrumbs } from "@/components/category-breadcrumbs";
@@ -21,7 +22,8 @@ type Props = { searchParams: Promise<{ category?: string; city?: string }> };
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const { category: slug } = await searchParams;
-  if (!slug) return { title: "Kateqoriyalar", description: "BAGATI kataloqunun bütün kateqoriyaları və alt kateqoriyaları." };
+  // SEO-TITLES-1: + index and the canonical URL, now that /categories is in the sitemap (title and description unchanged).
+  if (!slug) { const canonical = absoluteSiteUrl("/categories"); return { title: "Kateqoriyalar", description: "BAGATI kataloqunun bütün kateqoriyaları və alt kateqoriyaları.", robots: { index: true, follow: true }, ...(canonical ? { alternates: { canonical } } : {}) }; }
   const [data, settings] = await Promise.all([getPublicCategoryData(), getSiteSettings()]);
   const lookup = findCategoryBySlug(data.rows, slug);
   // A deactivated category is "not found" publicly: its name never appears in the title.

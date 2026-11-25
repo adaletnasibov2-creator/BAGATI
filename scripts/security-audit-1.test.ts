@@ -154,6 +154,8 @@ test("admin pages, admin APIs and legal pages are untouched by this task", () =>
   const changed = changedSinceBase();
   if (!changed) return; // no git history available (exported copy): nothing to compare
   const forbidden = changed.filter((file) => file.startsWith("app/admin/") || file.startsWith("app/api/admin/") || /^components\/admin/.test(file)
-    || /^app\/\(customer\)\/(terms|privacy|seller-terms|delivery-returns)\//.test(file) || file.startsWith("lib/legal"));
+    // SEO-TITLES-1 (owner-approved): /delivery-returns gained only a <title>/canonical; its visible content is pinned as
+    // unchanged by scripts/seo-titles-1.test.ts. The three legal pages stay fully untouched.
+    || /^app\/\(customer\)\/(terms|privacy|seller-terms)\//.test(file) || file.startsWith("lib/legal"));
   assert.deepEqual(forbidden, []);
 });

@@ -1,10 +1,17 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { absoluteSiteUrl } from "@/lib/category-seo";
 import { filterEligiblePublicProducts } from "@/lib/store-eligibility";
 import { publicProductVisibilityWhere } from "@/lib/store-visibility";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
 import { calculateEffectivePrice, productPromotions } from "@/lib/promotion-pricing";
 import { productCardSelect } from "@/lib/product-card-select";
 export const dynamic = "force-dynamic";
+// SEO-TITLES-1: the page's own heading as <title> (root template adds the site name) and the clean canonical URL.
+export function generateMetadata(): Metadata {
+  const canonical = absoluteSiteUrl("/new-products");
+  return { title: "Yeni məhsullar", robots: { index: true, follow: true }, ...(canonical ? { alternates: { canonical } } : {}) };
+}
 export default async function NewProductsPage({ searchParams }: { searchParams: Promise<{ city?: string }> }) {
   const { city } = await searchParams;
   const now = new Date();

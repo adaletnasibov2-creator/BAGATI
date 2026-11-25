@@ -3,10 +3,12 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SELLER_PANEL_3_TEXT } from "@/lib/seller-panel-3";
 
-type Props = { storeId: string; initialUrls?: string[]; name?: string | null; label?: string; onChange?: (urls: string[]) => void };
+// SELLER-PANEL-3: coverAction (product forms only) adds a one-tap "Əsas şəkil et" and 44 px tile buttons.
+type Props = { storeId: string; initialUrls?: string[]; name?: string | null; label?: string; onChange?: (urls: string[]) => void; coverAction?: boolean };
 
-export default function VendorImageUploader({ storeId, initialUrls = [], name = "images", label = "Məhsul şəkilləri", onChange }: Props) {
+export default function VendorImageUploader({ storeId, initialUrls = [], name = "images", label = "Məhsul şəkilləri", onChange, coverAction = false }: Props) {
   const [urls, setUrls] = useState(initialUrls);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -35,6 +37,12 @@ export default function VendorImageUploader({ storeId, initialUrls = [], name = 
     } finally { setBusy(false); }
   }
 
+  function makeCover(index: number) {
+    if (index <= 0 || index >= urls.length) return;
+    update([urls[index], ...urls.filter((_, i) => i !== index)]);
+  }
+  const tileButton = coverAction ? "grid h-11 min-w-11" : "grid h-8 min-w-8";
+
   function moveImage(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= urls.length) return;
@@ -52,6 +60,6 @@ export default function VendorImageUploader({ storeId, initialUrls = [], name = 
       <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={upload} className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-wait"/>
     </label>
     {message && <p role="status" className="text-sm text-fg-secondary">{message}</p>}
-    {urls.length ? <ul className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5">{urls.map((url, index) => <li key={`${url}-${index}`}><figure className={`relative aspect-square overflow-hidden rounded-control border bg-surface-sunken ${index === 0 ? "border-primary ring-1 ring-primary" : "border-line"}`}><img src={url} alt={`${label}, ${index + 1}-ci şəkil`} className="h-full w-full object-cover"/>{index === 0 && <span className="absolute left-1.5 top-1.5"><Badge tone="primary" className="shadow-subtle">Əsas şəkil</Badge></span>}<figcaption className="sr-only">{index === 0 ? "Əsas şəkil" : `Şəkil ${index + 1}`}</figcaption><div className="absolute inset-x-1.5 bottom-1.5 flex justify-between gap-1"><span className="flex gap-1"><button type="button" disabled={index === 0} aria-label="Şəkli sola çək" onClick={() => moveImage(index, -1)} className="grid h-8 min-w-8 place-items-center rounded-full bg-white/95 px-2 text-xs font-medium text-fg shadow-subtle ring-1 ring-inset ring-line transition-colors hover:bg-white hover:text-primary disabled:opacity-40">←</button><button type="button" disabled={index === urls.length - 1} aria-label="Şəkli sağa çək" onClick={() => moveImage(index, 1)} className="grid h-8 min-w-8 place-items-center rounded-full bg-white/95 px-2 text-xs font-medium text-fg shadow-subtle ring-1 ring-inset ring-line transition-colors hover:bg-white hover:text-primary disabled:opacity-40">→</button></span><button type="button" aria-label="Şəkli sil" onClick={() => update(urls.filter((_, i) => i !== index))} className="grid h-8 min-w-8 place-items-center rounded-full bg-white/95 px-2 text-xs font-medium text-fg shadow-subtle ring-1 ring-inset ring-line transition-colors hover:bg-white hover:text-primary disabled:opacity-40 text-danger hover:text-danger">Sil</button></div></figure></li>)}</ul> : <p className="text-sm text-fg-muted">Şəkil yoxdur. Məhsulda “Şəkil yoxdur” görünəcək.</p>}
+    {urls.length ? <ul className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5">{urls.map((url, index) => <li key={`${url}-${index}`}><figure className={`relative aspect-square overflow-hidden rounded-control border bg-surface-sunken ${index === 0 ? "border-primary ring-1 ring-primary" : "border-line"}`}><img src={url} alt={`${label}, ${index + 1}-ci şəkil`} className="h-full w-full object-cover"/>{index === 0 && <span className="absolute left-1.5 top-1.5"><Badge tone="primary" className="shadow-subtle">Əsas şəkil</Badge></span>}<figcaption className="sr-only">{index === 0 ? "Əsas şəkil" : `Şəkil ${index + 1}`}</figcaption>{coverAction && index > 0 && <button type="button" onClick={() => makeCover(index)} className="absolute right-1.5 top-1.5 min-h-11 rounded-full bg-white/95 px-3 text-xs font-semibold text-primary shadow-subtle ring-1 ring-inset ring-line transition-colors hover:bg-white">{SELLER_PANEL_3_TEXT.makeCover}</button>}<div className="absolute inset-x-1.5 bottom-1.5 flex justify-between gap-1"><span className="flex gap-1"><button type="button" disabled={index === 0} aria-label="Şəkli sola çək" onClick={() => moveImage(index, -1)} className={`${tileButton} place-items-center rounded-full bg-white/95 px-2 text-xs font-medium text-fg shadow-subtle ring-1 ring-inset ring-line transition-colors hover:bg-white hover:text-primary disabled:opacity-40`}>←</button><button type="button" disabled={index === urls.length - 1} aria-label="Şəkli sağa çək" onClick={() => moveImage(index, 1)} className={`${tileButton} place-items-center rounded-full bg-white/95 px-2 text-xs font-medium text-fg shadow-subtle ring-1 ring-inset ring-line transition-colors hover:bg-white hover:text-primary disabled:opacity-40`}>→</button></span><button type="button" aria-label="Şəkli sil" onClick={() => update(urls.filter((_, i) => i !== index))} className={`${tileButton} place-items-center rounded-full bg-white/95 px-2 text-xs font-medium text-fg shadow-subtle ring-1 ring-inset ring-line transition-colors hover:bg-white hover:text-primary disabled:opacity-40 text-danger hover:text-danger`}>Sil</button></div></figure></li>)}</ul> : <p className="text-sm text-fg-muted">Şəkil yoxdur. Məhsulda “Şəkil yoxdur” görünəcək.</p>}
   </section>;
 }

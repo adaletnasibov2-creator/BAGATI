@@ -1,7 +1,7 @@
 ﻿import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ImageOff, MessageCircle, Phone } from "lucide-react";
+import { ImageOff, MessageCircle, Phone, Truck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
 import { statusLabel, paymentStatusLabel } from "@/lib/order-status";
@@ -18,7 +18,8 @@ import { buttonClass } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { orderStatusTone, paymentStatusTone } from "@/lib/vendor-status-tone";
 import { VendorOrderPrintButton } from "@/components/vendor-order-print-button";
-import { customerInitials, formatOrderDateTime, itemThumbnail, orderNumber, orderTimeline, SELLER_CUSTOMER_CARD_TEXT, SELLER_ORDERS_TEXT, storeOrderTotal } from "@/lib/vendor-order-view";
+import { customerInitials, formatOrderDateTime, itemThumbnail, orderNumber, orderTimeline, SELLER_CUSTOMER_CARD_TEXT, SELLER_ORDERS_DESIGN_2_TEXT, SELLER_ORDERS_TEXT, storeOrderTotal } from "@/lib/vendor-order-view";
+import { buildOnTheWayWhatsAppUrl } from "@/lib/seller-on-the-way";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
@@ -47,7 +48,9 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
     where: { id: storeOrderId, storeId: access.storeId },
     include: {
       order: { select: { id: true, createdAt: true, addressSnapshot: true, payments: { select: { status: true }, orderBy: { createdAt: "desc" }, take: 1 }, user: { select: { customerProfile: { select: { firstName: true, lastName: true, phone: true } } } } } },
+      // Product images come with the items in this one query (no per-line lookup). Only this store's lines (storeId above).
       items: { include: { variant: { select: { name: true, options: true } }, product: { select: { images: true } } } },
+      store: { select: { name: true } },
       cancellationRequests: { where: { status: "REQUESTED" }, orderBy: { createdAt: "desc" }, take: 1, select: { id: true, reason: true, createdAt: true } },
     },
   });
@@ -71,6 +74,8 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
   // The phone is already shown to this seller; it only becomes tappable (tel:, and WhatsApp for mobile numbers).
   const phoneTel = buildTelHref(customerPhone);
   const phoneWhatsApp = buildCustomerWhatsAppUrl(customerPhone, order.order.id);
+  // SELLER-ORDERS-DESIGN-2: "on the way" message, only for READY / HANDED_TO_COURIER / SHIPPED and a mobile number. Never changes the status.
+  const onTheWayWhatsApp = buildOnTheWayWhatsAppUrl(customerPhone, order.store?.name ?? "", order.order.id, order);
   const addressLines = [address.line1, address.line2, address.city, address.postalCode].map(textValue).filter(Boolean);
   // Pin and dispatch menu: only while the order is open and for 7 days after the shipment is delivered (lib/delivery-location.ts).
   const locationAccess = sellerCanSeeDeliveryLocation(order);
@@ -126,7 +131,7 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
               return <li key={item.id} className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-4 gap-y-1 py-4 first:pt-0 sm:grid-cols-[4rem_minmax(0,1fr)_auto] sm:items-center">
                 <div className="row-span-2 grid aspect-square w-16 place-items-center overflow-hidden rounded-control border border-line bg-surface-page sm:row-span-1">{image ? <>
                   {/* eslint-disable-next-line @next/next/no-img-element -- a 64 px thumbnail; next/image would add ~6 kB of client JS to this page */}
-                  <img src={image} alt="" width={64} height={64} loading="lazy" className="h-full w-full object-cover"/></> : <ImageOff aria-hidden="true" size={20} strokeWidth={2} className="text-fg-muted"/>}</div>
+                  <img src={image} alt={item.productName} width={64} height={64} loading="lazy" className="h-full w-full object-cover"/></> : <ImageOff aria-hidden="true" size={20} strokeWidth={2} className="text-fg-muted"/>}</div>
                 <div className="min-w-0"><h3 className="break-words font-medium text-fg">{item.productName}</h3><p className="mt-1 break-words text-xs text-fg-muted">{variantLine(item)}</p><p className="mt-1 text-xs tabular-nums text-fg-secondary">{money(item.unitPrice)} ₼ × {item.quantity}</p></div>
                 <b className="col-start-2 text-sm tabular-nums text-fg sm:col-start-auto sm:text-right">{money(item.lineTotal)} ₼</b>
               </li>;
@@ -156,6 +161,7 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
               <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap sm:items-start">
                 {phoneTel && <a href={phoneTel} className={cx(buttonClass({ size: "sm" }), "w-full sm:w-auto")}><Phone aria-hidden="true" size={16} strokeWidth={2}/>Zəng et</a>}
                 {phoneWhatsApp && <a href={phoneWhatsApp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#1f7a4d] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#17633e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:w-auto"><MessageCircle aria-hidden="true" size={16} strokeWidth={2}/>WhatsApp ilə yaz</a>}
+                {onTheWayWhatsApp && <a href={onTheWayWhatsApp} target="_blank" rel="noopener noreferrer" data-on-the-way="" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[#1f7a4d] bg-white px-4 text-sm font-semibold text-[#1f7a4d] transition-colors hover:bg-[#eef7f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:w-auto"><Truck aria-hidden="true" size={16} strokeWidth={2}/>{SELLER_ORDERS_DESIGN_2_TEXT.onTheWayButton}</a>}
                 {phoneCopy && <VendorCopyButton value={phoneCopy} label={SELLER_CUSTOMER_CARD_TEXT.copyPhone} done={SELLER_CUSTOMER_CARD_TEXT.phoneCopied}/>}
               </div>
             </div>
@@ -190,7 +196,12 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
       </dl>
       <table className="mt-5 w-full border-collapse text-left text-sm">
         <thead><tr className="border-b border-black"><th scope="col" className="py-2 pr-3">Sifariş edilən məhsullar</th><th scope="col" className="w-24 py-2 text-right">Miqdar</th></tr></thead>
-        <tbody>{order.items.map((item: OrderItemRow) => <tr key={item.id} className="break-inside-avoid border-b border-gray-400 align-top"><td className="py-2 pr-3"><b>{item.productName}</b><br/><span className="text-xs">{variantLine(item)}</span></td><td className="py-2 text-right text-base font-bold tabular-nums">{item.quantity}</td></tr>)}</tbody>
+        <tbody>{order.items.map((item: OrderItemRow) => { const image = itemThumbnail(item); return <tr key={item.id} className="break-inside-avoid border-b border-gray-400 align-top"><td className="py-2 pr-3"><div className="flex items-start gap-3" data-slip-item="">
+          {/* SELLER-ORDERS-DESIGN-2: a small 12 mm image (or an empty box) so the packer can match the item; it never widens the table. */}
+          <span className="block h-[12mm] w-[12mm] shrink-0 overflow-hidden border border-gray-400">{image && <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- print-only thumbnail; not lazy (hidden until printing), same URL as the thumbnail above so it is cached */}
+            <img src={image} alt={item.productName} width={45} height={45} className="h-full w-full object-cover"/></>}</span>
+          <span className="min-w-0"><b>{item.productName}</b><br/><span className="text-xs">{variantLine(item)}</span></span></div></td><td className="py-2 text-right text-base font-bold tabular-nums">{item.quantity}</td></tr>; })}</tbody>
       </table>
     </section>
   </div>;

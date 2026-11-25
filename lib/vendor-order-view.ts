@@ -28,6 +28,16 @@ export const SELLER_CUSTOMER_CARD_TEXT = {
   yandexMaps: "Yandex Maps",
 } as const;
 
+/**
+ * SELLER-ORDERS-DESIGN-2: the "on the way" WhatsApp button and its prefilled message, in one place.
+ * APPROVED by the owner 2026-11-25 ("mətnlər ok", button changed to “Yoldadır”). The message names only the store and the order number: no price, no time
+ * estimate, no payment claim, no customer name or phone.
+ */
+export const SELLER_ORDERS_DESIGN_2_TEXT = {
+  onTheWayButton: "Alıcıya “Yoldadır” yaz",
+  onTheWayMessage: (storeName: string, number: string) => `Salam! ${storeName} mağazasından ${number} sifarişiniz yoldadır. Təşəkkür edirik!`,
+} as const;
+
 /** "Leyla Məmmədova" -> "LM": two letters for the avatar (first letters of the first two words, Azerbaijani upper case). */
 export function customerInitials(name: string): string {
   const letters = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((word) => Array.from(word)[0] ?? "");

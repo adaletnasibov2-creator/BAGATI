@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, ClipboardList, Search } from "lucide-react";
+import { ChevronRight, ClipboardList, ImageOff, Search } from "lucide-react";
 import { allowedVendorOrderTransitions, statusLabel } from "@/lib/order-status";
 import { VendorPageHeader } from "@/components/vendor-page-header";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ type VendorOrder = {
   createdAt: string;
   order: { id: string; createdAt: string };
   payment?: { status: string | null; label: string };
-  items: { id: string; productName: string; quantity: number; variant?: { name: string } | null }[];
+  items: { id: string; productName: string; quantity: number; variant?: { name: string } | null; image?: string | null }[];
 };
 
 type OrderPage = { items: VendorOrder[]; page: number; pageSize: number; total: number; totalPages: number; counts?: OrderStatusCounts };
@@ -107,6 +107,15 @@ export default function VendorOrders({ storeId }: { storeId: string }) {
       </select>
     </label>;
   };
+  // SELLER-ORDERS-DESIGN-2: 40 px image of the first line (the API sends only its first URL); the "no image" icon otherwise.
+  const thumbnail = (order: VendorOrder) => {
+    const first = order.items[0];
+    if (!first) return null;
+    return <span data-order-thumb="" className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-control border border-line bg-surface-page">{first.image
+      // eslint-disable-next-line @next/next/no-img-element -- a 40 px thumbnail; next/image would add client JS to this list
+      ? <img src={first.image} alt={first.productName} width={40} height={40} loading="lazy" className="h-full w-full object-cover"/>
+      : <ImageOff aria-hidden="true" size={16} strokeWidth={2} className="text-fg-muted"/>}</span>;
+  };
   const badges = (order: VendorOrder) => <span className="flex flex-wrap gap-1.5"><Badge tone={orderStatusTone(order.status)}>{statusLabel(order.status)}</Badge>{order.payment && <Badge tone={paymentStatusTone(order.payment.status)}>{order.payment.label}</Badge>}</span>;
 
   return <section className="space-y-5">
@@ -141,7 +150,7 @@ export default function VendorOrders({ storeId }: { storeId: string }) {
               const attention = needsAttention(order.status);
               return <tr key={order.id} data-order-row={order.status} className={cx("align-middle transition-colors hover:bg-surface-page", attention && "bg-[#fbf6ec] hover:bg-[#f8f0e0]")}>
                 <td className={cx("px-3 py-3.5 pl-4", attention && "shadow-[inset_4px_0_0_var(--bagati-gold-400)]")}><Link href={href(order)} className={cx("font-semibold text-primary underline-offset-2 hover:underline", focusRing)}>{orderNumber(order.order.id)}</Link><span className="mt-0.5 block text-xs tabular-nums text-fg-muted">{formatOrderDateTime(order.createdAt)}</span></td>
-                <td className="px-3 py-3.5"><span className="block truncate text-fg-body" title={firstItem(order)}>{firstItem(order)}</span>{moreItems(order) && <span className="block text-xs text-fg-muted">{moreItems(order)}</span>}</td>
+                <td className="px-3 py-3.5"><div className="flex min-w-0 items-center gap-2.5">{thumbnail(order)}<div className="min-w-0"><span className="block truncate text-fg-body" title={firstItem(order)}>{firstItem(order)}</span>{moreItems(order) && <span className="block text-xs text-fg-muted">{moreItems(order)}</span>}</div></div></td>
                 <td className="whitespace-nowrap px-3 py-3.5 text-right font-semibold tabular-nums text-fg">{total(order)}</td>
                 <td className="px-3 py-3.5"><Badge tone={orderStatusTone(order.status)} className="whitespace-nowrap">{statusLabel(order.status)}</Badge></td>
                 <td className="px-3 py-3.5">{order.payment ? <Badge tone={paymentStatusTone(order.payment.status)} className="whitespace-nowrap">{order.payment.label}</Badge> : null}</td>
@@ -161,8 +170,8 @@ export default function VendorOrders({ storeId }: { storeId: string }) {
               <b className="shrink-0 text-base tabular-nums text-fg">{total(order)}</b>
             </div>
             <div className="mt-2.5">{badges(order)}</div>
-            <p className="mt-3 truncate text-sm text-fg-body">{firstItem(order)}</p>
-            {moreItems(order) && <p className="text-xs text-fg-muted">{moreItems(order)}</p>}
+            <div className="mt-3 flex min-w-0 items-center gap-3">{thumbnail(order)}<div className="min-w-0"><p className="truncate text-sm text-fg-body">{firstItem(order)}</p>
+              {moreItems(order) && <p className="text-xs text-fg-muted">{moreItems(order)}</p>}</div></div>
             <div className="mt-3 grid gap-2 border-t border-line pt-3 min-[420px]:grid-cols-[minmax(0,1fr)_auto] min-[420px]:items-center">
               {statusChange(order)}
               <Link href={href(order)} className={buttonClass({ variant: "secondary", size: "sm" })}>Ətraflı<ChevronRight aria-hidden="true" size={16} strokeWidth={2}/></Link>

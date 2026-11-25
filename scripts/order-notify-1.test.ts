@@ -17,6 +17,7 @@ import { customerOrderNumber, ORDER_PROGRESS_STATUSES, orderProgressEvent, order
 import { confirmStoreOrderReceipt, OrderReceiptError, RECEIPT_ALLOWED_STATUSES, receiptAllowed } from "../lib/order-receipt";
 import { transitionVendorStoreOrder } from "../lib/order-fulfillment";
 import { ORDER_NOTIFY_TEXT } from "../lib/order-notify-text";
+import { SELLER_PANEL_3_REUSED, SELLER_PANEL_3_TEXT } from "../lib/seller-panel-3";
 import { VENDOR_NOTIFICATION_TITLES, vendorNotificationHref } from "../lib/vendor-notifications";
 import { AUDIT_ACTION_LABELS } from "../lib/audit-action-labels";
 
@@ -330,6 +331,11 @@ test("texts: the only new Azerbaijani text is ORDER_NOTIFY_TEXT (plus the owner'
   for (const value of Object.values(ORDER_NOTIFY_TEXT)) for (const part of fragments(`"${typeof value === "function" ? value("X") : value}"`)) approved.add(part);
   for (const part of fragments("`Sifariş #${orderRef}: alıcı təhvil aldığını təsdiqlədi.`")) approved.add(part);
   approved.add("Alıcı təhvil aldığını təsdiqlədi");
+  // SELLER-PANEL-3: texts the owner approved later ("mətnlər ok") plus reused existing wording (pinned in its own test).
+  for (const value of [...Object.values(SELLER_PANEL_3_TEXT), ...Object.values(SELLER_PANEL_3_REUSED)]) for (const part of fragments(`"${typeof value === "function" ? value("X") : value}"`)) approved.add(part);
+  for (const reused of ["Məhsul məlumatları yüklənir…", "Endirimli qiymət əsas qiymətdən aşağı olmalıdır."]) approved.add(reused);
+  // The two halves of the approved T6 sentence around `${name}` in its template literal.
+  for (const piece of ["Məlumatlar “", "” məhsulundan köçürüldü. Məhsul kodları və stok boş saxlanıldı; yadda saxlayana qədər heç nə yaradılmır."]) approved.add(piece);
   const added = [...new Set(changed)].flatMap((path) => { const before = fragments(baseFile(path)); return [...fragments(read(path))].filter((part) => !before.has(part) && !approved.has(part)).map((part) => `${path}: ${part}`); });
   // Fragments that are pieces of the approved e-mail lines (template literals split around ${...}).
   const allowedPieces = ["— ", "Sifariş", ": sifariş №", "Sifariş #", "Sifarişə bax", "Sifarişlərə bax", "Sifariş tapılmadı", "Əməliyyat uğursuz oldu.", "Mağaza", "Daxil olmaq tələb olunur"];

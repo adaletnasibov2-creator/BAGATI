@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { absoluteSiteUrl } from "@/lib/category-seo";
 import { headers } from "next/headers";
 import { allowPublicSearch, limitedSearch } from "@/lib/public-search-rate-limit";
 import { RATE_LIMITED_MESSAGE } from "@/lib/rate-limit-response";
@@ -9,6 +11,12 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { normalizePublicSearchTerm, STORE_SEARCH_MAX_LENGTH } from "@/lib/search-term";
 export const dynamic = "force-dynamic";
+// SEO-TITLES-1: the page's own heading as <title> (root template adds the site name) and the clean canonical URL
+// (search, city and paging parameters point here).
+export function generateMetadata(): Metadata {
+  const canonical = absoluteSiteUrl("/stores");
+  return { title: "Mağazaları kəşf et", robots: { index: true, follow: true }, ...(canonical ? { alternates: { canonical } } : {}) };
+}
 export default async function StoresPage({ searchParams }: { searchParams: Promise<{ q?: string; city?: string; cursor?: string }> }) {
   const { q: rawQuery, city, cursor } = await searchParams;
   const search = normalizePublicSearchTerm(rawQuery, STORE_SEARCH_MAX_LENGTH);

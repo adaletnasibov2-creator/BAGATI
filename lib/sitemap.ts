@@ -31,8 +31,11 @@ export const SITEMAP_MAX_URLS = 50_000;
 export const SITEMAP_TTL_MS = 60 * 60 * 1000;
 export const SITEMAP_RETRY_AFTER_MS = 60 * 1000;
 
-/** Public pages without a database read that set their own canonical and robots index: true. */
-export const SITEMAP_STATIC_PATHS = ["/", "/about", "/contact", "/terms", "/privacy", "/seller-terms"] as const;
+/**
+ * Public pages that set their own canonical and robots index: true (no database read for the sitemap itself).
+ * SEO-TITLES-1: + the listing and info pages /stores, /deals, /new-products, /delivery-returns, /help, /categories.
+ */
+export const SITEMAP_STATIC_PATHS = ["/", "/about", "/contact", "/terms", "/privacy", "/seller-terms", "/stores", "/deals", "/new-products", "/delivery-returns", "/help", "/categories"] as const;
 
 export type SitemapEntry = { path: string; lastModified?: Date };
 

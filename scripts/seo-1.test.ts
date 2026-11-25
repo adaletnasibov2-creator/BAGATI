@@ -118,6 +118,8 @@ test("sitemap: only eligible stores and products, public non-empty categories, s
   const paths = entries.map((entry) => entry.path);
   assert.deepEqual(paths, [
     "/", "/about", "/contact", "/terms", "/privacy", "/seller-terms",
+    // SEO-TITLES-1: the listing and info pages (each now sets its own canonical and index: true).
+    "/stores", "/deals", "/new-products", "/delivery-returns", "/help", "/categories",
     "/products?category=geyim", "/products?category=koynek",
     "/stores/store-a", "/stores/store-b",
     "/products/p-active", "/products/p-out-of-stock",

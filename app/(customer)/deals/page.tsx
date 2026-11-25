@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { absoluteSiteUrl } from "@/lib/category-seo";
 import { filterEligiblePublicProducts, resolvePublicStoreEligibility } from "@/lib/store-eligibility";
 import { publicProductVisibilityWhere, publicStoreVisibilityWhere } from "@/lib/store-visibility";
 import { ProductGrid, type DisplayProduct } from "@/components/product-grid";
@@ -6,6 +8,13 @@ import { productCardScalarSelect, productCardStockSelect, productCardStoreSelect
 import { DEALS_CAMPAIGN_PRODUCT_LIMIT, dealsCampaignHref, dealsCampaignParam, groupDealsCampaignProducts } from "@/lib/deals-campaigns";
 
 export const dynamic = "force-dynamic";
+
+// SEO-TITLES-1: the page's own heading as <title> ("… | {site}" via the root template) and the clean canonical URL
+// (filters such as ?city= or ?campaign= point here). The description stays the site default.
+export function generateMetadata(): Metadata {
+  const canonical = absoluteSiteUrl("/deals");
+  return { title: "Endirimlər və kampaniyalar", robots: { index: true, follow: true }, ...(canonical ? { alternates: { canonical } } : {}) };
+}
 
 async function loadDeals(city: string | undefined, campaignId: string | null, now: Date) {
   const cityFilter = city ? { city: { isActive: true, slug: city } } : {};

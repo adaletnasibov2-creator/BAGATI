@@ -8,6 +8,7 @@ import { maintenanceStateOrigin } from "@/lib/maintenance-origin";
 import { isAdminPreview } from "@/lib/maintenance-preview";
 import { isStaticAssetPath } from "@/lib/static-asset-paths";
 import { EDGE_CACHE_HEADER, EDGE_CACHE_VALUE, shouldAddEdgeCacheHeader } from "@/lib/edge-cache";
+import { isPersonalApiPath, PERSONAL_API_CACHE_CONTROL } from "@/lib/personal-api-cache";
 
 export async function middleware(request: NextRequest) {
   const canonical = canonicalHostRedirectUrl(request.url, request.headers.get("host"));
@@ -54,6 +55,8 @@ export async function middleware(request: NextRequest) {
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("Vary", "Cookie");
   }
+  // SECURITY-AUDIT-1: personal JSON (cart, orders, account, seller panel APIs) is never stored by a shared cache.
+  if (isPersonalApiPath(pathname)) response.headers.set("Cache-Control", PERSONAL_API_CACHE_CONTROL);
   // PERF-1: guest-only Cloudflare edge cache (60 s + 60 s stale) for allow-listed public pages; the browser's
   // Cache-Control is unchanged. Never reached by the maintenance 503 (returned above). A non-200 response loses the
   // header when its status is written (lib/edge-cache-status-guard.ts). Off: PUBLIC_EDGE_CACHE=off.

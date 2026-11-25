@@ -6,7 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { requireVendorStorePage } from "@/lib/vendor-area";
 import { statusLabel } from "@/lib/order-status";
 import { getStorePublicationBlockers } from "@/lib/admin-store-product-publishing";
-import { activeComplimentaryEntitlementSelect, complimentaryFromRows } from "@/lib/subscription-entitlements";
+import { activeComplimentaryEntitlementSelect, complimentaryFromRows, getStoreEntitlements } from "@/lib/subscription-entitlements";
+import { storeConversationsBadge } from "@/lib/messaging-pages";
+import { isSellerVoenVerified } from "@/lib/voen-verification";
+import { storeHoursLine } from "@/lib/store-hours";
+import { formatOrderDateTime } from "@/lib/vendor-order-view";
+import { planLimitMeter, SELLER_PANEL_3_REUSED, SELLER_PANEL_3_TEXT } from "@/lib/seller-panel-3";
+import { Mail, MessageCircle, Wallet } from "lucide-react";
 import { getStorefrontBrandingCompatibility } from "@/lib/storefront-branding-compat";
 import { missingSellerLegalFields, sellerRequirementLabels } from "@/lib/seller-legal-policy";
 import { buildVendorStoreSetup, subscriptionStatusLabels } from "@/lib/vendor-store-setup";
@@ -31,12 +37,13 @@ export default async function VendorOverview({ params }: Props) {
   if (!access) notFound();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const [store, today, pending, returnRequests, completed, productTotal, activeProducts, recentOrders, products, stockRows, salesToday, newOrders, branding, recentNotifications] = await Promise.all([
+  const [store, today, pending, returnRequests, completed, productTotal, activeProducts, recentOrders, products, stockCounts, warnings, salesToday, newOrders, branding, recentNotifications, pendingPayment, newInquiries, conversations, entitlement] = await Promise.all([
     db.store.findUnique({ where: { id: storeId }, select: {
       name: true, slug: true, description: true, logoUrl: true, contactPhone: true, contactEmail: true, address: true, reviewNote: true,
       status: true, isActive: true, adminManaged: true, legalInfoApproved: true,
       city: { select: { name: true, isActive: true } },
-      vendor: { select: { sellerType: true, legalName: true, voen: true, legalAddress: true, user: { select: { isActive: true } } } },
+      vendor: { select: { userId: true, sellerType: true, legalName: true, voen: true, legalAddress: true, user: { select: { isActive: true } } } },
+      openingTime: true, closingTime: true,
       subscription: { select: {
         status: true, currentPeriodStart: true, currentPeriodEnd: true,
         plan: { select: { slug: true, isActive: true, name: true } },
@@ -51,11 +58,20 @@ export default async function VendorOverview({ params }: Props) {
     db.product.count({ where: { storeId, status: "ACTIVE" } }),
     db.storeOrder.findMany({ where: { storeId }, take: 5, orderBy: { createdAt: "desc" }, select: { id: true, status: true, subtotal: true, createdAt: true, order: { select: { id: true } } } }),
     db.product.findMany({ where: { storeId }, take: 6, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, price: true, status: true, images: true, updatedAt: true } }),
-    db.inventory.findMany({ where: { product: { storeId } }, include: { product: { select: { id: true, name: true, sku: true } } }, orderBy: { quantity: "asc" } }),
+    // SELLER-PANEL-3: the same two stock counts and the same (at most 6) warning rows, computed in the database instead of
+    // reading every stock row of the store.
+    db.$queryRaw`SELECT count(*) FILTER (WHERE i."quantity" - i."reserved" <= 0)::int AS "outOfStock", count(*) FILTER (WHERE i."quantity" - i."reserved" > 0 AND i."quantity" - i."reserved" <= i."lowStockThreshold")::int AS "lowStock" FROM "Inventory" i JOIN "Product" p ON p."id" = i."productId" WHERE p."storeId" = ${storeId}`,
+    db.$queryRaw`SELECT i."id", i."quantity", i."reserved", p."name" AS "productName", p."sku" AS "productSku" FROM "Inventory" i JOIN "Product" p ON p."id" = i."productId" WHERE p."storeId" = ${storeId} AND GREATEST(0, i."quantity" - i."reserved") <= i."lowStockThreshold" ORDER BY i."quantity" ASC, i."id" ASC LIMIT 6`,
     db.storeOrder.aggregate({ where: { storeId, status: "DELIVERED", OR: [{ deliveredAt: { gte: todayStart } }, { deliveredAt: null, createdAt: { gte: todayStart } }] }, _sum: { subtotal: true } }),
     db.storeOrder.count({ where: { storeId, status: { in: ["NEW", "PENDING"] } } }),
     getStorefrontBrandingCompatibility(storeId),
     db.notification.findMany({ where: vendorNotificationScope(access.user.id, access.storeId), select: { id: true, title: true, body: true, readAt: true, createdAt: true, storeId: true }, orderBy: { createdAt: "desc" }, take: 4 }),
+    // SELLER-PANEL-3: open orders whose payment is not PAID (the "awaiting payment" rule of lib/vendor-finance.ts). Shown as
+    // pending, never as income or sales.
+    db.storeOrder.aggregate({ where: { storeId, status: { notIn: ["DELIVERED", "CANCELLED", "RETURNED"] }, order: { payments: { none: { status: "PAID" } } } }, _sum: { subtotal: true, deliveryFee: true } }),
+    db.storeInquiry.count({ where: { storeId, status: "NEW" } }),
+    storeConversationsBadge(access.storeId, access.user.id),
+    getStoreEntitlements(storeId, db),
   ]);
   if (!store) notFound();
   const readinessBlockers = getStorePublicationBlockers({
@@ -87,9 +103,12 @@ export default async function VendorOverview({ params }: Props) {
     productCount: productTotal, activeProductCount: activeProducts,
   });
   const productStatusLabels: Record<string, string> = { DRAFT: "Qaralama", ACTIVE: "Aktiv", ARCHIVED: "Arxivdə" };
-  const outOfStock = stockRows.filter((item: any) => item.quantity - item.reserved <= 0).length;
-  const lowStock = stockRows.filter((item: any) => item.quantity - item.reserved > 0 && item.quantity - item.reserved <= item.lowStockThreshold).length;
-  const warnings = stockRows.filter((item: any) => Math.max(0, item.quantity - item.reserved) <= item.lowStockThreshold).slice(0, 6);
+  const outOfStock = Number(stockCounts[0]?.outOfStock ?? 0);
+  const lowStock = Number(stockCounts[0]?.lowStock ?? 0);
+  const pendingAmount = Number(pendingPayment._sum.subtotal ?? 0) + Number(pendingPayment._sum.deliveryFee ?? 0);
+  const meter = planLimitMeter({ active: activeProducts, limit: entitlement.limits?.activeProducts, plan: entitlement.plan });
+  const voenVerified = await isSellerVoenVerified(prisma, { userId: store.vendor.userId, voen: store.vendor.voen });
+  const hoursLine = storeHoursLine(store);
   const salesAmount = Number(salesToday._sum.subtotal || 0);
   // Three groups instead of ten equal cards. `attention` is set only while the number is above 0.
   const groups: { id: string; title: string; cards: StatCardData[] }[] = [
@@ -98,10 +117,14 @@ export default async function VendorOverview({ params }: Props) {
       { label: "Bu gün sifarişlər", value: today, href: "orders", Icon: ClipboardList },
       { label: "Gözləyən sifarişlər", value: pending, href: "orders", Icon: Activity },
       { label: "Yeni qaytarılma sorğuları", value: returnRequests, href: "returns", Icon: RotateCcw, attention: returnRequests > 0 ? "warning" : null },
+      // SELLER-PANEL-3: pending money is shown as pending (all orders are "Ödəniş gözləyir" until online payment is live).
+      { label: SELLER_PANEL_3_TEXT.pendingPayment, value: formatPrice(pendingAmount), href: "orders", Icon: Wallet },
+      ...(conversations === null ? [] : [{ label: SELLER_PANEL_3_REUSED.conversations, value: conversations, href: "messages", Icon: MessageCircle, attention: conversations > 0 ? "warning" as const : null }]),
+      { label: SELLER_PANEL_3_REUSED.inquiries, value: newInquiries, href: "inquiries", Icon: Mail, attention: newInquiries > 0 ? "warning" : null },
     ] },
     { id: "products", title: "Məhsullar", cards: [
       { label: "Məhsullar", value: productTotal, href: "products", Icon: Package },
-      { label: "Aktiv məhsullar", value: activeProducts, href: "products", Icon: BadgeCheck },
+      { label: "Aktiv məhsullar", value: meter ? meter.value : activeProducts, href: meter ? "subscription" : "products", Icon: BadgeCheck, attention: meter?.atLimit ? "warning" : null },
       { label: "Az stok", value: lowStock, href: "inventory", Icon: AlertTriangle, attention: lowStock > 0 ? "warning" : null },
       { label: "Stokda yoxdur", value: outOfStock, href: "inventory", Icon: ShoppingBag, attention: outOfStock > 0 ? "danger" : null },
     ] },
@@ -143,7 +166,7 @@ export default async function VendorOverview({ params }: Props) {
     <section aria-labelledby="setup-heading" className={cardClass({ padding: "md" })}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div><p className="text-kicker uppercase text-gold-700">Mağaza qurulumu</p><h2 id="setup-heading" className="mt-1 font-display text-h3 text-fg">{setup.completed === setup.total ? "Mağazanız tam hazırdır" : `${setup.completed} / ${setup.total} addım tamamlanıb`}</h2></div>
-        <div className="flex flex-wrap items-center gap-2"><Badge tone={approvalTone(setup.approval.tone)}>Status: {setup.approval.label}</Badge><Badge tone="neutral">Abunəlik: {store.subscription ? `${store.subscription.plan.name} · ${subscriptionStatusLabels[store.subscription.status] ?? "Status məlum deyil"}` : "seçilməyib"}</Badge></div>
+        <div className="flex flex-wrap items-center gap-2"><Badge tone={approvalTone(setup.approval.tone)}>Status: {setup.approval.label}</Badge><Badge tone="neutral">Abunəlik: {store.subscription ? `${store.subscription.plan.name} · ${subscriptionStatusLabels[store.subscription.status] ?? "Status məlum deyil"}` : "seçilməyib"}</Badge><Badge tone={voenVerified ? "primary" : "gold"}>{voenVerified ? SELLER_PANEL_3_REUSED.verifiedSeller : SELLER_PANEL_3_TEXT.voenUnverified}</Badge><Link href={`/vendor/${storeId}/profile`} className={`rounded-full ${focusRing}`}><Badge tone={hoursLine ? "neutral" : "gold"}>{hoursLine ?? SELLER_PANEL_3_TEXT.hoursMissing}</Badge></Link></div>
       </div>
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-sunken" role="progressbar" aria-label="Mağaza qurulumu" aria-valuemin={0} aria-valuemax={100} aria-valuenow={setup.percent}><div className="h-full rounded-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${setup.percent}%` }}/></div>
       <ol className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{setup.steps.map((step, index) => <li key={step.key} className={`flex gap-3 rounded-control border p-3 ${step.done ? "border-brand-100 bg-primary-subtle" : step.key === setup.nextStep?.key ? "border-gold-400 bg-[#faf5ec]" : "border-line"}`}>
@@ -154,14 +177,14 @@ export default async function VendorOverview({ params }: Props) {
 
     <div className="grid gap-x-5 gap-y-7 xl:grid-cols-2">{groups.map((group) => <section key={group.id} aria-labelledby={`stats-${group.id}`} className={group.cards.length < 4 ? "xl:col-span-2" : undefined}>
       <h2 id={`stats-${group.id}`} className="font-display text-h3 text-fg">{group.title}</h2>
-      <div className={`mt-3 grid gap-3 sm:grid-cols-2 ${group.cards.length < 4 ? "xl:grid-cols-4" : ""}`}>{group.cards.map((card) => <StatCard key={card.label} card={card} storeId={storeId}/>)}</div>
+      <div className={`mt-3 grid grid-cols-2 gap-3 ${group.cards.length < 4 ? "xl:grid-cols-4" : ""}`}>{group.cards.map((card) => <StatCard key={card.label} card={card} storeId={storeId}/>)}</div>
     </section>)}</div>
 
     <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
-      <section className={panel}>{panelHead("Son fəaliyyət", "Son sifarişlər", { href: `/vendor/${storeId}/orders`, label: "Hamısını" })}<div className="divide-y divide-line">{recentOrders.length ? recentOrders.map((order:any)=><Link key={order.id} href={`/vendor/${storeId}/orders/${order.id}`} className={`flex flex-wrap items-center justify-between gap-3 px-5 py-4 ${rowLink}`}><span><span className="block text-sm font-semibold text-fg">#{order.order.id.slice(-8).toUpperCase()}</span><span className="mt-1 block text-xs text-fg-muted">{new Date(order.createdAt).toLocaleString("az-AZ")}</span></span><span className="flex items-center gap-3"><Badge tone={orderStatusTone(order.status)}>{statusLabel(order.status)}</Badge><b className="text-sm text-fg">{formatPrice(order.subtotal)}</b></span></Link>) : <div className="p-7 text-center"><ClipboardList className="mx-auto text-line-strong" size={25} aria-hidden="true"/><p className="mt-2 text-sm font-medium text-fg">Hələ sifariş yoxdur</p><p className="mt-1 text-xs text-fg-muted">Yeni sifarişlər bu bölmədə görünəcək.</p></div>}</div></section>
-      <section className={panel}>{panelHead("Stok nəzarəti", "Anbar xəbərdarlıqları", { href: `/vendor/${storeId}/inventory`, label: "Anbar qalığı" })}<div className="divide-y divide-line">{warnings.length ? warnings.map((item:any)=><Link key={item.id} href={`/vendor/${storeId}/inventory`} className={`flex items-center justify-between gap-3 px-5 py-3.5 ${rowLink}`}><span className="min-w-0"><span className="block truncate text-sm font-medium text-fg">{item.product.name}</span><span className="mt-1 block truncate text-xs text-fg-muted">Məhsul kodu: {item.product.sku||"—"}</span></span><Badge tone={item.quantity-item.reserved<=0?"danger":"gold"} className="shrink-0">{Math.max(0,item.quantity-item.reserved)} ədəd</Badge></Link>) : <div className="p-7 text-center"><BadgeCheck className="mx-auto text-primary" size={25} aria-hidden="true"/><p className="mt-2 text-sm font-medium text-fg">Aşağı ehtiyatlı məhsul yoxdur</p><p className="mt-1 text-xs text-fg-muted">Stok yeniləndikcə xəbərdarlıqlar burada görünəcək.</p></div>}</div></section>
+      <section className={panel}>{panelHead("Son fəaliyyət", "Son sifarişlər", { href: `/vendor/${storeId}/orders`, label: "Hamısını" })}<div className="divide-y divide-line">{recentOrders.length ? recentOrders.map((order:any)=><Link key={order.id} href={`/vendor/${storeId}/orders/${order.id}`} className={`flex flex-wrap items-center justify-between gap-3 px-5 py-4 ${rowLink}`}><span><span className="block text-sm font-semibold text-fg">#{order.order.id.slice(-8).toUpperCase()}</span><span className="mt-1 block text-xs text-fg-muted">{formatOrderDateTime(order.createdAt)}</span></span><span className="flex items-center gap-3"><Badge tone={orderStatusTone(order.status)}>{statusLabel(order.status)}</Badge><b className="text-sm text-fg">{formatPrice(order.subtotal)}</b></span></Link>) : <div className="p-7 text-center"><ClipboardList className="mx-auto text-line-strong" size={25} aria-hidden="true"/><p className="mt-2 text-sm font-medium text-fg">Hələ sifariş yoxdur</p><p className="mt-1 text-xs text-fg-muted">Yeni sifarişlər bu bölmədə görünəcək.</p></div>}</div></section>
+      <section className={panel}>{panelHead("Stok nəzarəti", "Anbar xəbərdarlıqları", { href: `/vendor/${storeId}/inventory`, label: "Anbar qalığı" })}<div className="divide-y divide-line">{warnings.length ? warnings.map((item:any)=><Link key={item.id} href={`/vendor/${storeId}/inventory`} className={`flex items-center justify-between gap-3 px-5 py-3.5 ${rowLink}`}><span className="min-w-0"><span className="block truncate text-sm font-medium text-fg">{item.productName}</span><span className="mt-1 block truncate text-xs text-fg-muted">Məhsul kodu: {item.productSku||"—"}</span></span><Badge tone={item.quantity-item.reserved<=0?"danger":"gold"} className="shrink-0">{Math.max(0,item.quantity-item.reserved)} ədəd</Badge></Link>) : <div className="p-7 text-center"><BadgeCheck className="mx-auto text-primary" size={25} aria-hidden="true"/><p className="mt-2 text-sm font-medium text-fg">Aşağı ehtiyatlı məhsul yoxdur</p><p className="mt-1 text-xs text-fg-muted">Stok yeniləndikcə xəbərdarlıqlar burada görünəcək.</p></div>}</div></section>
     </div>
-    <section className={panel}>{panelHead("Xəbərlər", "Son bildirişlər", { href: `/vendor/${storeId}/notifications`, label: "Hamısı" })}{recentNotifications.length ? <ul className="divide-y divide-line">{recentNotifications.map((item: any) => { const href = vendorNotificationHref(storeId, item.title, item.storeId === storeId); const body = <><span className="flex items-center gap-2 text-sm font-medium text-fg">{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-gold-400" aria-label="Oxunmayıb"/>}{item.title}</span><span className="mt-0.5 block truncate text-xs text-fg-muted">{item.body}</span><span className="mt-0.5 block text-[11px] text-fg-muted">{new Date(item.createdAt).toLocaleString("az-AZ")}</span></>; return <li key={item.id}>{href ? <Link href={href} className={`block px-5 py-3 ${rowLink}`}>{body}</Link> : <div className="px-5 py-3">{body}</div>}</li>; })}</ul> : <div className="p-6 text-center"><Bell className="mx-auto text-line-strong" size={22} aria-hidden="true"/><p className="mt-2 text-sm text-fg-muted">Hələ bildiriş yoxdur.</p></div>}</section>
+    <section className={panel}>{panelHead("Xəbərlər", "Son bildirişlər", { href: `/vendor/${storeId}/notifications`, label: "Hamısı" })}{recentNotifications.length ? <ul className="divide-y divide-line">{recentNotifications.map((item: any) => { const href = vendorNotificationHref(storeId, item.title, item.storeId === storeId); const body = <><span className="flex items-center gap-2 text-sm font-medium text-fg">{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-gold-400" aria-label="Oxunmayıb"/>}{item.title}</span><span className="mt-0.5 block truncate text-xs text-fg-muted">{item.body}</span><span className="mt-0.5 block text-[11px] text-fg-muted">{formatOrderDateTime(item.createdAt)}</span></>; return <li key={item.id}>{href ? <Link href={href} className={`block px-5 py-3 ${rowLink}`}>{body}</Link> : <div className="px-5 py-3">{body}</div>}</li>; })}</ul> : <div className="p-6 text-center"><Bell className="mx-auto text-line-strong" size={22} aria-hidden="true"/><p className="mt-2 text-sm text-fg-muted">Hələ bildiriş yoxdur.</p></div>}</section>
     <section className={panel}>{panelHead("Kataloq", "Son məhsullar", { href: `/vendor/${storeId}/products`, label: "Kataloqa bax" })}{products.length ? <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">{products.map((product:any)=><Link key={product.id} href={`/vendor/${storeId}/products/${product.id}`} className={`group flex min-w-0 items-center gap-3 rounded-control border border-transparent bg-surface-page p-3 transition-colors hover:border-brand-200 hover:bg-white ${focusRing}`}><div className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-control bg-white text-center text-[9px] text-fg-muted">{product.images?.[0]?<Image src={product.images[0]} alt="" fill sizes="56px" unoptimized={/^https?:\/\//i.test(product.images[0])} className="object-cover"/>:"Şəkil yoxdur"}</div><span className="min-w-0"><span className="block truncate text-sm font-medium text-fg group-hover:text-primary">{product.name}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-fg-muted">{formatPrice(product.price)} <Badge tone={productStatusTone(product.status)}>{productStatusLabels[product.status] ?? "Status məlum deyil"}</Badge></span></span></Link>)}</div> : <EmptyState className="rounded-none border-0" titleAs="h3" icon={<Package size={24}/>} title="Məhsul yoxdur" description="Kataloqunuzu ilk məhsulla yaradın." action={<ButtonLink href={`/vendor/${storeId}/products/new`} size="sm"><Plus size={15} aria-hidden="true"/> Məhsul əlavə et</ButtonLink>}/>}</section>
   </div>;
 }

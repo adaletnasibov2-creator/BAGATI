@@ -115,13 +115,18 @@ export function exceedsVariantLimit(currentStoreActive: number, currentProductAc
   return exceedsEntitlementLimit(currentStoreActive - currentProductActive, incomingProductActive, limit);
 }
 
+/** The existing active-product limit sentence (also shown by the seller's plan meter, SELLER-PANEL-3). */
+export function productLimitReachedMessage(plan: EntitlementPlan | null | undefined): string {
+  return plan === "PRO" ? "PRO paketində maksimum 2 000 aktiv məhsul yerləşdirə bilərsiniz." : "BASIC paketində maksimum 300 aktiv məhsul yerləşdirə bilərsiniz. Daha çox məhsul üçün PRO paketinə keçin.";
+}
+
 export function entitlementErrorResponse(error: EntitlementError) {
   const messages: Record<string, string> = {
     SUBSCRIPTION_REQUIRED: "Bu əməliyyat üçün aktiv mağaza və abunəlik tələb olunur.",
     BULK_IMPORT_PRO_ONLY: "Toplu məhsul idxalı yalnız PRO paketində mövcuddur.",
     ADVANCED_ANALYTICS_PRO_ONLY: "Ətraflı analitika yalnız PRO paketində mövcuddur.",
     REPORT_EXPORT_PRO_ONLY: "Hesabat ixracı yalnız PRO paketində mövcuddur.",
-    PRODUCT_LIMIT_REACHED: error.plan === "PRO" ? "PRO paketində maksimum 2 000 aktiv məhsul yerləşdirə bilərsiniz." : "BASIC paketində maksimum 300 aktiv məhsul yerləşdirə bilərsiniz. Daha çox məhsul üçün PRO paketinə keçin.",
+    PRODUCT_LIMIT_REACHED: productLimitReachedMessage(error.plan),
     VARIANT_LIMIT_REACHED: error.plan === "PRO" ? "PRO paketində maksimum 10 000 aktiv variant mümkündür." : "BASIC paketində maksimum 1 000 aktiv variant mümkündür. Daha çox variant üçün PRO paketinə keçin.",
   };
   const status = error.code === "SUBSCRIPTION_REQUIRED" ? 409 : 403;

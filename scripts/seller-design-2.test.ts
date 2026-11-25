@@ -60,7 +60,8 @@ test("VendorStickyActions: sticks to the bottom in normal flow, full main width,
 
 test("Məhsul əlavə et: five sections and a sticky bar with Qaralama saxla and Yayımla (same submit intents)", () => {
   const form = read("components/vendor-product-create-form.tsx");
-  assert.deepEqual(sectionTitles(form), ["Ümumi məlumat", "Qiymətləndirmə", "Anbar", "Şəkillər"]);
+  // SELLER-PANEL-3: photos come first (mobile-first order); the same four sections.
+  assert.deepEqual(sectionTitles(form), ["Şəkillər", "Ümumi məlumat", "Qiymətləndirmə", "Anbar"]);
   assert.match(read("components/vendor-variant-editor.tsx"), /<VendorFormSection title="Məhsul seçimləri"/);
   const bar = form.slice(form.indexOf("<VendorStickyActions"), form.indexOf("</VendorStickyActions>"));
   assert.match(bar, /<button type="submit" name="intent" value="draft" disabled=\{busy\} onClick=\{\(\) => setPublish\(false\)\}[^>]*>\{busy && !publish \? "Saxlanılır…" : "Qaralama saxla"\}<\/button>/);
@@ -69,12 +70,14 @@ test("Məhsul əlavə et: five sections and a sticky bar with Qaralama saxla and
   assert.match(form, /const shouldPublish = submitter\?\.value === "publish";/);
   assert.match(form, /status: shouldPublish \? "ACTIVE" : "DRAFT",/);
   assert.match(form, /fetch\(`\/api\/vendor\/\$\{storeId\}\/products`, \{ method: "POST"/);
-  assert.match(form, /<CategoryPicker categories=\{categories\} name appearance="vendor"/);
+  // SELLER-PANEL-3: the picker can start from a duplicated product's category.
+  assert.match(form, /<CategoryPicker categories=\{categories\} initialId=\{prefill\?\.categoryId \?\? null\} name appearance="vendor"/);
 });
 
 test("Məhsulu redaktə et: the same sections; sticky bar keeps its own save and archive buttons", () => {
   const editor = read("components/vendor-product-editor.tsx");
-  assert.deepEqual(sectionTitles(editor), ["Ümumi məlumat", "Qiymətləndirmə", "Anbar", "Şəkillər"]);
+  // SELLER-PANEL-3: photos come first (mobile-first order); the same four sections.
+  assert.deepEqual(sectionTitles(editor), ["Şəkillər", "Ümumi məlumat", "Qiymətləndirmə", "Anbar"]);
   const bar = editor.slice(editor.indexOf("<VendorStickyActions"), editor.indexOf("</VendorStickyActions>"));
   assert.match(bar, /\{busy\?"Yadda saxlanılır…":"Dəyişiklikləri yadda saxla"\}/);
   assert.match(bar, /onClick=\{\(\)=>void archive\(\)\}[^>]*>Məhsulu arxivlə<\/button>/);
@@ -86,7 +89,8 @@ test("Məhsulu redaktə et: the same sections; sticky bar keeps its own save and
 test("inline errors: the existing stock and variant messages show next to their block; texts unchanged", () => {
   for (const path of ["components/vendor-product-create-form.tsx", "components/vendor-product-editor.tsx"]) {
     const source = read(path);
-    assert.match(source, /type ErrorField = "stock" \| "variants" \| null;/, path);
+    // SELLER-PANEL-3: the field list moved to lib/seller-panel-3.ts and gained name/price/category/sku/brand.
+    assert.match(source, /type ErrorField = ErrorFieldKey \| null;/, path);
     assert.match(source, /inlineError\("stock"\)/, path);
     assert.match(source, /error=\{inlineError\("variants"\)\}/, path);
     // One announcement: the copy in the sticky bar is hidden from screen readers when the inline one is shown.

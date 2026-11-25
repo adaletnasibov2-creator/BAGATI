@@ -150,10 +150,12 @@ test("Məhsullarım: the header is no longer split across a flex row; the add bu
 
 test("dashboard: same queries as before (latest 5 orders reused), three groups, quick actions, setup block kept", () => {
   const page = read("app/vendor/[storeId]/page.tsx");
-  // The Promise.all list is unchanged: no new query was added for the redesign.
-  assert.match(page, /const \[store, today, pending, returnRequests, completed, productTotal, activeProducts, recentOrders, products, stockRows, salesToday, newOrders, branding, recentNotifications\] = await Promise\.all\(\[/);
+  // SELLER-PANEL-3 (owner-approved): the unbounded stock read became two bounded SQL reads, and the pending-payment sum,
+  // new inquiries, conversations badge and plan limits were added. Still read-only.
+  assert.match(page, /const \[store, today, pending, returnRequests, completed, productTotal, activeProducts, recentOrders, products, stockCounts, warnings, salesToday, newOrders, branding, recentNotifications, pendingPayment, newInquiries, conversations, entitlement\] = await Promise\.all\(\[/);
   assert.match(page, /db\.storeOrder\.findMany\(\{ where: \{ storeId \}, take: 5, orderBy: \{ createdAt: "desc" \}/);
-  assert.equal(page.match(/\bdb\.\w+\.(findMany|findUnique|count|aggregate|findFirst)\(/g)?.length, 13, "13 reads, as on main");
+  assert.equal(page.match(/\bdb\.\w+\.(findMany|findUnique|count|aggregate|findFirst)\(/g)?.length, 14, "14 Prisma reads (+ 2 bounded SQL stock reads)");
+  assert.doesNotMatch(page, /db\.inventory\.findMany\(/, "no unbounded stock read");
   assert.doesNotMatch(page, /\b(create|update|upsert|delete)(Many)?\(/, "read-only page");
   for (const title of ["Sifarişlər", "Məhsullar", "Satış"]) assert.match(page, new RegExp(`title: "${title}", cards: \\[`));
   assert.match(page, /Tez əməliyyatlar/);
@@ -178,7 +180,8 @@ test("dashboard: the warning style is set only when the number is above 0", () =
   assert.match(page, /value: returnRequests, href: "returns", Icon: RotateCcw, attention: returnRequests > 0 \? "warning" : null/);
   assert.match(page, /value: lowStock, href: "inventory", Icon: AlertTriangle, attention: lowStock > 0 \? "warning" : null/);
   assert.match(page, /value: outOfStock, href: "inventory", Icon: ShoppingBag, attention: outOfStock > 0 \? "danger" : null/);
-  assert.equal(page.match(/attention: /g)?.length, 4, "only the four attention numbers");
+  // SELLER-PANEL-3: + conversations, inquiries and the plan limit (each only above 0 / at the limit).
+  assert.equal(page.match(/attention: /g)?.length, 7, "the four attention numbers + conversations, inquiries, plan limit");
   assert.match(page, /data-attention=\{attention \?\? undefined\}/);
 });
 

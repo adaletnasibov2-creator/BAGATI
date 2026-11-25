@@ -123,7 +123,7 @@ test("POST /api/orders refuses a missing/invalid phone before the cart and stock
 
 test("POST /api/orders saves the phone to the profile only after the commit, best-effort", () => {
   const route = read("app/api/orders/route.ts");
-  const commitEnd = route.indexOf("},{isolationLevel:Prisma.TransactionIsolationLevel.Serializable");
+  const commitEnd = route.indexOf("},{isolationLevel:Prisma.TransactionIsolationLevel.ReadCommitted"); // CHECKOUT-CONCURRENCY-1
   const remember = route.indexOf("await rememberOrderPhone(prisma,user.id,orderPhone)");
   const respond = route.indexOf("return NextResponse.json(orderCreateResponse(");
   assert.ok(commitEnd > 0 && remember > commitEnd && remember < respond);

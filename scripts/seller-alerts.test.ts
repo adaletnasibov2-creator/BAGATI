@@ -118,7 +118,7 @@ test("order route: the seller email is queued after the commit, not awaited, out
   const route = read("app/api/orders/route.ts");
   const tx = route.slice(route.indexOf("const order=await withOrderSerializationRetry"), route.indexOf("return NextResponse.json(orderCreateResponse(order as SellerOrderEmailOrder),{status:201});"));
   assert.doesNotMatch(tx.slice(0, tx.indexOf("},{isolationLevel:")), /SELLER_NEW_ORDER|queueSellerNewOrderEmails/, "nothing inside the transaction");
-  assert.match(route, /\},\{isolationLevel:Prisma\.TransactionIsolationLevel\.Serializable,maxWait:10000,timeout:20000\}\)\);\n[\s\S]*void queueSellerNewOrderEmails\(prisma,order as SellerOrderEmailOrder\)\.catch\(\(\)=>undefined\);\n[\s\S]*?return NextResponse\.json\(orderCreateResponse\(order as SellerOrderEmailOrder\),\{status:201\}\);/);
+  assert.match(route, /\},\{isolationLevel:Prisma\.TransactionIsolationLevel\.ReadCommitted,maxWait:10000,timeout:20000\}\)\);\n[\s\S]*void queueSellerNewOrderEmails\(prisma,order as SellerOrderEmailOrder\)\.catch\(\(\)=>undefined\);\n[\s\S]*?return NextResponse\.json\(orderCreateResponse\(order as SellerOrderEmailOrder\),\{status:201\}\);/);
   // Customer email and the in-app seller notification stay in the transaction as before.
   assert.match(tx, /template:"CUSTOMER_ORDER_CONFIRMED"/);
   assert.match(tx, /title:VENDOR_NOTIFICATION_TITLES\.newOrder/);

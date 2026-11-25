@@ -65,6 +65,11 @@ export async function POST(request:NextRequest) {
  try {
   // A serialization conflict (P2034, or P2010 with SQLSTATE 40001) retries the whole transaction up to 2 times with a short random wait;
   // nothing else is retried and the transaction itself is unchanged (lib/order-transaction-retry.ts, SCALE-FIX-1 A7).
+  // CHECKOUT-CONCURRENCY-1: ReadCommitted (was Serializable). Serializable tracked reads per index PAGE, so simultaneous orders
+  // from one store cancelled each other without touching the same data. Correctness comes from the explicit locks below:
+  // the Cart row FOR UPDATE BEFORE the cart is read (a double submit waits, then reads the emptied cart -> CART_EMPTY), the
+  // Inventory rows FOR UPDATE in sorted id order + a fresh re-read + the conditional decrement (no oversell, no deadlock),
+  // the expectedPrices check, and one transaction for everything (all or nothing).
   const order=await withOrderSerializationRetry(()=>db.$transaction(async(transaction:any)=>{
    const tx:any=transaction;
    const activeCustomer=await tx.user.findFirst({where:{id:user.id,role:"CUSTOMER",isActive:true},select:{id:true}});if(!activeCustomer)throw new Error("SESSION_EXPIRED");
@@ -115,8 +120,8 @@ export async function POST(request:NextRequest) {
     if(sellerUserId)await tx.notification.create({data:{userId:sellerUserId,storeId:storeOrder.storeId,title:VENDOR_NOTIFICATION_TITLES.newOrder,body:`Sifariş #${created.id.slice(-8).toUpperCase()} · ${storeOrder.items.length} məhsul · ${(Number(storeOrder.subtotal)+Number(storeOrder.deliveryFee)).toFixed(2)} AZN. Sifarişi təsdiqləyin və ya rədd edin.`}});
    }
    for(const alert of stockAlerts)await tx.notification.create({data:alert});
-   if(cart)await tx.cartItem.deleteMany({where:{cartId:cart.id}});return created;
-  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,maxWait:10000,timeout:20000}));
+   if(cart)await tx.cartItem.deleteMany({where:{cartId:cart.id,id:{in:items.map((item)=>item.id)}}});return created; // only the lines this order read (ReadCommitted: a line added meanwhile stays)
+  },{isolationLevel:Prisma.TransactionIsolationLevel.ReadCommitted,maxWait:10000,timeout:20000}));
   // SELLER_NEW_ORDER emails (SELLER-ALERTS): queued AFTER the commit and not awaited, so queuing can never fail, roll
   // back or slow the order. Best effort, one row per StoreOrder per recipient (lib/seller-order-emails.ts).
   void queueSellerNewOrderEmails(prisma,order as SellerOrderEmailOrder).catch(()=>undefined);

@@ -78,9 +78,9 @@ test("remaining amount = threshold − subtotal from the same result the totals 
   }
 });
 
-test("cart shows the line only from the helper, in the existing '{amount} AZN' format; pulsuz count pinned", () => {
+test("cart shows the line only from the helper, in the site's '{amount} ₼' format (PRICE-SYMBOL-1); pulsuz count pinned", () => {
   const cart = read("components/cart-page-client.tsx");
-  assert.match(cart, /\{remainingForFreeDeliveryCents\(group\.delivery\) !== null && <p data-cart-free-delivery-remaining=""[^>]*>Pulsuz çatdırılmaya \{centsToFixed\(remainingForFreeDeliveryCents\(group\.delivery\)!\)\} AZN qaldı<\/p>\}/);
+  assert.match(cart, /\{remainingForFreeDeliveryCents\(group\.delivery\) !== null && <p data-cart-free-delivery-remaining=""[^>]*>Pulsuz çatdırılmaya \{centsToFixed\(remainingForFreeDeliveryCents\(group\.delivery\)!\)\} ₼ qaldı<\/p>\}/); // PRICE-SYMBOL-1: unit is ₼ (was AZN)
   assert.equal((cart.match(/pulsuz/gi) ?? []).length, 3, "PULSUZ, the threshold sentence and the remaining line; nothing else");
 });
 

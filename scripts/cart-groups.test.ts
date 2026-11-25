@@ -41,7 +41,7 @@ test("checkout page and order creation use the same price and delivery helpers, 
   assert.match(page, /storeTotal:group\.subtotal\.add\(delivery\.deliveryFee\)\.toNumber\(\)/);
   assert.match(route, /return \{storeId,subtotal:storeSubtotal,deliveryFee:delivery\.deliveryFee,storeTotal:storeSubtotal\.add\(delivery\.deliveryFee\),lines\};/);
   const form = read("components/checkout-form.tsx");
-  assert.match(form, /Mağaza cəmi: \{store\.storeTotal\.toFixed\(2\)\} AZN/);
+  assert.match(form, /Mağaza cəmi: \{formatPrice\(store\.storeTotal\)\}/); // PRICE-SYMBOL-1: "42.90 ₼" via lib/price.ts (was "… AZN")
   assert.match(form, /<CartSummary subtotal=\{subtotal\.toFixed\(2\)\} deliveryFee=\{deliveryTotal\.toFixed\(2\)\} total=\{total\.toFixed\(2\)\} totalLabel="Sifarişin cəmi"\/>/);
 });
 

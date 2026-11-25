@@ -20,13 +20,13 @@ import { orderStatusTone, paymentStatusTone } from "@/lib/vendor-status-tone";
 import { VendorOrderPrintButton } from "@/components/vendor-order-print-button";
 import { customerInitials, formatOrderDateTime, itemThumbnail, orderNumber, orderTimeline, SELLER_CUSTOMER_CARD_TEXT, SELLER_ORDERS_DESIGN_2_TEXT, SELLER_ORDERS_TEXT, storeOrderTotal } from "@/lib/vendor-order-view";
 import { buildOnTheWayWhatsAppUrl } from "@/lib/seller-on-the-way";
+import { formatPrice } from "@/lib/price";
 
 export const dynamic = "force-dynamic";
 const db: any = prisma;
 const panel = "min-w-0 rounded-card border border-line bg-white p-5 sm:p-6";
 const panelTitle = "font-display text-h3 text-fg";
 const term = "text-xs font-medium text-fg-muted";
-const money = (value: unknown) => Number(value).toFixed(2);
 const textValue = (value: unknown) => typeof value === "string" ? value : "";
 type OrderItemRow = { id: string; productName: string; variantName?: string | null; variantOptions?: unknown; sku?: string | null; quantity: number; unitPrice: unknown; lineTotal: unknown; variant?: { name: string; options: unknown } | null; product?: { images?: string[] | null } | null };
 function optionText(options: unknown) {
@@ -132,14 +132,14 @@ export default async function VendorOrderDetail({ params }: { params: Promise<{ 
                 <div className="row-span-2 grid aspect-square w-16 place-items-center overflow-hidden rounded-control border border-line bg-surface-page sm:row-span-1">{image ? <>
                   {/* eslint-disable-next-line @next/next/no-img-element -- a 64 px thumbnail; next/image would add ~6 kB of client JS to this page */}
                   <img src={image} alt={item.productName} width={64} height={64} loading="lazy" className="h-full w-full object-cover"/></> : <ImageOff aria-hidden="true" size={20} strokeWidth={2} className="text-fg-muted"/>}</div>
-                <div className="min-w-0"><h3 className="break-words font-medium text-fg">{item.productName}</h3><p className="mt-1 break-words text-xs text-fg-muted">{variantLine(item)}</p><p className="mt-1 text-xs tabular-nums text-fg-secondary">{money(item.unitPrice)} ₼ × {item.quantity}</p></div>
-                <b className="col-start-2 text-sm tabular-nums text-fg sm:col-start-auto sm:text-right">{money(item.lineTotal)} ₼</b>
+                <div className="min-w-0"><h3 className="break-words font-medium text-fg">{item.productName}</h3><p className="mt-1 break-words text-xs text-fg-muted">{variantLine(item)}</p><p className="mt-1 text-xs tabular-nums text-fg-secondary">{formatPrice(item.unitPrice)} × {item.quantity}</p></div>
+                <b className="col-start-2 text-sm tabular-nums text-fg sm:col-start-auto sm:text-right">{formatPrice(item.lineTotal)}</b>
               </li>;
             })}</ul>
             <dl className="mt-4 space-y-2 rounded-control bg-surface-page p-4 text-sm">
-              <div className="flex justify-between gap-3"><dt className="text-fg-secondary">Məhsulların cəmi</dt><dd className="tabular-nums">{money(order.subtotal)} AZN</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-fg-secondary">Çatdırılma haqqı</dt><dd className="tabular-nums">{money(order.deliveryFee ?? 0)} AZN</dd></div>
-              <div className="flex justify-between gap-3 border-t border-line pt-2 text-base font-semibold text-fg"><dt>Mağaza sifarişinin cəmi</dt><dd className="tabular-nums">{storeOrderTotal(order).toFixed(2)} AZN</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-fg-secondary">Məhsulların cəmi</dt><dd className="tabular-nums">{formatPrice(order.subtotal)}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-fg-secondary">Çatdırılma haqqı</dt><dd className="tabular-nums">{formatPrice(order.deliveryFee ?? 0)}</dd></div>
+              <div className="flex justify-between gap-3 border-t border-line pt-2 text-base font-semibold text-fg"><dt>Mağaza sifarişinin cəmi</dt><dd className="tabular-nums">{formatPrice(storeOrderTotal(order))}</dd></div>
             </dl>
           </section>
 

@@ -134,14 +134,14 @@ test("cart page: per-store delivery block with the checkout's texts; summary Ara
   const cart = read("components/cart-page-client.tsx");
   assert.match(cart, /delivery: storeDeliveryCents\(group\.items\.reduce\(\(sum, item\) => sum \+ lineTotalCents\(item\.effectivePrice, item\.quantity\), 0\), \{ deliveryFee: group\.store\.deliveryFee, freeDeliveryThreshold: group\.store\.freeDeliveryThreshold \}\)/);
   assert.match(cart, /<span>Çatdırılma<\/span><b className="text-fg">\{group\.delivery\.freeDelivery \? "PULSUZ" : money\(group\.delivery\.deliveryFeeCents \/ 100\)\}<\/b>/);
-  assert.match(cart, /\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur\./);
+  assert.match(cart, /\{centsToFixed\(group\.delivery\.freeDeliveryThresholdCents\)\} ₼ və yuxarı sifarişlərdə çatdırılma pulsuzdur\./); // PRICE-SYMBOL-1: unit is ₼ (was AZN)
   assert.match(cart, /<span>Mağaza cəmi:<\/span><span>\{money\(group\.delivery\.storeTotalCents \/ 100\)\}<\/span>/);
   assert.match(cart, /<dt>Ara cəm<\/dt>[\s\S]*<dt>Çatdırılma<\/dt>[\s\S]*<dt>Cəmi<\/dt><dd>\{money\(totalCents \/ 100\)\}<\/dd>/);
   assert.match(cart, /const totalCents = subtotalCents \+ deliveryCents;/);
   assert.doesNotMatch(cart, /Çatdırılma xərci ünvan və sifariş təsdiqi mərhələsində dəqiqləşdiriləcək/);
   // The same texts already exist on the checkout (no new text besides "Stokda yoxdur").
   const form = read("components/checkout-form.tsx");
-  for (const text of ['"PULSUZ"', "AZN və yuxarı sifarişlərdə çatdırılma pulsuzdur.", "Mağaza cəmi:", "Çatdırılma"]) assert.ok(form.includes(text), text);
+  for (const text of ['"PULSUZ"', "₼ və yuxarı sifarişlərdə çatdırılma pulsuzdur.", "Mağaza cəmi:", "Çatdırılma"]) assert.ok(form.includes(text), text);
   assert.match(read("components/cart-summary.tsx"), /<dt>Ara cəm<\/dt>[\s\S]*<dt>Çatdırılma<\/dt>/);
   // Ordering stays blocked by unavailable items.
   assert.match(cart, /const canCheckout = \(cart\?\.items \?\? \[\]\)\.every\(item => item\.purchasable && item\.available >= item\.quantity\);/);

@@ -338,7 +338,7 @@ test("messages: customer email gets the reason line only for an expiry; seller n
 
 test("scope: the expiry reuses the cancel path; order creation and payment code are untouched by it", () => {
   const expiry = read("lib/order-expiry.ts");
-  assert.match(expiry, /await cancelStoreOrderLocked\(tx, \{ id: storeOrder\.id, storeId: storeOrder\.storeId, actorUserId: order\.userId \}\);/);
+  assert.match(expiry, /await cancelStoreOrderLocked\(tx, \{ id: storeOrder\.id, storeId: storeOrder\.storeId, actorUserId: order\.userId, source: "UNPAID_EXPIRY" \}\);/); // ORDER-NOTIFY-1: callers name the source (no progress e-mail for the expiry)
   assert.match(expiry, /FOR UPDATE SKIP LOCKED/);
   assert.doesNotMatch(expiry, /inventory\.(update|updateMany)|quantity: \{ increment/, "no stock code of its own");
   const runtime = read("lib/order-expiry-runtime.ts");

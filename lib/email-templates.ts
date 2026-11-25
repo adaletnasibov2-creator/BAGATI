@@ -1,4 +1,5 @@
 import type { SendMailOptions } from "nodemailer";
+import { ORDER_NOTIFY_TEXT as NOTIFY } from "@/lib/order-notify-text";
 
 export const EMAIL_TEMPLATES = [
   "EMAIL_VERIFICATION",
@@ -25,6 +26,8 @@ export const EMAIL_TEMPLATES = [
   "MESSAGE_TO_STORE",
   "MESSAGE_TO_CUSTOMER",
   "STORE_NOTIFICATION_EMAIL_VERIFY",
+  "CUSTOMER_ORDER_PROGRESS",
+  "SELLER_CUSTOMER_CONFIRMED",
 ] as const;
 export type EmailTemplate = (typeof EMAIL_TEMPLATES)[number];
 export type EmailPayload = Record<string, string | number | boolean | null>;
@@ -144,6 +147,27 @@ export function buildTransactionalEmail(template: EmailTemplate, payload: EmailP
       ];
       const panelUrl = safeLink(value(payload, "panelUrl"));
       if (panelUrl) actionLink = { url: panelUrl, label: "Sifarişlərə bax" };
+      break;
+    }
+    // ORDER-NOTIFY-1: one store order's progress for the customer. Store name, order number and a link to the order
+    // page only: never payment, prices or delivery times.
+    case "CUSTOMER_ORDER_PROGRESS": {
+      const event = value(payload, "event");
+      const head = `Sifariş ${value(payload, "orderRef")} — ${value(payload, "storeName", "Mağaza")}.`;
+      if (event === "ON_THE_WAY") { subject = NOTIFY.onTheWaySubject; lines = [head, NOTIFY.onTheWayLine, NOTIFY.onTheWayReceiptHint]; }
+      else if (event === "DELIVERED") { subject = NOTIFY.deliveredSubject; lines = [head, NOTIFY.deliveredLine, NOTIFY.deliveredReceiptHint]; }
+      else if (event === "CANCELLED") { subject = NOTIFY.cancelledSubject; lines = [head, NOTIFY.cancelledLine]; }
+      else { subject = NOTIFY.confirmedSubject; lines = [head, NOTIFY.confirmedLine]; }
+      const orderUrl = safeLink(value(payload, "orderUrl"));
+      if (orderUrl) actionLink = { url: orderUrl, label: NOTIFY.orderLink };
+      break;
+    }
+    // ORDER-NOTIFY-1: the customer confirmed receiving the store order. Seller-side facts only, no customer data.
+    case "SELLER_CUSTOMER_CONFIRMED": {
+      subject = NOTIFY.sellerConfirmed;
+      lines = [`${value(payload, "storeName", "Mağaza")}: sifariş №${value(payload, "orderRef")}.`, NOTIFY.sellerEmailLine, NOTIFY.sellerEmailStatusNote];
+      const panelUrl = safeLink(value(payload, "panelUrl"));
+      if (panelUrl) actionLink = { url: panelUrl, label: NOTIFY.sellerLink };
       break;
     }
     case "STORE_NOTIFICATION_EMAIL_VERIFY": {

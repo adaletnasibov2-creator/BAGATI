@@ -83,6 +83,7 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
   SHIPMENT_STATUS_UPDATE: "Çatdırılma statusu dəyişdi",
   ORDER_CANCELLATION_REQUESTED: "Müştəri sifarişin ləğvini istədi",
   ORDER_CANCELLATION_WITHDRAWN: "Ləğv müraciəti geri götürüldü",
+  ORDER_RECEIPT_CONFIRMED: "Alıcı təhvil aldığını təsdiqlədi", // ORDER-NOTIFY-1 (owner's wording)
   ORDER_CANCELLED_BY_CUSTOMER: "Müştəri sifarişi ləğv etdi",
   ORDER_EXPIRED_UNPAID: "Ödənilməmiş sifariş avtomatik ləğv edildi",
   PAYMENT_PAID_AFTER_CANCELLATION: "Ləğvdən sonra ödəniş daxil oldu (əl ilə qaytarılmalıdır)",

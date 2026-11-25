@@ -16,6 +16,8 @@ export const VENDOR_NOTIFICATION_TITLES = {
   orderExpiredUnpaid: "Sifariş ödənilmədiyi üçün ləğv edildi",
   cancellationRequest: "Yeni ləğv müraciəti",
   cancellationRequestWithdrawn: "Ləğv müraciəti geri götürüldü",
+  // ORDER-NOTIFY-1: the customer pressed "Təhvil aldım" (owner's wording; also used by lib/order-notify-text.ts).
+  customerConfirmedReceipt: "Alıcı təhvil aldığını təsdiqlədi",
 } as const;
 
 /** Seller notification for an administrator's store review decision (audit action from lib/store-review). */
@@ -52,6 +54,7 @@ const routes: [title: string, section: string][] = [
   [VENDOR_NOTIFICATION_TITLES.orderExpiredUnpaid, "orders"],
   [VENDOR_NOTIFICATION_TITLES.cancellationRequest, "orders"],
   [VENDOR_NOTIFICATION_TITLES.cancellationRequestWithdrawn, "orders"],
+  [VENDOR_NOTIFICATION_TITLES.customerConfirmedReceipt, "orders"],
 ];
 
 /** Seller page for a notification, or null when the title is not a known seller event. */

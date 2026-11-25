@@ -16,6 +16,8 @@ import { formatMoney } from "../lib/format-money";
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "c727d9d";
+const TASK = "184db55"; // PRICE-SYMBOL-1 commit: the checks below compare main with this task's own commit
+const taskFile = (path: string) => { try { return execFileSync("git", ["show", `${TASK}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n"); } catch { return ""; } };
 const baseFile = (path: string) => { try { return execFileSync("git", ["show", `${BASE}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n"); } catch { return ""; } };
 const LEGAL = ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"];
 const CHANGED = ["app/(customer)/orders/[orderId]/page.tsx", "app/vendor/[storeId]/orders/[storeOrderId]/page.tsx", "app/vendor/[storeId]/page.tsx", "components/cart-page-client.tsx", "components/checkout-form.tsx", "components/product-card.tsx", "components/vendor-campaign-manager.tsx", "components/vendor-store-profile-editor.tsx", "lib/vendor-sales-analytics.ts", "lib/price.ts"];
@@ -130,9 +132,10 @@ test("seller input labels: (AZN) -> (₼) only where the product forms already s
 
 test("'AZN' kept where it is a code: e-mails, Epoint, JSON-LD, API order payment, CSV, import template, admin format", () => {
   for (const path of ["lib/email-templates.ts", "lib/payments/epoint-protocol.ts", "lib/payments/epoint-checkout.ts", "lib/structured-data.ts", "app/api/orders/route.ts", "lib/vendor-finance.ts", "lib/catalog-import-template.ts", "components/vendor-import.tsx", "lib/format-money.ts", "lib/delivery-cents.ts"]) {
-    assert.equal(read(path), baseFile(path), `${path} unchanged`);
+    assert.equal(taskFile(path), baseFile(path), `${path} unchanged by PRICE-SYMBOL-1`);
   }
   assert.match(read("lib/structured-data.ts"), /priceCurrency: "AZN"/);
+  assert.match(read("lib/email-templates.ts"), /`\$\{amount\.toFixed\(2\)\} AZN`/, "e-mails still say AZN");
   assert.equal(formatMoney(12.5), "12,50 AZN", "admin format unchanged");
 });
 
@@ -149,9 +152,9 @@ test("texts: no new words; only the unit AZN -> ₼ swapped inside existing labe
   assert.deepEqual(added, []);
 });
 
-test("admin and legal pages untouched since main; no migration", () => {
-  const diff = execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "components/admin-ui", "prisma", ...LEGAL], { cwd: root, encoding: "utf8" }).trim();
+test("admin and legal pages untouched by PRICE-SYMBOL-1 (main -> 184db55); no migration in that task", () => {
+  const diff = execFileSync("git", ["diff", "--name-only", BASE, TASK, "--", "app/admin", "components/admin-ui", "prisma", ...LEGAL], { cwd: root, encoding: "utf8" }).trim();
   assert.equal(diff, "");
   const admin = readdirSync(join(root, "components")).filter((name) => name.startsWith("admin")).map((name) => `components/${name}`);
-  for (const path of admin) if (statSync(join(root, path)).isFile()) assert.equal(read(path), baseFile(path), path);
+  for (const path of admin) if (statSync(join(root, path)).isFile()) assert.equal(taskFile(path), baseFile(path), path);
 });

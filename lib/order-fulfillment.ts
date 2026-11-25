@@ -1,5 +1,6 @@
 import { aggregateParentOrderStatus, allowedVendorOrderTransitions, VENDOR_ORDER_STATUSES } from "@/lib/order-status";
 import { approveOpenRequestsOnStoreCancel, hasOpenCancellationRequest, isDispatchOrderStatus } from "@/lib/order-cancellation-guard";
+import { queueOrderProgressEmail, type StatusChangeSource } from "@/lib/order-progress-emails";
 
 type Transaction = any;
 type StoreOrderStatus = (typeof VENDOR_ORDER_STATUSES)[number];
@@ -74,7 +75,7 @@ async function restoreCancelledStoreOrderInventory(
 
 async function applyStoreOrderTransition(
   tx: Transaction,
-  input: { id: string; storeId: string; actorUserId: string; targetStatus: StoreOrderStatus; extraData?: Record<string, unknown> },
+  input: { id: string; storeId: string; actorUserId: string; targetStatus: StoreOrderStatus; source: StatusChangeSource; extraData?: Record<string, unknown> },
 ) {
   const storeOrder = await tx.storeOrder.findFirst({
     where: { id: input.id, storeId: input.storeId },
@@ -94,6 +95,8 @@ async function applyStoreOrderTransition(
     data: { ...input.extraData, status: input.targetStatus },
   });
   if (updated.count !== 1) throw new OrderFulfillmentError("CONFLICT");
+  // ORDER-NOTIFY-1: the one hook for the customer's progress e-mail (same transaction; never throws, never blocks).
+  await queueOrderProgressEmail(tx, { storeOrderId: storeOrder.id, fromStatus: storeOrder.status, targetStatus: input.targetStatus, source: input.source });
 
   const skippedLegacyVariantItems = input.targetStatus === "CANCELLED"
     ? await restoreCancelledStoreOrderInventory(tx, storeOrder.id, input.storeId, input.actorUserId)
@@ -117,7 +120,7 @@ export async function transitionVendorStoreOrder(
   const existing = await tx.storeOrder.findFirst({ where: { id: input.id, storeId: input.storeId }, select: { orderId: true } });
   if (!existing) throw new OrderFulfillmentError("NOT_FOUND");
   await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${existing.orderId} FOR UPDATE`;
-  return applyStoreOrderTransition(tx, input);
+  return applyStoreOrderTransition(tx, { ...input, source: "STORE" });
 }
 
 /**
@@ -125,7 +128,7 @@ export async function transitionVendorStoreOrder(
  * parent status recomputed, open requests approved). Used by the customer's direct cancel and by the store's approval of
  * a cancellation request. The caller must already hold the parent Order row lock.
  */
-export async function cancelStoreOrderLocked(tx: Transaction, input: { id: string; storeId: string; actorUserId: string }) {
+export async function cancelStoreOrderLocked(tx: Transaction, input: { id: string; storeId: string; actorUserId: string; source: "CUSTOMER_CANCEL" | "STORE_APPROVED_CANCEL_REQUEST" | "UNPAID_EXPIRY" }) {
   return applyStoreOrderTransition(tx, { ...input, targetStatus: "CANCELLED" });
 }
 
@@ -153,6 +156,7 @@ export async function transitionAdminOrder(
       storeId: child.storeId,
       actorUserId: input.actorUserId,
       targetStatus: input.targetStatus,
+      source: "ADMIN",
     });
   }
   return tx.order.findUnique({ where: { id: input.orderId } });

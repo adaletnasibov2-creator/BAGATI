@@ -814,6 +814,8 @@ model StoreOrder {
   shippedAt              DateTime?
   outForDeliveryAt       DateTime?
   deliveredAt            DateTime?
+  /// ORDER-NOTIFY-1: when the customer pressed "Təhvil aldım" for this store order (set once; never changes the status).
+  customerConfirmedAt    DateTime?
   createdAt              DateTime                   @default(now())
   order                  Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   store                  Store                      @relation(fields: [storeId], references: [id])

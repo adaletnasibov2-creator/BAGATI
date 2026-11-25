@@ -46,7 +46,8 @@ test("wiring: root metadata and the store page read the SEO settings through the
   assert.match(layout, /getSetting<string>\(SETTING_KEYS\.seoDefaultDescription\)/);
   assert.match(layout, /getSetting<string>\(SETTING_KEYS\.seoDefaultOgTitle\)/);
   assert.match(layout, /getSetting<string>\(SETTING_KEYS\.seoDefaultOgDescription\)/);
-  assert.match(layout, /return rootMetadata\(\{ siteName: settings\.siteName, logoUrl: settings\.logoUrl, description: description \?\? "", ogTitle, ogDescription \}\);/);
+  // LAUNCH-TECH-1: the layout also passes the default share image.
+  assert.match(layout, /return rootMetadata\(\{ siteName: settings\.siteName, logoUrl: settings\.logoUrl, description: description \?\? "", ogTitle, ogDescription, shareImage: shareImage\(\[\], settings\.siteName\) \}\);/);
   const store = read("app/(customer)/stores/[storeId]/page.tsx");
   assert.match(store, /storeMetaDescription\(\{ template: template \?\? "", storeName: store\.name, storeDescription: store\.description \}\)/);
   // CART-POLISH + SHARE-PREVIEW: og:title / og:description (and the rest of the share preview) come from

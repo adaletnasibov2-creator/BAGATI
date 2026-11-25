@@ -112,7 +112,7 @@ test("D: home share preview from the settings, og:url = site root, default image
   const meta = homeSharePreviewMetadata({ siteName: "BAGATI", description: "Yerli mağazalar bir yerdə.", ogTitle: null, ogDescription: null, base: BASE });
   assert.deepEqual(meta.openGraph, {
     title: "BAGATI", description: "Yerli mağazalar bir yerdə.", url: `${BASE}/`, type: "website", siteName: "BAGATI", locale: "az_AZ",
-    images: [{ url: DEFAULT_IMAGE_URL, width: 1664, height: 928, alt: "BAGATI" }],
+    images: [{ url: DEFAULT_IMAGE_URL, width: 1200, height: 630, alt: "BAGATI" }], // LAUNCH-TECH-1: 1200x630 default
   });
   assert.deepEqual(meta.twitter, { card: "summary_large_image", title: "BAGATI", description: "Yerli mağazalar bir yerdə.", images: [DEFAULT_IMAGE_URL] });
   // The admin's Open Graph texts win when set.

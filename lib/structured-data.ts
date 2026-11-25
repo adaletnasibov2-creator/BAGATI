@@ -8,7 +8,7 @@
  */
 import type { MetadataRoute } from "next";
 import { absoluteSiteUrl } from "@/lib/category-seo";
-import { absoluteImageUrl, DEFAULT_SHARE_IMAGE } from "@/lib/share-preview";
+import { absoluteImageUrl, BRAND_LOGO_IMAGE } from "@/lib/share-preview";
 
 // ---------------------------------------------------------------------------------------------------------------
 // robots.txt
@@ -126,7 +126,7 @@ export const SITE_JSON_LD_NAME = "BAGATI";
 export function homeJsonLd(base: string | undefined = process.env.APP_BASE_URL): JsonLd | null {
   const url = absoluteSiteUrl("/", base);
   if (!url) return null;
-  const logo = absoluteImageUrl(DEFAULT_SHARE_IMAGE.path, base);
+  const logo = absoluteImageUrl(BRAND_LOGO_IMAGE.path, base);
   return {
     "@context": "https://schema.org",
     "@graph": [

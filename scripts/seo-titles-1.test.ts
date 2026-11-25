@@ -12,6 +12,7 @@ import { SITEMAP_STATIC_PATHS, staticSitemapEntries, toSitemapXmlEntries } from 
 import { CONTENT_PAGE_DEFAULTS } from "../lib/content-pages";
 import { isPrivateNoindexPath } from "../lib/private-noindex";
 import { robotsConfig } from "../lib/structured-data";
+import { withoutAdminDesign1 } from "./admin-design-1-scope";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
@@ -84,7 +85,8 @@ test("private pages stay noindex; robots.txt, legal pages and /admin handling un
   for (const path of ["/stores", "/deals", "/new-products", "/delivery-returns", "/help", "/categories"]) assert.equal(isPrivateNoindexPath(path), false, path);
   assert.equal((robotsConfig(SITE).rules as { disallow: string[] }).disallow.includes("/admin"), false);
   const changed = execFileSync("git", ["diff", "--name-only", BASE, "--", "lib/structured-data.ts", "lib/private-noindex.ts", "middleware.ts", "app/robots.ts", "app/admin", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "app/(customer)/about", "app/(customer)/contact"], { cwd: root, encoding: "utf8" }).trim();
-  assert.equal(changed, "");
+  // ADMIN-DESIGN-1 (owner-approved restyle) may change its listed admin pages; app/admin/layout.tsx (noindex) is not one.
+  assert.equal(withoutAdminDesign1(changed), "");
 });
 
 test("no visible text changed: the pages only gained metadata lines", () => {

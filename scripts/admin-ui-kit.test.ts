@@ -37,7 +37,8 @@ test("PageHeader: eyebrow, one h1, description and actions", () => {
 
 test("Section and Card render a heading and content", () => {
   assert.match(html(createElement(Section, { title: "Bölmə", description: "Alt" }, "məzmun")), /<h2[^>]*>Bölmə<\/h2>[\s\S]*Alt[\s\S]*məzmun/);
-  assert.match(html(createElement(Card, null, "x")), /rounded-2xl border border-\[#e7e3d9\] bg-white p-5/);
+  // ADMIN-DESIGN-1: the card uses the seller-panel tokens (20 px card radius, line border) instead of the old hex colours.
+  assert.match(html(createElement(Card, null, "x")), /rounded-card border border-line bg-white p-5/);
 });
 
 test("StatusBadge shows its text (colour is not the only signal)", () => {

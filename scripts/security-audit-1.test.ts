@@ -21,6 +21,7 @@ import { authRateLimitKey } from "../lib/auth-rate-limit";
 import { RATE_LIMITED_MESSAGE } from "../lib/rate-limit-response";
 import { orderCreateResponse } from "../lib/order-create-response";
 import { calculateCampaignPrice, calculateEffectivePrice } from "../lib/promotion-pricing";
+import { ADMIN_DESIGN_1_FILES } from "./admin-design-1-scope";
 
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
@@ -153,7 +154,8 @@ test("static guard catches a new selection (self-check of the scanner)", () => {
 test("admin pages, admin APIs and legal pages are untouched by this task", () => {
   const changed = changedSinceBase();
   if (!changed) return; // no git history available (exported copy): nothing to compare
-  const forbidden = changed.filter((file) => file.startsWith("app/admin/") || file.startsWith("app/api/admin/") || /^components\/admin/.test(file)
+  // ADMIN-DESIGN-1 (owner-approved, visual only): its listed admin UI files may change; admin APIs stay forbidden.
+  const forbidden = changed.filter((file) => ((file.startsWith("app/admin/") || /^components\/admin/.test(file)) && !ADMIN_DESIGN_1_FILES.has(file)) || file.startsWith("app/api/admin/")
     // SEO-TITLES-1 (owner-approved): /delivery-returns gained only a <title>/canonical; its visible content is pinned as
     // unchanged by scripts/seo-titles-1.test.ts. The three legal pages stay fully untouched.
     || /^app\/\(customer\)\/(terms|privacy|seller-terms)\//.test(file) || file.startsWith("lib/legal"));

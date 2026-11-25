@@ -20,6 +20,7 @@ import { ORDER_NOTIFY_TEXT } from "../lib/order-notify-text";
 import { SELLER_PANEL_3_REUSED, SELLER_PANEL_3_TEXT } from "../lib/seller-panel-3";
 import { VENDOR_NOTIFICATION_TITLES, vendorNotificationHref } from "../lib/vendor-notifications";
 import { AUDIT_ACTION_LABELS } from "../lib/audit-action-labels";
+import { ADMIN_DESIGN_1_FILES, withoutAdminDesign1 } from "./admin-design-1-scope";
 
 process.env.EMAIL_ENCRYPTION_KEY = "a".repeat(64);
 const root = join(__dirname, "..");
@@ -346,7 +347,8 @@ test("texts: the only new Azerbaijani text is ORDER_NOTIFY_TEXT (plus the owner'
 });
 
 test("admin UI and legal pages untouched since main", () => {
-  const diff = execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "components/admin-ui", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms"], { cwd: root, encoding: "utf8" }).trim();
+  // ADMIN-DESIGN-1 (owner-approved, visual only) may change its listed admin UI files; everything else stays as in main.
+  const diff = withoutAdminDesign1(execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "components/admin-ui", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms"], { cwd: root, encoding: "utf8" }).trim());
   assert.equal(diff, "");
-  for (const name of readdirSync(join(root, "components")).filter((n) => n.startsWith("admin") && n.endsWith(".tsx"))) assert.equal(read(`components/${name}`), baseFile(`components/${name}`), name);
+  for (const name of readdirSync(join(root, "components")).filter((n) => n.startsWith("admin") && n.endsWith(".tsx") && !ADMIN_DESIGN_1_FILES.has(`components/${n}`))) assert.equal(read(`components/${name}`), baseFile(`components/${name}`), name);
 });

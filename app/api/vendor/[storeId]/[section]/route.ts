@@ -38,7 +38,7 @@ import { resetVoenVerificationOnChange } from "@/lib/voen-verification";
 import { vendorNotificationHref, vendorNotificationScope } from "@/lib/vendor-notifications";
 import { summarizeVendorFinance } from "@/lib/vendor-finance";
 import { summarizePaymentStatus, vendorOrderWhere } from "@/lib/vendor-order-search";
-import { countsFromGroups } from "@/lib/vendor-order-view";
+import { countsFromGroups, itemThumbnail } from "@/lib/vendor-order-view";
 import { hasAcceptedCurrent } from "@/lib/legal-acceptance";
 import { LEGAL_GATE_MESSAGES, SELLER_TERMS_REQUIRED } from "@/lib/legal-gates";
 import { normalizeStoreHoursInput, STORE_HOURS_TEXTS } from "@/lib/store-hours";
@@ -67,8 +67,9 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{storeId:stri
   // SELLER-ORDERS-DESIGN-1: tab counts in one grouped query, same store scope and search, every status (read-only).
   const [total,groups]=await Promise.all([db.storeOrder.count({where}),db.storeOrder.groupBy({by:["status"],where:vendorOrderWhere(storeId,null,req.nextUrl.searchParams.get("q")),_count:{_all:true}})]);
   const totalPages=Math.ceil(total/pageSize),page=totalPages?Math.min(requestedPageNumber,totalPages):1;
-  const rows=await db.storeOrder.findMany({where,include:{items:{select:{id:true,productName:true,quantity:true,variant:{select:{name:true,options:true}}}},order:{select:{id:true,createdAt:true,payments:{select:{status:true}}}}},orderBy:{createdAt:"desc"},skip:(page-1)*pageSize,take:pageSize});
-  const items=rows.map((row:any)=>{const {payments,...order}=row.order;return {...row,order,payment:summarizePaymentStatus(payments.map((p:any)=>p.status))};});
+  // SELLER-ORDERS-DESIGN-2: product images load with the items in the same query; only the first URL (or null) is sent.
+  const rows=await db.storeOrder.findMany({where,include:{items:{select:{id:true,productName:true,quantity:true,variant:{select:{name:true,options:true}},product:{select:{images:true}}}},order:{select:{id:true,createdAt:true,payments:{select:{status:true}}}}},orderBy:{createdAt:"desc"},skip:(page-1)*pageSize,take:pageSize});
+  const items=rows.map((row:any)=>{const {payments,...order}=row.order;return {...row,items:row.items.map(({product,...item}:{product:{images:string[]}|null;[key:string]:unknown})=>({...item,image:itemThumbnail({product})})),order,payment:summarizePaymentStatus(payments.map((p:any)=>p.status))};});
   return NextResponse.json({items,page,pageSize,total,totalPages,counts:countsFromGroups(groups)});
  }
   if(section==="inventory")return NextResponse.json({items:await db.inventory.findMany({where:{product:{storeId}},include:{product:{select:{name:true,sku:true}},variant:{select:{id:true,name:true,sku:true,options:true,isActive:true}},adjustments:{orderBy:{createdAt:"desc"},take:5}},orderBy:{updatedAt:"desc"}})});

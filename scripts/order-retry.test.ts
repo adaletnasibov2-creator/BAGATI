@@ -56,12 +56,13 @@ test("retry waits are short and random: 25-100 ms, then 50-200 ms", () => {
   assert.equal(orderRetryDelayMs(2, () => 1), 200);
 });
 
-test("the route wraps the unchanged Serializable transaction; locks and double-submit protections stay", () => {
+test("the route wraps the order transaction (ReadCommitted since CHECKOUT-CONCURRENCY-1); locks and double-submit protections stay", () => {
   assert.match(route, /const order=await withOrderSerializationRetry\(\(\)=>db\.\$transaction\(async\(transaction:any\)=>\{/);
-  assert.match(route, /\},\{isolationLevel:Prisma\.TransactionIsolationLevel\.Serializable,maxWait:10000,timeout:20000\}\)\);/);
+  assert.match(route, /\},\{isolationLevel:Prisma\.TransactionIsolationLevel\.ReadCommitted,maxWait:10000,timeout:20000\}\)\);/);
   assert.match(route, /SELECT "id" FROM "Cart" WHERE "userId" = \$1 FOR UPDATE/, "the buyer's cart row is locked first");
   assert.match(route, /SELECT "id" FROM "Inventory" WHERE "id" = \$1 FOR UPDATE/, "stock rows are locked");
-  assert.match(route, /if\(cart\)await tx\.cartItem\.deleteMany\(\{where:\{cartId:cart\.id\}\}\)/, "the cart is emptied inside the transaction");
+  // CHECKOUT-CONCURRENCY-1: still inside the transaction, now only the cart lines this order read.
+  assert.match(route, /if\(cart\)await tx\.cartItem\.deleteMany\(\{where:\{cartId:cart\.id,id:\{in:items\.map\(\(item\)=>item\.id\)\}\}\}\)/, "the cart is emptied inside the transaction");
   assert.match(route, /code==="CART_EMPTY"\|\|code==="STOCK_CHANGED"\?409/);
   assert.equal(route.match(/withOrderSerializationRetry/g)?.length, 2, "import + one use");
   // Retries used up: the existing 409 TRANSACTION_CONFLICT, for both forms of the conflict.

@@ -20,7 +20,10 @@ import { withoutAllowedAdminChanges } from "./admin-power-1-scope";
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "6611710";
-const changedSince = (...paths: string[]) => execFileSync("git", ["diff", "--name-only", BASE, "--", ...paths], { cwd: root, encoding: "utf8" }).trim();
+// MULTI-PROCESS-1: the scope is checked on the SELLER-PANEL-3 commits (BASE..7feb228, its last commit), not on the
+// working tree: later tasks change app/api (e.g. /api/maintenance-state) and would fail a tree diff.
+const TASK = "7feb228";
+const changedSince = (...paths: string[]) => execFileSync("git", ["diff", "--name-only", BASE, TASK, "--", ...paths], { cwd: root, encoding: "utf8" }).trim();
 
 test("texts: exactly the approved T1-T10 (mətnlər ok)", () => {
   assert.deepEqual({ ...SELLER_PANEL_3_TEXT, duplicateNotice: SELLER_PANEL_3_TEXT.duplicateNotice("Keramika fincan") }, {

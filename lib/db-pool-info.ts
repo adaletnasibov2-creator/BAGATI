@@ -32,8 +32,24 @@ export function describeDbPool(env: Env = process.env, cpuCount: number = cpus()
   };
 }
 
-/** One JSON line, for example {"event":"db_pool","connection_limit":"10","pool_timeout":"10","source":"DATABASE_URL","cpus":4}. */
-export function dbPoolLogLine(env: Env = process.env, cpuCount?: number): string {
+/**
+ * MULTI-PROCESS-1: which app process this is. BAGATI_CLUSTER_WORKER_ID is set by scripts/cluster-start.mjs for each
+ * worker it forks; NODE_APP_INSTANCE is PM2's instance number. Digits only (anything else is not echoed); null when
+ * neither is set (one process, e.g. plain `next start`).
+ */
+export function processWorkerId(env: Env = process.env): string | null {
+  for (const raw of [env.BAGATI_CLUSTER_WORKER_ID, env.NODE_APP_INSTANCE]) {
+    if (raw !== undefined && /^\d{1,4}$/.test(raw)) return raw;
+  }
+  return null;
+}
+
+/**
+ * One JSON line, for example
+ * {"event":"db_pool","connection_limit":"10","pool_timeout":"10","source":"DATABASE_URL","cpus":4,"pid":4321,"worker":"1"}.
+ * pid and worker (MULTI-PROCESS-1) show in the PM2 log how many processes started and with which pool.
+ */
+export function dbPoolLogLine(env: Env = process.env, cpuCount?: number, pid: number = process.pid): string {
   const info = describeDbPool(env, cpuCount);
-  return JSON.stringify({ event: "db_pool", connection_limit: info.connectionLimit, pool_timeout: info.poolTimeout, source: info.source, cpus: info.cpus });
+  return JSON.stringify({ event: "db_pool", connection_limit: info.connectionLimit, pool_timeout: info.poolTimeout, source: info.source, cpus: info.cpus, pid, worker: processWorkerId(env) });
 }

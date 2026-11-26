@@ -351,8 +351,12 @@ test("scope: the expiry reuses the cancel path; order creation and payment code 
 
 test("A9 pool log line: only connection_limit and pool_timeout, never any other part of the URL", () => {
   const url = "postgresql://shopuser:S3cr3t-P%40ss@db.internal.example:5432/bagati_prod?schema=public&connection_limit=10&pool_timeout=10&sslmode=require";
-  const line = dbPoolLogLine({ DATABASE_URL: url }, 4);
-  assert.deepEqual(JSON.parse(line), { event: "db_pool", connection_limit: "10", pool_timeout: "10", source: "DATABASE_URL", cpus: 4 });
+  // MULTI-PROCESS-1: + pid and worker (cluster worker id / PM2 instance; null for one plain process).
+  const line = dbPoolLogLine({ DATABASE_URL: url }, 4, 1234);
+  assert.deepEqual(JSON.parse(line), { event: "db_pool", connection_limit: "10", pool_timeout: "10", source: "DATABASE_URL", cpus: 4, pid: 1234, worker: null });
+  assert.equal(JSON.parse(dbPoolLogLine({ DATABASE_URL: url, BAGATI_CLUSTER_WORKER_ID: "2" }, 4, 99)).worker, "2");
+  assert.equal(JSON.parse(dbPoolLogLine({ DATABASE_URL: url, NODE_APP_INSTANCE: "0" }, 4, 99)).worker, "0");
+  assert.equal(JSON.parse(dbPoolLogLine({ DATABASE_URL: url, BAGATI_CLUSTER_WORKER_ID: "x;rm" }, 4, 99)).worker, null, "odd values are not echoed");
   for (const secret of ["shopuser", "S3cr3t", "db.internal", "5432", "bagati_prod", "public", "sslmode", "require", "postgresql"]) assert.ok(!line.includes(secret), secret);
   assert.deepEqual(describeDbPool({ DATABASE_URL: "postgresql://u:p@h:5432/d?schema=public" }, 4), { connectionLimit: "default", poolTimeout: "default", source: "default", cpus: 4 });
   assert.deepEqual(describeDbPool({}, 2), { connectionLimit: "default", poolTimeout: "default", source: "default", cpus: 2 });

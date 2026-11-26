@@ -32,7 +32,8 @@ const RESTYLED = [...ADMIN_DESIGN_2_FILES].filter((path) => !(ADMIN_DESIGN_2_API
 test("no old admin palette (hex or slate-*) in any admin file; /admin/login untouched", () => {
   const hits = ADMIN_FILES.filter((path) => !LOGIN.has(path) && OLD_PALETTE.test(read(path)));
   assert.deepEqual(hits, []);
-  assert.equal(git("diff", "--name-only", BASE, "--", ...LOGIN, "app/admin/layout.tsx", "middleware.ts", "app/robots.ts", "lib/legal", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "prisma", "package.json", "package-lock.json").trim(), "");
+  // MULTI-PROCESS-1: on the task commit (BASE..COMMIT), not the working tree: later tasks may change package.json.
+  assert.equal(git("diff", "--name-only", BASE, COMMIT, "--", ...LOGIN, "app/admin/layout.tsx", "middleware.ts", "app/robots.ts", "lib/legal", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "prisma", "package.json", "package-lock.json").trim(), "");
 });
 
 // CLEANUP-2: the scope is checked on the ADMIN-DESIGN-2 commit (62d2448), not on the working tree: after the merge,

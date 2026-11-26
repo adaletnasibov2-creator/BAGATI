@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && node --stack-size=8192 node_modules/next/dist/bin/next build",
     "start": "next start",
+    "start:cluster": "node scripts/cluster-start.mjs",
     "lint": "eslint .",
     "typecheck": "node --stack-size=8192 node_modules/typescript/bin/tsc --noEmit",
     "test:email-verification": "tsx --test scripts/email-verification.test.ts",

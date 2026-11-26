@@ -80,3 +80,21 @@ the live shop.**
 - Keep `pool_timeout` at 10, or lower it to 5 once the pages are fast enough that a 5 s wait really means overload.
 - Change one value at a time, repeat the staging run, and compare. Note that the in-process category cache
   (`lib/public-category-tree.ts`) assumes one PM2 process; read its comment before switching to cluster mode.
+
+## Several app processes (MULTI-PROCESS-1)
+
+`npm run start:cluster` with `BAGATI_WORKERS=N` runs N app processes (`docs/multi-process.md`). Each process has its
+own pool, and each process also opens **one extra connection** for the email outbox lock when
+`EMAIL_WORKER_ENABLED=true` (`lib/email-worker-runtime.ts`).
+
+Total connections = N × (`connection_limit` + 1) + admin tools.
+
+| App processes | `connection_limit` per process | Total (incl. email lock) | Notes |
+|---|---|---|---|
+| 1 | 10 | 11 | today |
+| 2 | **8** | 18 | recommended first step on the 4-vCPU server |
+| 3 | **6** | 21 | only if 2 processes still run hot on CPU and RAM allows |
+
+Keep `pool_timeout=10`. These totals stay far below PostgreSQL's default `max_connections` (100); the real limit is
+the CPU that PostgreSQL shares with Node on the same server (2–4 × vCPUs). The start-up line
+`{"event":"db_pool",...,"pid":...,"worker":"1"}` appears once per process in the PM2 log and shows the value in effect.

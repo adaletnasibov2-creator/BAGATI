@@ -111,7 +111,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const section = resource.join("/");
   if (section === "subscriptions") {
     const parsed = adminSubscriptionSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: "Mağaza, plan, abunəlik dövrü və səbəbi yoxlayın.", details: parsed.error.flatten() }, { status: 422 });
+    if (!parsed.success) return NextResponse.json({ error: "Mağaza, paket, abunəlik dövrü və səbəbi yoxlayın.", details: parsed.error.flatten() }, { status: 422 });
     const periodStart = new Date(`${parsed.data.currentPeriodStart}T00:00:00.000Z`);
     const periodEnd = new Date(`${parsed.data.currentPeriodEnd}T00:00:00.000Z`);
     const now = new Date();
@@ -122,7 +122,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         periodStart, periodEnd, reason: parsed.data.reason, adminId: admin.id, now,
       }), { isolationLevel: "Serializable" });
       if ("missingStore" in result) return NextResponse.json({ error: "Mağaza tapılmadı." }, { status: 404 });
-      if ("invalidPlan" in result) return NextResponse.json({ error: "Aktiv BASIC və ya PRO planı seçin." }, { status: 422 });
+      if ("invalidPlan" in result) return NextResponse.json({ error: "Aktiv Basic və ya Pro paketi seçin." }, { status: 422 });
       return NextResponse.json({ item: result.item, complimentaryRevoked: result.complimentaryRevoked, message: `Admin tərəfindən verilən əl ilə giriş saxlanıldı. Ödəniş və ya ödəniş təsdiqi qeydə alınmayıb.${result.complimentaryRevoked ? " Ödənişsiz satış icazəsi ləğv edildi." : ""}` });
     } catch (error) {
       return createFailure(error, "admin_subscription_manual_change", "Abunəlik eyni vaxtda dəyişdirilib. Yenidən yükləyib təkrar edin.");
@@ -133,7 +133,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const id = idResult.data.id;
   try {
     if (section === "stores") {
-      if (body && typeof body === "object" && "status" in body) return NextResponse.json({ error: "Mağaza statusu yalnız admin yoxlama workflow-u ilə dəyişdirilə bilər." }, { status: 405 });
+      if (body && typeof body === "object" && "status" in body) return NextResponse.json({ error: "Mağaza statusu yalnız admin yoxlama prosesi ilə dəyişdirilə bilər." }, { status: 405 });
       const parsed = z.object({ id: z.string(), vendorId: z.string().optional(), expectedVendorId: z.string().optional(), expectedCityId: z.string().optional(), name: z.string().trim().min(2).max(120).optional(), cityId: z.string().optional(), logoUrl: z.string().url().max(1000).nullable().optional().refine((value) => !value || value.startsWith("https://")), description: z.string().max(3000).nullable().optional(), address: z.string().max(300).nullable().optional(), contactPhone: optionalAzPhoneSchema.optional(), contactEmail: z.string().email().nullable().optional(), latitude: z.number().finite().min(-90).max(90).nullable().optional(), longitude: z.number().finite().min(-180).max(180).nullable().optional(), mapUrl: z.string().url().nullable().optional(), freeDeliveryThreshold: deliveryAmountSchema.optional(), deliveryFee: deliveryAmountSchema.optional() }).safeParse(body);
       if (!parsed.success) return NextResponse.json({ error: contactPhoneIssue(parsed.error) ?? "Mağaza məlumatlarını yoxlayın" }, { status: 422 });
       const { id: storeId, vendorId: requestedVendorId, cityId: requestedCityId, expectedVendorId, expectedCityId, ...values } = parsed.data;
@@ -145,9 +145,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (!plan.ok) return NextResponse.json({ error: "Mağazanın sahibi və ya şəhəri başqa admin tərəfindən dəyişdirilib. Səhifəni yeniləyin." }, { status: 409 });
       const { vendorId, cityId } = plan;
       if ((values.latitude === null) !== (values.longitude === null) && (values.latitude !== undefined || values.longitude !== undefined)) return NextResponse.json({ error: "Koordinatlar birlikdə daxil edilməlidir" }, { status: 422 });
-      if (cityId && !await db.city.findFirst({ where: { id: cityId, isActive: true }, select: { id: true } })) return NextResponse.json({ error: "Active city not found" }, { status: 422 });
-      if (vendorId && !await db.vendorProfile.findFirst({ where: { id: vendorId, user: { isActive: true } }, select: { id: true } })) return NextResponse.json({ error: "Active vendor profile not found" }, { status: 422 });
-      if (values.mapUrl && !values.mapUrl.startsWith("https://")) return NextResponse.json({ error: "Map URL must use HTTPS" }, { status: 422 });
+      if (cityId && !await db.city.findFirst({ where: { id: cityId, isActive: true }, select: { id: true } })) return NextResponse.json({ error: "Aktiv şəhər tapılmadı" }, { status: 422 });
+      if (vendorId && !await db.vendorProfile.findFirst({ where: { id: vendorId, user: { isActive: true } }, select: { id: true } })) return NextResponse.json({ error: "Aktiv satıcı profili tapılmadı" }, { status: 422 });
+      if (values.mapUrl && !values.mapUrl.startsWith("https://")) return NextResponse.json({ error: "Xəritə linki HTTPS ilə başlamalıdır" }, { status: 422 });
       const item = await db.$transaction(async (tx: any) => { const updated = await tx.store.update({ where: { id: storeId, vendorId: currentStore.vendorId, cityId: currentStore.cityId }, data: { ...values, ...(cityId ? { cityId } : {}), ...(vendorId ? { vendorId, legalInfoApproved: false } : {}) }, select: { id: true, name: true, status: true, isActive: true, legalInfoApproved: true } }); await tx.auditLog.create({ data: { actorId: admin.id, action: vendorId ? "STORE_OWNER_CHANGE" : "UPDATE", entityType: "Store", entityId: updated.id, ...(vendorId ? { metadata: { vendorId, previousVendorId: currentStore.vendorId, legalReviewRequired: true } } : cityId ? { metadata: { cityId, previousCityId: currentStore.cityId } } : {}) } }); return updated; }); return NextResponse.json({ item });
     }
     if (section === "commissions") {
@@ -292,7 +292,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
   const { resource } = await params; const section = resource.join("/");
   let body: unknown; try { body = await readJsonCapped(request, JSON_BODY_LIMITS.medium); } catch (error) { return bodyTooLargeResponse(error) ?? NextResponse.json({ error: "Sorğu məlumatı yanlışdır" }, { status: 400 }); }
-  const parsed = z.object({ id: z.string().min(1) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Rəy identifikatoru yanlışdır" }, { status: 422 });
+  // ADMIN-3-TEXTS-1: a bad id on the category delete gets the category message; reviews keep theirs.
+  const parsed = z.object({ id: z.string().min(1) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: section === "categories" ? "Kateqoriya identifikatoru yanlışdır" : "Rəy identifikatoru yanlışdır" }, { status: 422 });
   if (section === "categories") {
     try { const result = await deleteCategory(db, admin.id, parsed.data.id); invalidatePublicCategoryCache(); return NextResponse.json(result); }
     catch (error) { return categoryAdminFailure(error, "admin_category_delete"); }

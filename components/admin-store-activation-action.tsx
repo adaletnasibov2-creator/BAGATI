@@ -30,7 +30,7 @@ export default function AdminStoreActivationAction({
   async function toggleVisibility() {
     if (busy) return;
     const next = !visible;
-    const reason = window.prompt(next ? "İctimai görünürlüğü aktiv etmə səbəbini qeyd edin:" : "İctimai görünürlüğü deaktiv etmə səbəbini qeyd edin:");
+    const reason = window.prompt(next ? "İctimai görünürlüyü aktiv etmə səbəbini qeyd edin:" : "İctimai görünürlüyü deaktiv etmə səbəbini qeyd edin:");
     if (reason === null) return;
     if (reason.trim().length < 3) {
       setError("Audit üçün ən azı 3 simvolluq səbəb daxil edin.");
@@ -127,7 +127,7 @@ export default function AdminStoreActivationAction({
       onClick={() => void toggleVisibility()}
       className={`w-fit rounded-control px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-50 ${visible ? "border border-amber-200 text-amber-900 hover:bg-amber-50" : "bg-primary text-white hover:bg-primary-hover"}`}
     >
-      {busy ? "Gözləyin…" : visible ? "İctimai görünürlüğü deaktiv et" : "İctimai görünürlüğü aktiv et"}
+      {busy ? "Gözləyin…" : visible ? "İctimai görünürlüyü deaktiv et" : "İctimai görünürlüyü aktiv et"}
     </button> : <p className="max-w-96 text-xs text-fg-secondary">
       {status === "PENDING_REVIEW" ? "İctimai görünürlükdən əvvəl mağaza admin yoxlamasından keçməlidir." :
         status === "SUSPENDED" ? "Mağaza dayandırılıb. Görünürlüyü birbaşa aktiv etmək olmaz; bərpa qərarı tələb olunur." :

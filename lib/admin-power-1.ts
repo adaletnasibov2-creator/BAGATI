@@ -142,6 +142,11 @@ export type AttentionCounts = {
   lowStockProducts: number;
   sellersWithoutStore: number;
 };
+/** ADMIN-3-TEXTS-1: the existing role labels ("Müştəri", "Satıcı") instead of the raw CUSTOMER / VENDOR code; other roles unchanged. */
+export function adminRoleLabel(role: string): string {
+  return role === "CUSTOMER" ? ADMIN_POWER_1_TEXT.roleCustomer : role === "VENDOR" ? ADMIN_POWER_1_TEXT.roleVendor : role;
+}
+
 export type AttentionItem = { key: keyof AttentionCounts; label: string; count: number; href: string };
 
 /** ADMIN-3-TODAY-1: the six owner-approved queue labels (the only new visible text of that task). */

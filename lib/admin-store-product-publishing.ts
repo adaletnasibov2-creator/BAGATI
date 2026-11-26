@@ -67,7 +67,7 @@ function validPrice(value: unknown): number | null {
 export function getStorePublicationBlockers(store: StorePublicationState, now = new Date()): string[] {
   const blockers: string[] = [];
   if (store.status !== "ACTIVE") blockers.push("Mağaza admin təsdiqindən keçməyib.");
-  if (!store.isActive) blockers.push("Mağazanın ictimai görünürlüğü aktiv deyil.");
+  if (!store.isActive) blockers.push("Mağazanın ictimai görünürlüyü aktiv deyil.");
   if (!store.vendorActive) blockers.push("Satıcı hesabı deaktivdir.");
   if (!store.cityActive) blockers.push("Mağazanın şəhəri deaktivdir.");
 

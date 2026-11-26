@@ -100,7 +100,7 @@ function EmailBody({ data }: { data: SystemStatusData["email"] }) {
       <Row label="SMTP konfiqurasiyası" tone={data.smtpConfigured ? "good" : "bad"}>{yesNo(data.smtpConfigured)}</Row>
       <Row label="EMAIL_ENCRYPTION_KEY" tone={data.encryptionKeyConfigured ? "good" : "warn"}>{yesNo(data.encryptionKeyConfigured)}</Row>
       <Row label="Daxili göndərici (EMAIL_WORKER_ENABLED)" tone={data.inProcessWorkerEnabled ? "good" : "warn"}>{data.inProcessWorkerEnabled ? "Aktivdir" : "Söndürülüb"}</Row>
-      <Row label="Worker" tone={data.workerState === "alive" && !data.workerLastPollErrorCode ? "good" : "warn"}>{workerLabel[data.workerState] ?? workerLabel.unknown}{data.workerHeartbeatAt && <span className="block text-xs text-fg-secondary">Son siqnal: {formatDateTime(data.workerHeartbeatAt)}{data.workerHeartbeatSource === "file" ? " (CLI worker)" : ""}</span>}{data.workerLastPollErrorCode && <span className="block text-xs text-amber-800">Son xəta kodu: {data.workerLastPollErrorCode}</span>}</Row>
+      <Row label="İşçi proses" tone={data.workerState === "alive" && !data.workerLastPollErrorCode ? "good" : "warn"}>{workerLabel[data.workerState] ?? workerLabel.unknown}{data.workerHeartbeatAt && <span className="block text-xs text-fg-secondary">Son siqnal: {formatDateTime(data.workerHeartbeatAt)}{data.workerHeartbeatSource === "file" ? " (CLI worker)" : ""}</span>}{data.workerLastPollErrorCode && <span className="block text-xs text-amber-800">Son xəta kodu: {data.workerLastPollErrorCode}</span>}</Row>
     </dl>
     {!data.encryptionKeyConfigured && data.encryptionUsable && <p className="mt-2 text-xs text-fg-secondary">Ayrıca açar yoxdur; şifrələmə ehtiyat açarla işləyir.</p>}
   </>;
@@ -144,7 +144,7 @@ function BusinessBody({ data }: { data: SystemStatusData["business"] }) {
 function ApplicationBody({ data }: { data: SystemStatusData["application"] }) {
   return <dl>
     <Row label="Tətbiq versiyası">{data.version ?? "—"}</Row>
-    {data.buildId && <Row label="Build ID"><span className="font-mono text-xs">{data.buildId}</span></Row>}
+    {data.buildId && <Row label="Versiya nömrəsi"><span className="font-mono text-xs">{data.buildId}</span></Row>}
     <Row label="Mühit">{data.environment}</Row>
     <Row label="Node.js">{data.nodeVersion}</Row>
     <Row label="Prosesin iş vaxtı">{formatDuration(data.uptimeSeconds * 1000)}</Row>

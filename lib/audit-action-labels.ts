@@ -41,6 +41,7 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
   STORE_REJECT: "Mağaza rədd edildi",
   STORE_SUSPEND: "Mağaza dayandırıldı",
   STORE_REACTIVATE: "Mağaza yenidən aktivləşdirildi",
+  STORE_SUBMIT_FOR_REVIEW: "Mağaza yoxlamaya göndərildi", // ADMIN-3-TEXTS-1 (owner-approved label)
   STORE_DEACTIVATE_ARCHIVE: "Mağaza deaktiv edilib arxivə köçürüldü",
   STORE_DELETE_ARCHIVE: "Mağaza silinmək üçün arxivə köçürüldü",
   STORE_PERMANENT_DELETE: "Mağaza tamamilə silindi",

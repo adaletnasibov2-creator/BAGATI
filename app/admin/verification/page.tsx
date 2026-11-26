@@ -38,7 +38,7 @@ export default async function AdminVerificationPage() {
   ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
   return <AdminShell email={admin.email} messagingEnabled={await adminMessagingNavEnabled()}>
-    <PageHeader title="Email təsdiqi gözləyən hesablar" description="Bu siyahı aktiv, təsdiqlənməmiş müştəri və satıcı hesablarını göstərir. Kodun növbədə olması və ya SMTP qəbul cavabı inbox-a çatdırılmanı təsdiqləmir." actions={<Link href="/admin/email" className={buttonClass("secondary")}>Email növbəsinin vəziyyətinə bax →</Link>} />
+    <PageHeader title="Email təsdiqi gözləyən hesablar" description="Bu siyahı aktiv, təsdiqlənməmiş müştəri və satıcı hesablarını göstərir. Kodun növbədə olması və ya SMTP qəbul cavabı gələn qutusuna çatdırılmanı təsdiqləmir." actions={<Link href="/admin/email" className={buttonClass("secondary")}>Email növbəsinin vəziyyətinə bax →</Link>} />
     <section className="grid gap-3 sm:grid-cols-2">
       <article className={card}><p className="text-sm text-fg-secondary">Təsdiqlənməmiş müştərilər</p><p className="mt-2 text-2xl font-semibold">{customerCount}</p></article>
       <article className={card}><p className="text-sm text-fg-secondary">Təsdiqlənməmiş satıcılar</p><p className="mt-2 text-2xl font-semibold">{vendorCount}</p></article>

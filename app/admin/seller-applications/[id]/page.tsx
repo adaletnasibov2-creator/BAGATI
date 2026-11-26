@@ -12,7 +12,7 @@ import { SELLER_APPLICATION_SOURCE_LABELS, SELLER_TYPE_LABELS } from "@/lib/sell
 import { findDuplicateVoen } from "@/lib/seller-application-service";
 import { AdminVoenPanel } from "@/components/admin-voen-panel";
 import { AdminDetailHeader } from "@/components/admin-ui/detail-header";
-import { ADMIN_BACK_LINKS } from "@/lib/admin-power-1";
+import { ADMIN_BACK_LINKS, adminRoleLabel } from "@/lib/admin-power-1";
 import { adminVoenView, currentVoenOf } from "@/lib/voen-verification";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +62,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
     {duplicateCount > 0 && <div role="alert" className="mb-4 rounded-card border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
       <p className="font-semibold">Bu VÖEN başqa yerdə də istifadə olunur ({duplicateCount})</p>
       <ul className="mt-2 list-disc space-y-1 pl-5">
-        {duplicates.profiles.map((row) => <li key={row.vendorProfileId} className="break-words">Satıcı profili: {row.displayName} · {row.email} · rol {row.role}</li>)}
+        {duplicates.profiles.map((row) => <li key={row.vendorProfileId} className="break-words">Satıcı profili: {row.displayName} · {row.email} · rol {adminRoleLabel(row.role)}</li>)}
         {duplicates.applications.map((row) => <li key={row.applicationId} className="break-words"><Link className="underline" href={`/admin/seller-applications/${row.applicationId}`}>Açıq müraciət: {row.displayName} · {row.email}</Link></li>)}
       </ul>
       <p className="mt-2">Eyni hüquqi şəxs bir neçə hesab aça bilər, lakin təsdiqdən əvvəl bunu yoxlayın. Təsdiq üçün ayrıca qəbul tələb olunur və audit jurnalında qeyd edilir.</p>
@@ -106,7 +106,7 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
           <h2 className="font-semibold text-fg">Hesab</h2>
           <dl className="mt-3 grid gap-3">
             <Field label="E-poçt"><span className="break-all">{application.user.email}</span></Field>
-            <Field label="Hazırkı rol">{application.user.role}</Field>
+            <Field label="Hazırkı rol">{adminRoleLabel(application.user.role)}</Field>
             <Field label="Hesab yaradılıb">{formatBakuDateTime(application.user.createdAt)}</Field>
             <Field label="E-poçt təsdiqi">{application.user.emailVerifiedAt ? "Təsdiqlənib" : "Təsdiqlənməyib"}</Field>
             <Field label="Aktivdir">{application.user.isActive ? "Bəli" : "Xeyr"}</Field>

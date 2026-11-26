@@ -70,7 +70,7 @@ export default function AdminSubscriptionManager({ storeId, plans, subscription 
     </div>
     {subscription && <p className="mb-3 text-xs text-fg-secondary">Son əl ilə səbəb: {subscription.grantReason || "—"}{subscription.grantedByAdmin?.email ? ` · ${subscription.grantedByAdmin.email}` : ""}</p>}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      <label className="grid gap-1 text-xs text-fg-secondary">Plan<select className={input} value={planId} onChange={(event) => setPlanId(event.target.value)}>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatMoney(plan.monthlyPrice)}/ay</option>)}</select></label>
+      <label className="grid gap-1 text-xs text-fg-secondary">Paket<select className={input} value={planId} onChange={(event) => setPlanId(event.target.value)}>{plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatMoney(plan.monthlyPrice)}/ay</option>)}</select></label>
       <label className="grid gap-1 text-xs text-fg-secondary">Status<select className={input} value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map((value) => <option key={value} value={value}>{adminStatusLabel("subscription", value)}</option>)}</select></label>
       <label className="grid gap-1 text-xs text-fg-secondary">Dövrün başlanğıcı<input className={input} type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} required /></label>
       <label className="grid gap-1 text-xs text-fg-secondary">Dövrün sonu<input className={input} type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} required /></label>

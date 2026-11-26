@@ -100,5 +100,8 @@ test("getPublicCategoryData bounds the city key; layout, home and checkout use t
 test("admin city create and update invalidate the city list", () => {
   const admin = read("app/api/admin/[...resource]/route.ts");
   assert.match(admin, /entityType: "City", entityId: created\.id \} \}\); return created; \}\); invalidateActiveCitiesCache\(\);/);
-  assert.match(admin, /db\.city\.update\([^\n]*\}\); invalidateActiveCitiesCache\(\); await audit\(admin\.id, "UPDATE", "City", id\);/);
+  // ADMIN-3-SAFETY-1: the update and its audit row run in one transaction (lib/admin-audited-writes.ts); the cache is
+  // invalidated after it, as before.
+  assert.match(admin, /const item = await updateCityAudited\(db, admin\.id, cityId, id, [^\n]*\}\); invalidateActiveCitiesCache\(\);/);
+  assert.match(read("lib/admin-audited-writes.ts"), /tx\.city\.update\(\{ where: \{ id: cityId \}, data \}\);\s*await tx\.auditLog\.create\(\{ data: \{ actorId: adminId, action: "UPDATE", entityType: "City", entityId: auditEntityId \} \}\);/);
 });

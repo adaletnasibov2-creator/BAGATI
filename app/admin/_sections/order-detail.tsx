@@ -57,7 +57,7 @@ export async function renderOrderDetail({ parts, shell }: SectionContext) {
      <p className="mt-4 text-sm">Çatdırılma: {order.delivery ? `${order.delivery.status} · ${order.delivery.carrier || "Daşıyıcı təyin edilməyib"} · ${order.delivery.trackingCode || "İzləmə kodu yoxdur"}` : "Çatdırılma qeydi yoxdur"}</p>
     </section>
    </div>
-   <div className="mt-5"><StatusForm resource="orders" id={order.id} status={order.status} options={allowedOrderStatuses} button="Statusu saxla" /></div>
+   <div className="mt-5"><StatusForm resource="orders" id={order.id} status={order.status} options={allowedOrderStatuses} button="Statusu saxla" confirm="Sifarişin statusunu dəyişmək istədiyinizə əminsiniz?" /></div>
    <div className="mt-5 grid gap-4">
     {order.storeOrders.map((group: any) => <section key={group.id} className={card}>
      <h2 className="font-semibold">{group.store.name} · {adminStatusLabel("order", group.status)} · {formatPrice(group.subtotal)}</h2>

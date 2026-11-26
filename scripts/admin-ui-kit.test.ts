@@ -113,7 +113,10 @@ test("no admin component uses window.confirm any more; each uses the dialog and 
     }
   }
   assert.deepEqual(users.sort(), [
-    "admin-category-manager.tsx", "admin-category-product-move.tsx", "admin-complimentary-manager.tsx", "admin-content-page-editor.tsx", "admin-mutation-form.tsx", "admin-promotion-manager.tsx", "admin-sessions-list.tsx",
+    "admin-category-manager.tsx", "admin-category-product-move.tsx", 
+    // ADMIN-3-TODAY-1: the city status button asks before deactivating (approved text of ADMIN-3-SAFETY-1).
+    "admin-city-status-button.tsx",
+    "admin-complimentary-manager.tsx", "admin-content-page-editor.tsx", "admin-mutation-form.tsx", "admin-promotion-manager.tsx", "admin-sessions-list.tsx",
     // ADMIN-3-SAFETY-1: the shipment status control asks before saving (owner-approved text).
     "admin-shipment-status-control.tsx",
     "admin-store-activation-action.tsx", "admin-store-review-actions.tsx", "admin-subscription-manager.tsx", "admin-two-factor-settings.tsx",

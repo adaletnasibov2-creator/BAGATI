@@ -358,5 +358,8 @@ test("admin UI and legal pages untouched since main", () => {
   // ADMIN-DESIGN-1 / ADMIN-POWER-1 (owner-approved) may change their listed admin UI files; everything else stays as in main.
   const diff = withoutAllowedAdminChanges(execFileSync("git", ["diff", "--name-only", BASE, TASK, "--", "app/admin", "components/admin-ui", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms"], { cwd: root, encoding: "utf8" }).trim());
   assert.equal(diff, "");
-  for (const name of readdirSync(join(root, "components")).filter((n) => n.startsWith("admin") && n.endsWith(".tsx") && !isAllowedAdminChange(`components/${n}`))) assert.equal(read(`components/${name}`), baseFile(`components/${name}`), name);
+  // ADMIN-3-TODAY-1: the admin components are listed and read at this task's commit (TASK), not the working tree, so later
+  // owner-approved admin components (e.g. the city status button) do not break this check.
+  const adminComponents = execFileSync("git", ["ls-tree", "--name-only", `${TASK}:components`], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
+  for (const name of adminComponents.filter((n) => n.startsWith("admin") && n.endsWith(".tsx") && !isAllowedAdminChange(`components/${n}`))) assert.equal(atTask(`components/${name}`), baseFile(`components/${name}`), name);
 });

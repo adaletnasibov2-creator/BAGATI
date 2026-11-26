@@ -3,7 +3,7 @@ import { TextLink } from "@/components/ui/text-link";
 import { absoluteSiteUrl } from "@/lib/category-seo";
 import { LegalDocument } from "@/components/legal-document";
 
-// Legal page, final text of 2026-11-17 (owner). Static text in code: no database read in this page.
+// Legal page, final text of 2026-11-17 (owner); operator sentence moved to the end and date 26 noyabr 2026 (ABOUT-OWNER-INFO-2, owner decision 2026-11-26). Static text in code: no database read in this page.
 const title = "İstifadə şərtləri";
 const description = "BAGATI alıcılarla mağazaları bir araya gətirən platformadır; məhsulu müvafiq mağaza satdığı üçün alış-veriş müqaviləsi siz və mağaza arasında bağlanır.";
 
@@ -16,7 +16,7 @@ export function generateMetadata(): Metadata {
 export default function TermsPage() {
   // DESIGN-T9: shared reading layout; the document below is unchanged (only class names were removed from it).
   return <LegalDocument title={title}>
-        <p><strong>BAGATI alıcılarla mağazaları bir araya gətirən platformadır; məhsulu müvafiq mağaza satdığı üçün alış-veriş müqaviləsi siz və mağaza arasında bağlanır.</strong> Saytdan istifadə etməklə bu şərtləri qəbul etmiş sayılırsınız. Platformanı fərdi sahibkar Nəsibov Ədalət Şücaət oğlu (VÖEN 4202455532, Qazax şəhəri) idarə edir.</p>
+        <p><strong>BAGATI alıcılarla mağazaları bir araya gətirən platformadır; məhsulu müvafiq mağaza satdığı üçün alış-veriş müqaviləsi siz və mağaza arasında bağlanır.</strong> Saytdan istifadə etməklə bu şərtləri qəbul etmiş sayılırsınız.</p>
 
         <h2>1. Platformamızın rolu</h2>
         <ul>
@@ -88,6 +88,7 @@ export default function TermsPage() {
         <p>Bu şərtlərə Azərbaycan Respublikasının qanunvericiliyi tətbiq olunur. Problem yaranarsa, əvvəl <TextLink href="/contact">Əlaqə</TextLink> üzrə bizə yazın; razılaşma baş tutmasa, mübahisə qanunvericilikdə nəzərdə tutulan qaydada həll olunur.</p>
 
         <h2>12. Şərtlərin dəyişdirilməsi</h2>
-        <p>Şərtləri vaxtaşırı yeniləyə bilərik. Yeni variant bu səhifədə dərc olunan andan qüvvəyə minir. Son yenilənmə: 17 noyabr 2026.</p>
+        <p>Şərtləri vaxtaşırı yeniləyə bilərik. Yeni variant bu səhifədə dərc olunan andan qüvvəyə minir. Son yenilənmə: 26 noyabr 2026.</p>
+        <p>Platformanı fərdi sahibkar Nəsibov Ədalət Şücaət oğlu (VÖEN 4202455532, Qazax şəhəri) idarə edir.</p>
   </LegalDocument>;
 }

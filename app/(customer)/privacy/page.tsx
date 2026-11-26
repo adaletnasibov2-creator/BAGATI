@@ -3,7 +3,7 @@ import { TextLink } from "@/components/ui/text-link";
 import { absoluteSiteUrl } from "@/lib/category-seo";
 import { LegalDocument } from "@/components/legal-document";
 
-// Legal page, final text of 2026-11-17 (owner). Static text in code: no database read in this page.
+// Legal page, final text of 2026-11-17 (owner); operator sentence moved to the end and date 26 noyabr 2026 (ABOUT-OWNER-INFO-2, owner decision 2026-11-26). Static text in code: no database read in this page.
 const title = "Məxfilik siyasəti";
 const description = "Biz yalnız sifarişi yerinə yetirmək, hesabınızı qorumaq və sizinlə əlaqə saxlamaq üçün lazım olan məlumatları toplayırıq.";
 
@@ -18,7 +18,7 @@ const td = "border-b border-line px-3 py-2 align-top";
 export default function PrivacyPage() {
   // DESIGN-T9: shared reading layout; the document below is unchanged (only class names were removed from it).
   return <LegalDocument title={title}>
-        <p><strong>Biz yalnız sifarişi yerinə yetirmək, hesabınızı qorumaq və sizinlə əlaqə saxlamaq üçün lazım olan məlumatları toplayırıq.</strong> Bu səhifə hansı məlumatların toplandığını, nə üçün istifadə olunduğunu, kimlərlə paylaşıldığını və sizin hüquqlarınızı izah edir. Məlumatların operatoru: fərdi sahibkar Nəsibov Ədalət Şücaət oğlu, VÖEN 4202455532, Qazax şəhəri.</p>
+        <p><strong>Biz yalnız sifarişi yerinə yetirmək, hesabınızı qorumaq və sizinlə əlaqə saxlamaq üçün lazım olan məlumatları toplayırıq.</strong> Bu səhifə hansı məlumatların toplandığını, nə üçün istifadə olunduğunu, kimlərlə paylaşıldığını və sizin hüquqlarınızı izah edir.</p>
 
         <h2>Hansı məlumatları toplayırıq?</h2>
         <ul>
@@ -75,6 +75,7 @@ export default function PrivacyPage() {
         <p>Bunun üçün <TextLink href="/contact">Əlaqə</TextLink> səhifəsindəki e-poçt ünvanına yazın. Müraciətinizə mümkün qədər tez, qanunda göstərilən müddət ərzində cavab veririk.</p>
 
         <h2>Dəyişikliklər</h2>
-        <p>Bu siyasəti vaxtaşırı yeniləyə bilərik. Əsas dəyişikliklər bu səhifədə dərc olunacaq. Son yenilənmə: 17 noyabr 2026.</p>
+        <p>Bu siyasəti vaxtaşırı yeniləyə bilərik. Əsas dəyişikliklər bu səhifədə dərc olunacaq. Son yenilənmə: 26 noyabr 2026.</p>
+        <p>Məlumatların operatoru: fərdi sahibkar Nəsibov Ədalət Şücaət oğlu, VÖEN 4202455532, Qazax şəhəri.</p>
   </LegalDocument>;
 }

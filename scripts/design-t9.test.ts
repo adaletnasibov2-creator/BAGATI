@@ -27,15 +27,20 @@ const text = (node: React.ReactNode) => decode(renderToStaticMarkup(h(React.Frag
 const sha = (value: string) => createHash("sha256").update(value, "utf8").digest("hex");
 
 /** Taken on main (6c4dc94) from the old markup: the <h1> text and the text of the document body, tags removed. */
+// ABOUT-OWNER-INFO-2 (owner decision 2026-11-26): legal pages: operator sentence moved to the last paragraph + new
+// "Son yenilənmə" date; /about: last section without the owner's details ("Platformamızın rolu"); /contact: e-mail and
+// phone cards instead of the table ("Məlumat", "Detal" removed). Previous body hashes / chars: terms 15af605a…/4485,
+// privacy fbd73724…/3690, seller-terms b62d1d8d…/5242, about 6617145…/1679, contact 75933d82…/1130.
+// scripts/about-owner-info-2.test.ts and scripts/legal-versions.test.ts prove these are the only changes.
 const MAIN_HASHES = {
-  terms: { Page: TermsPage, title: "de3eb7bce3d1745c4017241b147c8a96abdfce3e5b1d4149d6166abc26a767bc", body: "15af605a302203ceb129461b12de1ca99978899eb4e85ea4463cfaa1fda332a4", chars: 4485 },
-  privacy: { Page: PrivacyPage, title: "439eb169a6c18a33627d22b7ba485d47de5a37215f05c14c95ad98c8d997862f", body: "fbd737249cf78aeeaf547ffb922bd72edc94295deefc326735def95826ea7f77", chars: 3690 },
-  "seller-terms": { Page: SellerTermsPage, title: "39d4e107fcc7ef489b0a6ad95f18fd282ae4071590e76fcf339ac764051ecef1", body: "b62d1d8da44b2ad7e240e203994b3c1959ae9139ce184dffffa9a1e876fecab6", chars: 5242 },
+  terms: { Page: TermsPage, title: "de3eb7bce3d1745c4017241b147c8a96abdfce3e5b1d4149d6166abc26a767bc", body: "bffca234078f627a5d7ca8498496ee55196cf086c3a07de216d00b7bfe436b13", chars: 4484 },
+  privacy: { Page: PrivacyPage, title: "439eb169a6c18a33627d22b7ba485d47de5a37215f05c14c95ad98c8d997862f", body: "f5b1c28afd8fe8eb06c12edeb75a8b1b437d8fa44eaf1f12cfb101f39473124c", chars: 3689 },
+  "seller-terms": { Page: SellerTermsPage, title: "39d4e107fcc7ef489b0a6ad95f18fd282ae4071590e76fcf339ac764051ecef1", body: "37d38fc4d9ac2214b46f709ee311f52c5e2a2f6d3d580c9b2bae24844a7acb89", chars: 5241 },
   // ABOUT-OWNER-INFO-1 (owner request): /about's "Kim idarə edir?" section moved to the end and /contact's operator rows
   // moved to a closing list. Same words (same character count), new order: body hashes re-pinned; the old ones were
   // about 5f974d23… and contact aba3f7a5…. scripts/about-owner-info-1.test.ts proves no word was added or removed.
-  about: { Page: AboutPage, title: "ca073b711865f871ee7c3a730d6e549599ec8c9fcce1c6b7f9c6491ce25ab6f9", body: "6617145629df7958210570abbf19ef00ee51e353bf6deeae1649ab15bcbceba7", chars: 1679 },
-  contact: { Page: ContactPage, title: "9e5c3357ab261546a0fbd742fd96c31b7c76bcf783bc9debfa638282963867e8", body: "75933d82a37f12d1e5d8dc0b80ee9ff2ac4f03bafc585c763c36a4520921e3a7", chars: 1130 },
+  about: { Page: AboutPage, title: "ca073b711865f871ee7c3a730d6e549599ec8c9fcce1c6b7f9c6491ce25ab6f9", body: "7de9aa86531b46cbe31af16f0e28b008cf421541786220b82a9bb2764c11bdf9", chars: 1584 },
+  contact: { Page: ContactPage, title: "9e5c3357ab261546a0fbd742fd96c31b7c76bcf783bc9debfa638282963867e8", body: "efc8c3a107b3b86134185bcb55f3a61a1177ec5b87e9602b9a2ad78e2c5f42de", chars: 1118 },
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -65,10 +70,10 @@ test("the reading layout adds no visible text: page text = title + document (own
     assert.doesNotMatch(source, /className=\{h2\}|list-disc space-y-1 pl-6|rounded-\[24px\]/, `${name}: old wrappers gone`);
   }
   assert.doesNotMatch(read("components/legal-document.tsx"), /Bu səhifədə/, "no new text");
-  // The existing guard (scripts/legal-versions.test.ts) keeps its pinned hashes and versions untouched.
-  assert.match(read("scripts/legal-versions.test.ts"), /sha256: "29d569e2049e48bdfafa6add1363e00200d927df832b34ae28447306debb15fe"/);
-  assert.match(read("scripts/legal-versions.test.ts"), /sha256: "5b10b20dd9249bc3f7bf47a43e3a0fc0d55ca5f4af84a2ef5d2f180997f8f1c9"/);
-  assert.match(read("lib/legal-versions.ts"), /CUSTOMER_TERMS: "2026-11-17",\n\s*SELLER_TERMS: "2026-11-18",/);
+  // The existing guard (scripts/legal-versions.test.ts): its pinned hashes and versions (ABOUT-OWNER-INFO-2: 2026-11-26).
+  assert.match(read("scripts/legal-versions.test.ts"), /sha256: "01f6f1691ff833b41a1966dbac5503eaa315d6b422b105d19bcdde74dc1e80fd"/);
+  assert.match(read("scripts/legal-versions.test.ts"), /sha256: "ea9abc30cb4b50af993c00017f0c6ebe3ebe6a3d61530fd7d1a3b81efbbcc4c0"/);
+  assert.match(read("lib/legal-versions.ts"), /CUSTOMER_TERMS: "2026-11-26",\n\s*SELLER_TERMS: "2026-11-26",/);
 });
 
 test("typography and print styles live in CSS only (.legal-prose, @media print without site chrome)", () => {

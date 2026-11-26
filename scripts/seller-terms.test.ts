@@ -39,7 +39,7 @@ test("/seller-terms: one h1 with the title, 14 section headings in order, the ow
   assert.equal(h2.length, 14);
   h2.forEach((heading, index) => assert.ok(heading.startsWith(`${index + 1}. `), `heading ${index + 1}: ${heading}`));
   const text = textOf(markup);
-  for (const fact of ["4202455532", "Nəsibov Ədalət Şücaət oğlu", "BASIC 20 AZN, PRO 50 AZN", "standart 10 %", "hazırda 500 AZN", "Son yenilənmə: 18 noyabr 2026."]) {
+  for (const fact of ["4202455532", "Nəsibov Ədalət Şücaət oğlu", "BASIC 20 AZN, PRO 50 AZN", "standart 10 %", "hazırda 500 AZN", "Son yenilənmə: 26 noyabr 2026."] /* ABOUT-OWNER-INFO-2: owner-approved date (was 18 noyabr 2026) */) {
     assert.ok(text.includes(fact), `contains ${fact}`);
   }
 });

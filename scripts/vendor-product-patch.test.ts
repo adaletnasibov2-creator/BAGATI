@@ -7,6 +7,7 @@ import {
   runVendorProductPatch,
   type VendorProductPatchDatabase,
 } from "../lib/vendor-product-patch";
+import { LEGAL_VERSIONS } from "../lib/legal-versions";
 
 const priorLegalPolicy = process.env.BAGATI_SELLER_LEGAL_POLICY;
 before(() => {
@@ -492,7 +493,7 @@ test("legal Phase B: publishing needs the current seller terms of the acting ven
     actorUserId: "vendor-a",
     now: new Date("2026-10-23T00:00:00.000Z"),
   }), (error: unknown) => error instanceof Error && error.message === "SELLER_TERMS_REQUIRED");
-  assert.deepEqual(blocked.sellerTermsLookups, [{ userId: "vendor-a", document: "SELLER_TERMS", version: "2026-11-18" }]);
+  assert.deepEqual(blocked.sellerTermsLookups, [{ userId: "vendor-a", document: "SELLER_TERMS", version: LEGAL_VERSIONS.SELLER_TERMS }]);
 
   const alreadyActive = fakeDatabase({ sellerTermsAccepted: false, products: [product("product-a", "store-a", "ACTIVE")] });
   const saved = await runVendorProductPatch(alreadyActive.database, {

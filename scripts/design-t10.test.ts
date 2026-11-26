@@ -118,9 +118,11 @@ test("/vendor/login and the legal pages are byte-identical to main", () => {
     // file, and the check below proves every other byte is still the DESIGN-T10 file (old hash 4164d8d3…).
     "app/vendor/login/page.tsx": "6faed9767dbd69820a3f8a39f0a7356818b2f377ee3e293702ca06f6ad7d6130",
     "components/vendor-login-form.tsx": "9ed3fc560723c3324cb4e2c95bd6c4617fc814882f7dda39b86abc59bbb560f8",
-    "app/(customer)/terms/page.tsx": "d9eee92220cd6cd6cb3588c5c159d7f3f038ff912efa83face3e4bc41138bf25",
-    "app/(customer)/privacy/page.tsx": "3d645770b9750e70143c10c7dcd16a6bb9aab019d7dc845720c03a4a73f0d222",
-    "app/(customer)/seller-terms/page.tsx": "028f51c7d4a61cceaeb4b09f96620a0ff6513a35368d85b4bbb35dda87195ac2",
+    // ABOUT-OWNER-INFO-2 (owner decision 2026-11-26): operator sentence moved to the end and new "Son yenilənmə" date on
+    // the three legal pages; previous file hashes: terms d9eee922…, privacy 3d645770…, seller-terms 028f51c7….
+    "app/(customer)/terms/page.tsx": "d607e7a316df90e2f90ca219f4b57c4cf51df70e5b031efb2b9b3f74546024c4",
+    "app/(customer)/privacy/page.tsx": "8756371ad6d92ce5a855f232e41b7dd418b61e891b23b641d4a9cc007266825c",
+    "app/(customer)/seller-terms/page.tsx": "20c42fbb8f746aa7bbea06fd6276615d56fc1a74c7a295fde19339d4220a4123",
   };
   for (const [path, hash] of Object.entries(pinned)) assert.equal(sha256(read(path)), hash, path);
   assert.doesNotMatch(read("app/vendor/login/page.tsx"), /PublicTheme|font-display/);

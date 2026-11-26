@@ -26,8 +26,12 @@ import { ALLOWED_ADMIN_API_ROUTES, isAllowedAdminChange } from "./admin-power-1-
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "d83c84d";
+// ABOUT-OWNER-INFO-2: the legal-page check compares this task's own commit (TASK) with BASE, not the working tree, so
+// later owner-approved legal changes (2026-11-26: operator sentence moved, new date) do not break it.
+const TASK = "aed4973";
+
 const changedSinceBase = () => {
-  try { return execFileSync("git", ["diff", "--name-only", BASE], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean); }
+  try { return execFileSync("git", ["diff", "--name-only", BASE, TASK], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\n").filter(Boolean); }
   catch { return null; }
 };
 const limits = formRateLimit as unknown as Record<string, { limit: number; windowMs: number } | undefined>;

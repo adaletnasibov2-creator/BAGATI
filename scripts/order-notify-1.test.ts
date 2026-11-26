@@ -27,6 +27,11 @@ process.env.EMAIL_ENCRYPTION_KEY = "a".repeat(64);
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "07ae7c7";
+// ABOUT-OWNER-INFO-2: the legal-page check compares this task's own commit (TASK) with BASE, not the working tree, so
+// later owner-approved legal changes (2026-11-26: operator sentence moved, new date) do not break it.
+const TASK = "ce3478f";
+const atTask = (path: string) => execFileSync("git", ["show", `${TASK}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n");
+
 const baseFile = (path: string) => { try { return execFileSync("git", ["show", `${BASE}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n"); } catch { return ""; } };
 const ORDER_STATUSES = read("prisma/schema.prisma").match(/enum OrderStatus \{([^}]*)\}/)![1].split(/\s+/).filter(Boolean);
 const SHIPMENT_STATUSES = read("prisma/schema.prisma").match(/enum ShipmentStatus \{([^}]*)\}/)![1].split(/\s+/).filter(Boolean);
@@ -325,7 +330,7 @@ test("migration: additive, IF NOT EXISTS, nullable TIMESTAMP(3), LF (working cop
 });
 
 test("texts: the only new Azerbaijani text is ORDER_NOTIFY_TEXT (plus the owner's notification title and audit label)", () => {
-  const changed = execFileSync("git", ["diff", "--name-only", BASE, "--", "app", "components", "lib"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)
+  const changed = execFileSync("git", ["diff", "--name-only", BASE, TASK, "--", "app", "components", "lib"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean)
     .concat(["lib/order-progress-emails.ts", "lib/order-receipt.ts", "lib/order-notify-text.ts", "components/order-receipt-button.tsx", "app/api/orders/[orderId]/store-orders/[storeOrderId]/receipt/route.ts"]);
   const AZ = /[əğıöşüçƏĞİÖŞÜÇ]/;
   const fragments = (source: string) => new Set(source.split("\n").filter((line) => !/^\s*(\/\/|\*|\/\*\*|\{\/\*)/.test(line)).join("\n").split(/["'`<>{}]|\$\{/).map((part) => part.trim()).filter((part) => AZ.test(part)));
@@ -340,7 +345,7 @@ test("texts: the only new Azerbaijani text is ORDER_NOTIFY_TEXT (plus the owner'
   for (const reused of ["Məhsul məlumatları yüklənir…", "Endirimli qiymət əsas qiymətdən aşağı olmalıdır."]) approved.add(reused);
   // The two halves of the approved T6 sentence around `${name}` in its template literal.
   for (const piece of ["Məlumatlar “", "” məhsulundan köçürüldü. Məhsul kodları və stok boş saxlanıldı; yadda saxlayana qədər heç nə yaradılmır."]) approved.add(piece);
-  const added = [...new Set(changed)].flatMap((path) => { const before = fragments(baseFile(path)); return [...fragments(read(path))].filter((part) => !before.has(part) && !approved.has(part)).map((part) => `${path}: ${part}`); });
+  const added = [...new Set(changed)].flatMap((path) => { const before = fragments(baseFile(path)); return [...fragments(atTask(path))].filter((part) => !before.has(part) && !approved.has(part)).map((part) => `${path}: ${part}`); });
   // Fragments that are pieces of the approved e-mail lines (template literals split around ${...}).
   const allowedPieces = ["— ", "Sifariş", ": sifariş №", "Sifariş #", "Sifarişə bax", "Sifarişlərə bax", "Sifariş tapılmadı", "Əməliyyat uğursuz oldu.", "Mağaza", "Daxil olmaq tələb olunur"];
   // Reused pieces must already exist in main (fallback store name, error texts, link labels).
@@ -351,7 +356,7 @@ test("texts: the only new Azerbaijani text is ORDER_NOTIFY_TEXT (plus the owner'
 
 test("admin UI and legal pages untouched since main", () => {
   // ADMIN-DESIGN-1 / ADMIN-POWER-1 (owner-approved) may change their listed admin UI files; everything else stays as in main.
-  const diff = withoutAllowedAdminChanges(execFileSync("git", ["diff", "--name-only", BASE, "--", "app/admin", "components/admin-ui", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms"], { cwd: root, encoding: "utf8" }).trim());
+  const diff = withoutAllowedAdminChanges(execFileSync("git", ["diff", "--name-only", BASE, TASK, "--", "app/admin", "components/admin-ui", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms"], { cwd: root, encoding: "utf8" }).trim());
   assert.equal(diff, "");
   for (const name of readdirSync(join(root, "components")).filter((n) => n.startsWith("admin") && n.endsWith(".tsx") && !isAllowedAdminChange(`components/${n}`))) assert.equal(read(`components/${name}`), baseFile(`components/${name}`), name);
 });

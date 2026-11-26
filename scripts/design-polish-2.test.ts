@@ -21,6 +21,11 @@ import { isAllowedAdminChange } from "./admin-power-1-scope";
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "3a00ab8";
+// ABOUT-OWNER-INFO-2: the legal-page check compares this task's own commit (TASK) with BASE, not the working tree, so
+// later owner-approved legal changes (2026-11-26: operator sentence moved, new date) do not break it.
+const TASK = "9c2a7c1";
+const atTask = (path: string) => execFileSync("git", ["show", `${TASK}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n");
+
 function baseFile(path: string) {
   try { return execFileSync("git", ["show", `${BASE}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n"); } catch { return ""; }
 }
@@ -104,7 +109,7 @@ test("texts: only the three approved labels are new; legal pages, admin and sell
   const before = new Set(changed.flatMap((path) => [...fragments(baseFile(path))]));
   const added = new Set(changed.flatMap((path) => [...fragments(read(path))].filter((fragment) => !before.has(fragment))));
   assert.deepEqual([...added].sort(), ["Hesabım", "Hesabım,", "Sevimlilərim", "Səbətim"].sort());
-  for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(read(path), baseFile(path), path);
+  for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(atTask(path), baseFile(path), path);
   // Seller files changed later on purpose by SELLER-ORDERS-DESIGN-1 (its own test pins them) and PRICE-SYMBOL-1 (dashboard
   // money "… ₼", scripts/price-symbol-1.test.ts); admin stays untouched.
   // + SELLER-PANEL-3 (the add-product page reads ?copy= for "Surətini yarat"; pinned by scripts/seller-panel-3.test.ts).

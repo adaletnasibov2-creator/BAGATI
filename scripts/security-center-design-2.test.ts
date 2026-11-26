@@ -18,6 +18,11 @@ import { EVENTS_PAGE_SIZE } from "../lib/security-center-view";
 const root = resolve(__dirname, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "962124e"; // main before SECURITY-CENTER-DESIGN-2
+// ABOUT-OWNER-INFO-2: the legal-page check compares this task's own commit (TASK) with BASE, not the working tree, so
+// later owner-approved legal changes (2026-11-26: operator sentence moved, new date) do not break it.
+const TASK = "2f6fd1f";
+const atTask = (path: string) => execFileSync("git", ["show", `${TASK}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n");
+
 const now = new Date("2026-11-23T12:00:00.000Z");
 const HOUR = 60 * 60 * 1000;
 
@@ -323,7 +328,7 @@ function files(dir: string): string[] {
 
 test("internal only: no public page or legal page mentions the security center; legal pages byte-identical", () => {
   const baseText = (path: string) => execFileSync("git", ["show", `${BASE}:${path}`], { cwd: root, encoding: "utf8" }).replace(/\r\n/g, "\n");
-  for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(read(path), baseText(path), path);
+  for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(atTask(path), baseText(path), path);
   for (const path of files("app/(customer)")) assert.doesNotMatch(read(path), /security-center|Təhlükəsizlik mərkəzi|CENTER_TEXT|SecurityCenterHeader/, path);
 });
 

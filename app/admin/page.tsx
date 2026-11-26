@@ -18,6 +18,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_PENDING_ORDER_STATUSES, ADMIN_PENDING_ORDERS_HREF } from "@/lib/admin-order-filters";
 import { formatPrice } from "@/lib/price";
+import { adminStatusLabel } from "@/lib/admin-labels";
 import { getSetting } from "@/lib/settings/read";
 import { SETTING_KEYS } from "@/lib/settings/registry";
 
@@ -60,7 +61,8 @@ export default async function AdminDashboard() {
     prisma.order.count({ where: { status: "DELIVERED" } }),
     prisma.order.count({ where: { status: "CANCELLED" } }),
     prisma.storeSubscription.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.order.findMany({ take: 6, orderBy: { createdAt: "desc" }, select: { id: true, status: true, total: true, createdAt: true, user: { select: { email: true } } } }),
+    // ADMIN-3-TODAY-1: + the latest payment row (one per order, Payment(orderId, status)) for the payment state next to the total.
+    prisma.order.findMany({ take: 6, orderBy: { createdAt: "desc" }, select: { id: true, status: true, total: true, createdAt: true, user: { select: { email: true } }, payments: { select: { status: true }, orderBy: { createdAt: "desc" }, take: 1 } } }),
     prisma.store.findMany({ take: 5, orderBy: { createdAt: "desc" }, select: { id: true, name: true, status: true, city: { select: { name: true } } } }),
     getSetting<boolean>(SETTING_KEYS.maintenanceEnabled),
   ]);
@@ -82,7 +84,7 @@ export default async function AdminDashboard() {
   const statIcon = (href: string) => { const Icon = STAT_ICONS[href]; return Icon ? <Icon size={16} /> : undefined; };
   const seeAll = (href: string, label: string) => <Link href={href} className={`rounded text-sm font-semibold text-primary hover:underline ${focusRing}`}>{label} →</Link>;
   const [messagingEnabled, activity, unverified] = await Promise.all([messagingPromise, activityPromise, unverifiedPromise]);
-  const queue = attentionItems({ pendingApplications: activity.pendingApplications, storesInReview: pendingStores, pendingOrders, openSupport: activity.openSupport, openReports: activity.openReports, unverifiedAccounts: unverified.customers + unverified.vendors }, ADMIN_PENDING_ORDERS_HREF);
+  const queue = attentionItems({ pendingApplications: activity.pendingApplications, storesInReview: pendingStores, pendingOrders, openSupport: activity.openSupport, openReports: activity.openReports, unverifiedAccounts: unverified.customers + unverified.vendors, ordersToday: activity.ordersToday, returnsWaiting: activity.returnsWaiting, supportInProgress: activity.supportInProgress, failedEmails: activity.failedEmails, lowStockProducts: activity.lowStockProducts, sellersWithoutStore: activity.sellersWithoutStore }, ADMIN_PENDING_ORDERS_HREF);
   return <AdminShell email={admin.email} messagingEnabled={messagingEnabled}>
     {maintenanceOn === true && <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-900">
       <p><b>Texniki iş rejimi açıqdır.</b> Müştəri və satıcı səhifələri və API-ləri 503 qaytarır; alış-veriş dayanıb. Admin paneli və ödəniş bildirişləri işləyir.</p>
@@ -110,7 +112,7 @@ export default async function AdminDashboard() {
       </Section>
       <Section title="Son sifarişlər" actions={seeAll("/admin/orders", "Hamısı")}>
         {recentOrders.length
-          ? <div className="-mx-2 divide-y divide-line">{recentOrders.map((order) => <Link href={`/admin/orders/${order.id}`} key={order.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-control px-2 py-3 text-sm transition-colors hover:bg-surface-page ${focusRing}`}><span className="min-w-0 break-all"><b className="font-semibold text-fg">#{order.id.slice(-8).toUpperCase()}</b> · <span className="text-fg-secondary">{order.user.email}</span></span><span className="flex items-center gap-2"><AdminStatusBadge kind="order" value={order.status} /><span className="whitespace-nowrap font-semibold tabular-nums text-fg">{formatPrice(order.total)}</span></span></Link>)}</div>
+          ? <div className="-mx-2 divide-y divide-line">{recentOrders.map((order) => <Link href={`/admin/orders/${order.id}`} key={order.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-control px-2 py-3 text-sm transition-colors hover:bg-surface-page ${focusRing}`}><span className="min-w-0 break-all"><b className="font-semibold text-fg">#{order.id.slice(-8).toUpperCase()}</b> · <span className="text-fg-secondary">{order.user.email}</span></span><span className="flex flex-wrap items-center gap-2"><AdminStatusBadge kind="order" value={order.status} /><span className="whitespace-nowrap font-semibold tabular-nums text-fg">{formatPrice(order.total)}</span><span className="whitespace-nowrap text-xs text-fg-secondary">{order.payments[0] ? adminStatusLabel("payment", order.payments[0].status) : "Ödəniş qeydi yoxdur."}</span></span></Link>)}</div>
           : <EmptyState title="Sifariş yoxdur." />}
       </Section>
     </div>

@@ -68,14 +68,19 @@ test("dashboard reads: counts only, started together (parallel), reports via the
   const calls: string[] = [];
   const slow = <T>(name: string, value: T) => { calls.push(name); inFlight += 1; maxInFlight = Math.max(maxInFlight, inFlight); return new Promise<T>((resolve) => setTimeout(() => { inFlight -= 1; resolve(value); }, 5)); };
   const db = {
-    $queryRaw: (sql: { sql: string }) => slow(sql.sql.includes('FROM "Order"') ? "orders" : "stores", sql.sql.includes('FROM "Order"') ? [{ day: "2026-11-25", n: 4 }] : []),
+    $queryRaw: (sql: { sql: string }) => sql.sql.includes('FROM "Product"') ? slow("low stock", [{ n: 0 }]) : slow(sql.sql.includes('FROM "Order"') ? "orders" : "stores", sql.sql.includes('FROM "Order"') ? [{ day: "2026-11-25", n: 4 }] : []),
     vendorApplication: { count: (args: unknown) => slow(`applications ${JSON.stringify(args)}`, 5) },
     supportTicket: { count: (args: unknown) => slow(`support ${JSON.stringify(args)}`, 2) },
     conversationReport: { count: (args: unknown) => slow(`reports ${JSON.stringify(args)}`, 1) },
+    // ADMIN-3-TODAY-1: the six day-1 counts run in the same Promise.all (zeros here; scripts/admin-today-1.test.ts checks them).
+    order: { count: () => slow("orders today", 0) },
+    returnRequest: { count: () => slow("returns", 0) },
+    emailOutbox: { count: () => slow("emails", 0) },
+    vendorProfile: { count: () => slow("sellers", 0) },
   };
   const on = await loadDashboardActivity(db as never, new Date("2026-11-25T03:00:00Z"), true);
-  assert.equal(maxInFlight, 5, "all five reads run at the same time");
-  assert.deepEqual(calls.sort(), ['applications {"where":{"status":"PENDING"}}', "orders", 'reports {"where":{"status":"OPEN"}}', "stores", 'support {"where":{"status":"OPEN"}}']);
+  assert.equal(maxInFlight, 11, "all reads (five + the six ADMIN-3-TODAY-1 counts) run at the same time");
+  assert.deepEqual(calls.filter((call) => !["orders today", "returns", "emails", "sellers", "low stock", 'support {"where":{"status":"IN_PROGRESS"}}'].includes(call)).sort(), ['applications {"where":{"status":"PENDING"}}', "orders", 'reports {"where":{"status":"OPEN"}}', "stores", 'support {"where":{"status":"OPEN"}}']);
   assert.equal(on.days.length, 30);
   assert.equal(on.days[29].orders, 4);
   assert.deepEqual([on.pendingApplications, on.openSupport, on.openReports], [5, 2, 1]);
@@ -86,7 +91,9 @@ test("dashboard reads: counts only, started together (parallel), reports via the
   const source = read("lib/admin-dashboard-activity.ts");
   assert.doesNotMatch(source, /findMany|\.conversationReport\./, "counts only; reports through lib/messaging-admin.ts");
   // The dashboard starts the new reads before its own Promise.all and awaits them together.
-  const page = read("app/admin/page.tsx");
+  // ADMIN-3-TODAY-1: read at this task's commit (TASK); later approved dashboard work (e.g. the payment state of the
+  // recent orders) changes the working tree.
+  const page = git("show", `${TASK}:app/admin/page.tsx`);
   assert.ok(page.indexOf("const activityPromise") < page.indexOf("await Promise.all(["), "started before the existing counts");
   assert.match(page, /await Promise\.all\(\[messagingPromise, activityPromise, unverifiedPromise\]\)/);
   // The 11 KPI cards and their queries are unchanged.
@@ -95,7 +102,7 @@ test("dashboard reads: counts only, started together (parallel), reports via the
 });
 
 test("queue: real counts, links that show the same rows, items at 0 hidden, card hidden when all are 0", () => {
-  const counts = { pendingApplications: 3, storesInReview: 0, pendingOrders: 4, openSupport: 2, openReports: 0, unverifiedAccounts: 1 };
+  const counts = { pendingApplications: 3, storesInReview: 0, pendingOrders: 4, openSupport: 2, openReports: 0, unverifiedAccounts: 1, ordersToday: 0, returnsWaiting: 0, supportInProgress: 0, failedEmails: 0, lowStockProducts: 0, sellersWithoutStore: 0 };
   const items = attentionItems(counts, "/admin/orders?status=pending");
   assert.deepEqual(items.map((item) => [item.label, item.count, item.href]), [
     ["Satıcı müraciətləri", 3, "/admin/seller-applications"],
@@ -104,7 +111,7 @@ test("queue: real counts, links that show the same rows, items at 0 hidden, card
     ["E-poçt təsdiqi gözləyənlər", 1, "/admin/verification"],
   ]);
   assert.ok(!attentionItems({ ...counts, openReports: null }, "/x").some((item) => item.key === "openReports"), "messaging off: no reports item");
-  assert.equal(html(createElement(AdminAttentionQueue, { items: attentionItems({ pendingApplications: 0, storesInReview: 0, pendingOrders: 0, openSupport: 0, openReports: 0, unverifiedAccounts: 0 }, "/x") })), "");
+  assert.equal(html(createElement(AdminAttentionQueue, { items: attentionItems({ pendingApplications: 0, storesInReview: 0, pendingOrders: 0, openSupport: 0, openReports: 0, unverifiedAccounts: 0, ordersToday: 0, returnsWaiting: 0, supportInProgress: 0, failedEmails: 0, lowStockProducts: 0, sellersWithoutStore: 0 }, "/x") })), "");
   const out = html(createElement(AdminAttentionQueue, { items }));
   assert.match(out, />Diqqət tələb edir</);
   assert.match(out, /href="\/admin\/seller-applications"/);

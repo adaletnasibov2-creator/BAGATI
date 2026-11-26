@@ -38,6 +38,19 @@ export default function AdminStoreReviewActions(props: Props) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Qərarı saxlamaq mümkün olmadı."); }
     finally { setBusy(false); }
   }
+  // ADMIN-3-ONBOARD-1: a DRAFT store (e.g. created at /admin/stores/new) can be sent for review by the admin, with the
+  // seller's checks and messages (lib/admin-store-submit.ts). Afterwards the approval actions above appear.
+  async function submitDraft() {
+    if (busy) return;
+    setBusy(true); setError(""); setMessage(""); setProductResult(null);
+    try {
+      const response = await fetch(`/api/admin/stores/${encodeURIComponent(props.storeId)}/submit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Qərarı saxlamaq mümkün olmadı.");
+      setMessage(result.message || "Qərar saxlanıldı."); router.refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Qərarı saxlamaq mümkün olmadı."); }
+    finally { setBusy(false); }
+  }
   const input = "w-full rounded-control border border-line-strong bg-white px-3.5 py-2.5 text-sm";
   const actions = props.status === "PENDING_REVIEW" ? ["approve", "reject", "suspend"] as const : props.status === "ACTIVE" ? ["approve", "suspend"] as const : props.status === "SUSPENDED" ? ["reactivate"] as const : [];
   return <section className="mt-5 rounded-card border border-line bg-white p-5">{dialog}
@@ -57,6 +70,7 @@ export default function AdminStoreReviewActions(props: Props) {
       </fieldset>}
       <div className="mt-4 flex flex-wrap gap-2">{actions.map((action) => <button key={action} type="button" disabled={busy} onClick={() => void act(action)} className={`rounded-control px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${action === "reject" || action === "suspend" ? "border border-red-200 text-red-800" : "bg-primary text-white"}`}>{busy ? "Gözləyin…" : ({ approve: "Təsdiqlə", reject: "Rədd et", suspend: "Dayandır", reactivate: "Yenidən aktivləşdir" } as const)[action]}</button>)}</div>
     </>}
+    {props.status === "DRAFT" && <div className="mt-4"><button type="button" disabled={busy} onClick={() => void submitDraft()} className="rounded-control bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Gözləyin…" : "Yoxlamaya göndər"}</button></div>}
     {message && <p role="status" className="mt-3 text-sm text-emerald-800">{message}</p>}{error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
     <AdminStoreProductPublishingResult result={productResult}/>
   </section>;

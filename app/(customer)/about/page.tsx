@@ -3,7 +3,7 @@ import Link from "next/link";
 import { absoluteSiteUrl } from "@/lib/category-seo";
 import { LegalDocument } from "@/components/legal-document";
 
-// Legal page, final text of 2026-11-17 (owner). Static text in code: no database read in this page.
+// Legal page, final text of 2026-11-17 (owner); last section without the owner's details, heading reused from /terms (ABOUT-OWNER-INFO-2). Static text in code: no database read in this page.
 const title = "Haqqımızda";
 const description = "BAGATI sevdiyiniz mağazaları və məhsulları bir məkanda toplayan Azərbaycan onlayn bazarıdır.";
 
@@ -39,7 +39,7 @@ export default function AboutPage() {
         <h2>Bizimlə əlaqə</h2>
         <p>Sualınız, təklifiniz və ya şikayətiniz varsa, <Link href="/contact" className={link}>Əlaqə</Link> səhifəsindən bizə yaza bilərsiniz. Hər müraciəti oxuyuruq.</p>
 
-        <h2>Kim idarə edir?</h2>
-        <p>BAGATI-ni Qazax şəhərində fərdi sahibkar <strong>Nəsibov Ədalət Şücaət oğlu</strong> (VÖEN: 4202455532) idarə edir. BAGATI məhsulları satan tərəf deyil, mağazalarla alıcıları bir araya gətirən platformadır. Hər məhsulu müvafiq mağaza satır. Ətraflı məlumat üçün <Link href="/terms" className={link}>İstifadə şərtlərinə</Link> baxın.</p>
+        <h2>Platformamızın rolu</h2>
+        <p>BAGATI məhsulları satan tərəf deyil, mağazalarla alıcıları bir araya gətirən platformadır. Hər məhsulu müvafiq mağaza satır. Ətraflı məlumat üçün <Link href="/terms" className={link}>İstifadə şərtlərinə</Link> baxın.</p>
   </LegalDocument>;
 }

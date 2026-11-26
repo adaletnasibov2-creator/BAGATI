@@ -12,22 +12,25 @@ export function generateMetadata(): Metadata {
 }
 
 const link = "rounded-sm font-medium text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
-const th = "border-b border-line px-3 py-2 font-semibold";
-const td = "border-b border-line px-3 py-2 align-top";
+// ABOUT-OWNER-INFO-2: e-mail and phone as two calm cards (label above value, 44 px tap target), side by side from sm.
+const card = "min-w-0 rounded-card border border-line bg-surface-page px-4 py-3";
+const cardLabel = "block text-sm font-semibold text-fg-secondary";
+const cardLink = `${link} mt-1 inline-flex min-h-11 max-w-full items-center break-all text-body`;
 
 export default function ContactPage() {
   // DESIGN-T9: shared reading layout; the document below is unchanged (only class names were removed from it).
   return <LegalDocument title={title}>
         <p><strong>Bizə e-poçt və ya telefonla yaza bilərsiniz; müraciətlərinizə adətən 1–2 iş günü ərzində cavab veririk.</strong></p>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[20rem] border-collapse text-left text-sm">
-            <thead><tr><th scope="col" className={th}>Məlumat</th><th scope="col" className={th}>Detal</th></tr></thead>
-            <tbody>
-              <tr><td className={td}>E-poçt</td><td className={td}><a href="mailto:adaletnasibov2@gmail.com" className={link}>adaletnasibov2@gmail.com</a></td></tr>
-              <tr><td className={td}>Telefon</td><td className={td}><a href="tel:+994557614332" className={link}>+994 55 761 43 32</a></td></tr>
-            </tbody>
-          </table>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className={card}>
+            <span className={cardLabel}>E-poçt</span>
+            <a href="mailto:adaletnasibov2@gmail.com" className={cardLink}>adaletnasibov2@gmail.com</a>
+          </div>
+          <div className={card}>
+            <span className={cardLabel}>Telefon</span>
+            <a href="tel:+994557614332" className={cardLink}>+994 55 761 43 32</a>
+          </div>
         </div>
 
         <h2>Kimə yazmalı?</h2>
@@ -41,14 +44,14 @@ export default function ContactPage() {
         <h2>Yazanda necə tez cavab ala bilərsiniz?</h2>
         <p>Müraciətinizdə adınızı, hesabda yazılan e-poçtunuzu, sifariş nömrəsini (varsa) və problemi qeyd edin. Bank kartı məlumatlarını, şifrəni və ya təhlükəsizlik kodlarını heç vaxt yazmayın, biz bunları heç vaxt istəmirik.</p>
 
-        {/* ABOUT-OWNER-INFO-1: the operator details (same labels and values, moved from the table above) close the page. */}
-        <dl className="mt-8 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-line pt-4 text-sm text-fg-muted">
-          <dt>Operator</dt>
-          <dd>Fərdi sahibkar Nəsibov Ədalət Şücaət oğlu</dd>
-          <dt>VÖEN</dt>
-          <dd>4202455532</dd>
-          <dt>Hüquqi ünvan</dt>
-          <dd>AZ3500, Qazax rayonu, Qazax şəhəri, N. Nərimanov küçəsi, ev 17</dd>
+        {/* ABOUT-OWNER-INFO-1/2: the operator details close the page, in normal body text (same labels and values). */}
+        <dl className="mt-10 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-t border-line pt-6 text-body text-fg-body">
+          <dt className="font-semibold text-fg">Operator</dt>
+          <dd className="min-w-0 break-words">Fərdi sahibkar Nəsibov Ədalət Şücaət oğlu</dd>
+          <dt className="font-semibold text-fg">VÖEN</dt>
+          <dd className="min-w-0 break-words">4202455532</dd>
+          <dt className="font-semibold text-fg">Hüquqi ünvan</dt>
+          <dd className="min-w-0 break-words">AZ3500, Qazax rayonu, Qazax şəhəri, N. Nərimanov küçəsi, ev 17</dd>
         </dl>
   </LegalDocument>;
 }

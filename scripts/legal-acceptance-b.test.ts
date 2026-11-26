@@ -308,7 +308,7 @@ test("admin: acceptances are listed read-only on the customer, seller and seller
     ],
   }));
   const text = markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-  assert.match(text, /Satıcı şərtləri · versiya 2026-11-18 Hazırkı versiya/);
+  assert.match(text, new RegExp(`Satıcı şərtləri · versiya ${LEGAL_VERSIONS.SELLER_TERMS} Hazırkı versiya`));
   assert.match(text, /Satıcı müraciəti · 2026-11-18 12:00:00/, "Baku time");
   assert.match(text, /Bu müraciətlə qəbul edilib/);
   assert.match(text, /İstifadə şərtləri · versiya 2025-01-01 Köhnə versiya/);

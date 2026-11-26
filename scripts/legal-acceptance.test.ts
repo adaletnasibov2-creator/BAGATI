@@ -48,10 +48,10 @@ test("first acceptance inserts one row for the current version and one audit row
   const { db, rows, audits } = fakeDb();
   const result = await recordAcceptance(db, { userId: "u1", document: "CUSTOMER_TERMS", source: "REGISTER_EMAIL" });
   assert.deepEqual(result, { created: true, version: LEGAL_VERSIONS.CUSTOMER_TERMS });
-  assert.deepEqual(rows, [{ id: "row1", userId: "u1", document: "CUSTOMER_TERMS", version: "2026-11-17", source: "REGISTER_EMAIL", vendorApplicationId: null }]);
+  assert.deepEqual(rows, [{ id: "row1", userId: "u1", document: "CUSTOMER_TERMS", version: LEGAL_VERSIONS.CUSTOMER_TERMS, source: "REGISTER_EMAIL", vendorApplicationId: null }]);
   assert.deepEqual(audits, [{
     actorId: "u1", action: LEGAL_TERMS_ACCEPTED, entityType: "LegalAcceptance", entityId: "row1",
-    metadata: { document: "CUSTOMER_TERMS", version: "2026-11-17", source: "REGISTER_EMAIL" },
+    metadata: { document: "CUSTOMER_TERMS", version: LEGAL_VERSIONS.CUSTOMER_TERMS, source: "REGISTER_EMAIL" },
   }]);
   assert.deepEqual(Object.keys(audits[0].metadata).sort(), ["document", "source", "version"], "no personal data in metadata");
 });
@@ -72,7 +72,7 @@ test("the documents are independent; the seller application id is stored with SE
   const { db, rows } = fakeDb();
   await recordAcceptance(db, { userId: "u1", document: "CUSTOMER_TERMS", source: "CHECKOUT" });
   await recordAcceptance(db, { userId: "u1", document: "SELLER_TERMS", source: "SELLER_APPLICATION", vendorApplicationId: "app1" });
-  assert.deepEqual(rows.map((r) => [r.document, r.version, r.vendorApplicationId]), [["CUSTOMER_TERMS", "2026-11-17", null], ["SELLER_TERMS", "2026-11-18", "app1"]]);
+  assert.deepEqual(rows.map((r) => [r.document, r.version, r.vendorApplicationId]), [["CUSTOMER_TERMS", LEGAL_VERSIONS.CUSTOMER_TERMS, null], ["SELLER_TERMS", LEGAL_VERSIONS.SELLER_TERMS, "app1"]]);
 });
 
 test("refuses a missing user id and an application id on customer terms (nothing written)", async () => {

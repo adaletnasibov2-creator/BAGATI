@@ -15,6 +15,11 @@ import { rememberOrderPhone } from "../lib/profile-phone";
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "1b7a709";
+// ABOUT-OWNER-INFO-2: the legal-page check compares this task's own commit (TASK) with BASE, not the working tree, so
+// later owner-approved legal changes (2026-11-26: operator sentence moved, new date) do not break it.
+const TASK = "eba2218";
+const atTask = (path: string) => execFileSync("git", ["show", `${TASK}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).replace(/\r\n/g, "\n");
+
 
 // ---------------------------------------------------------------- validator
 
@@ -196,7 +201,7 @@ test("texts: no new visible Azerbaijani text in the changed files; legal pages u
     assert.deepEqual(added, [], `${path}: new Azerbaijani text`);
   }
   for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) {
-    const now = read(path);
+    const now = atTask(path);
     assert.ok(now.length > 0 && now === baseFile(path), `${path} unchanged`);
   }
 });

@@ -27,7 +27,7 @@ const EMAIL = "adaletnasibov2@gmail.com";
 const PHONE = "+994 55 761 43 32";
 
 const PAGES = [
-  { route: "/about", file: "app/(customer)/about/page.tsx", title: "Haqqımızda", Page: AboutPage, metadata: aboutMetadata, h2: 4, facts: [VOEN, OWNER] },
+  { route: "/about", file: "app/(customer)/about/page.tsx", title: "Haqqımızda", Page: AboutPage, metadata: aboutMetadata, h2: 4, facts: [] }, // ABOUT-OWNER-INFO-2: /about no longer names the owner (owner decision 2026-11-26)
   { route: "/contact", file: "app/(customer)/contact/page.tsx", title: "Əlaqə", Page: ContactPage, metadata: contactMetadata, h2: 2, facts: [VOEN, OWNER, EMAIL, PHONE] },
   { route: "/privacy", file: "app/(customer)/privacy/page.tsx", title: "Məxfilik siyasəti", Page: PrivacyPage, metadata: privacyMetadata, h2: 8, facts: [VOEN, OWNER] },
   { route: "/terms", file: "app/(customer)/terms/page.tsx", title: "İstifadə şərtləri", Page: TermsPage, metadata: termsMetadata, h2: 12, facts: [VOEN, OWNER] },
@@ -92,7 +92,8 @@ test("contact: e-mail is a mailto: link and the phone a tel: link, with the text
 });
 
 test("tables scroll horizontally on narrow screens", () => {
-  for (const Page of [ContactPage, PrivacyPage]) {
+  // ABOUT-OWNER-INFO-2 (owner decision 2026-11-26): /contact has no table any more (e-mail and phone cards); /privacy keeps one.
+  for (const Page of [PrivacyPage]) {
     assert.match(html(Page), /<div class="overflow-x-auto"><table /);
   }
 });
@@ -123,7 +124,7 @@ test("revision of 2026-11-18: wording matches what the code does today", () => {
     "Onlayn ödəniş aktiv olduqda hər mağaza sifarişi ayrıca ödənilir. Məbləğ mağazaya və platformaya ödəniş xidməti tərəfindən bölünür.",
     "Qaytarma şərtləri mağazalar üzrə fərqlənə bilər. Alışdan əvvəl mağazadan soruşun və ya mağaza ilə mesajlaşın.",
     "Qəbul edilmiş qaytarmada ödənilmiş məbləğ geri qaytarılır. Qaytarma üsulu və müddəti ödəniş üsulundan, ödəniş xidmətindən və bankdan asılıdır.",
-    "Son yenilənmə: 17 noyabr 2026.",
+    "Son yenilənmə: 26 noyabr 2026.", // ABOUT-OWNER-INFO-2: owner-approved date (was 17 noyabr 2026)
   ]) assert.ok(terms.includes(sentence), sentence);
   for (const sentence of [
     "Google-dan ad, e-poçt və Google hesabının identifikatorunu alırıq, başqa məlumat saxlamırıq.",

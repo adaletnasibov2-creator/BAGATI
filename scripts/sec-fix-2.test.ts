@@ -369,5 +369,6 @@ test("texts: only existing texts are used; no other new Azerbaijani text (diff s
       assert.doesNotMatch(rest, AZ, `${path}: new text: ${fragment}`);
     }
   }
-  for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(read(path), baseText(path), path);
+  // ABOUT-OWNER-INFO-2: compared at the SEC-FIX-2 commit (atCommit), not the working tree, like the scan above.
+  for (const path of ["app/(customer)/terms/page.tsx", "app/(customer)/privacy/page.tsx", "app/(customer)/seller-terms/page.tsx"]) assert.equal(atCommit(path), baseText(path), path);
 });

@@ -31,8 +31,11 @@ const MAIN_HASHES = {
   terms: { Page: TermsPage, title: "de3eb7bce3d1745c4017241b147c8a96abdfce3e5b1d4149d6166abc26a767bc", body: "15af605a302203ceb129461b12de1ca99978899eb4e85ea4463cfaa1fda332a4", chars: 4485 },
   privacy: { Page: PrivacyPage, title: "439eb169a6c18a33627d22b7ba485d47de5a37215f05c14c95ad98c8d997862f", body: "fbd737249cf78aeeaf547ffb922bd72edc94295deefc326735def95826ea7f77", chars: 3690 },
   "seller-terms": { Page: SellerTermsPage, title: "39d4e107fcc7ef489b0a6ad95f18fd282ae4071590e76fcf339ac764051ecef1", body: "b62d1d8da44b2ad7e240e203994b3c1959ae9139ce184dffffa9a1e876fecab6", chars: 5242 },
-  about: { Page: AboutPage, title: "ca073b711865f871ee7c3a730d6e549599ec8c9fcce1c6b7f9c6491ce25ab6f9", body: "5f974d23eca104794e8dcbfad4c18d0f6572d8c180192b540c07842588cb2447", chars: 1679 },
-  contact: { Page: ContactPage, title: "9e5c3357ab261546a0fbd742fd96c31b7c76bcf783bc9debfa638282963867e8", body: "aba3f7a5f7129760c80db72558f0da09e8a9d25f27fc65e52fe5c1a92c0aef54", chars: 1130 },
+  // ABOUT-OWNER-INFO-1 (owner request): /about's "Kim idarə edir?" section moved to the end and /contact's operator rows
+  // moved to a closing list. Same words (same character count), new order: body hashes re-pinned; the old ones were
+  // about 5f974d23… and contact aba3f7a5…. scripts/about-owner-info-1.test.ts proves no word was added or removed.
+  about: { Page: AboutPage, title: "ca073b711865f871ee7c3a730d6e549599ec8c9fcce1c6b7f9c6491ce25ab6f9", body: "6617145629df7958210570abbf19ef00ee51e353bf6deeae1649ab15bcbceba7", chars: 1679 },
+  contact: { Page: ContactPage, title: "9e5c3357ab261546a0fbd742fd96c31b7c76bcf783bc9debfa638282963867e8", body: "75933d82a37f12d1e5d8dc0b80ee9ff2ac4f03bafc585c763c36a4520921e3a7", chars: 1130 },
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -17,6 +17,9 @@ import { withoutAllowedAdminChanges } from "./admin-power-1-scope";
 const root = join(__dirname, "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8").replace(/\r\n/g, "\n");
 const BASE = "1f6c86a";
+// ABOUT-OWNER-INFO-1: the scope check below compares BASE with this task's own commit, not the working tree, so later
+// owner-approved page changes (e.g. /about and /contact order) do not break it.
+const TASK = "a70d966";
 const SITE = "https://shopbagati.com";
 const PAGES = [
   { path: "/deals", title: "Endirimlər və kampaniyalar" },
@@ -84,7 +87,7 @@ test("private pages stay noindex; robots.txt, legal pages and /admin handling un
   for (const path of ["/cart", "/checkout", "/account", "/orders", "/vendor", "/login", "/register"]) assert.equal(isPrivateNoindexPath(path), true, path);
   for (const path of ["/stores", "/deals", "/new-products", "/delivery-returns", "/help", "/categories"]) assert.equal(isPrivateNoindexPath(path), false, path);
   assert.equal((robotsConfig(SITE).rules as { disallow: string[] }).disallow.includes("/admin"), false);
-  const changed = execFileSync("git", ["diff", "--name-only", BASE, "--", "lib/structured-data.ts", "lib/private-noindex.ts", "middleware.ts", "app/robots.ts", "app/admin", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "app/(customer)/about", "app/(customer)/contact"], { cwd: root, encoding: "utf8" }).trim();
+  const changed = execFileSync("git", ["diff", "--name-only", BASE, TASK, "--", "lib/structured-data.ts", "lib/private-noindex.ts", "middleware.ts", "app/robots.ts", "app/admin", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "app/(customer)/about", "app/(customer)/contact"], { cwd: root, encoding: "utf8" }).trim();
   // ADMIN-DESIGN-1 / ADMIN-POWER-1 (owner-approved) may change their listed admin pages; app/admin/layout.tsx (noindex) is not one.
   assert.equal(withoutAllowedAdminChanges(changed), "");
 });

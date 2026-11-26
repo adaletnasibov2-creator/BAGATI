@@ -49,6 +49,42 @@ export function storesListWhere(sp: AdminListParams, q: string): Prisma.StoreWhe
   };
 }
 
+/**
+ * ADMIN-3-EXPORTS-1: Abunəliklər (/admin/subscriptions). The existing status filter (subscription status; PENDING also
+ * matches stores without a subscription) AND, when searching, the same four store fields as the stores list (store name,
+ * slug, seller name, seller e-mail) through adminSearchContains.
+ */
+export const ADMIN_SUBSCRIPTION_STATUSES = ["PENDING", "ACTIVE", "PAST_DUE", "SUSPENDED", "CANCELLED", "EXPIRED"] as const;
+export function subscriptionsListWhere(sp: AdminListParams, q: string): Prisma.StoreWhereInput {
+  const status = normalizeAdminEnumFilter(sp.status, ADMIN_SUBSCRIPTION_STATUSES);
+  const statusWhere: Prisma.StoreWhereInput = status ? { OR: [{ subscription: { is: { status } } }, ...(status === "PENDING" ? [{ subscription: { is: null } }] : [])] } : {};
+  const searchWhere: Prisma.StoreWhereInput = q ? { OR: [
+    { name: adminSearchContains(q) },
+    { slug: adminSearchContains(q) },
+    { vendor: { displayName: adminSearchContains(q) } },
+    { vendor: { user: { email: adminSearchContains(q) } } },
+  ] } : {};
+  return { AND: [statusWhere, searchWhere] };
+}
+
+/**
+ * ADMIN-3-EXPORTS-1: Qaytarılma sorğuları (/admin/returns): return status (chips) and the search box: order number
+ * (the order id the list shows as "#ABCD1234"; a leading "#" is ignored), customer e-mail, store name.
+ */
+export const ADMIN_RETURN_STATUSES = ["REQUESTED", "APPROVED", "REJECTED", "ITEM_RECEIVED", "REFUND_PENDING", "REFUNDED", "EXCHANGE_PENDING", "EXCHANGED", "CANCELLED"] as const;
+export function returnsListWhere(sp: AdminListParams, q: string): Prisma.ReturnRequestWhereInput {
+  const status = normalizeAdminEnumFilter(sp.status, ADMIN_RETURN_STATUSES);
+  const orderTerm = q.replace(/^#/, "");
+  return {
+    ...(status ? { status: status as Prisma.ReturnRequestWhereInput["status"] } : {}),
+    ...(q ? { OR: [
+      ...(orderTerm ? [{ storeOrder: { orderId: adminSearchContains(orderTerm) } }] : []),
+      { customer: { email: adminSearchContains(q) } },
+      { store: { name: adminSearchContains(q) } },
+    ] } : {}),
+  };
+}
+
 /** Sifarişlər: status (or the "pending" group), store, Baku-agnostic date inputs (from inclusive, to + 1 day exclusive). */
 export function ordersListWhere(sp: AdminListParams, q: string): Prisma.OrderWhereInput {
   const from = sp.from && Number.isFinite(Date.parse(sp.from)) ? new Date(sp.from) : undefined;

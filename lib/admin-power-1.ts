@@ -209,7 +209,8 @@ export const CSV_BOM = String.fromCharCode(0xfeff);
 export const ADMIN_LIST_EXPORT_MAX_ROWS = 5000;
 export const ADMIN_LIST_EXPORT_ACTION = "ADMIN_LIST_EXPORT";
 export const ADMIN_LIST_EXPORT_RATE_LIMIT = { limit: 10, windowMs: 60_000 } as const;
-export const ADMIN_LIST_EXPORTS = ["stores", "orders", "customers", "seller-applications"] as const;
+// ADMIN-3-EXPORTS-1: + "returns" (the returns list, same cap / rate limit / audit).
+export const ADMIN_LIST_EXPORTS = ["stores", "orders", "customers", "seller-applications", "returns"] as const;
 export type AdminListExport = (typeof ADMIN_LIST_EXPORTS)[number];
 
 /**

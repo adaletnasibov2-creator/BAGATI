@@ -11,7 +11,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { adminStatusLabel } from "@/lib/admin-labels";
 import { normalizeAdminEnumFilter, normalizeAdminSearch, normalizeAdminSearchParams, type AdminSearchParams } from "@/lib/admin-pagination";
-import { customersListWhere, ordersListWhere, storesListWhere } from "@/lib/admin-list-where";
+import { customersListWhere, ordersListWhere, returnsListWhere, storesListWhere } from "@/lib/admin-list-where";
 import { ADMIN_LIST_EXPORT_ACTION, ADMIN_LIST_EXPORT_MAX_ROWS, buildAdminListCsv, capRows, type AdminListExport } from "@/lib/admin-power-1";
 import type { AdminReportCsvRow } from "@/lib/admin-report-csv";
 import { formatBakuDateTime } from "@/lib/admin-audit-log";
@@ -19,7 +19,7 @@ import { priceAmount } from "@/lib/price";
 import { maskVoen, SELLER_APPLICATION_SOURCE_LABELS, SELLER_TYPE_LABELS } from "@/lib/seller-application";
 import { sellerApplicationListOrder, sellerApplicationListWhere, type SellerApplicationListFilters } from "@/lib/seller-application-service";
 
-type Db = Pick<PrismaClient, "store" | "order" | "user" | "vendorApplication" | "auditLog">;
+type Db = Pick<PrismaClient, "store" | "order" | "user" | "vendorApplication" | "auditLog" | "returnRequest">;
 export type AdminListCsv = { csv: string; rowCount: number; truncated: boolean; filterKeys: string[]; searched: boolean };
 
 export const ADMIN_LIST_EXPORT_HEADERS: Record<AdminListExport, readonly string[]> = {
@@ -27,6 +27,8 @@ export const ADMIN_LIST_EXPORT_HEADERS: Record<AdminListExport, readonly string[
   orders: ["number", "customer_email", "stores", "status", "total", "created_at_baku"],
   customers: ["id", "name", "email", "phone", "active", "orders", "created_at"],
   "seller-applications": ["submitted_at_baku", "applicant_email", "seller_name", "type", "voen_masked", "status", "source"],
+  // ADMIN-3-EXPORTS-1: the returns list (same filter as /admin/returns: status chips + search).
+  returns: ["order_number", "customer_email", "store", "product", "quantity", "refund_amount", "status", "requested_at_baku"],
 };
 
 const APPLICATION_STATUSES = ["PENDING", "APPROVED", "REJECTED", "WITHDRAWN", "ALL"] as const;
@@ -46,6 +48,10 @@ async function rowsFor(db: Db, list: AdminListExport, sp: Record<string, string 
     const rows = await db.user.findMany({ where: customersListWhere(sp, q), orderBy: { createdAt: "desc" }, take, select: { id: true, email: true, isActive: true, createdAt: true, customerProfile: { select: { firstName: true, lastName: true, phone: true } }, _count: { select: { orders: true } } } });
     return rows.map((r) => [r.id, [r.customerProfile?.firstName, r.customerProfile?.lastName].filter(Boolean).join(" "), r.email, r.customerProfile?.phone ?? "", r.isActive ? "true" : "false", r._count.orders, day(r.createdAt)]);
   }
+  if (list === "returns") {
+    const rows = await db.returnRequest.findMany({ where: returnsListWhere(sp, q), orderBy: { createdAt: "desc" }, take, select: { refundAmount: true, status: true, createdAt: true, store: { select: { name: true } }, storeOrder: { select: { orderId: true } }, orderItem: { select: { productName: true, variantName: true, quantity: true } }, customer: { select: { email: true } } } });
+    return rows.map((r) => [`#${r.storeOrder.orderId.slice(-8).toUpperCase()}`, r.customer.email, r.store.name, r.orderItem.variantName ? `${r.orderItem.productName} · ${r.orderItem.variantName}` : r.orderItem.productName, r.orderItem.quantity, priceAmount(r.refundAmount) ?? "", adminStatusLabel("return", r.status), formatBakuDateTime(r.createdAt)]);
+  }
   const filters: SellerApplicationListFilters = { status: normalizeAdminEnumFilter(sp.status, APPLICATION_STATUSES) ?? "PENDING", q: q.slice(0, 100) };
   const rows = await db.vendorApplication.findMany({ where: sellerApplicationListWhere(filters), orderBy: sellerApplicationListOrder(filters), take, select: { createdAt: true, displayName: true, sellerType: true, voenNormalized: true, status: true, source: true, user: { select: { email: true } } } });
   return rows.map((r) => [formatBakuDateTime(r.createdAt), r.user.email, r.displayName, r.sellerType ? SELLER_TYPE_LABELS[r.sellerType] : "", maskVoen(r.voenNormalized), r.status, SELLER_APPLICATION_SOURCE_LABELS[r.source]]);
@@ -60,7 +66,14 @@ export async function buildAdminListExport(db: Db, list: AdminListExport, rawPar
   return { csv: buildAdminListCsv(ADMIN_LIST_EXPORT_HEADERS[list], rows), rowCount: rows.length, truncated, filterKeys, searched: Boolean(q) };
 }
 
+/**
+ * ADMIN-3-EXPORTS-1: every admin CSV export writes the same ADMIN_LIST_EXPORT audit row: the four list exports above,
+ * the products export ("products") and the sales report CSV ("reports").
+ */
+export type AdminExportName = AdminListExport | "products" | "reports";
+export type AdminExportAuditFacts = Pick<AdminListCsv, "filterKeys" | "searched" | "rowCount" | "truncated">;
+
 /** The audit row (decision B1): after the read, so it never counts itself. No search text, no personal data. */
-export function adminListExportAuditData(adminId: string, list: AdminListExport, result: AdminListCsv): Prisma.AuditLogUncheckedCreateInput {
+export function adminListExportAuditData(adminId: string, list: AdminExportName, result: AdminExportAuditFacts): Prisma.AuditLogUncheckedCreateInput {
   return { actorId: adminId, action: ADMIN_LIST_EXPORT_ACTION, entityType: "AdminList", entityId: list, metadata: { list, filterKeys: result.filterKeys, searched: result.searched, rowCount: result.rowCount, truncated: result.truncated, maxRows: ADMIN_LIST_EXPORT_MAX_ROWS } };
 }

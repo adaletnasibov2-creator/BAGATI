@@ -29,9 +29,12 @@ test("CSV prefixes all spreadsheet formula starters after whitespace and control
   assert.equal(sanitizeCsvText(" ordinary text"), " ordinary text");
   assert.equal(escapeAdminReportCsvCell(-1.25), "-1.25");
 
-  const productExport = readFileSync(resolve(root, "app/api/admin/products/export/route.ts"), "utf8");
+  // ADMIN-3-EXPORTS-1: the CSV building moved from the routes into lib/admin-products-export.ts and
+  // lib/admin-reports-export.ts (bounded reads + audit); the routes use them.
+  const productExport = readFileSync(resolve(root, "lib/admin-products-export.ts"), "utf8");
   assert.match(productExport, /escapeAdminReportCsvCell/);
-  const reportExport = readFileSync(resolve(root, "app/api/admin/reports/route.ts"), "utf8");
+  assert.match(readFileSync(resolve(root, "app/api/admin/products/export/route.ts"), "utf8"), /buildProductsExport\(prisma, parsed\.data\)/);
+  const reportExport = readFileSync(resolve(root, "lib/admin-reports-export.ts"), "utf8");
   assert.match(reportExport, /buildAdminReportCsv/);
 });
 
@@ -41,10 +44,13 @@ test("CSV retains numeric values and encodes null as an empty cell", () => {
 
 test("CSV export endpoint and admin report UI are connected and protected", () => {
   const route = readFileSync(resolve(root, "app/api/admin/reports/route.ts"), "utf8");
+  // ADMIN-3-EXPORTS-1: the summaries are computed in lib/admin-reports-export.ts, which the route calls.
+  const reportLib = readFileSync(resolve(root, "lib/admin-reports-export.ts"), "utf8");
   const page = adminSectionSource();
   assert.match(route, /requireRole\("ADMIN"\)/);
-  assert.match(route, /summarizeDeliveredSales/);
-  assert.match(route, /summarizeMonthlyStoreSales/);
+  assert.match(route, /buildAdminSalesExport\(prisma, /);
+  assert.match(reportLib, /summarizeDeliveredSales/);
+  assert.match(reportLib, /summarizeMonthlyStoreSales/);
   assert.match(page, /\/api\/admin\/reports\?/);
   assert.match(page, /rangeTooLong/);
   assert.match(route, /366 \* 24 \* 60 \* 60 \* 1000/);

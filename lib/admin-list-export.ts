@@ -60,7 +60,14 @@ export async function buildAdminListExport(db: Db, list: AdminListExport, rawPar
   return { csv: buildAdminListCsv(ADMIN_LIST_EXPORT_HEADERS[list], rows), rowCount: rows.length, truncated, filterKeys, searched: Boolean(q) };
 }
 
+/**
+ * ADMIN-3-EXPORTS-1: every admin CSV export writes the same ADMIN_LIST_EXPORT audit row: the four list exports above,
+ * the products export ("products") and the sales report CSV ("reports").
+ */
+export type AdminExportName = AdminListExport | "products" | "reports";
+export type AdminExportAuditFacts = Pick<AdminListCsv, "filterKeys" | "searched" | "rowCount" | "truncated">;
+
 /** The audit row (decision B1): after the read, so it never counts itself. No search text, no personal data. */
-export function adminListExportAuditData(adminId: string, list: AdminListExport, result: AdminListCsv): Prisma.AuditLogUncheckedCreateInput {
+export function adminListExportAuditData(adminId: string, list: AdminExportName, result: AdminExportAuditFacts): Prisma.AuditLogUncheckedCreateInput {
   return { actorId: adminId, action: ADMIN_LIST_EXPORT_ACTION, entityType: "AdminList", entityId: list, metadata: { list, filterKeys: result.filterKeys, searched: result.searched, rowCount: result.rowCount, truncated: result.truncated, maxRows: ADMIN_LIST_EXPORT_MAX_ROWS } };
 }

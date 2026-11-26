@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
-import { escapeAdminReportCsvCell } from "@/lib/admin-report-csv";
 import { prisma } from "@/lib/prisma";
-import { adminSearchContains } from "@/lib/admin-list-where";
+import { ADMIN_LIST_EXPORT_RATE_LIMIT } from "@/lib/admin-power-1";
+import { adminListExportAuditData } from "@/lib/admin-list-export";
+import { buildProductsExport } from "@/lib/admin-products-export";
+import { allowAdminRequest } from "@/lib/admin-request-limit";
+import { rateLimitedResponse } from "@/lib/rate-limit-response";
 
+/**
+ * Admin products CSV. ADMIN-3-EXPORTS-1: the list export's protections (lib/admin-products-export.ts): at most
+ * ADMIN_LIST_EXPORT_MAX_ROWS rows (truncation in X-Export-Truncated, as the list export), the shared admin export rate
+ * limit (429) and one ADMIN_LIST_EXPORT audit row ("products"). Filters and CSV format unchanged.
+ */
 export const dynamic = "force-dynamic";
 const exportQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
@@ -14,121 +21,24 @@ const exportQuerySchema = z.object({
   status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(),
 }).strict();
 
-function findExportPage(where: Prisma.ProductWhereInput, cursor?: string) {
-  return prisma.product.findMany({
-    where,
-    orderBy: { id: "asc" },
-    take: 250,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    select: {
-      id: true,
-      name: true,
-      sku: true,
-      description: true,
-      price: true,
-      discountPrice: true,
-      status: true,
-      images: true,
-      category: { select: { name: true } },
-      store: { select: { name: true } },
-      inventory: { select: { quantity: true } },
-      variants: {
-        select: {
-          name: true,
-          sku: true,
-          options: true,
-          price: true,
-          discountPrice: true,
-          inventory: { select: { quantity: true } },
-        },
-      },
-    },
-  });
-}
-
 export async function GET(request: NextRequest) {
   const admin = await requireRole("ADMIN");
   if (!admin) return NextResponse.json({ error: "İcazə yoxdur" }, { status: 403 });
 
   const parsed = exportQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
   if (!parsed.success) return NextResponse.json({ error: "İxrac filtrlərini yoxlayın" }, { status: 422 });
-  const { q, storeId, categoryId, status } = parsed.data;
-  const where: Prisma.ProductWhereInput = {
-    ...(status ? { status } : {}),
-    ...(storeId ? { storeId } : {}),
-    ...(categoryId ? { category: { OR: [{ id: categoryId }, { parentId: categoryId }] } } : {}),
-    ...(q ? { OR: [
-      { name: adminSearchContains(q) },
-      { sku: adminSearchContains(q) },
-      { store: { name: adminSearchContains(q) } },
-    ] } : {}),
-  };
+  if (!allowAdminRequest("admin-list-export", admin.id, request.headers, ADMIN_LIST_EXPORT_RATE_LIMIT)) return rateLimitedResponse(60);
 
-  const encoder = new TextEncoder();
-  let page: Awaited<ReturnType<typeof findExportPage>> = [];
-  let pageOffset = 0;
-  let cursor: string | undefined;
-  let finished = false;
-  const header = ["id", "name", "sku", "description", "category", "store", "price", "discountPrice", "status", "stock", "images", "variants"].map(escapeAdminReportCsvCell).join(",");
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(encoder.encode(`\uFEFF${header}\r\n`));
-    },
-    async pull(controller) {
-      try {
-        if (pageOffset >= page.length && !finished) {
-          page = await findExportPage(where, cursor);
-          pageOffset = 0;
-          if (page.length === 0) {
-            finished = true;
-            controller.close();
-            return;
-          }
-          cursor = page[page.length - 1].id;
-          if (page.length < 250) finished = true;
-        }
-        if (pageOffset < page.length) {
-          const chunk = page.slice(pageOffset, pageOffset + 50).map((product) => {
-            const variants = product.variants.map((variant) => ({
-              name: variant.name,
-              sku: variant.sku,
-              options: variant.options,
-              price: variant.price?.toString() ?? null,
-              discountPrice: variant.discountPrice?.toString() ?? null,
-              stock: variant.inventory.reduce((sum, item) => sum + item.quantity, 0),
-            }));
-            return [
-              product.id,
-              product.name,
-              product.sku ?? "",
-              product.description ?? "",
-              product.category?.name ?? "",
-              product.store.name,
-              product.price.toString(),
-              product.discountPrice?.toString() ?? "",
-              product.status,
-              String(product.inventory.reduce((sum, item) => sum + item.quantity, 0)),
-              JSON.stringify(product.images),
-              JSON.stringify(variants),
-            ].map(escapeAdminReportCsvCell).join(",");
-          }).join("\r\n");
-          pageOffset += Math.min(50, page.length - pageOffset);
-          controller.enqueue(encoder.encode(`${chunk}\r\n`));
-          return;
-        }
-        if (finished) controller.close();
-      } catch (error) {
-        controller.error(error);
-      }
-    },
-  });
-
-  return new Response(stream, {
+  const result = await buildProductsExport(prisma, parsed.data);
+  await prisma.auditLog.create({ data: adminListExportAuditData(admin.id, "products", result) });
+  return new Response(result.csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": 'attachment; filename="bagati-products.csv"',
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
+      "X-Export-Rows": String(result.rowCount),
+      "X-Export-Truncated": result.truncated ? "1" : "0",
     },
   });
 }

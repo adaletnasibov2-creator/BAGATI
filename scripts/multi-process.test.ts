@@ -168,6 +168,10 @@ const WRAPPER_CALLS: Record<string, number> = {
   "app/api/stores/cursor/route.ts": 1,
   "app/api/admin/list-export/[list]/route.ts": 1,
   "app/api/admin/search/route.ts": 1,
+  // ADMIN-3-EXPORTS-1: the products CSV and the sales report CSV share the admin export flood cap (per admin and IP;
+  // N processes = N x the budget, acceptable for an admin-only, audited export).
+  "app/api/admin/products/export/route.ts": 1,
+  "app/api/admin/reports/route.ts": 1,
 };
 
 const countCalls = (pattern: RegExp, skip: string[]) => {

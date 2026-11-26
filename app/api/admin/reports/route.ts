@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildAdminReportCsv } from "@/lib/admin-report-csv";
 import { formatLocalDateInput, parseLocalDateRange } from "@/lib/admin-report-dates";
-import { summarizeDeliveredSales } from "@/lib/admin-sales-report";
-import { summarizeMonthlyStoreSales } from "@/lib/store-monthly-sales";
+import { ADMIN_LIST_EXPORT_RATE_LIMIT } from "@/lib/admin-power-1";
+import { adminListExportAuditData } from "@/lib/admin-list-export";
+import { buildAdminSalesExport } from "@/lib/admin-reports-export";
+import { allowAdminRequest } from "@/lib/admin-request-limit";
+import { rateLimitedResponse } from "@/lib/rate-limit-response";
 
 export const dynamic = "force-dynamic";
 
@@ -40,45 +42,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "CSV ixracı ən çox 366 günlük aralıq üçün mümkündür" }, { status: 422 });
   }
 
-  const where = {
-    status: "DELIVERED" as const,
-    OR: [{ deliveredAt: { gte: from, lte: to } }, { deliveredAt: null, createdAt: { gte: from, lte: to } }],
-    ...(filters.data.storeId ? { storeId: filters.data.storeId } : {}),
-    ...(filters.data.cityId ? { store: { cityId: filters.data.cityId } } : {}),
-  };
-  const [orders, stores] = await Promise.all([
-    prisma.storeOrder.findMany({
-      where,
-      include: {
-        store: { select: { id: true, name: true } },
-        items: true,
-        returnRequests: { where: { status: "REFUNDED" }, select: { orderItemId: true, status: true, refundAmount: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.store.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-  ]);
-  const sales = summarizeDeliveredSales(orders);
-  const monthly = summarizeMonthlyStoreSales(orders);
-  const storeNames = new Map(stores.map((store) => [store.id, store.name]));
-  const rows: (string | number | null)[][] = [[
-    "type", "period", "store_or_product", "orders_or_lines", "quantity", "net_sales_azn", "commission_rate", "commission_azn",
-  ]];
-  for (const row of sales.daily) rows.push(["daily", row.id, "", row.count, row.quantity, (row.revenueCents / 100).toFixed(2), null, null]);
-  for (const row of monthly) rows.push([
-    "monthly_store_commission", row.month, storeNames.get(row.storeId) ?? row.storeId, row.orders, null,
-    (row.salesCents / 100).toFixed(2), row.rate === null ? null : `${(row.rate * 100).toFixed(2)}%`,
-    row.commissionCents === null ? null : (row.commissionCents / 100).toFixed(2),
-  ]);
-  for (const row of sales.byStore) rows.push(["store", "", storeNames.get(row.id) ?? row.id, row.count, row.quantity, (row.revenueCents / 100).toFixed(2), null, null]);
-  for (const row of sales.byProduct) rows.push(["product", "", row.id, row.count, row.quantity, (row.revenueCents / 100).toFixed(2), null, null]);
+  // ADMIN-3-EXPORTS-1: shared admin export rate limit, bounded read (lib/admin-reports-export.ts), one ADMIN_LIST_EXPORT
+  // audit row ("reports"). Truncation is signalled like the list export (X-Export-Truncated), without a message.
+  if (!allowAdminRequest("admin-list-export", admin.id, request.headers, ADMIN_LIST_EXPORT_RATE_LIMIT)) return rateLimitedResponse(60);
+  const result = await buildAdminSalesExport(prisma, { from, to, storeId: filters.data.storeId, cityId: filters.data.cityId });
+  await prisma.auditLog.create({ data: adminListExportAuditData(admin.id, "reports", result) });
 
   const filename = `bagati-sales-${formatLocalDateInput(from)}-${formatLocalDateInput(to)}.csv`;
-  return new NextResponse(`\uFEFF${buildAdminReportCsv(rows)}`, {
+  return new NextResponse(result.csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
+      "X-Export-Rows": String(result.rowCount),
+      "X-Export-Truncated": result.truncated ? "1" : "0",
     },
   });
 }

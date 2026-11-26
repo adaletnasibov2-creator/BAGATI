@@ -3,6 +3,7 @@ import Link from "next/link";
 import AdminStoreActivationAction from "@/components/admin-store-activation-action";
 import AdminSubscriptionManager from "@/components/admin-subscription-manager";
 import { normalizeAdminEnumFilter } from "@/lib/admin-pagination";
+import { ADMIN_SUBSCRIPTION_STATUSES, subscriptionsListWhere } from "@/lib/admin-list-where";
 import { complimentaryGrantView, complimentaryHistorySelect } from "@/lib/complimentary-entitlements";
 import AdminComplimentaryManager from "@/components/admin-complimentary-manager";
 import { Filters, FilterSelect } from "@/components/admin-list-filters";
@@ -14,7 +15,8 @@ import { PageHeader } from "@/components/admin-ui/page-header";
 import { EmptyState } from "@/components/admin-ui/empty-state";
 
 export async function renderSubscriptions({ sp, q, page, take, skip, pageQuery, shell }: SectionContext) {
-  const statuses=["PENDING","ACTIVE","PAST_DUE","SUSPENDED","CANCELLED","EXPIRED"] as const;const status=normalizeAdminEnumFilter(sp.status,statuses);const where:any=status?{OR:[{subscription:{is:{status}}},...(status==="PENDING"?[{subscription:{is:null}}]:[])]}:{};
+  // ADMIN-3-EXPORTS-1: status filter + the search box (?q=) through lib/admin-list-where.ts (it was ignored before).
+  const statuses=ADMIN_SUBSCRIPTION_STATUSES;const status=normalizeAdminEnumFilter(sp.status,statuses);const where=subscriptionsListWhere(sp,q);
   const [stores,total,plans]=await Promise.all([
    prisma.store.findMany({where,select:{id:true,name:true,status:true,isActive:true,legalInfoApproved:true,vendor:{select:{displayName:true,user:{select:{email:true}}}},subscription:{select:{id:true,planId:true,status:true,currentPeriodStart:true,currentPeriodEnd:true,accessSource:true,grantReason:true,plan:{select:{name:true,monthlyPrice:true}},grantedByAdmin:{select:{email:true}}}},complimentaryEntitlements:complimentaryHistorySelect},orderBy:{createdAt:"desc"},skip,take}),
    prisma.store.count({where}),

@@ -90,8 +90,10 @@ test("every admin ?q= filter goes through the helper (pages, list builders, serv
     ...["brands", "cities", "imports", "notifications", "products", "reviews", "support", "vendors"].map((name) => `app/admin/_sections/${name}.tsx`),
     "lib/admin-list-where.ts", "lib/seller-application-service.ts", "lib/security-center-data.ts", ...ADMIN_DESIGN_2_API_ROUTES,
   ];
+  // ADMIN-3-EXPORTS-1: these files are checked at this task's commit (COMMIT); the loop below still scans every current
+  // admin page, route and lib for a raw `contains` on the search text (later tasks move code, e.g. the products export).
   for (const path of SEARCH_FILES) {
-    const source = read(path);
+    const source = atCommit(path);
     assert.doesNotMatch(source, /contains: ?(q|query|input\.q)\b/, `${path}: raw contains on the search text`);
     assert.match(source, /adminSearchContains\(/, path);
   }
@@ -108,7 +110,8 @@ test("every admin ?q= filter goes through the helper (pages, list builders, serv
 
 test("the 2 approved API routes changed only their q-filter lines (+ the helper import)", () => {
   for (const path of ADMIN_DESIGN_2_API_ROUTES) {
-    const diff = git("diff", BASE, "--", path).split(/\r?\n/).filter((line) => /^[+-][^+-]/.test(line));
+    // ADMIN-3-EXPORTS-1: the diff of this task (BASE..COMMIT), not of the working tree.
+    const diff = git("diff", BASE, COMMIT, "--", path).split(/\r?\n/).filter((line) => /^[+-][^+-]/.test(line));
     for (const line of diff) assert.match(line, /contains: ?(q|query), mode: "insensitive"|adminSearchContains\((q|query)\)|^\+import \{ adminSearchContains \} from "@\/lib\/admin-list-where";/, `${path}: ${line}`);
   }
 });

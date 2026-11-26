@@ -134,17 +134,40 @@ export type AttentionCounts = {
   /** null while messaging is off (the menu item is hidden too). */
   openReports: number | null;
   unverifiedAccounts: number;
+  // ADMIN-3-TODAY-1: day-1 rows (counts only, lib/admin-dashboard-activity.ts).
+  ordersToday: number;
+  returnsWaiting: number;
+  supportInProgress: number;
+  failedEmails: number;
+  lowStockProducts: number;
+  sellersWithoutStore: number;
 };
 export type AttentionItem = { key: keyof AttentionCounts; label: string; count: number; href: string };
+
+/** ADMIN-3-TODAY-1: the six owner-approved queue labels (the only new visible text of that task). */
+export const ADMIN_TODAY_TEXT = {
+  returnsWaiting: "Gözləyən qaytarmalar",
+  failedEmails: "Göndərilməyən e-poçtlar",
+  ordersToday: "Bugünkü sifarişlər",
+  lowStockProducts: "Azalan stoklu məhsullar",
+  supportInProgress: "İşlənən müraciətlər",
+  sellersWithoutStore: "Mağazası olmayan satıcılar",
+} as const;
 
 export function attentionItems(counts: AttentionCounts, pendingOrdersHref: string): AttentionItem[] {
   const items: AttentionItem[] = [
     { key: "pendingApplications", label: "Satıcı müraciətləri", count: counts.pendingApplications, href: "/admin/seller-applications" },
     { key: "storesInReview", label: "Yoxlama gözləyir", count: counts.storesInReview, href: "/admin/stores?status=PENDING_REVIEW" },
     { key: "pendingOrders", label: "Gözləyən sifarişlər", count: counts.pendingOrders, href: pendingOrdersHref },
+    { key: "ordersToday", label: ADMIN_TODAY_TEXT.ordersToday, count: counts.ordersToday, href: "/admin/orders" },
+    { key: "returnsWaiting", label: ADMIN_TODAY_TEXT.returnsWaiting, count: counts.returnsWaiting, href: "/admin/returns" },
     { key: "openSupport", label: "Dəstək müraciətləri", count: counts.openSupport, href: "/admin/support?status=OPEN" },
+    { key: "supportInProgress", label: ADMIN_TODAY_TEXT.supportInProgress, count: counts.supportInProgress, href: "/admin/support?status=IN_PROGRESS" },
     ...(counts.openReports === null ? [] : [{ key: "openReports" as const, label: "Mesaj şikayətləri", count: counts.openReports, href: "/admin/messages/reports" }]),
     { key: "unverifiedAccounts", label: "E-poçt təsdiqi gözləyənlər", count: counts.unverifiedAccounts, href: "/admin/verification" },
+    { key: "failedEmails", label: ADMIN_TODAY_TEXT.failedEmails, count: counts.failedEmails, href: "/admin/email" },
+    { key: "lowStockProducts", label: ADMIN_TODAY_TEXT.lowStockProducts, count: counts.lowStockProducts, href: "/admin/products" },
+    { key: "sellersWithoutStore", label: ADMIN_TODAY_TEXT.sellersWithoutStore, count: counts.sellersWithoutStore, href: "/admin/vendors" },
   ];
   return items.filter((item) => item.count > 0);
 }

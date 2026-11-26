@@ -278,7 +278,8 @@ test("scope: only listed admin files and the two new admin routes; no packages, 
   const changed = git("diff", "--name-only", BASE, TASK, "--", "app/admin", "app/api/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|app\/api\/admin\/|components\/admin)/.test(path));
   assert.deepEqual(changed.filter((path) => !isAllowedAdminChange(path)), []);
   assert.deepEqual(changed.filter((path) => path.startsWith("app/api/admin/")).sort(), [...ADMIN_POWER_1_API_ROUTES].sort());
-  assert.equal(git("diff", "--name-only", BASE, "--", "package.json", "package-lock.json", "prisma", "lib/legal", "lib/auth.ts", "lib/admin-2fa.ts", "lib/auth-rate-limit.ts", "lib/order-fulfillment.ts", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms").trim(), "");
+  // MULTI-PROCESS-1: checked on the task commit (BASE..TASK), not the working tree: later tasks may change package.json.
+  assert.equal(git("diff", "--name-only", BASE, TASK, "--", "package.json", "package-lock.json", "prisma", "lib/legal", "lib/auth.ts", "lib/admin-2fa.ts", "lib/auth-rate-limit.ts", "lib/order-fulfillment.ts", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms").trim(), "");
 });
 
 test("texts: every reused text exists in main at the cited file; back links and new texts as approved", () => {

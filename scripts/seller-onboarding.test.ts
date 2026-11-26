@@ -109,11 +109,8 @@ test("store submission honors company requirements, admin-managed stores, and su
     missingFields: ["legalAddress"],
   });
   assert.deepEqual(checkStoreSubmission({ ...company, adminManaged: true, hasSubscription: false, legalAddress: "Baku" }), { ok: true });
-  assert.deepEqual(checkStoreSubmission({ ...company, hasSubscription: false, legalAddress: "Baku" }), {
-    ok: false,
-    reason: "SUBSCRIPTION_REQUIRED",
-    missingFields: [],
-  });
+  // PILOT-FREE-ONBOARDING-1: a plan is no longer needed to submit; selling stays gated at approval (entitlement).
+  assert.deepEqual(checkStoreSubmission({ ...company, hasSubscription: false, legalAddress: "Baku" }), { ok: true });
 });
 
 test("seller legal requirements can be configured independently by seller type", () => {

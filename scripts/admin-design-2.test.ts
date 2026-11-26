@@ -35,12 +35,15 @@ test("no old admin palette (hex or slate-*) in any admin file; /admin/login unto
   assert.equal(git("diff", "--name-only", BASE, "--", ...LOGIN, "app/admin/layout.tsx", "middleware.ts", "app/robots.ts", "lib/legal", "app/(customer)/terms", "app/(customer)/privacy", "app/(customer)/seller-terms", "prisma", "package.json", "package-lock.json").trim(), "");
 });
 
+// CLEANUP-2: the scope is checked on the ADMIN-DESIGN-2 commit (62d2448), not on the working tree: after the merge,
+// every later branch changes other files, and a tree diff against 4148b5c would fail on them (same as admin-design-1).
+const COMMIT = "62d2448";
 test("scope: the list equals the real diff of admin files and admin API routes", () => {
-  const changed = git("diff", "--name-only", BASE, "--", "app/admin", "app/api/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|app\/api\/admin\/|components\/admin)/.test(path));
+  const changed = git("diff", "--name-only", BASE, COMMIT, "--", "app/admin", "app/api/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|app\/api\/admin\/|components\/admin)/.test(path));
   assert.deepEqual(changed.sort(), [...ADMIN_DESIGN_2_FILES].sort());
   for (const path of changed) assert.ok(isAllowedAdminChange(path), path);
   // Outside admin files only the escaping helper's callers changed (lib), plus tests.
-  const other = git("diff", "--name-only", BASE).split(/\r?\n/).filter((path) => path && !/^(app\/admin\/|app\/api\/admin\/|components\/admin|scripts\/)/.test(path));
+  const other = git("diff", "--name-only", BASE, COMMIT).split(/\r?\n/).filter((path) => path && !/^(app\/admin\/|app\/api\/admin\/|components\/admin|scripts\/)/.test(path));
   assert.deepEqual(other.sort(), ["lib/admin-list-where.ts", "lib/security-center-data.ts", "lib/seller-application-service.ts", "lib/voen-verification.ts"]);
 });
 

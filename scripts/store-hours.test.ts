@@ -297,7 +297,7 @@ test("seller panel never renders PublicTheme; the dot is public only", () => {
 
 const MIGRATION = "prisma/migrations/20261122000000_store_business_hours/migration.sql";
 
-test("migration: additive, one ALTER TABLE, nullable VARCHAR(5), CHECKs for format, pair and not-equal; LF; sorts last", () => {
+test("migration: additive, one ALTER TABLE, nullable VARCHAR(5), CHECKs for format, pair and not-equal; LF; sorts after the previous migration", () => {
   const raw = readFileSync(join(root, MIGRATION), "utf8");
   assert.doesNotMatch(raw, /\r/, "LF (Prisma checksum)");
   const sql = raw.replace(/--[^\n]*/g, "");
@@ -313,7 +313,11 @@ test("migration: additive, one ALTER TABLE, nullable VARCHAR(5), CHECKs for form
   const dbPattern = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
   for (const value of ["00:00", "09:00", "23:59", "24:00", "9:00", "09:60"]) assert.equal(dbPattern.test(value), parseStoreTime(value) !== null, value);
   const folders = readdirSync(join(root, "prisma/migrations")).filter((name) => /^\d{14}_/.test(name)).sort();
-  assert.equal(folders[folders.length - 1], "20261122000000_store_business_hours");
+  // CLEANUP-2: was "sorts last", which broke when a newer migration (20261125120000_store_order_customer_confirmed)
+  // was added. The intent is the order: it exists and runs right after the migration it was written on top of.
+  const index = folders.indexOf("20261122000000_store_business_hours");
+  assert.ok(index > 0, "the migration exists");
+  assert.equal(folders[index - 1], "20261121010000_store_notification_email", "it sorts right after the previous migration");
   const schema = read("prisma/schema.prisma");
   assert.match(schema, /openingTime\s+String\?\s+@db\.VarChar\(5\)/);
   assert.match(schema, /closingTime\s+String\?\s+@db\.VarChar\(5\)/);

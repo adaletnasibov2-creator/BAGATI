@@ -12,7 +12,7 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { calculateEffectivePrice, productPromotions, type PromotionPriceInput } from "@/lib/promotion-pricing";
 import { calculateVariantEffectivePrice } from "@/lib/product-variants";
 import { publicProductVisibilityWhere } from "@/lib/store-visibility";
-import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
+import { requestPublicStoreEligibility } from "@/lib/public-store-eligibility-memo";
 import { messageEntryForViewer } from "@/lib/messaging-pages";
 import { shortenMetaText } from "@/lib/seo";
 import { canonicalMetadata, shareImage, sharePreviewMetadata } from "@/lib/share-preview";
@@ -100,7 +100,8 @@ export async function generateMetadata({ params }: { params: Promise<{ productId
   const { productId } = await params;
   const product = await getPublicProductRecord(productId) as ProductRecord | null;
   if (!product) return {};
-  const eligibleStoreIds = await resolvePublicStoreEligibility([product.store.id], prisma, new Date());
+  // CLEANUP-2: the request's store-eligibility memo (React cache), shared with the page below: one read per request.
+  const eligibleStoreIds = await requestPublicStoreEligibility().resolve([product.store.id], new Date());
   if (!eligibleStoreIds.has(product.store.id)) return {};
   const settings = await getSiteSettings();
   const description = product.description?.trim() ? shortenMetaText(product.description) : undefined;
@@ -123,7 +124,7 @@ export default async function ProductPage({ params }: { params: Promise<{ produc
   const product = productResult as (ProductRecord & { promotionProducts: { promotion: PromotionPriceInput }[] }) | null;
   if (!product) notFound();
 
-  const eligibleStoreIds = await resolvePublicStoreEligibility([product.store.id], prisma, now);
+  const eligibleStoreIds = await requestPublicStoreEligibility().resolve([product.store.id], now);
   if (!eligibleStoreIds.has(product.store.id)) notFound();
   // "Bu məhsul haqqında soruş": customers; logged-out visitors sign in first; hidden while messaging is OFF.
   const askHref = await messageEntryForViewer({ storeId: product.store.id, productId: product.id }, "login");

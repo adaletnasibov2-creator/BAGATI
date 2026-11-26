@@ -144,8 +144,11 @@ test("public and publication entry points use trim-aware store eligibility", () 
     ["app/(customer)/categories/page.tsx", /filterEligiblePublicProducts/],
     ["app/(customer)/deals/page.tsx", /filterEligiblePublicProducts/],
     ["app/(customer)/new-products/page.tsx", /filterEligiblePublicProducts/],
-    ["app/(customer)/products/(list)/page.tsx", /resolvePublicStoreEligibility/],
-    ["app/(customer)/products/[productId]/page.tsx", /resolvePublicStoreEligibility/],
+    // CLEANUP-2: these two read through the request memo (lib/public-store-eligibility-memo.ts), which runs the same
+    // isPublicStoreEligible on the same store rows (scripts/cleanup-2.test.ts proves the same results).
+    ["app/(customer)/products/(list)/page.tsx", /storeEligibility\.resolve\(\[selectedStore\.id\], now\)/],
+    ["app/(customer)/products/[productId]/page.tsx", /requestPublicStoreEligibility\(\)\.resolve\(\[product\.store\.id\], now\)/],
+    ["lib/public-store-eligibility-memo.ts", /isPublicStoreEligible\(candidate, now\)/],
     ["app/(customer)/stores/[storeId]/page.tsx", /isPublicStoreEligible/],
     // Items go through the trim-aware catalog scan; since SCALE-FIX-1 it runs as plain reads (allowMissingRecords) and
     // `total` is a bounded SQL count (lib/public-products-api.ts), no longer the exact scan of every product.

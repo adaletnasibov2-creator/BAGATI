@@ -142,8 +142,8 @@ test("(d) route and button: admin only, POST /api/admin/stores/<id>/submit, exis
   assert.ok(panel.includes("fetch(`/api/admin/stores/${encodeURIComponent(props.storeId)}/submit`, { method: \"POST\""));
   assert.ok(panel.includes('{props.status === "DRAFT" && <div className="mt-4"><button type="button" disabled={busy} onClick={() => void submitDraft()}'));
   assert.ok(panel.includes('{busy ? "Gözləyin…" : "Yoxlamaya göndər"}'));
-  // No new visible audit label: the action shows as its code in the audit log (no label existed).
-  assert.equal(auditActionLabel(ADMIN_STORE_SUBMIT_AUDIT), "STORE_SUBMIT_FOR_REVIEW");
+  // ADMIN-3-TEXTS-1: the owner then approved the label "Mağaza yoxlamaya göndərildi" (was shown as its code).
+  assert.equal(auditActionLabel(ADMIN_STORE_SUBMIT_AUDIT), "Mağaza yoxlamaya göndərildi");
 });
 
 test("(e) no other new text; selling, approval and entitlement rules untouched; scope", () => {

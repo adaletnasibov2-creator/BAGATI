@@ -65,9 +65,9 @@ export default function AdminComplimentaryManager({ storeId, grants }: { storeId
     {active && <p className="mt-2 text-sm text-fg-secondary">
       Bitmə tarixi: {active.endsAt ? shown(active.endsAt) : "yoxdur"} · Verilib: {shown(active.grantedAt)}{active.grantedBy ? ` · ${active.grantedBy}` : ""}<br/>Səbəb: {active.grantReason}
     </p>}
-    <p className="mt-2 text-xs leading-5 text-fg-secondary">Paket BASIC (300 aktiv məhsul) və ya PRO (2 000) ola bilər. Bitmə tarixi boşdursa, icazə ləğv edilənə qədər qüvvədədir; tarix daxil edilərsə, həmin günün 00:00 (UTC) anından satış dayanır. Ödənişli abunəlik ACTIVE saxlanılarsa, bu icazə avtomatik ləğv olunur. Mağaza gizlidirsə, icazədən sonra aktivlik bölməsindən yayımlayın.</p>
+    <p className="mt-2 text-xs leading-5 text-fg-secondary">Paket Basic (300 aktiv məhsul) və ya Pro (2 000) ola bilər. Bitmə tarixi boşdursa, icazə ləğv edilənə qədər qüvvədədir; tarix daxil edilərsə, həmin günün 00:00 (UTC) anından satış dayanır. Ödənişli abunəlik ACTIVE saxlanılarsa, bu icazə avtomatik ləğv olunur. Mağaza gizlidirsə, icazədən sonra aktivlik bölməsindən yayımlayın.</p>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-      <label className="grid gap-1 text-sm">Paket<select className={input} value={tier} onChange={(event) => setTier(event.target.value as "BASIC" | "PRO")}><option value="BASIC">BASIC (300 məhsul)</option><option value="PRO">PRO (2 000 məhsul)</option></select></label>
+      <label className="grid gap-1 text-sm">Paket<select className={input} value={tier} onChange={(event) => setTier(event.target.value as "BASIC" | "PRO")}><option value="BASIC">Basic (300 məhsul)</option><option value="PRO">Pro (2 000 məhsul)</option></select></label>
       <label className="grid gap-1 text-sm">Bitmə tarixi (istəyə bağlı)<input type="date" className={input} value={endsAt} onChange={(event) => setEndsAt(event.target.value)}/></label>
       <label className="grid gap-1 text-sm sm:col-span-2">Səbəb (məcburi)<textarea className={input} rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)}/></label>
     </div>

@@ -106,7 +106,7 @@ export function buildAdminStoreReadiness(
       label: "Sat\u0131\u015f h\u00fcququ v\u0259 abun\u0259lik",
       ready: entitlement.eligible,
       detail: entitlement.eligible
-        ? "Ma\u011faza, sat\u0131c\u0131 v\u0259 plan sat\u0131\u015f qaydalar\u0131na uy\u011fundur."
+        ? "Ma\u011faza, sat\u0131c\u0131 v\u0259 paket sat\u0131\u015f qaydalar\u0131na uy\u011fundur."
         : "Ma\u011faza, sat\u0131c\u0131, \u015f\u0259h\u0259r v\u0259 ya abun\u0259lik t\u0259l\u0259bl\u0259rind\u0259n biri tamamlanmay\u0131b.",
     },
     {

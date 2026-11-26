@@ -151,8 +151,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ st
     return NextResponse.json({
       item: { isActive: result.isActive, status: result.status },
       message: result.isActive
-        ? `Mağazanın ictimai görünürlüğü aktivdir. ${published} qaralama məhsul yayımlandı; ${skipped} məhsul səbəblərinə görə qaralama qaldı.`
-        : "Mağazanın ictimai görünürlüğü deaktiv edildi.",
+        ? `Mağazanın ictimai görünürlüyü aktivdir. ${published} qaralama məhsul yayımlandı; ${skipped} məhsul səbəblərinə görə qaralama qaldı.`
+        : "Mağazanın ictimai görünürlüyü deaktiv edildi.",
       products: result.products,
       activationBlockers: result.storeBlockers,
     });

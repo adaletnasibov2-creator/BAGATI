@@ -24,7 +24,7 @@ export default function AdminStoreProfileForm({ store, vendorOptions, cityOption
         { name: "vendorId", label: "Satıcı sahibi", type: "select", value: store.vendorId, required: true, options: vendorOptions },
         { name: "cityId", label: "Şəhər", type: "select", value: store.cityId, required: true, options: cityOptions },
         { name: "address", label: "Ünvan", value: store.address },
-        { name: "logoUrl", label: "Logo HTTPS URL", type: "url", value: store.logoUrl },
+        { name: "logoUrl", label: "Logo HTTPS linki", type: "url", value: store.logoUrl },
         { name: "contactPhone", label: "WhatsApp / telefon (məs. 055 123 45 67)", value: store.contactPhone },
         { name: "freeDeliveryThreshold", label: "Pulsuz çatdırılma həddi (AZN)", type: "number", min: "0", max: "9999999999.99", step: "0.01", value: store.freeDeliveryThreshold },
         { name: "deliveryFee", label: "Həddən aşağı çatdırılma haqqı (AZN)", type: "number", min: "0", max: "9999999999.99", step: "0.01", value: store.deliveryFee },

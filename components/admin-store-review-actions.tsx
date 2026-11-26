@@ -63,7 +63,7 @@ export default function AdminStoreReviewActions(props: Props) {
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={freeSale} disabled={busy || props.hasActiveGrant} onChange={(event) => setFreeSale(event.target.checked)}/>Ödənişsiz satış (admin icazəsi)</label>
         <p className="mt-1 text-xs leading-5 text-fg-secondary">{props.hasActiveGrant ? "Bu mağazanın artıq ödənişsiz satış icazəsi var; onu aşağıdakı bölmədən idarə edin." : "Seçilməsə, satış üçün aktiv və qüvvədə olan ödənişli Basic və ya Pro abunəliyi tələb olunur."}</p>
         {freeSale && <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm">Paket<select className={input} value={freeTier} onChange={(event) => setFreeTier(event.target.value as "BASIC" | "PRO")}><option value="BASIC">BASIC (300 məhsul)</option><option value="PRO">PRO (2 000 məhsul)</option></select></label>
+          <label className="grid gap-1 text-sm">Paket<select className={input} value={freeTier} onChange={(event) => setFreeTier(event.target.value as "BASIC" | "PRO")}><option value="BASIC">Basic (300 məhsul)</option><option value="PRO">Pro (2 000 məhsul)</option></select></label>
           <label className="grid gap-1 text-sm">Bitmə tarixi (istəyə bağlı)<input type="date" className={input} value={freeEndsAt} onChange={(event) => setFreeEndsAt(event.target.value)}/></label>
           <label className="grid gap-1 text-sm sm:col-span-2">Ödənişsiz satışın səbəbi (məcburi)<textarea className={input} rows={2} maxLength={500} value={freeReason} onChange={(event) => setFreeReason(event.target.value)}/></label>
         </div>}

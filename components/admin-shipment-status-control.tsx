@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ResultMessage } from "@/components/admin-ui/result-message";
+import { useConfirmDialog } from "@/components/admin-ui/confirm-dialog";
 import { buttonClass, inputClass } from "@/components/admin-ui/styles";
 import { allowedShipmentTransitions, shipmentChangeAllowedForOrder, shipmentStatusLabel, type ShipmentStatusValue } from "@/lib/shipment-tracking";
 
@@ -12,11 +13,14 @@ export function AdminShipmentStatusControl({ storeOrderId, shipmentStatus, order
   const [target, setTarget] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const { confirm, dialog } = useConfirmDialog();
   const options = shipmentChangeAllowedForOrder(orderStatus) ? allowedShipmentTransitions(shipmentStatus) : [];
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!target || busy) return;
+    // ADMIN-3-SAFETY-1: ask before changing the shipment status (owner-approved text).
+    if (!(await confirm("Çatdırılma statusunu dəyişmək istədiyinizə əminsiniz?"))) return;
     setBusy(true); setResult(null);
     try {
       const response = await fetch(`/api/admin/store-orders/${encodeURIComponent(storeOrderId)}/shipment`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shipmentStatus: target }) });
@@ -32,7 +36,7 @@ export function AdminShipmentStatusControl({ storeOrderId, shipmentStatus, order
     }
   }
 
-  return <form onSubmit={save} className="mt-3 grid gap-2 rounded-control bg-surface-page p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+  return <form onSubmit={save} className="mt-3 grid gap-2 rounded-control bg-surface-page p-3 sm:grid-cols-[1fr_auto] sm:items-end">{dialog}
     <label className="grid gap-1 text-sm text-fg-body">
       <span>Göndəriş statusu: <b>{shipmentStatus ? shipmentStatusLabel(shipmentStatus) : "Başlanmayıb"}</b></span>
       <select value={target} onChange={(event) => setTarget(event.target.value)} disabled={!options.length || busy} className={inputClass}>

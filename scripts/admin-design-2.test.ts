@@ -39,6 +39,9 @@ test("no old admin palette (hex or slate-*) in any admin file; /admin/login unto
 // CLEANUP-2: the scope is checked on the ADMIN-DESIGN-2 commit (62d2448), not on the working tree: after the merge,
 // every later branch changes other files, and a tree diff against 4148b5c would fail on them (same as admin-design-1).
 const COMMIT = "62d2448";
+// ADMIN-3-SAFETY-1: the text and logic checks below also read the files at COMMIT (not the working tree), so later
+// owner-approved admin changes (e.g. the confirm dialogs of ADMIN-3-SAFETY-1) do not break them.
+const atCommit = (path: string) => git("show", `${COMMIT}:${path}`).replace(/\r\n/g, "\n");
 test("scope: the list equals the real diff of admin files and admin API routes", () => {
   const changed = git("diff", "--name-only", BASE, COMMIT, "--", "app/admin", "app/api/admin", "components").split(/\r?\n/).filter((path) => /^(app\/admin\/|app\/api\/admin\/|components\/admin)/.test(path));
   assert.deepEqual(changed.sort(), [...ADMIN_DESIGN_2_FILES].sort());
@@ -57,7 +60,7 @@ const textNodes = (source: string) => new Set([...code(source).matchAll(/(?<!=)>
 
 test("texts: no new and no removed visible words in the restyled files", () => {
   for (const path of RESTYLED) {
-    const before = baseFile(path), after = read(path);
+    const before = baseFile(path), after = atCommit(path);
     const b = fragments(before), a = fragments(after);
     assert.deepEqual([...a].filter((part) => !b.has(part)), [], `${path}: new Azerbaijani text`);
     assert.deepEqual([...b].filter((part) => !a.has(part)), [], `${path}: removed Azerbaijani text`);
@@ -69,7 +72,7 @@ test("texts: no new and no removed visible words in the restyled files", () => {
 test("no logic change: the same number of data reads, auth checks, redirects, requests and handlers per file", () => {
   const LOGIC = { prisma: /prisma\./g, query: /\$query/g, role: /requireRole\(/g, redirect: /redirect\(/g, fetch: /fetch\(/g, await: /\bawait\b/g, method: /method[=:]/g, action: /\baction=/g, submit: /onSubmit/g, click: /onClick/g, change: /onChange/g };
   for (const path of RESTYLED) {
-    const before = baseFile(path), after = read(path);
+    const before = baseFile(path), after = atCommit(path);
     for (const [name, pattern] of Object.entries(LOGIC)) assert.equal((after.match(pattern) ?? []).length, (before.match(pattern) ?? []).length, `${path}: ${name}`);
   }
 });

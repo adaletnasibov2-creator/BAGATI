@@ -15,6 +15,7 @@ import { logSecurityOperationFailure } from "@/lib/security-logging";
 import { getProductPublicationBlockers } from "@/lib/admin-store-product-publishing";
 import { supportedSubscriptionPlanSlugs } from "@/lib/subscription-plans";
 import { saveManualSubscription } from "@/lib/admin-manual-subscription";
+import { renameBrandAudited, setTicketStatusAudited, setUserActiveAudited, updateCityAudited } from "@/lib/admin-audited-writes";
 import { contactPhoneIssue, optionalAzPhoneSchema } from "@/lib/az-phone";
 import { planStoreProfileUpdate } from "@/lib/admin-store-profile";
 import { createCategory, deleteCategory, updateCategory } from "@/lib/admin-category-service";
@@ -39,9 +40,8 @@ const adminSubscriptionSchema = z.object({
   reason: z.string().trim().min(8).max(500),
 }).refine((value) => value.currentPeriodStart < value.currentPeriodEnd, { path: ["currentPeriodEnd"], message: "Dövrün sonu başlanğıcdan sonra olmalıdır" });
 
-async function audit(actorId: string, action: string, entityType: string, entityId: string, metadata?: unknown) {
-  await db.auditLog.create({ data: { actorId, action, entityType, entityId, ...(metadata ? { metadata } : {}) } });
-}
+// ADMIN-3-SAFETY-1: the old audit helper wrote the audit row after the change, outside a transaction; its four users now
+// go through lib/admin-audited-writes.ts (change + audit row in one transaction, same action names).
 
 function createFailure(error: unknown, operation: string, conflictMessage: string) {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -235,7 +235,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
     if (section === "users") {
       const parsed = z.object({ id: z.string(), isActive: z.boolean() }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "İstifadəçi statusunu yoxlayın" }, { status: 422 });
-      const item = await db.user.update({ where: { id, role: { in: ["CUSTOMER", "VENDOR"] } }, data: { isActive: parsed.data.isActive }, select: { id: true, isActive: true, role: true } }); await audit(admin.id, parsed.data.isActive ? "USER_ACTIVATE" : "USER_DEACTIVATE", "User", id); return NextResponse.json({ item });
+      const item = await setUserActiveAudited(db, admin.id, id, parsed.data.isActive); return NextResponse.json({ item });
     }
     if (section === "categories") {
       // Audited with the category's own id (the old code logged the wrong variable) through the shared service.
@@ -245,13 +245,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       catch (error) { return categoryAdminFailure(error, "admin_category_update"); }
     }
     if (section === "brands") {
-      const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Brend məlumatını yoxlayın" }, { status: 422 }); const item = await db.brand.update({ where: { id }, data: { name: parsed.data.name } }); await audit(admin.id, "UPDATE", "Brand", id); return NextResponse.json({ item });
+      const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Brend məlumatını yoxlayın" }, { status: 422 }); const item = await renameBrandAudited(db, admin.id, id, parsed.data.name); return NextResponse.json({ item });
     }
     if (section === "cities") {
-      const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100).optional(), slug: z.string().trim().min(2).max(120).optional(), countryCode: z.string().length(2).optional(), isActive: z.boolean().optional() }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Şəhər məlumatlarını yoxlayın" }, { status: 422 }); const { id: cityId, ...values } = parsed.data; const item = await db.city.update({ where: { id: cityId }, data: { ...values, ...(values.slug ? { slug: slug(values.slug) } : {}) } }); invalidateActiveCitiesCache(); await audit(admin.id, "UPDATE", "City", id); return NextResponse.json({ item });
+      const parsed = z.object({ id: z.string(), name: z.string().trim().min(2).max(100).optional(), slug: z.string().trim().min(2).max(120).optional(), countryCode: z.string().length(2).optional(), isActive: z.boolean().optional() }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Şəhər məlumatlarını yoxlayın" }, { status: 422 }); const { id: cityId, ...values } = parsed.data; const item = await updateCityAudited(db, admin.id, cityId, id, { ...values, ...(values.slug ? { slug: slug(values.slug) } : {}) }); invalidateActiveCitiesCache(); return NextResponse.json({ item });
     }
     if (section === "support") {
-      const parsed = z.object({ id: z.string(), status: z.enum(ticketStatuses) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Müraciət statusunu yoxlayın" }, { status: 422 }); const item = await db.supportTicket.update({ where: { id }, data: { status: parsed.data.status } }); await audit(admin.id, `TICKET_${parsed.data.status}`, "SupportTicket", id); return NextResponse.json({ item });
+      const parsed = z.object({ id: z.string(), status: z.enum(ticketStatuses) }).safeParse(body); if (!parsed.success) return NextResponse.json({ error: "Müraciət statusunu yoxlayın" }, { status: 422 }); const item = await setTicketStatusAudited(db, admin.id, id, parsed.data.status); return NextResponse.json({ item });
     }
     if (section === "orders") {
       const parsed = z.object({ id: z.string().min(1), status: z.enum(fulfillmentStatuses) }).safeParse(body);

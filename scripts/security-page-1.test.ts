@@ -43,6 +43,9 @@ test("labels: every literal AuditLog action code written by the app has an Azerb
   }
   for (const match of read("lib/messaging-admin.ts").matchAll(/"(CONVERSATION_[A-Z_]+)"/g)) codes.add(match[1]);
   codes.delete("ORDER_"); // built dynamically: "ORDER_" + status (prefix label below)
+  // ADMIN-3-ONBOARD-1 (owner decision): the admin "send for review" action has no visible label yet (no new text without
+  // approval); the audit log shows it as its code until a label is approved.
+  codes.delete("STORE_SUBMIT_FOR_REVIEW");
   assert.ok(codes.size > 50, `found ${codes.size} codes`);
   const missing = [...codes].filter((code) => !AUDIT_ACTION_LABELS[code]);
   assert.deepEqual(missing, [], "add a label for each new audit action code");

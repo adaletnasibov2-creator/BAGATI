@@ -96,6 +96,8 @@ export default async function AdminSellerApplicationPage({ params }: { params: P
             {application.adminNote && <div className="sm:col-span-2"><Field label="Daxili qeyd">{application.adminNote}</Field></div>}
             {application.duplicateVoenConfirmed && <div className="sm:col-span-2"><Field label="Təkrar VÖEN">Admin tərəfindən qəbul edilib</Field></div>}
           </dl>
+          {/* ADMIN-3-ONBOARD-1: from an approved application straight to the seller (and from there to the store). */}
+          {application.status === "APPROVED" && application.vendorProfileId && <p className="mt-4"><Link className="inline-flex min-h-11 items-center font-semibold text-primary underline-offset-2 hover:underline" href={`/admin/vendors/${encodeURIComponent(application.vendorProfileId)}`}>Satıcının səhifəsinə keç</Link></p>}
         </section>}
       </div>
 

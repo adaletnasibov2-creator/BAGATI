@@ -34,7 +34,8 @@ export default function AdminStoreProfileForm({ store, vendorOptions, cityOption
         { name: "mapUrl", label: "Xəritə HTTPS linki", type: "url", value: store.mapUrl },
         { name: "description", label: "Təsvir", type: "textarea", value: store.description },
       ]}/>
-    <AdminStoreArchiveAction storeId={store.id} storeName={store.name}/>
+    {/* ADMIN-3-ONBOARD-1: the approval panel (with "Ödənişsiz satış") comes first; the destructive archive/delete actions below it. */}
     <AdminStoreReviewActions storeId={store.id} status={store.status} legalInfoApproved={store.legalInfoApproved} sellerType={store.sellerType} legalName={store.legalName} voen={store.voen} legalAddress={store.legalAddress} hasActiveGrant={store.hasActiveGrant}/>
+    <AdminStoreArchiveAction storeId={store.id} storeName={store.name}/>
   </section>;
 }

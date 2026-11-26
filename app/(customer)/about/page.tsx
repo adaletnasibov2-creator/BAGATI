@@ -36,10 +36,10 @@ export default function AboutPage() {
           <li>Problem olsa, hesabınızdan qaytarma sorğusu göndərin. Qaytarma şərtləri mağazadan asılı ola bilər; sifarişdən əvvəl mağazadan soruşa bilərsiniz.</li>
         </ol>
 
-        <h2>Kim idarə edir?</h2>
-        <p>BAGATI-ni Qazax şəhərində fərdi sahibkar <strong>Nəsibov Ədalət Şücaət oğlu</strong> (VÖEN: 4202455532) idarə edir. BAGATI məhsulları satan tərəf deyil, mağazalarla alıcıları bir araya gətirən platformadır. Hər məhsulu müvafiq mağaza satır. Ətraflı məlumat üçün <Link href="/terms" className={link}>İstifadə şərtlərinə</Link> baxın.</p>
-
         <h2>Bizimlə əlaqə</h2>
         <p>Sualınız, təklifiniz və ya şikayətiniz varsa, <Link href="/contact" className={link}>Əlaqə</Link> səhifəsindən bizə yaza bilərsiniz. Hər müraciəti oxuyuruq.</p>
+
+        <h2>Kim idarə edir?</h2>
+        <p>BAGATI-ni Qazax şəhərində fərdi sahibkar <strong>Nəsibov Ədalət Şücaət oğlu</strong> (VÖEN: 4202455532) idarə edir. BAGATI məhsulları satan tərəf deyil, mağazalarla alıcıları bir araya gətirən platformadır. Hər məhsulu müvafiq mağaza satır. Ətraflı məlumat üçün <Link href="/terms" className={link}>İstifadə şərtlərinə</Link> baxın.</p>
   </LegalDocument>;
 }

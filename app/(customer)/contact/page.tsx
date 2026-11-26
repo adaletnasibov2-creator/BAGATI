@@ -26,9 +26,6 @@ export default function ContactPage() {
             <tbody>
               <tr><td className={td}>E-poçt</td><td className={td}><a href="mailto:adaletnasibov2@gmail.com" className={link}>adaletnasibov2@gmail.com</a></td></tr>
               <tr><td className={td}>Telefon</td><td className={td}><a href="tel:+994557614332" className={link}>+994 55 761 43 32</a></td></tr>
-              <tr><td className={td}>Operator</td><td className={td}>Fərdi sahibkar Nəsibov Ədalət Şücaət oğlu</td></tr>
-              <tr><td className={td}>VÖEN</td><td className={td}>4202455532</td></tr>
-              <tr><td className={td}>Hüquqi ünvan</td><td className={td}>AZ3500, Qazax rayonu, Qazax şəhəri, N. Nərimanov küçəsi, ev 17</td></tr>
             </tbody>
           </table>
         </div>
@@ -43,5 +40,15 @@ export default function ContactPage() {
 
         <h2>Yazanda necə tez cavab ala bilərsiniz?</h2>
         <p>Müraciətinizdə adınızı, hesabda yazılan e-poçtunuzu, sifariş nömrəsini (varsa) və problemi qeyd edin. Bank kartı məlumatlarını, şifrəni və ya təhlükəsizlik kodlarını heç vaxt yazmayın, biz bunları heç vaxt istəmirik.</p>
+
+        {/* ABOUT-OWNER-INFO-1: the operator details (same labels and values, moved from the table above) close the page. */}
+        <dl className="mt-8 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-line pt-4 text-sm text-fg-muted">
+          <dt>Operator</dt>
+          <dd>Fərdi sahibkar Nəsibov Ədalət Şücaət oğlu</dd>
+          <dt>VÖEN</dt>
+          <dd>4202455532</dd>
+          <dt>Hüquqi ünvan</dt>
+          <dd>AZ3500, Qazax rayonu, Qazax şəhəri, N. Nərimanov küçəsi, ev 17</dd>
+        </dl>
   </LegalDocument>;
 }

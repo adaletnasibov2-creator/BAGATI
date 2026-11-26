@@ -126,10 +126,11 @@ test("non-public stores and products leak nothing: same eligibility as the pages
   const meta = product.slice(product.indexOf("export async function generateMetadata"), product.indexOf("export default async function ProductPage"));
   // One cached query (React cache) shared by the page and its metadata: the same public visibility filter.
   assert.match(product, /const getPublicProductRecord = cache\(\(productId: string\) =>\n\s*prisma\.product\.findFirst\(\{\n\s*where: \{ id: productId, \.\.\.publicProductVisibilityWhere\(\) \},/);
-  assert.match(meta, /const product = await getPublicProductRecord\(productId\) as ProductRecord \| null;\n\s*if \(!product\) return \{\};\n\s*const eligibleStoreIds = await resolvePublicStoreEligibility\(\[product\.store\.id\], prisma, new Date\(\)\);\n\s*if \(!eligibleStoreIds\.has\(product\.store\.id\)\) return \{\};/);
+  // CLEANUP-2: the eligibility check reads through the request memo (one read shared with the page); same rule.
+  assert.match(meta, /const product = await getPublicProductRecord\(productId\) as ProductRecord \| null;\n\s*if \(!product\) return \{\};\n\s*\/\/ CLEANUP-2:[^\n]*\n\s*const eligibleStoreIds = await requestPublicStoreEligibility\(\)\.resolve\(\[product\.store\.id\], new Date\(\)\);\n\s*if \(!eligibleStoreIds\.has\(product\.store\.id\)\) return \{\};/);
   assert.match(product, /getPublicProductRecord\(productId\),\n\s*getSiteSettings\(\),/, "the page reads the same cached record");
   // Only what the page shows: name, description, first image (and the store id for the eligibility check).
   assert.deepEqual([...new Set(meta.match(/product\.\w+/g))].sort(), ["product.description", "product.id", "product.images", "product.name", "product.store"]);
   // The page itself is unchanged: not public -> 404.
-  assert.match(product, /if \(!product\) notFound\(\);\n\n\s*const eligibleStoreIds = await resolvePublicStoreEligibility\(\[product\.store\.id\], prisma, now\);\n\s*if \(!eligibleStoreIds\.has\(product\.store\.id\)\) notFound\(\);/);
+  assert.match(product, /if \(!product\) notFound\(\);\n\n\s*const eligibleStoreIds = await requestPublicStoreEligibility\(\)\.resolve\(\[product\.store\.id\], now\);\n\s*if \(!eligibleStoreIds\.has\(product\.store\.id\)\) notFound\(\);/);
 });

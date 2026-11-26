@@ -21,11 +21,13 @@ test("the product list page (list and search) opens no interactive transaction",
 });
 
 test("the product list keeps the same catalog call: filters, catalog search, sort, 48 per page, cursor", () => {
-  assert.match(listPage, /findPublicProductCatalogPage\(\s*createPrismaPublicProductCatalogSelectClient\(prisma, productSelect\),\s*\{\s*citySlug: params\.city,\s*storeId: params\.store,\s*categorySlug: params\.category,\s*query: searchQuery,\s*searchFields: "catalog",\s*\}, \{ sort, now, limit: 48, paginate: true, allowMissingRecords: true, \.\.\.\(cursor \? \{ cursor \} : \{\}\) \},/);
+  // CLEANUP-2: + the request's store-eligibility memo as third argument (store rows read once per request).
+  assert.match(listPage, /findPublicProductCatalogPage\(\s*createPrismaPublicProductCatalogSelectClient\(prisma, productSelect, storeEligibility\),\s*\{\s*citySlug: params\.city,\s*storeId: params\.store,\s*categorySlug: params\.category,\s*query: searchQuery,\s*searchFields: "catalog",\s*\}, \{ sort, now, limit: 48, paginate: true, allowMissingRecords: true, \.\.\.\(cursor \? \{ cursor \} : \{\}\) \},/);
 });
 
 test("the store filter on the list page reads 20 stores with plain reads", () => {
-  assert.match(listPage, /findPublicStoreDiscoveryCursorPage\(\s*createPrismaPublicStoreDiscoveryClient\(prisma\), \{ citySlug: params\.city \}, \{ pageSize: 20, allowMissingRecords: true \},\s*\)/);
+  // CLEANUP-2: + the request's store-eligibility memo (the scan's store rows are remembered for the product scan).
+  assert.match(listPage, /findPublicStoreDiscoveryCursorPage\(\s*createPrismaPublicStoreDiscoveryClient\(prisma, storeEligibility\), \{ citySlug: params\.city \}, \{ pageSize: 20, allowMissingRecords: true \},\s*\)/);
 });
 
 test("/api/store-options (the store filter's next pages) uses plain reads and stays no-store", () => {

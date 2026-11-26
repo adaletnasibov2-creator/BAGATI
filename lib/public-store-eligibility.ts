@@ -84,6 +84,22 @@ export async function resolvePublicStoreEligibility(
   now = new Date(),
 ): Promise<Set<string>> {
   const eligibleStoreIds = new Set<string>();
+  for (const candidate of await loadPublicStoreCandidates(storeIds, client)) {
+    if (isPublicStoreEligible(candidate, now)) eligibleStoreIds.add(candidate.id);
+  }
+  return eligibleStoreIds;
+}
+
+/**
+ * The store rows isPublicStoreEligible reads, for the given ids (unique, in batches of 100). Unknown ids are left out.
+ * CLEANUP-2: split out of resolvePublicStoreEligibility (same query) so the per-request memo
+ * (lib/public-store-eligibility-memo.ts) reads the same data.
+ */
+export async function loadPublicStoreCandidates(
+  storeIds: readonly string[],
+  client: PublicStoreEligibilityClient = prisma,
+): Promise<PublicStoreCandidate[]> {
+  const loaded: PublicStoreCandidate[] = [];
   const uniqueStoreIds = [...new Set(storeIds)];
   for (let offset = 0; offset < uniqueStoreIds.length; offset += STORE_ID_BATCH_SIZE) {
     const batch = uniqueStoreIds.slice(offset, offset + STORE_ID_BATCH_SIZE);
@@ -117,11 +133,9 @@ export async function resolvePublicStoreEligibility(
         complimentaryEntitlements: activeComplimentaryEntitlementSelect,
       },
     });
-    for (const candidate of candidates) {
-      if (isPublicStoreEligible(candidate, now)) eligibleStoreIds.add(candidate.id);
-    }
+    loaded.push(...candidates);
   }
-  return eligibleStoreIds;
+  return loaded;
 }
 
 export async function filterEligiblePublicStores<T extends { id: string }>(

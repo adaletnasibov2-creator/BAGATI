@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { isPublicStoreEligible, type PublicStoreCandidate } from "@/lib/public-store-eligibility";
+import type { PublicStoreEligibilityMemo } from "@/lib/public-store-eligibility-memo";
 import { publicStoreEligibilityBaseWhere } from "@/lib/seller-legal-policy";
 import { categoryScopeWhere } from "@/lib/category-where";
 import { activeComplimentaryEntitlementSelect } from "@/lib/subscription-entitlements";
@@ -164,21 +165,59 @@ export function createPrismaPublicProductCatalogClient<I extends Prisma.ProductI
   };
 }
 
+/** CLEANUP-2: the candidate columns without the store's eligibility fields (those come from the request memo). */
+const candidateWithoutStoreSelect = {
+  id: true,
+  status: true,
+  name: true,
+  createdAt: true,
+  storeId: true,
+} satisfies Prisma.ProductSelect;
+
+/**
+ * A store row that is gone between the product read and the store read (no snapshot transaction). It fails
+ * isPublicStoreEligible at the first check, so the product is skipped exactly like a product of an ineligible store.
+ */
+function unavailableStoreCandidate(id: string): PublicStoreCandidate {
+  return {
+    id, status: "UNAVAILABLE", isActive: false, legalInfoApproved: false, adminManaged: false,
+    city: { isActive: false },
+    vendor: { user: { isActive: false }, sellerType: null, legalName: null, voen: null, legalAddress: null },
+    subscription: null,
+    complimentaryEntitlements: [],
+  };
+}
+
 /**
  * Same as createPrismaPublicProductCatalogClient, but the page rows are read with a `select` (only the columns the page
  * renders, e.g. lib/product-card-select.ts) instead of full rows. The select must include `id`.
+ *
+ * CLEANUP-2: with `stores` (the request's store-eligibility memo), the candidate query reads only the product columns
+ * and each candidate's store row comes from the memo, which reads only stores it has not seen in this request (the
+ * store-filter scan on the same page already loaded them). The rows are the same fields as the nested select, so
+ * isPublicStoreEligible gives the same answer. Without `stores`: unchanged nested select.
  */
 export function createPrismaPublicProductCatalogSelectClient<S extends Prisma.ProductSelect & { id: true }>(
   client: Pick<PrismaClient, "product"> | Pick<Prisma.TransactionClient, "product">,
   select: S,
+  stores?: Pick<PublicStoreEligibilityMemo, "load">,
 ): PublicProductCatalogClient<Prisma.ProductGetPayload<{ select: S }> & { id: string }> {
   return {
-    findCandidates: ({ where, orderBy, take }) => client.product.findMany({
-      where,
-      select: candidateSelect,
-      orderBy,
-      take,
-    }),
+    findCandidates: stores
+      ? async ({ where, orderBy, take }) => {
+        const products = await client.product.findMany({ where, select: candidateWithoutStoreSelect, orderBy, take });
+        const storesById = await stores.load(products.map((product) => product.storeId));
+        return products.map(({ storeId, ...product }) => ({
+          ...product,
+          store: storesById.get(storeId) ?? unavailableStoreCandidate(storeId),
+        })) as PublicProductCatalogCandidate[];
+      }
+      : ({ where, orderBy, take }) => client.product.findMany({
+        where,
+        select: candidateSelect,
+        orderBy,
+        take,
+      }),
     findRecords: (ids) => client.product.findMany({
       where: { id: { in: ids } },
       select,

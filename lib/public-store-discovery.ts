@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { isPublicStoreEligible, type PublicStoreCandidate } from "@/lib/public-store-eligibility";
+import type { PublicStoreEligibilityMemo } from "@/lib/public-store-eligibility-memo";
 import { publicStoreListingCandidateWhere } from "@/lib/store-visibility";
 import { activeComplimentaryEntitlementSelect } from "@/lib/subscription-entitlements";
 
@@ -86,16 +87,24 @@ export type PublicStoreDiscoveryClient = {
   findStoresByIds(ids: string[]): Promise<PublicStoreDiscoveryRecord[]>;
 };
 
+/**
+ * CLEANUP-2: with `stores` (the request's store-eligibility memo), the candidate rows this scan reads anyway are handed
+ * to the memo, so the product scan on the same page does not read those stores again. The query is unchanged.
+ */
 export function createPrismaPublicStoreDiscoveryClient(
   client: Pick<PrismaClient, "store"> | Pick<Prisma.TransactionClient, "store">,
+  stores?: Pick<PublicStoreEligibilityMemo, "track">,
 ): PublicStoreDiscoveryClient {
   return {
-    findCandidates: ({ where, orderBy, take }) => client.store.findMany({
-      where,
-      select: candidateSelect,
-      orderBy,
-      take,
-    }),
+    findCandidates: ({ where, orderBy, take }) => {
+      const read = client.store.findMany({
+        where,
+        select: candidateSelect,
+        orderBy,
+        take,
+      });
+      return stores ? stores.track(read) : read;
+    },
     findStoresByIds: (ids) => client.store.findMany({
       where: { id: { in: ids } },
       select: storeSelect,

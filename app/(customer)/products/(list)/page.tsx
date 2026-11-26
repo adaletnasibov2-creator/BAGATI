@@ -26,7 +26,7 @@ import { buttonClass } from "@/components/ui/button";
 import { cx, focusRing } from "@/components/ui/cx";
 import { controlClass } from "@/components/ui/field";
 import { normalizePublicSearchTerm, PRODUCT_SEARCH_MAX_LENGTH } from "@/lib/search-term";
-import { resolvePublicStoreEligibility } from "@/lib/store-eligibility";
+import { requestPublicStoreEligibility } from "@/lib/public-store-eligibility-memo";
 
 export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ q?: string; city?: string; category?: string; store?: string; sort?: string; cursor?: string }> };
@@ -59,17 +59,20 @@ export default async function ProductsPage({ searchParams }: Props) {
   // Plain reads, no interactive transactions (SCALE-FIX-1): before, the store list and the catalog each held a pool
   // connection in a RepeatableRead transaction for the whole scan, and under load other visitors got an error page
   // (P2028). Each query now holds a connection only while it runs; results, order, filters and paging are unchanged.
+  // CLEANUP-2: one store-eligibility read per request. The store-filter scan hands its store rows to the request memo;
+  // the product scan and the ?store= check take their stores from it and read only stores it has not seen.
+  const storeEligibility = requestPublicStoreEligibility();
   const [categoryData, storePage, selectedStore, products] = await Promise.all([
     getPublicCategoryData(params.city || null),
     findPublicStoreDiscoveryCursorPage(
-      createPrismaPublicStoreDiscoveryClient(prisma), { citySlug: params.city }, { pageSize: 20, allowMissingRecords: true },
+      createPrismaPublicStoreDiscoveryClient(prisma, storeEligibility), { citySlug: params.city }, { pageSize: 20, allowMissingRecords: true },
     ),
     params.store ? prisma.store.findFirst({
       where: { id: params.store, ...publicStoreListingWhere({ citySlug: params.city }, now) },
       select: { id: true, name: true },
     }) : Promise.resolve(null),
     limitedSearch(searchLimited, () => findPublicProductCatalogPage(
-      createPrismaPublicProductCatalogSelectClient(prisma, productSelect),
+      createPrismaPublicProductCatalogSelectClient(prisma, productSelect, storeEligibility),
       {
         citySlug: params.city,
         storeId: params.store,
@@ -80,7 +83,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     )),
   ]);
   const eligibleSelectedStoreIds = selectedStore
-    ? await resolvePublicStoreEligibility([selectedStore.id], prisma, now)
+    ? await storeEligibility.resolve([selectedStore.id], now)
     : new Set<string>();
   const visibleSelectedStore = selectedStore && eligibleSelectedStoreIds.has(selectedStore.id) ? selectedStore : null;
   // A deactivated category (or one under a deactivated parent) is not shown as selected: no name, no breadcrumb.

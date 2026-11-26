@@ -124,7 +124,8 @@ test("card pages read card rows with a select, never full rows or every promotio
     assert.doesNotMatch(source, /include: \{ promotion: true \}/, `${path}: no unfiltered promotion include`);
     assert.match(source, /product-card-select|homeProductCardSelect/, path);
   }
-  assert.match(read("app/(customer)/products/(list)/page.tsx"), /createPrismaPublicProductCatalogSelectClient\(prisma, productSelect\)/);
+  // CLEANUP-2: + the request's store-eligibility memo as third argument; the card select is unchanged.
+  assert.match(read("app/(customer)/products/(list)/page.tsx"), /createPrismaPublicProductCatalogSelectClient\(prisma, productSelect, storeEligibility\)/);
   assert.equal(read("lib/home-page-data.ts").match(/select: homeProductCardSelect\(now\)/g)?.length, 4, "newest, discounted, popular, featured");
   const store = read("app/(customer)/stores/[storeId]/page.tsx");
   assert.match(store, /where: catalogWhere,\s*\/\/[^\n]*\n\s*select: \{ \.\.\.productCardScalarSelect, store: \{ select: productCardStoreSelect \}, \.\.\.productCardStockSelect \}/);

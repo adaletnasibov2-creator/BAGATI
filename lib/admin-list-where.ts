@@ -67,6 +67,24 @@ export function subscriptionsListWhere(sp: AdminListParams, q: string): Prisma.S
   return { AND: [statusWhere, searchWhere] };
 }
 
+/**
+ * ADMIN-3-EXPORTS-1: Qaytarılma sorğuları (/admin/returns): return status (chips) and the search box: order number
+ * (the order id the list shows as "#ABCD1234"; a leading "#" is ignored), customer e-mail, store name.
+ */
+export const ADMIN_RETURN_STATUSES = ["REQUESTED", "APPROVED", "REJECTED", "ITEM_RECEIVED", "REFUND_PENDING", "REFUNDED", "EXCHANGE_PENDING", "EXCHANGED", "CANCELLED"] as const;
+export function returnsListWhere(sp: AdminListParams, q: string): Prisma.ReturnRequestWhereInput {
+  const status = normalizeAdminEnumFilter(sp.status, ADMIN_RETURN_STATUSES);
+  const orderTerm = q.replace(/^#/, "");
+  return {
+    ...(status ? { status: status as Prisma.ReturnRequestWhereInput["status"] } : {}),
+    ...(q ? { OR: [
+      ...(orderTerm ? [{ storeOrder: { orderId: adminSearchContains(orderTerm) } }] : []),
+      { customer: { email: adminSearchContains(q) } },
+      { store: { name: adminSearchContains(q) } },
+    ] } : {}),
+  };
+}
+
 /** Sifarişlər: status (or the "pending" group), store, Baku-agnostic date inputs (from inclusive, to + 1 day exclusive). */
 export function ordersListWhere(sp: AdminListParams, q: string): Prisma.OrderWhereInput {
   const from = sp.from && Number.isFinite(Date.parse(sp.from)) ? new Date(sp.from) : undefined;
